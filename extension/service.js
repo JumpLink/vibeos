@@ -70,6 +70,16 @@ const IFACE = `<node>
     <method name="Notifications">
       <arg type="a(ssssx)" name="notifications" direction="out"/>
     </method>
+    <!-- Android's KeyguardManager.createConfirmDeviceCredentialIntent: the owner's PIN or pattern asked for, for an
+         app that must know the owner is in front of the phone (Vibe, before its voice sample is replaced or deleted).
+         The phone locks and its bouncer comes up; confirmed is true once the secret was entered and the phone is
+         unlocked again, back in the app. The bouncer leaving without it (back, a swipe down, the screen going off)
+         answers false, and the phone stays locked. With no secret (swipe), true at once; while the phone is locked,
+         or another app's confirmation waits, false. app_id: the caller's desktop file id, for the journal. -->
+    <method name="ConfirmOwner">
+      <arg type="s" name="app_id" direction="in"/>
+      <arg type="b" name="confirmed" direction="out"/>
+    </method>
   </interface>
 </node>`;
 
@@ -85,6 +95,7 @@ export class Service {
         };
         setExpectWindow(app => this._launch.expect(app));
         this._volumeKeys = new Map();   // app id -> {sender, watch}: who took the volume keys
+        this._confirming = false;       // an app's ConfirmOwner waits for the bouncer
         this._overlap = 0;
         this._sizedKeyboard = null;     // the keyboard whose height is watched
         Main.keyboard.connectObject('visibility-changed', () => this._updateOverlap(), this);
@@ -174,6 +185,35 @@ export class Service {
 
     Drawer(open) {
         this._nav.drawerOpen = open;
+    }
+
+    ConfirmOwnerAsync([appId], invocation) {
+        const keyguard = this._keyguard;
+        const answer = confirmed => invocation.return_value(new GLib.Variant('(b)', [confirmed]));
+        if (!keyguard) {
+            invocation.return_dbus_error('org.freedesktop.DBus.Error.Failed', 'The lock screen is not running');
+            return;
+        }
+        if (!keyguard._secure) {
+            answer(true);
+            return;
+        }
+        if (keyguard.showing || this._confirming) {
+            answer(false);
+            return;
+        }
+        console.log(`vibeos: ${appId} asks for the owner's secret`);
+        this._confirming = true;
+        let answered = false;
+        const once = confirmed => {
+            if (answered)
+                return;
+            answered = true;
+            this._confirming = false;
+            answer(confirmed);
+        };
+        keyguard.lock();
+        keyguard.dismissThen(() => once(true), () => once(false));
     }
 
     setKeyguard(keyguard) {
