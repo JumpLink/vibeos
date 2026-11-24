@@ -1,6 +1,7 @@
 # the files with translatable strings
 bouncer.js
 keyguard.js
+l10n.js
 launch.js
 notifications.js
 powermenu.js
