@@ -25,11 +25,11 @@ msgstr "Calendario"
 
 #: data/vibeos.Calendar.desktop.in
 msgid "Your events and reminders"
-msgstr ""
+msgstr "Tus eventos y recordatorios"
 
 #: data/vibeos.Calendar.desktop.in
 msgid "event;reminder;agenda;"
-msgstr ""
+msgstr "evento;recordatorio;agenda;calendario;"
 
 # android: Etar no_title_label
 #: src/agenda-view.c src/cal-alert-page.c src/cal-model.c src/day-view.c
@@ -39,12 +39,11 @@ msgstr "(Sin título)"
 
 #: src/cal-accounts.c
 msgid "The calendar could not be added."
-msgstr ""
+msgstr "No se ha podido añadir el calendario."
 
-# android: Etar preferences_list_add_offline_error_empty
 #: src/cal-accounts.c
 msgid "Enter a calendar name!"
-msgstr "¡Entrar nombre de calendario!"
+msgstr "¡Introduce un nombre para el calendario!"
 
 # android: Etar preferences_list_add_offline
 #: src/cal-accounts.c src/cal-settings.c
@@ -53,8 +52,12 @@ msgstr "Añadir calendario fuera de línea"
 
 # android: Etar preferences_list_add_offline_message
 #: src/cal-accounts.c
-msgid "Offline calendars are NOT synchronized to a cloud service and only available on your phone."
-msgstr "Los calendarios fuera de línea NO están sincronizados con un servicio en la nube y están disponibles solo en tu teléfono."
+msgid ""
+"Offline calendars are NOT synchronized to a cloud service and only available "
+"on your phone."
+msgstr ""
+"Los calendarios fuera de línea NO están sincronizados con un servicio en la "
+"nube y están disponibles solo en tu teléfono."
 
 # android: Etar preferences_list_add_offline_name
 #. the field in a padded frame
@@ -71,7 +74,7 @@ msgstr "Cancelar"
 # android: Etar add_calendar (several translations, short)
 #: src/cal-accounts.c
 msgid "Add calendar"
-msgstr "Añadir un calendario"
+msgstr "Añadir calendario"
 
 # android: Etar preferences_calendar_no_display_name
 #: src/cal-accounts.c src/cal-settings.c
@@ -80,16 +83,18 @@ msgstr "Calendario sin nombre"
 
 #: src/cal-accounts.c
 msgid "The server did not accept this user name and password."
-msgstr ""
+msgstr "El servidor no ha aceptado este nombre de usuario y contraseña."
 
 #: src/cal-accounts.c
 msgid "The server's certificate is not trusted, so nothing was sent to it."
 msgstr ""
+"El certificado del servidor no es de confianza, así que no se le ha enviado "
+"nada."
 
 #: src/cal-accounts.c
 #, c-format
 msgid "Could not reach the server: %s"
-msgstr ""
+msgstr "No se ha podido conectar con el servidor: %s"
 
 # android: Contacts fail_reason_unknown (adapted, other app, short)
 #: src/cal-accounts.c
@@ -98,40 +103,42 @@ msgstr "error desconocido"
 
 #: src/cal-accounts.c
 msgid "The server has no calendars for this user."
-msgstr ""
+msgstr "El servidor no tiene calendarios para este usuario."
 
 #: src/cal-accounts.c
 msgid "Enter a valid URL"
-msgstr ""
+msgstr "Introduce una URL válida"
 
 #: src/cal-accounts.c
 msgid "Enter a user name"
-msgstr ""
+msgstr "Introduce un nombre de usuario"
 
 #: src/cal-accounts.c
 msgid "Enter a password"
-msgstr ""
+msgstr "Introduce una contraseña"
 
 #: src/cal-accounts.c
 msgid "Looking for calendars…"
-msgstr ""
+msgstr "Buscando calendarios…"
 
 #: src/cal-accounts.c
 msgid "The account could not be added."
-msgstr ""
+msgstr "No se ha podido añadir la cuenta."
 
 #: src/cal-accounts.c
 msgid "Account added. Its calendars appear once they are synchronized."
-msgstr ""
+msgstr "Cuenta añadida. Sus calendarios aparecerán cuando se sincronicen."
 
 #: src/cal-accounts.c
 msgid ""
 "The password could not be kept (no keyring), so the account was not added."
 msgstr ""
+"No se ha podido guardar la contraseña (no hay llavero), así que no se ha "
+"añadido la cuenta."
 
 #: src/cal-accounts.c
 msgid "Enter an account name"
-msgstr ""
+msgstr "Introduce un nombre para la cuenta"
 
 # android: Etar preferences_list_add_remote
 #: src/cal-accounts.c src/cal-settings.c
@@ -141,11 +148,11 @@ msgstr "Añadir calendario CalDAV"
 #. DAVx⁵'s "Login with URL and user name"
 #: src/cal-accounts.c
 msgid "Login with URL and user name"
-msgstr ""
+msgstr "Iniciar sesión con URL y nombre de usuario"
 
 #: src/cal-accounts.c
 msgid "Base URL"
-msgstr ""
+msgstr "URL base"
 
 # android: Jelly auth_dialog_username (adapted, other app, short)
 #: src/cal-accounts.c
@@ -159,7 +166,7 @@ msgstr "Contraseña"
 
 #: src/cal-accounts.c
 msgid "Account name"
-msgstr ""
+msgstr "Nombre de la cuenta"
 
 # android: Jelly auth_dialog_login (other app, short)
 #: src/cal-accounts.c
@@ -174,7 +181,7 @@ msgstr "Calendarios"
 
 #: src/cal-accounts.c
 msgid "Create account"
-msgstr ""
+msgstr "Crear cuenta"
 
 # android: Etar calendar_color_picker_dialog_title
 #: src/cal-accounts.c
@@ -190,6 +197,8 @@ msgstr "Advertencia"
 msgid ""
 "Changing the color may be reverted when the calendar is synchronized again."
 msgstr ""
+"Es posible que el color vuelva a cambiar cuando el calendario se sincronice "
+"de nuevo."
 
 # android: Etar preferences_calendar_color_warning_button
 #: src/cal-accounts.c
@@ -203,48 +212,46 @@ msgstr "Cambiar nombre"
 
 #: src/cal-accounts.c
 msgid "The calendar could not be deleted."
-msgstr ""
+msgstr "No se ha podido eliminar el calendario."
 
-# android: Etar preferences_calendar_delete_message
 #: src/cal-accounts.c
 msgid "Do you really want to delete this calendar?"
-msgstr "¿Realmente quieres borrar este calendario?"
+msgstr "¿Seguro que quieres eliminar este calendario?"
 
-# android: Etar preferences_calendar_delete
 #: src/cal-accounts.c
 msgid "Delete calendar"
-msgstr "Borrar calendario"
+msgstr "Eliminar calendario"
 
 #: src/cal-accounts.c
 #, c-format
 msgid "%d event"
 msgid_plural "%d events"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d evento"
+msgstr[1] "%d eventos"
 
 #: src/cal-accounts.c
 msgid "Google"
-msgstr ""
+msgstr "Google"
 
 #: src/cal-accounts.c
 msgid "CalDAV"
-msgstr ""
+msgstr "CalDAV"
 
 #: src/cal-accounts.c
 msgid "Nextcloud"
-msgstr ""
+msgstr "Nextcloud"
 
 #: src/cal-accounts.c
 msgid "Outlook"
-msgstr ""
+msgstr "Outlook"
 
 #: src/cal-accounts.c
 msgid "Microsoft 365"
-msgstr ""
+msgstr "Microsoft 365"
 
 #: src/cal-accounts.c
 msgid "Exchange"
-msgstr ""
+msgstr "Exchange"
 
 # android: Framework imProtocolYahoo (short)
 #: src/cal-accounts.c
@@ -253,7 +260,7 @@ msgstr "Yahoo!"
 
 #: src/cal-accounts.c
 msgid "Web calendar"
-msgstr ""
+msgstr "Calendario web"
 
 # android: Framework keyboard_shortcut_group_applications_contacts (short)
 #: src/cal-accounts.c
@@ -262,7 +269,7 @@ msgstr "Contactos"
 
 #: src/cal-accounts.c
 msgid "Weather"
-msgstr ""
+msgstr "El tiempo"
 
 # android: Etar preferences_calendar_visible
 #: src/cal-accounts.c
@@ -303,19 +310,18 @@ msgstr "Cuenta %s"
 # android: Etar alert_title
 #: src/cal-alert-page.c
 msgid "Calendar notifications"
-msgstr "Notificaciones de Calendar"
+msgstr "Notificaciones de Calendario"
 
 # android: Etar dismiss_all_label (several translations, short)
 #: src/cal-alert-page.c
 msgid "Dismiss all"
 msgstr "Descartar todo"
 
-# android: Etar snooze_delay_dialog_title
 #. libvibeos's time picker (not the editor's), titled, its clock always 24-hour: hours and minutes of delay, not a
 #. * time of day
 #: src/cal-alert-page.c
 msgid "Set snooze delay"
-msgstr "Intervalo de tiempo"
+msgstr "Tiempo de aplazamiento"
 
 # android: Framework httpErrorOk (several translations, short)
 #. OK waits for a choice (the dialog's positive button disabled until a row is checked)
@@ -357,12 +363,12 @@ msgstr "Sonido de notificación predeterminado"
 #: src/cal-color-picker.c
 #, c-format
 msgid "Color %d selected"
-msgstr ""
+msgstr "Color %d seleccionado"
 
 #: src/cal-color-picker.c
 #, c-format
 msgid "Color %d"
-msgstr ""
+msgstr "Color %d"
 
 # android: Etar event_color_set_to_default
 #: src/cal-color-picker.c
@@ -376,12 +382,12 @@ msgstr "Color del evento"
 
 #: src/cal-date-picker.c
 msgid "Selected date"
-msgstr ""
+msgstr "Fecha seleccionada"
 
 #: src/cal-date-picker.c
 #, c-format
 msgid "Current selection: %s"
-msgstr ""
+msgstr "Selección actual: %s"
 
 # android: Settings date_time_set_date_title (other app, short)
 #: src/cal-date-picker.c
@@ -391,57 +397,56 @@ msgstr "Fecha"
 #: src/cal-date-picker.c
 msgctxt "date input: day"
 msgid "d"
-msgstr ""
+msgstr "d"
 
-# android: Dialer call_details_minutes_abbreviation (other app, several translations, short)
 #: src/cal-date-picker.c
 msgctxt "date input: month"
 msgid "m"
-msgstr "min"
+msgstr "m"
 
 #: src/cal-date-picker.c
 msgctxt "date input: year"
 msgid "y"
-msgstr ""
+msgstr "a"
 
 #: src/cal-date-picker.c
 #, c-format
 msgid "Use: %s"
-msgstr ""
+msgstr "Usa: %s"
 
 #: src/cal-date-picker.c
 #, c-format
 msgid "Example: %s"
-msgstr ""
+msgstr "Ejemplo: %s"
 
 #: src/cal-date-picker.c
 msgid "Invalid format."
-msgstr ""
+msgstr "Formato no válido."
 
 #: src/cal-date-picker.c
 #, c-format
 msgid "Out of range: %s"
-msgstr ""
+msgstr "Fuera del intervalo: %s"
 
 #: src/cal-date-picker.c
 msgid "Switch to calendar input mode"
-msgstr ""
+msgstr "Cambiar al modo de calendario"
 
 #: src/cal-date-picker.c
 msgid "Switch to text input mode"
-msgstr ""
+msgstr "Cambiar al modo de introducción de texto"
 
 #: src/cal-date-picker.c
 msgid "Switch to year view"
-msgstr ""
+msgstr "Cambiar a la vista de año"
 
 #: src/cal-date-picker.c
 msgid "Change to previous month"
-msgstr ""
+msgstr "Cambiar al mes anterior"
 
 #: src/cal-date-picker.c
 msgid "Change to next month"
-msgstr ""
+msgstr "Cambiar al mes siguiente"
 
 # android: Etar agenda_today
 #: src/cal-format.c
@@ -494,8 +499,8 @@ msgstr "%s, %s"
 #, c-format
 msgid "%d week"
 msgid_plural "%d weeks"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d semana"
+msgstr[1] "%d semanas"
 
 # android: Framework duration_days_relative_future
 #: src/cal-format.c
@@ -525,15 +530,15 @@ msgstr[1] "%d minutos"
 #: src/cal-format.c
 #, c-format
 msgid "; until %s"
-msgstr "; hasta %s"
+msgstr "; hasta el %s"
 
 # android: Etar endByCount
 #: src/cal-format.c
 #, c-format
 msgid "; for one time"
 msgid_plural "; for %d times"
-msgstr[0] "; por una vez"
-msgstr[1] "; para %d veces"
+msgstr[0] "; una vez"
+msgstr[1] "; %d veces"
 
 # android: Etar daily
 #: src/cal-format.c
@@ -546,45 +551,45 @@ msgstr[1] "Cada %d días"
 # android: Etar every_weekday
 #: src/cal-format.c
 msgid "Every weekday (Mon–Fri)"
-msgstr "Cada día laborable (lunes-viernes)"
+msgstr "Todos los días laborables (lun–vie)"
 
 #: src/cal-format.c
 #, c-format
 msgid "Weekly on %s"
-msgstr ""
+msgstr "Semanalmente (%s)"
 
 #: src/cal-format.c
 #, c-format
 msgid "Every %d week on %s"
 msgid_plural "Every %d weeks on %s"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Cada %d semana (%s)"
+msgstr[1] "Cada %d semanas (%s)"
 
 #: src/cal-format.c
 msgid "first"
-msgstr ""
+msgstr "primer"
 
 #: src/cal-format.c
 msgid "second"
-msgstr ""
+msgstr "segundo"
 
 #: src/cal-format.c
 msgid "third"
-msgstr ""
+msgstr "tercer"
 
 #: src/cal-format.c
 msgid "fourth"
-msgstr ""
+msgstr "cuarto"
 
 #: src/cal-format.c
 msgid "last"
-msgstr ""
+msgstr "último"
 
 #. "on every first Monday"
 #: src/cal-format.c
 #, c-format
 msgid "Monthly (on every %s %s)"
-msgstr ""
+msgstr "Mensualmente (cada %s %s)"
 
 # android: Etar monthly
 #: src/cal-format.c
@@ -596,13 +601,12 @@ msgstr "Mensualmente"
 msgid "Yearly"
 msgstr "Anualmente"
 
-# android: Etar weekN
 #: src/cal-format.c
 #, c-format
 msgid "Week %d"
 msgid_plural "Week %d"
-msgstr[0] "%d semana"
-msgstr[1] "%d semana"
+msgstr[0] "Semana %d"
+msgstr[1] "Semana %d"
 
 # android: Framework input_method_nav_back_button_desc (several translations, short)
 #. "Back" is the name the shell's back gesture presses (extension/a11y.js)
@@ -819,29 +823,26 @@ msgid_plural "Every %d years"
 msgstr[0] "Cada %d año"
 msgstr[1] "Cada %d años"
 
-# android: Etar recurrence_end_count
 #: src/cal-recurrence-picker.c
 #, c-format
 msgid "For %d event"
 msgid_plural "For %d events"
-msgstr[0] "Para %d evento"
-msgstr[1] "Para %d eventos"
+msgstr[0] "Tras %d repetición"
+msgstr[1] "Tras %d repeticiones"
 
-# android: Framework zen_mode_until_next_day (several translations)
 #: src/cal-recurrence-picker.c
 #, c-format
 msgid "Until %s"
-msgstr "Hasta las %s"
+msgstr "Hasta el %s"
 
 # android: Etar recurrence_end_date_label
 #: src/cal-recurrence-picker.c
 msgid "Until a date"
 msgstr "Hasta una fecha"
 
-# android: Etar recurrence_end_count_label
 #: src/cal-recurrence-picker.c
 msgid "For a number of events"
-msgstr "Para un número de eventos"
+msgstr "Tras varias repeticiones"
 
 # android: Etar recurrence_end_continously
 #. the drop-down's rows are the long forms, as wide as the widest
@@ -852,7 +853,7 @@ msgstr "Siempre"
 #. the date dialog, under its own title, "Select date"
 #: src/cal-recurrence-picker.c
 msgid "Select date"
-msgstr ""
+msgstr "Seleccionar fecha"
 
 # android: Etar recurrence_freq[0]
 #: src/cal-recurrence-picker.c
@@ -894,10 +895,9 @@ msgstr "cambiar fecha de finalización"
 msgid "Done"
 msgstr "Hecho"
 
-# android: Etar accessibility_reminder_time
 #: src/cal-reminders.c
 msgid "Reminder time"
-msgstr "Duración del recordatorio"
+msgstr "Antelación del recordatorio"
 
 # android: Etar accessibility_remove_reminder
 #: src/cal-reminders.c
@@ -906,7 +906,7 @@ msgstr "Eliminar recordatorio"
 
 #: src/cal-search.c
 msgid "Edit query"
-msgstr ""
+msgstr "Editar búsqueda"
 
 # android: Framework searchview_description_query (short)
 #: src/cal-search.c
@@ -933,15 +933,13 @@ msgstr "Más opciones"
 msgid "Search history cleared."
 msgstr "Se ha borrado el historial de búsqueda."
 
-# android: Etar preferences_alerts_custom_snooze_delay_summary_on
 #: src/cal-settings.c
 msgid "Ask for snooze delay whenever snoozing reminders"
-msgstr "Preguntar por el intervalo de tiempo entre recordatorios en cada recordatorio"
+msgstr "Preguntar cuánto posponer cada vez que se pospone un recordatorio"
 
-# android: Etar preferences_alerts_custom_snooze_delay_summary_off
 #: src/cal-settings.c
 msgid "Always use default snooze delay"
-msgstr "Usar siempre el intervalo de tiempo entre recordatorios por defecto"
+msgstr "Usar siempre el tiempo de aplazamiento predeterminado"
 
 # android: Etar preferences_list_general (several translations, short)
 #: src/cal-settings.c
@@ -971,7 +969,7 @@ msgstr "1 hora"
 # android: Etar one_and_a_half_hours
 #: src/cal-settings.c
 msgid "1.5 hours"
-msgstr "1.5 horas"
+msgstr "1,5 horas"
 
 # android: Etar two_hours
 #: src/cal-settings.c
@@ -1045,11 +1043,10 @@ msgstr "Modo noche negro puro"
 msgid "Use real event colors"
 msgstr "Usar colores de eventos reales"
 
-# android: Etar default_start_title
 #. the views the app can open on
 #: src/cal-settings.c
 msgid "Default view"
-msgstr "Vista de"
+msgstr "Vista predeterminada"
 
 # android: Etar default_start_last
 #: src/cal-settings.c
@@ -1076,10 +1073,9 @@ msgstr "Mes"
 msgid "Agenda"
 msgstr "Agenda"
 
-# android: Etar display_options (several translations, short)
 #: src/cal-settings.c
 msgid "Display options"
-msgstr "Ver detalles"
+msgstr "Opciones de visualización"
 
 # android: Etar preferences_hide_declined_title
 #: src/cal-settings.c
@@ -1088,11 +1084,11 @@ msgstr "Ocultar eventos rechazados"
 
 #: src/cal-settings.c
 msgid "Staggered display"
-msgstr ""
+msgstr "Visualización escalonada"
 
 #: src/cal-settings.c
 msgid "Display overlapping events in a staggered layout"
-msgstr ""
+msgstr "Mostrar los eventos superpuestos de forma escalonada"
 
 # android: Etar preferences_show_week_num_title
 #: src/cal-settings.c
@@ -1107,7 +1103,7 @@ msgstr "La semana empieza el"
 
 #: src/cal-settings.c
 msgid "Locale default"
-msgstr ""
+msgstr "Según la región"
 
 # android: Etar preferences_days_per_week_title
 #: src/cal-settings.c
@@ -1119,14 +1115,14 @@ msgstr "Días por semana"
 msgid "Default event duration"
 msgstr "Duración por defecto del evento"
 
-# android: Etar preferences_use_home_tz_title (several translations)
 #: src/cal-settings.c
 msgid "Use home time zone"
-msgstr "Usar hora local"
+msgstr "Usar zona horaria de casa"
 
 # android: Etar preferences_use_home_tz_descrip
 #: src/cal-settings.c
-msgid "Displays calendars and event times in your home time zone when traveling"
+msgid ""
+"Displays calendars and event times in your home time zone when traveling"
 msgstr "Mostrar calendarios y eventos en la hora local al viajar"
 
 # android: DeskClock home_time_zone (other app, several translations)
@@ -1161,15 +1157,13 @@ msgstr "Notificaciones"
 msgid "Pop-up notification"
 msgstr "Notificación emergente"
 
-# android: Etar preferences_alerts_custom_snooze_delay_title
 #: src/cal-settings.c
 msgid "Ask for reminder snooze delay"
-msgstr "Recordatorios"
+msgstr "Preguntar cuánto posponer"
 
-# android: Etar preferences_default_snooze_delay_title
 #: src/cal-settings.c
 msgid "Default snooze delay time"
-msgstr "Intervalo entre recordatorios"
+msgstr "Tiempo de aplazamiento predeterminado"
 
 # android: Etar preferences_default_reminder_title
 #: src/cal-settings.c
@@ -1184,14 +1178,15 @@ msgstr "Respuestas rápidas"
 # android: Etar quick_response_settings_summary
 #: src/cal-settings.c
 msgid "Edit default responses when emailing guests"
-msgstr "Editar respuestas predeterminadas al enviar correos electrónicos a los invitados"
+msgstr ""
+"Editar respuestas predeterminadas al enviar correos electrónicos a los "
+"invitados"
 
-# android: Etar preferences_experimental_category (several translations, short)
 #. Experimental: Skip Reminders (no default, so no summary until one is chosen). There is no battery
 #. * optimization row: nothing here would stand for it.
 #: src/cal-settings.c
 msgid "Experimental"
-msgstr "En produción"
+msgstr "Experimental"
 
 # android: Etar preferences_reminders_responded_label
 #: src/cal-settings.c
@@ -1283,15 +1278,15 @@ msgstr "No se ha encontrado el evento."
 
 #: src/cal-time-picker.c
 msgid "Select AM or PM"
-msgstr ""
+msgstr "Seleccionar a. m. o p. m."
 
 #: src/cal-time-picker.c
 msgid "PM"
-msgstr ""
+msgstr "p. m."
 
 #: src/cal-time-picker.c
 msgid "AM"
-msgstr ""
+msgstr "a. m."
 
 # android: Framework time_picker_minute_label (adapted, short)
 #: src/cal-time-picker.c
@@ -1315,11 +1310,11 @@ msgstr "Cambia al modo de introducción de texto para escribir la hora."
 
 #: src/cal-time-picker.c
 msgid "Select time"
-msgstr ""
+msgstr "Seleccionar hora"
 
 #: src/cal-time-picker.c
 msgid "Clock face"
-msgstr ""
+msgstr "Esfera del reloj"
 
 # android: Etar timezone_rename_labels[0]
 #: src/cal-tz-picker.c
@@ -1453,7 +1448,7 @@ msgstr "No se han encontrado resultados"
 
 #: src/cal-window.c
 msgid "About Calendar"
-msgstr ""
+msgstr "Información de Calendario"
 
 # android: Etar goto_date
 #: src/cal-window.c src/event-editor.c
@@ -1462,7 +1457,7 @@ msgstr "Ir a…"
 
 #: src/cal-window.c
 msgid "Calendar files"
-msgstr ""
+msgstr "Archivos de calendario"
 
 # android: Etar calendar_refresh
 #: src/cal-window.c
@@ -1486,7 +1481,7 @@ msgstr "Ajustes de visualización"
 
 #: src/cal-window.c
 msgid "About"
-msgstr ""
+msgstr "Información"
 
 # android: Contacts navigation_drawer_open (other app)
 #: src/cal-window.c
@@ -1508,8 +1503,8 @@ msgstr "Nuevo evento"
 #, c-format
 msgid "+%d"
 msgid_plural "+%d"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "+%d"
+msgstr[1] "+%d"
 
 # android: Etar day_view_new_event_hint
 #: src/day-view.c
@@ -1546,7 +1541,7 @@ msgstr "Evento guardado."
 # android: Etar discard_event_changes
 #: src/event-editor.c
 msgid "Do you want to discard changes?"
-msgstr "¿Desea descartar los cambios?"
+msgstr "¿Quieres descartar los cambios?"
 
 # android: Etar discard
 #: src/event-editor.c
@@ -1561,7 +1556,7 @@ msgstr "CANCELAR"
 # android: Framework sim_done_button (adapted, several translations, short)
 #: src/event-editor.c
 msgid "DONE"
-msgstr "Hecho"
+msgstr "HECHO"
 
 # android: Etar hint_what
 #: src/event-editor.c
@@ -1578,10 +1573,9 @@ msgstr "Seleccionar color del evento"
 msgid "All day"
 msgstr "Todo el día"
 
-# android: Etar accessibility_all_day
 #: src/event-editor.c
 msgid "All day event"
-msgstr "Cita para todo el día"
+msgstr "Evento de todo el día"
 
 # android: Etar accessibility_pick_start_date
 #: src/event-editor.c
@@ -1611,7 +1605,7 @@ msgstr "Zona horaria"
 
 #: src/event-editor.c
 msgid "Guests are not sent an invitation"
-msgstr ""
+msgstr "Los invitados no reciben ninguna invitación"
 
 # android: Etar hint_attendees
 #: src/event-editor.c
@@ -1708,7 +1702,7 @@ msgstr "Detalles"
 #. no event in the file
 #: src/event-editor.c
 msgid "Invalid iCalendar file"
-msgstr ""
+msgstr "Archivo iCalendar no válido"
 
 # android: Etar email_guests_label
 #: src/event-info.c src/reminders-main.c
@@ -1739,17 +1733,16 @@ msgstr "Todos los eventos"
 #: src/event-info.c
 #, c-format
 msgid "Delete %s?"
-msgstr "¿Quieres eliminar %s?"
+msgstr "¿Eliminar «%s»?"
 
 # android: Etar delete_this_event_title
 #: src/event-info.c
 msgid "Delete this event?"
 msgstr "¿Eliminar este evento?"
 
-# android: Etar cal_export_event_title
 #: src/event-info.c
 msgid "Export event"
-msgstr "Exporta a tarjeta SD"
+msgstr "Exportar evento"
 
 # android: Etar response_labels1[1]
 #: src/event-info.c
@@ -1781,10 +1774,9 @@ msgstr "Editar"
 msgid "Delete"
 msgstr "Eliminar"
 
-# android: Etar duplicate_label
 #: src/event-info.c
 msgid "Duplicate"
-msgstr "Duplicado"
+msgstr "Duplicar"
 
 # android: Etar share_label
 #: src/event-info.c
@@ -1804,7 +1796,7 @@ msgstr "Organizador:"
 # android: Etar event_info_reminders_label (adapted)
 #: src/event-info.c
 msgid "REMINDERS"
-msgstr "Recordatorios"
+msgstr "RECORDATORIOS"
 
 # android: Etar map_label
 #: src/reminders-main.c
