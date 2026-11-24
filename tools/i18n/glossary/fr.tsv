@@ -1,0 +1,110 @@
+Settings	Paramètres	app and screen name
+Notifications	Notifications	
+Do Not Disturb	Ne pas déranger	
+Wi-Fi	Wi-Fi	
+Bluetooth	Bluetooth	
+Airplane mode	Mode Avion	
+Lock screen	Écran de verrouillage	
+Home screen	Écran d'accueil	
+Home	Accueil	the home screen, a button
+Wallpaper	Fond d'écran	
+Alarm	Alarme	
+Timer	Minuteur	
+Stopwatch	Chronomètre	
+Reminder	Rappel	
+Event	Événement	
+Calendar	Agenda	the app; a user's calendar (account) is « agenda » too
+Contact	Contact	
+Contacts	Contacts	
+Conversation	Conversation	
+Message	Message	
+Messages	Messages	
+Call	Appeler	verb, a button; the noun is « appel »
+Download	Télécharger	verb; the noun is « téléchargement »
+Install	Installer	
+Uninstall	Désinstaller	
+Update	Mettre à jour	verb; the noun is « mise à jour »
+Share	Partager	
+Delete	Supprimer	
+Remove	Supprimer	« Retirer » when it only takes something off a list, beside a « Supprimer »
+Cancel	Annuler	
+OK	OK	
+Done	OK	Android's French; « Terminé » for a state
+Save	Enregistrer	
+Back	Retour	
+Close	Fermer	
+Search	Rechercher	a field's hint: « Rechercher… »
+Menu	Menu	
+More options	Plus d'options	
+About	À propos	
+About %s	À propos de %s	
+Credits	Crédits	
+Legal	Mentions légales	
+Website	Site Web	
+Report an Issue	Signaler un problème	
+Open	Ouvrir	
+Edit	Modifier	
+Add	Ajouter	
+Retry	Réessayer	
+Undo	Annuler	
+Copy	Copier	
+Paste	Coller	
+Rename	Renommer	
+Select all	Tout sélectionner	
+Clear	Effacer	
+Next	Suivant	
+Previous	Précédent	
+Allow	Autoriser	
+Deny	Refuser	
+Turn on	Activer	
+Turn off	Désactiver	
+On	Activé	
+Off	Désactivé	
+App	Application	« appli » only where space is short, as Android does
+App info	Infos sur l'appli	
+Storage	Stockage	
+Battery	Batterie	
+Display	Affichage	the settings page; « écran » for the screen itself
+Sound	Son	
+Location	Localisation	the setting; a place is « lieu » or « position »
+Camera	Appareil photo	
+Files	Fichiers	
+Mute	Couper le son	
+Unmute	Réactiver le son	
+Block	Bloquer	
+Unblock	Débloquer	
+Archive	Archiver	
+Favorites	Favoris	
+Pin	Épingler	to pin an item; the code is « code PIN »
+Unpin	Retirer	« Désépingler » is avoided
+PIN	Code PIN	
+Pattern	Schéma	
+Password	Mot de passe	
+Mobile data	Données mobiles	
+Hotspot	Point d'accès	
+Ringtone	Sonnerie	
+Vibrate	Vibreur	
+Snooze	Répéter	an alarm's snooze
+Dismiss	Ignorer	an alarm's dismiss is « Arrêter »
+Accounts	Comptes	
+Privacy	Confidentialité	
+Security	Sécurité	
+Language	Langue	
+Keyboard	Clavier	
+Brightness	Luminosité	
+Default	Par défaut	
+Custom	Personnalisé	
+None	Aucun	
+Restart	Redémarrer	
+Power off	Éteindre	
+Today	Aujourd'hui	
+Tomorrow	Demain	
+Yesterday	Hier	
+Help	Aide	
+Send	Envoyer	
+Reply	Répondre	
+Details	Détails	
+Name	Nom	
+Size	Taille	
+Date	Date	
+Sort by	Trier par	

@@ -17,7 +17,7 @@ msgstr ""
 
 #: vibeos-about.c
 msgid "Developed by"
-msgstr ""
+msgstr "Sviluppato da"
 
 #. TRANSLATORS: keep the link's markup as it is
 #: vibeos-about.c
@@ -25,14 +25,16 @@ msgid ""
 "The VibeOS Project\n"
 "<a href=\"https://github.com/pulpoff/vibeos\">github.com/pulpoff/vibeos</a>"
 msgstr ""
+"Il progetto VibeOS\n"
+"<a href=\"https://github.com/pulpoff/vibeos\">github.com/pulpoff/vibeos</a>"
 
 #: vibeos-about.c
 msgid "Built on"
-msgstr ""
+msgstr "Basato su"
 
 #: vibeos-about.c
 msgid "Debian, GNOME and GTK."
-msgstr ""
+msgstr "Debian, GNOME e GTK."
 
 #. TRANSLATORS: keep the markup (the link and the line breaks) as it is
 #: vibeos-about.c
@@ -46,14 +48,19 @@ msgid ""
 "Some of its icons and images come from the Android Open Source Project and "
 "LineageOS, under the Apache License 2.0, and so do many of its translations."
 msgstr ""
+"© 2026 pulpoff\n"
+"\n"
+"VibeOS è software libero distribuito con <a href=\"https://github.com/pulpoff/vibeos/blob/main/LICENSE\">licenza MIT</a>. Non è coperto da alcuna garanzia.\n"
+"\n"
+"Alcune delle sue icone e immagini provengono dall'Android Open Source Project e da LineageOS, con licenza Apache 2.0, così come molte delle sue traduzioni."
 
 #: vibeos-about.c
 msgid "Credits"
-msgstr ""
+msgstr "Riconoscimenti"
 
 #: vibeos-about.c
 msgid "Legal"
-msgstr ""
+msgstr "Note legali"
 
 # android: Contacts header_website_entry (other app, short)
 #: vibeos-about.c
@@ -62,17 +69,17 @@ msgstr "Sito web"
 
 #: vibeos-about.c
 msgid "Report an Issue"
-msgstr ""
+msgstr "Segnala un problema"
 
 #. TRANSLATORS: the About sheet's name for a screen reader; %s is the app's name
 #: vibeos-about.c
 #, c-format
 msgid "About %s"
-msgstr ""
+msgstr "Informazioni su %s"
 
 #: vibeos-menu.c
 msgid "About"
-msgstr ""
+msgstr "Informazioni"
 
 # android: Framework input_method_nav_back_button_desc
 #: vibeos-search.c vibeos-top-bar.c
@@ -97,4 +104,4 @@ msgstr "Annulla"
 # android: Framework httpErrorOk (several translations, short)
 #: vibeos-time-picker.c
 msgid "OK"
-msgstr "Ok"
+msgstr "OK"
