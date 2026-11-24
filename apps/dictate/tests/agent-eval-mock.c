@@ -942,6 +942,33 @@ write_weather (JsonObject *weather)
   g_file_set_contents (at, forecast, -1, NULL);
 }
 
+/* the places saved in Navi ("navi": {"home": {"name", "lat", "lng"}, "work": …}), in Navi's settings file */
+static void
+write_navi (JsonObject *navi)
+{
+  g_autofree char *dir = g_build_filename (g_get_user_config_dir (), "vibeos-navi", NULL);
+  g_autofree char *path = g_build_filename (dir, "navi.ini", NULL);
+  g_autoptr (GKeyFile) kf = g_key_file_new ();
+  const char *groups[] = { "home", "work" };
+
+  if (!navi)
+    return;
+  for (guint i = 0; i < G_N_ELEMENTS (groups); i++)
+    {
+      JsonObject *place = json_object_has_member (navi, groups[i]) ? json_object_get_object_member (navi, groups[i])
+                                                                   : NULL;
+      if (!place)
+        continue;
+      g_key_file_set_integer (kf, groups[i], "kind", 0);
+      g_key_file_set_string (kf, groups[i], "name", json_object_get_string_member (place, "name"));
+      g_key_file_set_double (kf, groups[i], "lat", json_object_get_double_member (place, "lat"));
+      g_key_file_set_double (kf, groups[i], "lng", json_object_get_double_member (place, "lng"));
+    }
+  g_mkdir_with_parents (dir, 0700);
+  if (!g_key_file_save_to_file (kf, path, NULL))
+    g_error ("fixtures: Navi's settings could not be written");
+}
+
 void
 mock_fixtures_write (JsonObject *phone)
 {
@@ -957,6 +984,7 @@ mock_fixtures_write (JsonObject *phone)
     g_error ("fixtures: EDS's registry: %s", error->message);
   write_contacts (registry, member_array (phone, "contacts"));
   write_events (registry, member_array (phone, "events"));
+  write_navi (json_object_has_member (phone, "navi") ? json_object_get_object_member (phone, "navi") : NULL);
 }
 
 guint

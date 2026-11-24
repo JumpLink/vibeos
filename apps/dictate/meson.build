@@ -27,8 +27,8 @@ brain_sources = ['src/dictate-brain.c', 'src/dictate-remote.c', 'src/dictate-dev
 # what the model can use on the phone (dictate-tools.h): Contacts and Calendar through EDS, the call log and the
 # messages from their apps' SQLite stores, the calls from the Phone's call service; and the fixed grammar that runs
 # them when the model cannot be reached
-tools_sources = ['src/dictate-tools.c', 'src/dictate-tools-phone.c', 'src/dictate-actions.c', 'src/dictate-offline.c',
-                 'src/dictate-calls.c', 'src/dictate-output.c']
+tools_sources = ['src/dictate-tools.c', 'src/dictate-tools-phone.c', 'src/dictate-tools-device.c',
+                 'src/dictate-actions.c', 'src/dictate-offline.c', 'src/dictate-calls.c', 'src/dictate-output.c']
 # (and the sound server, asked where a reply would play for private mode)
 tools_deps = [dependency('libebook-1.2'), dependency('libecal-2.0'), dependency('sqlite3'), dependency('libpulse'),
               dependency('libsoup-3.0'), dependency('json-glib-1.0'), cc.find_library('m')]
@@ -104,7 +104,7 @@ executable('agent-say', 'tests/agent-say.c', 'src/dictate-talk.c', 'src/dictate-
 # the tools' test set: questions in a private copy of the phone's data (fixtures made by it, the phone's services
 # stood in for on a private bus), each answer scored (tests/agent-eval.c, tests/agent-eval/)
 executable('agent-eval', 'tests/agent-eval.c', 'tests/agent-eval-mock.c', 'src/dictate-talk.c',
-           'src/dictate-voicematch.c', 'src/dictate-access.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c',
+           'tests/agent-eval-voice.c', 'src/dictate-access.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c',
            brain_sources, tools_sources,
            include_directories: 'src',
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(library_dir)],

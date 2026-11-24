@@ -7,6 +7,7 @@
  * They return few fields: a name and the kind of number rather than the number, a message's text only when asked
  * for, at most a few rows. Nothing here logs what it read. */
 #define _GNU_SOURCE             /* strcasestr */
+#include "dictate-access.h"
 #include "dictate-calls.h"
 #include "dictate-tools-private.h"
 
@@ -475,6 +476,8 @@ get_time (JsonObject *args, ToolRun *run, GError **error)
   return finish (b);
 }
 
+static char *fact_duration (gint64 seconds);
+
 static JsonNode *
 get_battery (JsonObject *args, ToolRun *run, GError **error)
 {
@@ -515,7 +518,28 @@ get_battery (JsonObject *args, ToolRun *run, GError **error)
       g_autofree char *t = duration_text (to_empty);
       add_string (b, "time_left", t);
     }
+  {
+    g_autofree char *left = state == 2 && to_empty > 0 ? fact_duration (to_empty) : NULL;
+    g_autofree char *fact = state == 4 ? g_strdup_printf (_("%d %%, full"), (int) (percent + 0.5))
+                            : state == 1 ? g_strdup_printf (_("%d %%, charging"), (int) (percent + 0.5))
+                            : left ? g_strdup_printf (_("%d %%, about %s"), (int) (percent + 0.5), left)
+                                   : g_strdup_printf (_("%d %%"), (int) (percent + 0.5));
+    tool_run_fact (run, _("Battery"), fact);
+  }
   return finish (b);
+}
+
+/* a time for the screen: "9 h", "1 h 20 min", "45 min" */
+static char *
+fact_duration (gint64 seconds)
+{
+  gint64 minutes = (seconds + 30) / 60;
+
+  if (minutes >= 600 || (minutes >= 60 && minutes % 60 == 0))
+    return g_strdup_printf (_("%d h"), (int) ((minutes + 30) / 60));
+  if (minutes >= 60)
+    return g_strdup_printf (_("%d h %d min"), (int) (minutes / 60), (int) (minutes % 60));
+  return g_strdup_printf (_("%d min"), (int) MAX (minutes, 1));
 }
 
 static void
@@ -546,6 +570,12 @@ get_storage (JsonObject *args, ToolRun *run, GError **error)
       tool_error (error, "The storage could not be read.");
       return NULL;
     }
+  {
+    double block = home.f_frsize ? home.f_frsize : home.f_bsize;
+    g_autofree char *fact = g_strdup_printf (_("%.0f GB free of %.0f"), home.f_bavail * block / 1e9,
+                                             home.f_blocks * block / 1e9);
+    tool_run_fact (run, _("Storage"), fact);
+  }
   json_builder_begin_object (b);
   if (home_st.st_dev == root_st.st_dev)
     add_space (b, "phone", &home);
@@ -692,7 +722,7 @@ get_recent_calls (JsonObject *args, ToolRun *run, GError **error)
       else if (!all)
         {
           sqlite3_close (db);
-          tool_error (error, "Names cannot be looked up: Contacts is turned off in Agent's settings.");
+          tool_error (error, "Names cannot be looked up: Contacts is turned off in Vibe's settings.");
           return NULL;
         }
       else
@@ -754,6 +784,17 @@ get_recent_calls (JsonObject *args, ToolRun *run, GError **error)
           }
         else
           add_string (b, "who", "a hidden number");
+        /* the newest: whom the answer is about, and calling back (K2) */
+        if (n == 0 && (p || (number && *number && presentation == 1)))
+          {
+            const char *back[] = { _("Call back"), _("Text back"), NULL };
+            const char *who[] = { p ? p->name : NULL, NULL };
+
+            if (p)
+              tool_run_show (run, "person", who);
+            if (type == 3 || type == 5)
+              tool_run_show (run, "suggestions", back);
+          }
         add_string (b, "direction", call_direction (type));
         when = tool_when (date, TRUE);
         add_string (b, "when", when);
@@ -822,28 +863,64 @@ send_message (const char *destination, const char *text, GError **error)
 
 /* whom `to` means: a contact's number (of `type`, else the mobile one) or the number given. Fills the card's line
  * ("Anna Test, mobile") and the model's name for them */
+/* the contacts a name could be, as "choices": each one's name and the kind of number it would use */
+static void
+offer_people (ToolRun *run, GPtrArray *found, const char *type)
+{
+  g_autoptr (GPtrArray) rows = g_ptr_array_new_with_free_func (g_free);
+
+  for (guint i = 0; i < found->len && i < PEOPLE_MAX; i++)
+    {
+      Person *p = found->pdata[i];
+      Tel *tel = pick_tel (p, type);
+      const char *kind = tel ? _(tel->type) : "";
+      gunichar first = g_utf8_get_char (kind);
+
+      g_ptr_array_add (rows, g_strdup (p->name));
+      if (*kind)
+        {
+          char head[8] = { 0 };
+
+          g_unichar_to_utf8 (g_unichar_totitle (first), head);
+          g_ptr_array_add (rows, g_strconcat (head, g_utf8_next_char (kind), NULL));
+        }
+      else
+        g_ptr_array_add (rows, g_strdup (""));
+    }
+  g_ptr_array_add (rows, NULL);
+  tool_run_show (run, "choices", (const char *const *) rows->pdata);
+}
+
 static char *
-resolve_recipient (const char *to, const char *type, ToolRun *run, char **line, char **named, GError **error)
+resolve_recipient (const char *to, const char *type, ToolRun *run, char **line, char **named, gboolean *certain,
+                   GError **error)
 {
   g_autoptr (GPtrArray) found = NULL;
   Person *p;
   Tel *tel;
 
+  *certain = FALSE;
   if (looks_like_number (to))
     {
       *line = g_strdup (to);
       *named = g_strdup (to);
+      *certain = TRUE;
       return g_strdup (to);
     }
   if (!tool_run_area_on (run, "access-contacts"))
     {
-      tool_error (error, "No access to the contacts (turned off in Agent's settings), so \"%s\" cannot be looked up. "
+      tool_error (error, "No access to the contacts (turned off in Vibe's settings), so \"%s\" cannot be looked up. "
                   "Ask the user for the number.", to);
       return NULL;
     }
   found = people_named (to, run, error);
   if (!found || !(p = one_person (found, to, error)))
-    return NULL;
+    {
+      /* "Which Kim?": the ones it could be, to tap (F1); only for the last try */
+      if (error && found && found->len > 1)
+        offer_people (run, found, type);
+      return NULL;
+    }
   tel = pick_tel (p, type);
   if (!tel)
     {
@@ -857,10 +934,78 @@ resolve_recipient (const char *to, const char *type, ToolRun *run, char **line, 
                   p->tels->len > 1 ? ((Tel *) p->tels->pdata[1])->type : "");
       return NULL;
     }
+  /* not guessed: the user said the contact's own name, or its first name */
+  {
+    g_autofree char *said = g_utf8_casefold (to, -1);
+    g_autofree char *whole = g_utf8_casefold (p->name, -1);
+    g_auto (GStrv) words = g_strsplit (whole, " ", 2);
+
+    *certain = !strcmp (g_strstrip (said), whole) || (words[0] && !strcmp (said, words[0]));
+  }
   /* the card shows the number too: the user sees exactly where it goes */
   *line = g_strdup_printf ("%s, %s · %s", p->name, _(tel->type), tel->number);
   *named = g_strdup_printf ("%s (%s)", p->name, tel->type);
   return g_strdup (tel->number);
+}
+
+/* a card's rows for its person: `line` is "Name, type · number", "Name · number" or a number alone */
+static void
+card_person (DictateAction *action, const char *label, const char *line)
+{
+  const char *dot = strstr (line, " · ");
+  g_autofree char *who = dot ? g_strndup (line, dot - line) : NULL;
+
+  if (!who)
+    {
+      dictate_action_add_field (action, label, line);
+      return;
+    }
+  {
+    /* "Kim Novak, mobile": the name, then the number with its type */
+    const char *comma = strstr (who, ", ");
+    g_autofree char *name = comma ? g_strndup (who, comma - who) : g_strdup (who);
+    g_autofree char *number = comma ? g_strdup_printf ("%s · %s", comma + 2, dot + strlen (" · "))
+                                    : g_strdup (dot + strlen (" · "));
+
+    dictate_action_add_field (action, label, name);
+    dictate_action_add_field (action, _("Number"), number);
+  }
+}
+
+/* whom a card goes to, for the orb: its first row, unless that is a number */
+static void
+show_person (ToolRun *run, DictateAction *action)
+{
+  const DictateActionField *fields = dictate_action_get_fields (action);
+  const char *who[] = { fields && fields[0].label ? fields[0].value : NULL, NULL };
+
+  if (who[0] && !looks_like_number (who[0]))
+    tool_run_show (run, "person", who);
+}
+
+/* what the model is told of a message or a call proposed: whether it goes by itself after the read-back
+ * (dictate_action_get_countdown ()) or waits for the user, and to read it back either way */
+static void
+outward_status (JsonBuilder *b, DictateAction *action, const char *what, const char *button, const char *word)
+{
+  guint seconds = dictate_action_get_countdown (action);
+  g_autofree char *shown = NULL, *status = NULL;
+
+  if (seconds)
+    {
+      shown = g_strdup_printf ("A card on the screen with %s, counting down: %u seconds after you have read it back, "
+                               "it goes by itself unless the user says or taps Cancel.", what, seconds);
+      status = g_strdup ("Not done yet. Read it back in one short sentence, to whom and what (\"To Sarah: yes, 10 "
+                         "works.\"), and say nothing after it: the countdown starts when you have said it.");
+    }
+  else
+    {
+      shown = g_strdup_printf ("A card on the screen with %s and a %s button.", what, button);
+      status = g_strdup_printf ("Not done yet: only when the user taps %s or says \"%s\". Read it back in one short "
+                                "sentence and ask whether to %s it.", button, word, word);
+    }
+  add_string (b, "shown", shown);
+  add_string (b, "status", status);
 }
 
 static JsonNode *
@@ -870,13 +1015,14 @@ propose_call (JsonObject *args, ToolRun *run, GError **error)
   g_autofree char *line = NULL, *named = NULL, *number = NULL, *about = NULL;
   g_autoptr (JsonBuilder) b = json_builder_new ();
   g_autoptr (DictateAction) action = NULL;
+  gboolean certain;
 
   if (!to)
     {
       tool_error (error, "Whom to call is missing: ask the user.");
       return NULL;
     }
-  if (!(number = resolve_recipient (to, type, run, &line, &named, error)))
+  if (!(number = resolve_recipient (to, type, run, &line, &named, &certain, error)))
     return NULL;
   {
     const char *lines[] = { line, NULL };
@@ -884,12 +1030,14 @@ propose_call (JsonObject *args, ToolRun *run, GError **error)
     action = dictate_action_new ("place a call", _("Call"), lines, _("Call"), _("Calling…"), about, place_call,
                                  number, NULL);
     dictate_action_set_log (action, "propose_call", "a phone call, over the mobile network");
+    dictate_action_set_outward (action, certain);
+    card_person (action, _("Call"), line);
+    show_person (run, action);
   }
   tool_run_propose (run, action);
   json_builder_begin_object (b);
-  add_string (b, "shown", "A card on the screen to call this person, with a Call button.");
   add_string (b, "to", named);
-  add_string (b, "status", "Not called yet: the call starts only when the user taps Call.");
+  outward_status (b, action, "the call", "Call", "call");
   return finish (b);
 }
 
@@ -900,6 +1048,15 @@ typedef struct {
   char *destination;            /* a 1:1 conversation's other participant, or NULL */
   char *name;                   /* as stored: the destinations joined */
 } Conversation;
+
+/* "Kim" of "Kim Novak", for a button */
+static char *
+first_name (const char *name)
+{
+  const char *space = strchr (name, ' ');
+
+  return space ? g_strndup (name, space - name) : g_strdup (name);
+}
 
 static const char *
 conversation_who (Conversation *c, GPtrArray *all, char **owned)
@@ -926,7 +1083,8 @@ get_messages (JsonObject *args, ToolRun *run, GError **error)
   GError *failure = NULL;
   sqlite3 *db = open_store ("vibeos-messaging", "bugle_db", &failure);
   sqlite3_stmt *rows = NULL;
-  guint n = 0;
+  guint n = 0, unread_total = 0;
+  g_autofree char *answer = NULL;   /* the newest unread contact's first name */
 
   if (failure)
     {
@@ -958,6 +1116,14 @@ get_messages (JsonObject *args, ToolRun *run, GError **error)
 
             if (unread_only && !unread)
               continue;
+            if (unread)
+              {
+                Person *p = c.destination ? person_for (all, c.destination, NULL) : NULL;
+
+                unread_total += unread;
+                if (p && !answer)
+                  answer = first_name (p->name);
+              }
             json_builder_begin_object (b);
             add_string (b, "with", conversation_who (&c, all, &owned));
             when = tool_when (sqlite3_column_int64 (rows, 3), TRUE);
@@ -974,6 +1140,14 @@ get_messages (JsonObject *args, ToolRun *run, GError **error)
       if (!n)
         add_string (b, "note", unread_only ? "No unread messages." : "No messages.");
       sqlite3_close (db);
+      /* what a tap can ask next (B6): "Read them", "Answer Kim" */
+      if (unread_total)
+        {
+          g_autofree char *reply = answer ? g_strdup_printf (_("Answer %s"), answer) : NULL;
+          const char *next[] = { _("Read them"), reply, NULL };
+
+          tool_run_show (run, "suggestions", next);
+        }
       return finish (b);
     }
 
@@ -1089,6 +1263,7 @@ propose_message (JsonObject *args, ToolRun *run, GError **error)
   g_autofree char *line = NULL, *named = NULL, *number = NULL, *about = NULL, *quoted = NULL;
   g_autoptr (JsonBuilder) b = json_builder_new ();
   g_autoptr (DictateAction) action = NULL;
+  gboolean certain;
 
   if (!to)
     {
@@ -1100,8 +1275,8 @@ propose_message (JsonObject *args, ToolRun *run, GError **error)
       tool_error (error, "What the message should say is missing: ask the user.");
       return NULL;
     }
-  if (!(number = resolve_recipient (to, "mobile", run, &line, &named, NULL))
-      && !(number = resolve_recipient (to, NULL, run, &line, &named, error)))
+  if (!(number = resolve_recipient (to, "mobile", run, &line, &named, &certain, NULL))
+      && !(number = resolve_recipient (to, NULL, run, &line, &named, &certain, error)))
     return NULL;
   quoted = g_strdup_printf ("“%s”", text);
   {
@@ -1110,12 +1285,15 @@ propose_message (JsonObject *args, ToolRun *run, GError **error)
     action = dictate_action_new ("send a message", _("Send a message"), lines, _("Send"), _("Sent"), about,
                                  send_message, number, text);
     dictate_action_set_log (action, "propose_message", "the message, by SMS to its recipient");
+    dictate_action_set_outward (action, certain);
+    card_person (action, _("Message to"), line);
+    dictate_action_add_field (action, _("Text"), quoted);
+    show_person (run, action);
   }
   tool_run_propose (run, action);
   json_builder_begin_object (b);
-  add_string (b, "shown", "A card on the screen with the message and a Send button.");
   add_string (b, "to", named);
-  add_string (b, "status", "Not sent yet: it is sent only when the user taps Send.");
+  outward_status (b, action, "the message", "Send", "send");
   return finish (b);
 }
 
@@ -1169,6 +1347,7 @@ add_wifi (JsonBuilder *b, ToolRun *run)
   if (network)
     add_string (b, "network", network);
   json_builder_end_object (b);
+  tool_run_fact (run, _("Wi-Fi"), !on ? _("Off") : network ? network : _("On, not connected"));
 }
 
 #define BLUEZ "org.bluez"
@@ -1214,6 +1393,7 @@ add_bluetooth (JsonBuilder *b, ToolRun *run)
       return;
     }
   add_bool (b, "on", on);
+  tool_run_fact (run, _("Bluetooth"), on ? _("On") : _("Off"));
   json_builder_set_member_name (b, "connected_devices");
   json_builder_begin_array (b);
   g_variant_iter_init (&iter, objects);
@@ -1990,16 +2170,89 @@ geocode (const char *query, ToolRun *run, char **name, double *lat, double *lon,
   return TRUE;
 }
 
+/* the words for home and for work, in the languages Agent speaks, as a place's whole name: they are never looked up
+ * as a place ("HOME" is an arts centre somewhere) */
+static const char *const HOME_WORDS[] = {
+  "home", "my home", "my house", "my place", "back home", "to home",
+  "zuhause", "zu hause", "nach hause", "heim", "daheim", "mein zuhause",
+  "casa", "mi casa", "a casa", "la casa", "a mi casa", "maison", "la maison", "à la maison", "chez moi",
+  "a casa mia", "casa mia", "дом", "домой", "мой дом", "thuis", "naar huis", "huis", NULL
+};
+static const char *const WORK_WORDS[] = {
+  "work", "my work", "to work", "my office", "my job", "the office",
+  "arbeit", "die arbeit", "zur arbeit", "meine arbeit", "büro", "ins büro", "mein büro",
+  "trabajo", "el trabajo", "al trabajo", "mi trabajo", "travail", "au travail", "mon travail", "mon bureau",
+  "lavoro", "al lavoro", "il lavoro", "работа", "на работу", "на работе", "werk", "het werk", "naar het werk",
+  "naar mijn werk", NULL
+};
+
+/* "home" or "work" when `place` is only one of their words ("Home!", "nach Hause"), else NULL */
+static const char *
+saved_word (const char *place)
+{
+  g_autofree char *low = place ? g_utf8_strdown (place, -1) : NULL;
+  g_autoptr (GString) words = g_string_new (NULL);
+
+  if (!low)
+    return NULL;
+  /* the words only: no punctuation, single spaces */
+  for (const char *p = low; *p; p = g_utf8_next_char (p))
+    {
+      gunichar c = g_utf8_get_char (p);
+
+      if (g_unichar_isalnum (c))
+        g_string_append_unichar (words, c);
+      else if (words->len && words->str[words->len - 1] != ' ')
+        g_string_append_c (words, ' ');
+    }
+  if (words->len && words->str[words->len - 1] == ' ')
+    g_string_truncate (words, words->len - 1);
+  if (g_strv_contains (HOME_WORDS, words->str))
+    return "home";
+  if (g_strv_contains (WORK_WORDS, words->str))
+    return "work";
+  return NULL;
+}
+
+/* the user's Home or Work as saved in Navi (its settings file): its name and position, or FALSE */
+static gboolean
+saved_place (const char *which, char **name, double *lat, double *lon)
+{
+  g_autofree char *path = g_build_filename (g_get_user_config_dir (), "vibeos-navi", "navi.ini", NULL);
+  g_autoptr (GKeyFile) kf = g_key_file_new ();
+  g_autoptr (GError) error = NULL;
+  g_autofree char *saved = NULL;
+
+  if (!g_key_file_load_from_file (kf, path, G_KEY_FILE_NONE, NULL))
+    return FALSE;
+  saved = g_key_file_get_string (kf, which, "name", NULL);
+  if (!saved || !*saved)
+    return FALSE;
+  *lat = g_key_file_get_double (kf, which, "lat", &error);
+  if (!error)
+    *lon = g_key_file_get_double (kf, which, "lng", &error);
+  if (error || (*lat == 0 && *lon == 0) || fabs (*lat) > 90 || fabs (*lon) > 180)
+    return FALSE;
+  *name = g_steal_pointer (&saved);
+  return TRUE;
+}
+
 static JsonNode *
 navigate_to (JsonObject *args, ToolRun *run, GError **error)
 {
   const char *place = tool_arg_string (args, "place");
+  const char *saved = tool_arg_string (args, "saved");
   g_autoptr (GDesktopAppInfo) navi = g_desktop_app_info_new ("vibeos.Navi.desktop");
   g_autoptr (JsonBuilder) b = json_builder_new ();
   g_autofree char *name = NULL;
+  const char *said = NULL;
   double lat, lon;
 
-  if (!place)
+  if (saved && strcmp (saved, "home") && strcmp (saved, "work"))
+    saved = NULL;
+  if (!saved)
+    saved = saved_word (place);
+  if (!place && !saved)
     {
       tool_error (error, "Where to is missing: ask the user.");
       return NULL;
@@ -2009,9 +2262,24 @@ navigate_to (JsonObject *args, ToolRun *run, GError **error)
       tool_error (error, "Navi, the maps app, is not installed on this phone.");
       return NULL;
     }
-  tool_run_add_sent (run, "the place's name, to Navi's place search on VibeOS's server");
-  if (!geocode (place, run, &name, &lat, &lon, error))
-    return NULL;
+  if (saved)
+    {
+      /* the saved place's position is on the phone: nothing is looked up, and its address is not the model's */
+      if (!saved_place (saved, &name, &lat, &lon))
+        {
+          tool_error (error, "No %s is saved in Navi. Tell the user to save their %s in Navi first; never look up "
+                      "or guess their address.", !strcmp (saved, "home") ? "Home" : "Work",
+                      !strcmp (saved, "home") ? "Home" : "Work");
+          return NULL;
+        }
+      said = !strcmp (saved, "home") ? "the user's Home, saved in Navi" : "the user's Work, saved in Navi";
+    }
+  else
+    {
+      tool_run_add_sent (run, "the place's name, to Navi's place search on VibeOS's server");
+      if (!geocode (place, run, &name, &lat, &lon, error))
+        return NULL;
+    }
   if (tool_run_dry (run))
     g_message ("tools: would open Navi with routes (dry run)");
   else
@@ -2033,7 +2301,7 @@ navigate_to (JsonObject *args, ToolRun *run, GError **error)
     }
   json_builder_begin_object (b);
   add_string (b, "opened", "Navi, with the routes there; the user picks one to start");
-  add_string (b, "destination", name);
+  add_string (b, "destination", said ? said : name);
   return finish (b);
 }
 
@@ -2304,6 +2572,15 @@ get_action_log (JsonObject *args, ToolRun *run, GError **error)
         what = g_strdup_printf ("%s (%s)", t ? t->did : tool, json_object_get_string_member (undo, "about"));
       else
         what = g_strdup (t ? t->did : tool);
+      /* on the screen (F11): "12:10", "set a timer", in the user's language */
+      {
+        gint64 t_s = json_object_get_int_member_with_default (e, "t", 0);
+        g_autoptr (GDateTime) at = g_date_time_new_from_unix_local (t_s);
+        g_autofree char *time = at ? g_date_time_format (at, "%H:%M") : NULL;
+
+        if (time && t)
+          tool_run_fact (run, time, _(t->did));
+      }
       json_builder_begin_object (b);
       add_string (b, "what", what);
       add_string (b, "tool", tool);
@@ -2391,14 +2668,23 @@ undo_last_action (JsonObject *args, ToolRun *run, GError **error)
     }
   about = json_object_get_string_member_with_default (undo, "about", "it");
   id = json_object_get_int_member_with_default (target, "id", 0);
-  if (json_object_has_member (undo, "radio"))
+  if (json_object_has_member (undo, "device"))
+    {
+      if (!tool_device_undo (undo, run, &done, error) || !done)
+        {
+          if (error && !*error)
+            tool_error (error, "That cannot be undone from here.");
+          return NULL;
+        }
+    }
+  else if (json_object_has_member (undo, "radio"))
     {
       const char *radio = json_object_get_string_member (undo, "radio");
       gboolean on = json_object_get_boolean_member_with_default (undo, "on", TRUE);
 
       if (!tool_run_area_on (run, "access-settings"))
         {
-          tool_error (error, "No access: the user has turned off the phone's settings in Agent's settings.");
+          tool_error (error, "No access: the user has turned off the phone's settings in Vibe's settings.");
           return NULL;
         }
       if (!set_radio (radio, on, run, error))
@@ -2412,7 +2698,7 @@ undo_last_action (JsonObject *args, ToolRun *run, GError **error)
 
       if (!tool_run_area_on (run, "access-calls"))
         {
-          tool_error (error, "No access: the user has turned off calls in Agent's settings.");
+          tool_error (error, "No access: the user has turned off calls in Vibe's settings.");
           return NULL;
         }
       if (!call_do (json_object_get_string_member (undo, "call_action"), run, &changed, &again, error))
@@ -2425,7 +2711,7 @@ undo_last_action (JsonObject *args, ToolRun *run, GError **error)
 
       if (!tool_run_area_on (run, "access-alarms"))
         {
-          tool_error (error, "No access: the user has turned off alarms and timers in Agent's settings.");
+          tool_error (error, "No access: the user has turned off alarms and timers in Vibe's settings.");
           return NULL;
         }
       if (json_object_has_member (undo, "delete_alarm"))
@@ -2580,6 +2866,15 @@ get_mobile_network (JsonObject *args, ToolRun *run, GError **error)
       /* MMModem3gppRegistrationState: roaming, roaming SMS only, roaming CSFB not preferred */
       add_bool (b, "roaming", registration == 5 || registration == 7 || registration == 10);
     }
+  {
+    int bars = quality >= 75 ? 4 : quality >= 50 ? 3 : quality >= 25 ? 2 : quality > 0 ? 1 : 0;
+    g_autofree char *fact = state >= 8 ? g_strdup_printf (_("%s, %d of 4%s%s"),
+                                                          bars >= 3 ? _("Good") : bars == 2 ? _("Fair") : _("Weak"),
+                                                          bars, generation (tech) ? " · " : "",
+                                                          generation (tech) ? generation (tech) : "")
+                            : g_strdup (state == 2 ? _("SIM locked") : state < 6 ? _("Off") : _("No network"));
+    tool_run_fact (run, _("Signal"), fact);
+  }
   nm = dbus_properties (G_BUS_TYPE_SYSTEM, NM, NM_PATH, NM, run, NULL);
   if (nm && g_variant_lookup (nm, "WwanEnabled", "b", &wwan))
     add_bool (b, "mobile_data_on", wwan);
@@ -2874,6 +3169,26 @@ add_missed (JsonBuilder *b, const char *name, const char *who_key, const char *c
   json_builder_end_array (b);
 }
 
+/* "1 missed call", "Sarah Lind, 12:10"; "3 messages", "Sarah, the bank, the gym": for the screen (K7) */
+static void
+missed_fact (ToolRun *run, const char *label, GPtrArray *list)
+{
+  g_autoptr (GString) value = g_string_new (NULL);
+
+  for (guint i = 0; i < list->len && i < 3; i++)
+    g_string_append_printf (value, "%s%s", i ? ", " : "", ((Missed *) list->pdata[i])->who);
+  if (list->len == 1)
+    {
+      g_autoptr (GDateTime) at = g_date_time_new_from_unix_local (((Missed *) list->pdata[0])->last / 1000);
+      g_autofree char *time = g_date_time_format (at, "%H:%M");
+
+      g_string_append_printf (value, ", %s", time);
+    }
+  else if (list->len > 3)
+    g_string_append (value, "…");
+  tool_run_fact (run, label, value->str);
+}
+
 /* who a number is: a contact's name, or what the store has */
 static char *
 caller (GPtrArray *all, const char *number, int presentation)
@@ -2895,6 +3210,8 @@ what_did_i_miss (JsonObject *args, ToolRun *run, GError **error)
   g_autoptr (GPtrArray) all = people_with_numbers (run);
   g_autoptr (JsonBuilder) b = json_builder_new ();
   g_autofree char *from = NULL;
+  g_autofree char *call_back = NULL;    /* the newest missed caller's first name, when a contact */
+  guint missed = 0;
   gboolean first = since <= 0 || now - since > 7 * 24 * 3600;
 
   /* the first time, or after a week: the last day */
@@ -2911,7 +3228,7 @@ what_did_i_miss (JsonObject *args, ToolRun *run, GError **error)
 
   /* missed calls since then */
   if (!tool_run_area_on (run, "access-calls"))
-    add_string (b, "missed_calls", "no access: calls are turned off in Agent's settings");
+    add_string (b, "missed_calls", "no access: calls are turned off in Vibe's settings");
   else
     {
       g_autoptr (GPtrArray) calls = g_ptr_array_new_with_free_func ((GDestroyNotify) missed_free);
@@ -2925,9 +3242,13 @@ what_did_i_miss (JsonObject *args, ToolRun *run, GError **error)
           sqlite3_bind_int64 (rows, 1, since * 1000);
           while (sqlite3_step (rows) == SQLITE_ROW)
             {
-              g_autofree char *who = caller (all, (const char *) sqlite3_column_text (rows, 0),
-                                             sqlite3_column_int (rows, 2));
+              const char *number = (const char *) sqlite3_column_text (rows, 0);
+              g_autofree char *who = caller (all, number, sqlite3_column_int (rows, 2));
               Missed *m = missed_for (calls, who);
+              Person *p = !total && number && *number ? person_for (all, number, NULL) : NULL;
+
+              if (p)
+                call_back = first_name (p->name);
               if (!m->n++)
                 m->last = sqlite3_column_int64 (rows, 1);
               total++;
@@ -2936,12 +3257,18 @@ what_did_i_miss (JsonObject *args, ToolRun *run, GError **error)
       sqlite3_finalize (rows);
       sqlite3_close (db);
       add_int (b, "missed_call_count", total);
+      missed += total;
       add_missed (b, "missed_calls", "from", "calls", calls);
+      if (total)
+        {
+          g_autofree char *label = g_strdup_printf (ngettext ("%u missed call", "%u missed calls", total), total);
+          missed_fact (run, label, calls);
+        }
     }
 
   /* unread messages, whenever they came */
   if (!tool_run_area_on (run, "access-messages"))
-    add_string (b, "unread_messages", "no access: messages are turned off in Agent's settings");
+    add_string (b, "unread_messages", "no access: messages are turned off in Vibe's settings");
   else
     {
       g_autoptr (GPtrArray) messages = g_ptr_array_new_with_free_func ((GDestroyNotify) missed_free);
@@ -2972,12 +3299,18 @@ what_did_i_miss (JsonObject *args, ToolRun *run, GError **error)
       sqlite3_finalize (rows);
       sqlite3_close (db);
       add_int (b, "unread_message_count", total);
+      missed += total;
       add_missed (b, "unread_messages", "from", "messages", messages);
+      if (total)
+        {
+          g_autofree char *label = g_strdup_printf (ngettext ("%u message", "%u messages", total), total);
+          missed_fact (run, label, messages);
+        }
     }
 
   /* the notifications still in the shade since then, from the other apps (the calls' and the messages' are above) */
   if (!tool_run_area_on (run, "access-apps"))
-    add_string (b, "notifications", "no access: apps are turned off in Agent's settings");
+    add_string (b, "notifications", "no access: apps are turned off in Vibe's settings");
   else
     {
       g_autoptr (GVariant) reply = dbus_call (G_BUS_TYPE_SESSION, "vibeos.Shell", "/vibeos/Shell", "vibeos.Shell",
@@ -3011,7 +3344,22 @@ what_did_i_miss (JsonObject *args, ToolRun *run, GError **error)
             }
           add_int (b, "notification_count", total);
           add_missed (b, "notifications", "app", "notifications", apps);
+          if (total)
+            {
+              g_autofree char *label = g_strdup_printf (ngettext ("%u notification", "%u notifications", total),
+                                                        total);
+              missed_fact (run, label, apps);
+            }
+          missed += total;
         }
+    }
+  /* what a tap can ask next (K7): "Details", "Call Sarah" */
+  if (missed || call_back)
+    {
+      g_autofree char *call = call_back ? g_strdup_printf (_("Call %s"), call_back) : NULL;
+      const char *next[] = { _("Details"), call, NULL };
+
+      tool_run_show (run, "suggestions", next);
     }
   /* the next "what did I miss?" starts from here; a test of the private phone starts from scratch each time */
   dictate_actions_set_missed_since (now);
@@ -3113,6 +3461,14 @@ propose_contact (JsonObject *args, ToolRun *run, GError **error)
   action = dictate_action_new ("add a contact", _("Add a contact"), (const char *const *) lines->pdata, _("Add"),
                                _("Added"), about, add_contact, NULL, vcard);
   dictate_action_set_log (action, "propose_contact", NULL);
+  dictate_action_add_field (action, _("Name"), name);
+  if (number)
+    {
+      g_autofree char *tel = g_strdup_printf ("%s · %s", _(type), number);
+      dictate_action_add_field (action, _("Number"), tel);
+    }
+  if (email)
+    dictate_action_add_field (action, _("Email"), email);
   tool_run_propose (run, action);
   json_builder_begin_object (b);
   add_string (b, "shown", "A card on the screen with the new contact and an Add button.");
@@ -3244,6 +3600,17 @@ propose_event (JsonObject *args, ToolRun *run, GError **error)
   action = dictate_action_new ("add a calendar event", _("Add to the calendar"), (const char *const *) lines->pdata,
                                _("Add"), _("Added"), about, add_event, NULL, ical);
   dictate_action_set_log (action, "propose_event", NULL);
+  dictate_action_add_field (action, _("Event"), title);
+  dictate_action_add_field (action, _("When"), when);
+  if (where)
+    dictate_action_add_field (action, _("Where"), where);
+  if (reminder == 0)
+    dictate_action_add_field (action, _("Reminder"), _("At the time"));
+  else if (reminder > 0)
+    {
+      g_autofree char *before = g_strdup_printf (_("%d minutes before"), (int) reminder);
+      dictate_action_add_field (action, _("Reminder"), before);
+    }
   tool_run_propose (run, action);
   json_builder_begin_object (b);
   add_string (b, "shown", "A card on the screen with the event and an Add button.");
@@ -3403,7 +3770,16 @@ get_current_call (JsonObject *args, ToolRun *run, GError **error)
       if (c->connected > 0 && c->state != DICTATE_CALL_INCOMING)
         {
           g_autofree char *length = duration_text ((now - c->connected) / 1000);
+          g_autoptr (GDateTime) at = g_date_time_new_from_unix_local (c->connected / 1000);
+          g_autofree char *started = g_date_time_format (at, "%H:%M");
+
           add_string (b, "for", length);
+          add_string (b, "started", started);
+          if (known && i == 0)
+            {
+              const char *who[] = { with, NULL };
+              tool_run_show (run, "person", who);
+            }
         }
       /* the digits only when the user asked for the number */
       if (tool_arg_bool (args, "include_number", FALSE) && c->presentation == 1 && c->number && *c->number)
@@ -3597,7 +3973,7 @@ decline_call (JsonObject *args, ToolRun *run, GError **error)
       if (!number || !*number || call->presentation != 1)
         add_string (b, "message", "Not prepared: the caller's number did not come with the call.");
       else if (!tool_run_area_on (run, "access-messages"))
-        add_string (b, "message", "Not prepared: the user has turned off messages in Agent's settings.");
+        add_string (b, "message", "Not prepared: the user has turned off messages in Vibe's settings.");
       else
         {
           Person *p = person_for (all, number, NULL);
@@ -3610,12 +3986,54 @@ decline_call (JsonObject *args, ToolRun *run, GError **error)
                                                                  text);
 
           dictate_action_set_log (action, "propose_message", "the message, by SMS to its recipient");
+          /* the caller's own number */
+          dictate_action_set_outward (action, TRUE);
+          card_person (action, _("Message to"), line);
+          dictate_action_add_field (action, _("Text"), quoted);
           tool_run_propose (run, action);
           add_string (b, "message_to", known ? with : "the caller");
-          add_string (b, "message", "A card on the screen with the message and a Send button. Not sent yet: it is "
-                                    "sent only when the user taps Send.");
+          add_string (b, "message", dictate_action_get_countdown (action)
+                                        ? "A card on the screen with the message, counting down: it is sent by "
+                                          "itself a few seconds after you have read it back, unless the user says or "
+                                          "taps Cancel. Read it back in one short sentence."
+                                        : "A card on the screen with the message and a Send button. Not sent yet: it "
+                                          "is sent only when the user taps Send or says \"send\".");
         }
     }
+  return finish (b);
+}
+
+/* ---------------- an area turned off ---------------- */
+
+/* the user asked for something they turned off: the window offers its switch ("no-access") */
+static JsonNode *
+request_access (JsonObject *args, ToolRun *run, GError **error)
+{
+  const char *area = tool_arg_string (args, "area");
+  const char *key[] = { area, NULL };
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  const DictateAccess *list;
+  guint n;
+  int found = -1;
+
+  list = dictate_access_list (&n);
+  for (guint i = 0; area && i < n; i++)
+    if (!strcmp (list[i].key, area))
+      found = i;
+  if (found < 0)
+    {
+      tool_error (error, "area must be one of the access-* keys turned off.");
+      return NULL;
+    }
+  if (tool_run_area_on (run, area))
+    {
+      tool_error (error, "%s is not turned off: use its tools.", list[found].named);
+      return NULL;
+    }
+  tool_run_show (run, "no-access", key);
+  json_builder_begin_object (b);
+  add_string (b, "shown", "A button on the screen that turns it on.");
+  add_string (b, "off", list[found].named);
   return finish (b);
 }
 
@@ -3625,15 +4043,15 @@ static const DictateTool TOOLS[] = {
   { "get_time", NULL, NULL,
     "The current time, date, weekday and time zone on the phone.",
     "{\"type\":\"object\",\"properties\":{}}", get_time,
-    DICTATE_TIER_READ, "told the time", FALSE },
+    DICTATE_TIER_READ, N_("told the time"), FALSE },
   { "get_battery", NULL, N_("Checking the battery…"),
     "The battery's charge in percent, whether it is charging, and how long it lasts.",
     "{\"type\":\"object\",\"properties\":{}}", get_battery,
-    DICTATE_TIER_READ, "read the battery", FALSE },
+    DICTATE_TIER_READ, N_("read the battery"), FALSE },
   { "get_storage", NULL, N_("Checking the storage…"),
     "How much storage space is free and used on the phone, in GB.",
     "{\"type\":\"object\",\"properties\":{}}", get_storage,
-    DICTATE_TIER_READ, "read the storage", FALSE },
+    DICTATE_TIER_READ, N_("read the storage"), FALSE },
   { "get_recent_calls", "access-calls", N_("Checking your calls…"),
     "The phone's call history, newest first: who called or was called, whether it was missed, when, and how long.",
     "{\"type\":\"object\",\"properties\":{"
@@ -3641,16 +4059,16 @@ static const DictateTool TOOLS[] = {
     "\"missed_only\":{\"type\":\"boolean\",\"description\":\"Only missed calls.\"},"
     "\"contact\":{\"type\":\"string\",\"description\":\"Only calls with this person: a contact's name or a number.\"}"
     "}}", get_recent_calls,
-    DICTATE_TIER_READ, "read the call history", FALSE },
+    DICTATE_TIER_READ, N_("read the call history"), FALSE },
   { "propose_call", "access-calls", N_("Getting the call ready…"),
-    "Prepares a phone call: shows the user a card with whom it will call. The call starts only when the user taps "
-    "Call on the card; this tool never calls by itself.",
+    "Prepares a phone call: shows the user a card with whom it will call. The call starts only when the user "
+    "confirms it on the card (its result says how); this tool never calls by itself.",
     "{\"type\":\"object\",\"properties\":{"
     "\"to\":{\"type\":\"string\",\"description\":\"A contact's name, or a phone number.\"},"
     "\"number_type\":{\"type\":\"string\",\"enum\":[\"mobile\",\"home\",\"work\"],"
     "\"description\":\"Which of the contact's numbers, only if the user said.\"}"
     "},\"required\":[\"to\"]}", propose_call,
-    DICTATE_TIER_CONFIRMED, "a phone call, on a card", FALSE },
+    DICTATE_TIER_CONFIRMED, N_("a phone call, on a card"), FALSE },
   { "find_contacts", "access-contacts", N_("Looking in your contacts…"),
     "Looks people up in the phone's contacts by name. Gives their names and the kinds of numbers they have "
     "(mobile, home, work); the numbers, emails and notes themselves only when asked for with include_numbers, "
@@ -3661,7 +4079,7 @@ static const DictateTool TOOLS[] = {
     "\"include_emails\":{\"type\":\"boolean\",\"description\":\"Only when the user wants to know an email address.\"},"
     "\"include_note\":{\"type\":\"boolean\",\"description\":\"Only when the user asks what the contact's note says.\"}"
     "},\"required\":[\"name\"]}", find_contacts,
-    DICTATE_TIER_READ, "looked in the contacts", TRUE },
+    DICTATE_TIER_READ, N_("looked in the contacts"), TRUE },
   { "get_messages", "access-messages", N_("Checking your messages…"),
     "Text messages (SMS), the user's and the notices companies send by text: a parcel's delivery, a code, an "
     "appointment. Without contact: the latest conversations, with whom, when, and how many are unread. With "
@@ -3673,26 +4091,26 @@ static const DictateTool TOOLS[] = {
     "\"unread_only\":{\"type\":\"boolean\",\"description\":\"Only unread messages.\"},"
     "\"include_text\":{\"type\":\"boolean\",\"description\":\"Include what the messages say.\"}"
     "}}", get_messages,
-    DICTATE_TIER_READ, "read the messages", TRUE },
+    DICTATE_TIER_READ, N_("read the messages"), TRUE },
   { "propose_message", "access-messages", N_("Writing the message…"),
     "Prepares a text message (SMS): shows the user a card with the recipient and the text. It is sent only when the "
-    "user taps Send on the card; this tool never sends by itself.",
+    "user confirms it on the card (its result says how); this tool never sends anything itself.",
     "{\"type\":\"object\",\"properties\":{"
     "\"to\":{\"type\":\"string\",\"description\":\"A contact's name, or a phone number.\"},"
     "\"text\":{\"type\":\"string\",\"description\":\"The message, as the user wants it written.\"}"
     "},\"required\":[\"to\",\"text\"]}", propose_message,
-    DICTATE_TIER_CONFIRMED, "a text message, on a card", FALSE },
+    DICTATE_TIER_CONFIRMED, N_("a text message, on a card"), FALSE },
   { "get_events", "access-calendar", N_("Checking your calendar…"),
     "The events in the phone's calendar on a day, or on several days from it.",
     "{\"type\":\"object\",\"properties\":{"
     "\"date\":{\"type\":\"string\",\"description\":\"The first day, YYYY-MM-DD. Default today.\"},"
     "\"days\":{\"type\":\"integer\",\"description\":\"How many days, 1 to 14. Default 1.\"}"
     "}}", get_events,
-    DICTATE_TIER_READ, "read the calendar", TRUE },
+    DICTATE_TIER_READ, N_("read the calendar"), TRUE },
   { "get_alarms", "access-alarms", N_("Checking your alarms…"),
     "The alarms set in the Clock app, and the timers running.",
     "{\"type\":\"object\",\"properties\":{}}", get_alarms,
-    DICTATE_TIER_READ, "read the alarms", FALSE },
+    DICTATE_TIER_READ, N_("read the alarms"), FALSE },
   { "set_alarm", "access-alarms", N_("Setting the alarm…"),
     "Sets an alarm in the Clock app.",
     "{\"type\":\"object\",\"properties\":{"
@@ -3702,7 +4120,7 @@ static const DictateTool TOOLS[] = {
     "\"description\":\"The days it repeats on; leave it out for an alarm that rings once.\"},"
     "\"label\":{\"type\":\"string\",\"description\":\"A name for it, only if the user gave one.\"}"
     "},\"required\":[\"time\"]}", set_alarm,
-    DICTATE_TIER_UNDOABLE, "set an alarm", FALSE },
+    DICTATE_TIER_UNDOABLE, N_("set an alarm"), FALSE },
   { "set_timer", "access-alarms", N_("Starting the timer…"),
     "Starts a countdown timer in the Clock app.",
     "{\"type\":\"object\",\"properties\":{"
@@ -3710,35 +4128,88 @@ static const DictateTool TOOLS[] = {
     "\"seconds\":{\"type\":\"integer\",\"description\":\"Seconds, added to the minutes.\"},"
     "\"label\":{\"type\":\"string\",\"description\":\"A name for it, only if the user gave one.\"}"
     "}}", set_timer,
-    DICTATE_TIER_UNDOABLE, "started a timer", FALSE },
+    DICTATE_TIER_UNDOABLE, N_("started a timer"), FALSE },
   { "get_wifi_bluetooth", "access-settings", N_("Checking Wi-Fi and Bluetooth…"),
     "Whether Wi-Fi and Bluetooth are on, the Wi-Fi network the phone is connected to, and the Bluetooth devices "
     "connected.",
     "{\"type\":\"object\",\"properties\":{}}", get_wifi_bluetooth,
-    DICTATE_TIER_READ, "read Wi-Fi and Bluetooth", TRUE },
+    DICTATE_TIER_READ, N_("read Wi-Fi and Bluetooth"), TRUE },
   { "set_wifi_bluetooth", "access-settings", N_("Changing the setting…"),
     "Turns Wi-Fi or Bluetooth on or off.",
     "{\"type\":\"object\",\"properties\":{"
     "\"radio\":{\"type\":\"string\",\"enum\":[\"wifi\",\"bluetooth\"]},"
     "\"on\":{\"type\":\"boolean\",\"description\":\"true to turn it on, false to turn it off.\"}"
     "},\"required\":[\"radio\",\"on\"]}", set_wifi_bluetooth,
-    DICTATE_TIER_UNDOABLE, "changed a setting", FALSE },
+    DICTATE_TIER_UNDOABLE, N_("changed a setting"), FALSE },
+  { "set_flashlight", "access-settings", N_("Switching the flashlight…"),
+    "Turns the phone's flashlight (torch) on or off.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"on\":{\"type\":\"boolean\",\"description\":\"true to turn it on, false to turn it off.\"}"
+    "},\"required\":[\"on\"]}", tool_set_flashlight,
+    DICTATE_TIER_UNDOABLE, N_("switched the flashlight"), FALSE },
+  { "set_phone_switch", "access-settings", N_("Changing the setting…"),
+    "Turns Do Not Disturb, airplane mode, mobile data or battery saver on or off, as in the quick settings. "
+    "Airplane mode turns off Wi-Fi, mobile data and Bluetooth, and with them Vibe's server.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"switch\":{\"type\":\"string\",\"enum\":[\"do_not_disturb\",\"airplane_mode\",\"mobile_data\","
+    "\"battery_saver\"]},"
+    "\"on\":{\"type\":\"boolean\",\"description\":\"true to turn it on, false to turn it off.\"}"
+    "},\"required\":[\"switch\",\"on\"]}", tool_set_phone_switch,
+    DICTATE_TIER_UNDOABLE, N_("changed a setting"), FALSE },
+  { "get_phone_switches", "access-settings", N_("Checking the phone's settings…"),
+    "What the quick settings show: the flashlight, Do Not Disturb, airplane mode, mobile data and battery saver on "
+    "or off, the media, ring and alarm volumes and the screen's brightness, in %.",
+    "{\"type\":\"object\",\"properties\":{}}", tool_get_phone_switches,
+    DICTATE_TIER_READ, N_("read the phone's settings"), FALSE },
+  { "set_volume", "access-settings", N_("Changing the volume…"),
+    "Sets a volume: media (music, videos, Vibe's voice), ring (calls) or alarm. Either a level in % or a change: up, "
+    "down, or mute and unmute (media only).",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"stream\":{\"type\":\"string\",\"enum\":[\"media\",\"ring\",\"alarm\"],"
+    "\"description\":\"media unless the user names calls, the ringer or alarms.\"},"
+    "\"level\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":100},"
+    "\"change\":{\"type\":\"string\",\"enum\":[\"up\",\"down\",\"mute\",\"unmute\"]}"
+    "}}", tool_set_volume,
+    DICTATE_TIER_UNDOABLE, N_("changed the volume"), FALSE },
+  { "set_brightness", "access-settings", N_("Changing the brightness…"),
+    "Sets the screen's brightness: a level in %, or a change up or down.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"level\":{\"type\":\"integer\",\"minimum\":0,\"maximum\":100},"
+    "\"change\":{\"type\":\"string\",\"enum\":[\"up\",\"down\"]}"
+    "}}", tool_set_brightness,
+    DICTATE_TIER_UNDOABLE, N_("changed the brightness"), FALSE },
+  { "media_control", "access-apps", N_("Controlling what plays…"),
+    "Music and videos in the app playing them: play, pause, the next or the previous track, or status (what is "
+    "playing, in which app).",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"action\":{\"type\":\"string\",\"enum\":[\"play\",\"pause\",\"next\",\"previous\",\"status\"]}"
+    "},\"required\":[\"action\"]}", tool_media_control,
+    DICTATE_TIER_UNDOABLE, N_("controlled what plays"), TRUE },
+  { "request_access", NULL, NULL,
+    "Shows the user a button to turn on something they turned off in Vibe's settings, when they ask for something "
+    "that needs it.",
+    /* its area's choices are the ones turned off (dictate_tools_definitions ()) */
+    "{\"type\":\"object\",\"properties\":{\"area\":{\"type\":\"string\"}},\"required\":[\"area\"]}",
+    request_access, DICTATE_TIER_READ, N_("offered to turn on an area"), FALSE },
   { "get_running_apps", "access-apps", N_("Checking your apps…"),
     "The apps open on the phone right now, as in the recent apps.",
     "{\"type\":\"object\",\"properties\":{}}", get_running_apps,
-    DICTATE_TIER_READ, "read the open apps", FALSE },
+    DICTATE_TIER_READ, N_("read the open apps"), FALSE },
   { "open_app", "access-apps", N_("Opening the app…"),
     "Opens an app on the phone.",
     "{\"type\":\"object\",\"properties\":{"
     "\"name\":{\"type\":\"string\",\"description\":\"The app's name, such as Camera, Clock or Settings.\"}"
     "},\"required\":[\"name\"]}", open_app,
-    DICTATE_TIER_UNDOABLE, "opened an app", FALSE },
+    DICTATE_TIER_UNDOABLE, N_("opened an app"), FALSE },
   { "navigate_to", "access-location", N_("Finding the way…"),
-    "Opens Navi, the maps app, with routes to a place: an address or the name of a place.",
+    "Opens Navi, the maps app, with routes to a place: an address or the name of a place, or the user's Home or "
+    "Work as saved in Navi (\"take me home\", \"navigate to work\").",
     "{\"type\":\"object\",\"properties\":{"
-    "\"place\":{\"type\":\"string\",\"description\":\"The address or the place's name, with the town if known.\"}"
-    "},\"required\":[\"place\"]}", navigate_to,
-    DICTATE_TIER_UNDOABLE, "opened Navi with routes", FALSE },
+    "\"place\":{\"type\":\"string\",\"description\":\"The address or the place's name, with the town if known.\"},"
+    "\"saved\":{\"type\":\"string\",\"enum\":[\"home\",\"work\"],"
+    "\"description\":\"Instead of place: the user's Home or Work, when they say home or work in any language.\"}"
+    "}}", navigate_to,
+    DICTATE_TIER_UNDOABLE, N_("opened Navi with routes"), FALSE },
   { "cancel_alarm", "access-alarms", N_("Removing the alarm…"),
     "Removes an alarm from the Clock app. It can be undone. Without time and label when the user means their only "
     "alarm.",
@@ -3746,20 +4217,20 @@ static const DictateTool TOOLS[] = {
     "\"time\":{\"type\":\"string\",\"description\":\"The alarm's time, HH:MM, 24-hour.\"},"
     "\"label\":{\"type\":\"string\",\"description\":\"Its name, only if the user said it.\"}"
     "}}", cancel_alarm,
-    DICTATE_TIER_UNDOABLE, "removed an alarm", FALSE },
+    DICTATE_TIER_UNDOABLE, N_("removed an alarm"), FALSE },
   { "cancel_timer", "access-alarms", N_("Stopping the timer…"),
     "Stops and removes a running timer in the Clock app. It can be undone.",
     "{\"type\":\"object\",\"properties\":{"
     "\"label\":{\"type\":\"string\",\"description\":\"Its name, only if the user said it.\"}"
     "}}", cancel_timer,
-    DICTATE_TIER_UNDOABLE, "stopped a timer", FALSE },
+    DICTATE_TIER_UNDOABLE, N_("stopped a timer"), FALSE },
   { "undo_last_action", NULL, N_("Undoing it…"),
     "Undoes the last thing Agent did that can be undone, within a day: removes the alarm or timer it set, puts back "
     "an alarm or timer it removed, turns Wi-Fi or Bluetooth back as they were, or puts a call's speaker, microphone or "
     "hold back. For \"undo\", \"undo that\", \"take that back\", \"put it back\", \"oops\": call it rather than "
     "doing the thing again yourself, it puts back exactly what was there.",
     "{\"type\":\"object\",\"properties\":{}}", undo_last_action,
-    DICTATE_TIER_UNDOABLE, "undid the last action", FALSE },
+    DICTATE_TIER_UNDOABLE, N_("undid the last action"), FALSE },
   { "get_action_log", NULL, N_("Checking what I did…"),
     "What Agent itself did lately, newest first: the actions it took or offered on a card (an alarm, a setting, a "
     "message), when, how each went, whether it was undone, and where anything went off the phone. Always call it "
@@ -3768,20 +4239,47 @@ static const DictateTool TOOLS[] = {
     "{\"type\":\"object\",\"properties\":{"
     "\"count\":{\"type\":\"integer\",\"description\":\"How many actions, 1 to 10. Default 5.\"}"
     "}}", get_action_log,
-    DICTATE_TIER_READ, "read Agent's log", FALSE },
+    DICTATE_TIER_READ, N_("read Agent's log"), FALSE },
   { "get_mobile_network", "access-settings", N_("Checking the mobile network…"),
     "The mobile network: whether there is a SIM, the operator, the signal in bars (of 4), the network type (4G, "
     "5G), whether the phone is roaming, and whether mobile data is on.",
     "{\"type\":\"object\",\"properties\":{}}", get_mobile_network,
-    DICTATE_TIER_READ, "read the mobile network", FALSE },
+    DICTATE_TIER_READ, N_("read the mobile network"), FALSE },
   { "get_weather", "access-location", N_("Checking the weather…"),
     "The weather now and the forecast for the next days: the temperature, the sky, the wind, the chance of rain. "
-    "Where the phone is (the town the Weather app shows), or in a town the user names.",
+    "In the town the Weather app shows, or in a town the user names. That town is not where the user is: never "
+    "answer where they are from it.",
     "{\"type\":\"object\",\"properties\":{"
     "\"place\":{\"type\":\"string\",\"description\":\"A town, only if the user named one.\"},"
     "\"days\":{\"type\":\"integer\",\"description\":\"How many days from today, 1 to 7. Default 2.\"}"
     "}}", get_weather,
-    DICTATE_TIER_READ, "looked up the weather", FALSE },
+    DICTATE_TIER_READ, N_("looked up the weather"), FALSE },
+  { "get_location", "access-location", N_("Finding where you are…"),
+    "Where the phone is now: the street, the district, the town and the country, and how exact that is. For "
+    "\"where am I?\". The position itself is never given.",
+    "{\"type\":\"object\",\"properties\":{}}", tool_get_location,
+    DICTATE_TIER_READ, N_("read where the phone is"), FALSE },
+  { "find_files", "access-files", N_("Looking through your files…"),
+    "Finds the user's files in Downloads, Documents, Pictures (the camera's photos too), Music and Videos, by kind, "
+    "a part of the name and when they were saved: their names, folders, sizes and dates, newest first, never what "
+    "is in them.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"kind\":{\"type\":\"string\",\"enum\":[\"any\",\"pdf\",\"document\",\"photo\",\"video\",\"music\","
+    "\"archive\",\"app\",\"other\"]},"
+    "\"name\":{\"type\":\"string\",\"description\":\"A part of the file's name, only if the user said one.\"},"
+    "\"modified\":{\"type\":\"string\",\"enum\":[\"any\",\"today\",\"yesterday\",\"this_week\",\"this_month\"]},"
+    "\"folder\":{\"type\":\"string\",\"enum\":[\"any\",\"downloads\",\"documents\",\"pictures\",\"music\","
+    "\"videos\"]}"
+    "}}", tool_find_files,
+    DICTATE_TIER_READ, N_("looked through the files"), TRUE },
+  { "open_file", "access-files", N_("Opening the file…"),
+    "Opens one of the user's files, found with find_files, in the app for it.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"name\":{\"type\":\"string\",\"description\":\"The file's whole name, as find_files gave it.\"},"
+    "\"folder\":{\"type\":\"string\",\"enum\":[\"downloads\",\"documents\",\"pictures\",\"music\",\"videos\"],"
+    "\"description\":\"Only when several files have that name.\"}"
+    "},\"required\":[\"name\"]}", tool_open_file,
+    DICTATE_TIER_UNDOABLE, N_("opened a file"), FALSE },
   { "what_did_i_miss", NULL, N_("Checking what you missed…"),
     "What the user missed since they last asked this: missed calls, unread text messages, and the other apps' "
     "notifications, as counts and from whom or which app. Tell the user that much in two sentences at most, the "
@@ -3791,7 +4289,7 @@ static const DictateTool TOOLS[] = {
     "\"include_text\":{\"type\":\"boolean\",\"description\":\"Only when the user's own words ask to have them "
     "read out (\\\"read them to me\\\"); never for \\\"what did I miss?\\\" alone.\"}"
     "}}", what_did_i_miss,
-    DICTATE_TIER_READ, "read what was missed", TRUE },
+    DICTATE_TIER_READ, N_("read what was missed"), TRUE },
   { "propose_contact", "access-contacts", N_("Getting the contact ready…"),
     "Prepares a new contact: shows the user a card with the name and the number or email. It is added only when the "
     "user taps Add on the card; this tool never adds by itself.",
@@ -3801,7 +4299,7 @@ static const DictateTool TOOLS[] = {
     "\"number_type\":{\"type\":\"string\",\"enum\":[\"mobile\",\"home\",\"work\"]},"
     "\"email\":{\"type\":\"string\"}"
     "},\"required\":[\"name\"]}", propose_contact,
-    DICTATE_TIER_CONFIRMED, "a new contact, on a card", FALSE },
+    DICTATE_TIER_CONFIRMED, N_("a new contact, on a card"), FALSE },
   { "propose_event", "access-calendar", N_("Getting the event ready…"),
     "Prepares a calendar event or a reminder: shows the user a card with what, when and where. It is added only "
     "when the user taps Add on the card; this tool never adds by itself. A reminder is an event with "
@@ -3815,7 +4313,7 @@ static const DictateTool TOOLS[] = {
     "\"reminder_minutes\":{\"type\":\"integer\",\"description\":\"A notification this many minutes before it (0: at "
     "the time); leave it out for none.\"}"
     "},\"required\":[\"title\",\"date\"]}", propose_event,
-    DICTATE_TIER_CONFIRMED, "a calendar event, on a card", FALSE },
+    DICTATE_TIER_CONFIRMED, N_("a calendar event, on a card"), FALSE },
   { "get_current_call", "access-calls", N_("Checking the call…"),
     "The phone call ringing or going on now: who it is with (a contact's name, or that the number is not in the "
     "contacts or is private), whether it rings, goes on or is on hold, for how long, and whether the microphone is "
@@ -3824,7 +4322,7 @@ static const DictateTool TOOLS[] = {
     "{\"type\":\"object\",\"properties\":{"
     "\"include_number\":{\"type\":\"boolean\",\"description\":\"Only when the user asks for the number.\"}"
     "}}", get_current_call,
-    DICTATE_TIER_READ, "checked the call", FALSE },
+    DICTATE_TIER_READ, N_("checked the call"), FALSE },
   { "call_control", "access-calls", N_("Changing the call…"),
     "Changes the call going on, at once: the speaker on or off, the microphone muted or on again, the call put on "
     "hold or taken off it, or the call hung up. Hanging up cannot be undone; say that it is done. The others can be "
@@ -3833,18 +4331,18 @@ static const DictateTool TOOLS[] = {
     "\"action\":{\"type\":\"string\",\"enum\":[\"speaker_on\",\"speaker_off\",\"mute\",\"unmute\","
     "\"hold\",\"resume\",\"hang_up\"]}"
     "},\"required\":[\"action\"]}", call_control,
-    DICTATE_TIER_UNDOABLE, "changed the call", FALSE },
+    DICTATE_TIER_UNDOABLE, N_("changed the call"), FALSE },
   { "answer_call", "access-calls", N_("Answering…"),
     "Answers the call ringing now, at once. Only when the user says to answer it.",
     "{\"type\":\"object\",\"properties\":{}}", answer_call,
-    DICTATE_TIER_UNDOABLE, "answered a call", FALSE },
+    DICTATE_TIER_UNDOABLE, N_("answered a call"), FALSE },
   { "decline_call", "access-calls", N_("Declining…"),
     "Declines the call ringing now, at once. With text, a text message to the caller is then prepared on a card "
-    "(\"decline and text I'll call back\"); it is sent only when the user taps Send.",
+    "(\"decline and text I'll call back\"); it is sent only when the user confirms it on the card.",
     "{\"type\":\"object\",\"properties\":{"
     "\"text\":{\"type\":\"string\",\"description\":\"A message to send the caller, only if the user said one.\"}"
     "}}", decline_call,
-    DICTATE_TIER_UNDOABLE, "declined a call", FALSE },
+    DICTATE_TIER_UNDOABLE, N_("declined a call"), FALSE },
 };
 
 const DictateTool *

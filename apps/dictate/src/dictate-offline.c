@@ -1233,9 +1233,144 @@ dictate_offline_reply (const char *language, const char *said, gboolean private_
   return g_strdup (r->failed);
 }
 
+/* ---------------- "send" and "cancel" for a card on the screen ---------------- */
+
+/* phrases as they are said, with their accents or without and an apostrophe as a space or not ("d'accord",
+ * "d accord", "daccord"): both they and the turn are folded as dictate_offline_normalize () folds (lower case, no
+ * accents but in Russian); `fill`: the words that may come with them ("please", "now") */
+static const struct {
+  const char *code;
+  const char *confirm, *cancel, *fill;
+} CONFIRM_WORDS[] = {
+  { "en",
+    "send|send it|send that|send the message|send now|yes|yeah|yep|yup|sure|ok|okay|go|go ahead|do it|call|call her|"
+    "call him|call them|place the call|dial|confirm|correct|right|that's right",
+    "cancel|cancel it|cancel that|no|nope|stop|don't|don't send|don't send it|do not send|don't call|do not call|"
+    "never mind|nevermind|forget it|abort|hang up|no thanks|no thank you|scrap it",
+    "please|now|vibe|hey|it|that|then|just|thanks|oh" },
+  { "de",
+    "senden|sende|send|schick|schicke|schicken|abschicken|schick ab|schick es|schick sie|ja|jawohl|genau|ok|okay|los|"
+    "mach|mach das|mach es|anrufen|ruf an|ruf sie an|ruf ihn an|wählen|passt|richtig|bestätigen|klar|gerne",
+    "abbrechen|brich ab|abbruch|nein|nee|stopp|stop|halt|nicht|nicht senden|nicht schicken|nicht anrufen|lass|lass es|"
+    "lass das|vergiss es|vergiss das|doch nicht|auflegen|verwerfen",
+    "bitte|jetzt|danke|vibe|hey|es|das|dann|einfach|ab" },
+  { "es",
+    "envía|envíalo|envíala|enviar|manda|mándalo|mándala|mandar|sí|vale|ok|okey|claro|adelante|hazlo|dale|llama|llámala|"
+    "llámalo|llamar|de acuerdo|correcto|confirma|confirmar",
+    "cancela|cancelar|cancélalo|no|para|parar|detente|alto|no lo envíes|no envíes|no lo mandes|no mandes|no llames|"
+    "olvídalo|déjalo|no gracias|cuelga",
+    "por favor|ya|ahora|vibe|oye|gracias|eso" },
+  { "fr",
+    "envoie|envoie-le|envoie-la|envoyer|oui|ouais|ok|d'accord|vas-y|allez-y|go|appelle|appelle-la|appelle-le|appeler|"
+    "confirme|confirmer|c'est bon|parfait|exactement",
+    "annule|annuler|annule-le|annule-la|annule ça|non|stop|arrête|arrêter|n'envoie pas|ne l'envoie pas|n'appelle pas|"
+    "laisse tomber|oublie|oublie ça|non merci|raccroche",
+    "s'il te plaît|s'il vous plaît|merci|maintenant|vibe|eh|alors" },
+  { "it",
+    "invia|invialo|inviala|inviare|manda|mandalo|mandala|sì|ok|okay|va bene|vai|procedi|fallo|chiama|chiamala|chiamalo|"
+    "chiamare|conferma|confermo|certo|esatto|d'accordo",
+    "annulla|annullare|annullalo|no|stop|ferma|fermati|basta|non inviare|non inviarlo|non mandare|non mandarlo|"
+    "non chiamare|lascia stare|lascia perdere|dimentica|no grazie|riaggancia|cancella",
+    "per favore|grazie|adesso|ora|subito|vibe|ehi" },
+  { "ru",
+    "отправь|отправить|отправляй|отправь его|отправь её|отправь сообщение|шли|посылай|да|ага|угу|давай|ок|окей|хорошо|"
+    "конечно|звони|позвони|позвони ей|позвони ему|набери|подтверждаю|верно|всё верно",
+    "отмена|отмени|отменить|нет|стоп|стой|не надо|не нужно|не отправляй|не звони|забудь|неважно|положи трубку|сбрось",
+    "пожалуйста|сейчас|теперь|спасибо|вайб|эй|ну|уже" },
+  { "nl",
+    "verstuur|versturen|verstuur het|stuur|stuur maar|stuur het|stuur op|verzend|verzenden|ja|jawel|ok|oké|okee|prima|"
+    "goed|doe maar|doe het|ga je gang|bel|bel maar|bellen|bel haar|bel hem|bevestig|klopt|zeker",
+    "annuleer|annuleren|nee|stop|stoppen|niet|niet versturen|niet sturen|niet bellen|laat maar|laat het|vergeet het|"
+    "nee dank je|nee bedankt|ophangen|hang op",
+    "alsjeblieft|alstublieft|graag|nu|dan|vibe|hé|maar" },
+};
+
+/* `text` folded as a turn is (dictate_offline_normalize ()), an apostrophe a space ("d accord") or, `joined`, nothing
+ * ("daccord"): a phrase written either way, with its accents or without, matches what was said either way */
+static char **
+confirm_words_of (const char *language, const char *text, gboolean joined)
+{
+  g_autoptr (GString) plain = g_string_new (NULL);
+  g_autofree char *normal = NULL;
+
+  for (const char *p = text; *p; p = g_utf8_next_char (p))
+    {
+      gunichar c = g_utf8_get_char (p);
+
+      if (c == '\'' || c == 0x2019 || c == 0x02bc || c == 0x00b4 || c == '`')
+        {
+          if (!joined)
+            g_string_append_c (plain, ' ');
+        }
+      else
+        g_string_append_unichar (plain, c);
+    }
+  normal = dictate_offline_normalize (language, plain->str);
+  return g_strsplit (normal, " ", -1);
+}
+
+/* the number of words of the longest phrase of `phrases` that `words` starts with at `at`, 0 for none */
+static guint
+phrase_at (const char *language, char **words, guint at, const char *phrases, gboolean joined)
+{
+  g_auto (GStrv) each = g_strsplit (phrases, "|", -1);
+  guint best = 0;
+
+  for (guint p = 0; each[p]; p++)
+    {
+      g_auto (GStrv) parts = confirm_words_of (language, each[p], joined);
+      guint n = g_strv_length (parts), i;
+
+      for (i = 0; i < n && words[at + i] && !strcmp (words[at + i], parts[i]); i++)
+        ;
+      if (n && i == n && n > best)
+        best = n;
+    }
+  return best;
+}
+
+static DictateConfirmWord
+confirm_word (const char *language, const char *text, guint table, gboolean joined)
+{
+  g_auto (GStrv) words = confirm_words_of (language, text, joined);
+  guint at = 0;
+  gboolean confirm = FALSE, cancel = FALSE;
+
+  /* the whole turn is made of them; anything else in it ("send it to Anna", "change 10 to 10:30") is for the model */
+  while (words[at])
+    {
+      guint yes = phrase_at (language, words, at, CONFIRM_WORDS[table].confirm, joined);
+      guint no = phrase_at (language, words, at, CONFIRM_WORDS[table].cancel, joined);
+      guint fill = phrase_at (language, words, at, CONFIRM_WORDS[table].fill, joined);
+
+      if (!*words[at])
+        at++;
+      else if (no && no >= yes && no >= fill)
+        cancel = TRUE, at += no;
+      else if (yes && yes >= fill)
+        confirm = TRUE, at += yes;
+      else if (fill)
+        at += fill;
+      else
+        return DICTATE_CONFIRM_WORD_NONE;
+    }
+  /* "no, send it": not clear, so not done */
+  if (confirm == cancel)
+    return DICTATE_CONFIRM_WORD_NONE;
+  return confirm ? DICTATE_CONFIRM_WORD_CONFIRM : DICTATE_CONFIRM_WORD_CANCEL;
+}
+
 DictateConfirmWord
 dictate_offline_confirm_word (const char *language, const char *text)
 {
-  /* not yet: every turn goes to the model */
-  return DICTATE_CONFIRM_WORD_NONE;
+  DictateConfirmWord word;
+  guint table = 0;
+
+  if (!text || !*text)
+    return DICTATE_CONFIRM_WORD_NONE;
+  for (guint i = 0; i < G_N_ELEMENTS (CONFIRM_WORDS); i++)
+    if (language && g_str_has_prefix (language, CONFIRM_WORDS[i].code))
+      table = i;
+  word = confirm_word (language, text, table, FALSE);
+  return word != DICTATE_CONFIRM_WORD_NONE ? word : confirm_word (language, text, table, TRUE);
 }

@@ -160,6 +160,57 @@ dictate_remote_reset (DictateRemote *self, const char *system)
 }
 
 void
+dictate_remote_restore (DictateRemote *self, const char *const *said, const char *const *replies, guint n)
+{
+  for (guint i = 0; i < n; i++)
+    if (said[i] && *said[i] && replies[i] && *replies[i])
+      {
+        add_message (self, "user", said[i]);
+        add_message (self, "assistant", replies[i]);
+      }
+}
+
+void
+dictate_remote_forget_turn (DictateRemote *self)
+{
+  while (self->messages->len > 0)
+    {
+      JsonNode *m = self->messages->pdata[self->messages->len - 1];
+      gboolean question = JSON_NODE_HOLDS_OBJECT (m)
+                          && !g_strcmp0 (json_object_get_string_member_with_default (json_node_get_object (m), "role",
+                                                                                     ""), "user");
+
+      g_ptr_array_remove_index (self->messages, self->messages->len - 1);
+      if (question)
+        break;
+    }
+}
+
+/* the conversation cut to its newest `exchanges` questions, each with what followed it (its tools, its reply): never
+ * between a question and its tools' results. The system prompt stays */
+static void
+keep_newest (DictateRemote *self, guint exchanges)
+{
+  guint first = self->messages->len, questions = 0, start;
+  JsonNode *head = self->messages->len ? self->messages->pdata[0] : NULL;
+  gboolean system = head && JSON_NODE_HOLDS_OBJECT (head)
+                    && !g_strcmp0 (json_object_get_string_member_with_default (json_node_get_object (head), "role",
+                                                                               ""), "system");
+
+  start = system ? 1 : 0;
+  while (first > start && questions < exchanges)
+    {
+      JsonNode *m = self->messages->pdata[--first];
+
+      if (JSON_NODE_HOLDS_OBJECT (m)
+          && !g_strcmp0 (json_object_get_string_member_with_default (json_node_get_object (m), "role", ""), "user"))
+        questions++;
+    }
+  if (questions == exchanges && first > start)
+    g_ptr_array_remove_range (self->messages, start, first - start);
+}
+
+void
 dictate_remote_set_system (DictateRemote *self, const char *system)
 {
   JsonNode *first = self->messages->len ? self->messages->pdata[0] : NULL;
@@ -553,7 +604,10 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
   if (!self->model && !find_model (self, cancellable, error))
     return NULL;
   if (text)
-    add_message (self, "user", text);
+    {
+      add_message (self, "user", text);
+      keep_newest (self, DICTATE_REMOTE_HISTORY);
+    }
   body = chat_body (self, tool_list && JSON_NODE_HOLDS_ARRAY (tool_list) ? tool_list : NULL);
   if (dictate_debuglog_active ())
     {

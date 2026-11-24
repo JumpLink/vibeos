@@ -30,7 +30,15 @@ typedef struct {
   gpointer data;
   gboolean private_speaker;     /* private mode, the answer on the speaker: no texts of messages or notifications */
   gboolean locked;              /* the phone is locked (Agent asked by holding the power key): reading tools only */
+  guint countdown;              /* the seconds an outward action proposed counts down (dictate_action_set_countdown ()),
+                                 * 0: it waits for the user */
+  /* what the window shows besides the reply, from the tool's thread: "facts", "person", "suggestions", "choices",
+   * "written" (DictateTalk's signals of those names); NULL: nothing is shown */
+  void (*show) (const char *kind, const char *const *rows, gpointer data);
 } DictateToolContext;
+
+/* how far a tool reaches (dictate-actions.h): DICTATE_TIER_READ for one there is not */
+int          dictate_tools_tier        (const char *name);
 
 /* the areas that are on, as DictateToolContext.areas, from Agent's settings */
 guint32      dictate_tools_areas       (GSettings *settings);

@@ -32,6 +32,8 @@ typedef enum {
 } DictateVoiceMatchError;
 GQuark   dictate_voice_match_error_quark (void);
 
+/* whether a sample can be made on this phone (the model is installed and runs): until then, nothing asks for one */
+gboolean dictate_voice_match_ready     (void);
 gboolean dictate_voice_match_enrolled  (void);
 /* the recordings in the saved sample, 0 for none */
 guint    dictate_voice_match_phrases   (void);

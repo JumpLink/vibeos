@@ -61,7 +61,8 @@ test_some_off (void)
   g_assert_true (g_str_has_prefix (prompt, "You can look things up and do things on this phone with your tools: the "
                                            "time, the battery and the storage, and messages, contacts, "));
   g_assert_nonnull (strstr (prompt, " You have no access to calls and the web, because the user has turned that off"));
-  g_assert_nonnull (strstr (prompt, "it can be turned on in Agent's settings."));
+  g_assert_nonnull (strstr (prompt, "call request_access with it"));
+  g_assert_nonnull (strstr (prompt, "it can be turned on there or in Vibe's settings."));
 }
 
 static void

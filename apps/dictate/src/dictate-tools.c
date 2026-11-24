@@ -69,6 +69,50 @@ dictate_tools_find (const char *name)
   return NULL;
 }
 
+/* what a locked phone runs: the tools that read, and the flashlight (it is the lock screen's own tile too) */
+static gboolean
+locked_ok (const DictateTool *tool)
+{
+  return tool->tier == DICTATE_TIER_READ || !strcmp (tool->name, "set_flashlight");
+}
+
+/* request_access's parameters: its area one of those turned off that have tools; NULL when none is */
+static JsonNode *
+access_parameters (guint32 areas)
+{
+  guint n;
+  const DictateAccess *list = dictate_access_list (&n);
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  guint off = 0;
+
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "type");
+  json_builder_add_string_value (b, "object");
+  json_builder_set_member_name (b, "properties");
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "area");
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "type");
+  json_builder_add_string_value (b, "string");
+  json_builder_set_member_name (b, "enum");
+  json_builder_begin_array (b);
+  for (guint i = 0; i < n && i < 32; i++)
+    if (!(areas & (1u << i)) && dictate_tools_area_has_tools (list[i].key))
+      {
+        json_builder_add_string_value (b, list[i].key);
+        off++;
+      }
+  json_builder_end_array (b);
+  json_builder_end_object (b);
+  json_builder_end_object (b);
+  json_builder_set_member_name (b, "required");
+  json_builder_begin_array (b);
+  json_builder_add_string_value (b, "area");
+  json_builder_end_array (b);
+  json_builder_end_object (b);
+  return off ? json_builder_get_root (b) : NULL;
+}
+
 char *
 dictate_tools_definitions (guint32 areas, gboolean locked)
 {
@@ -83,9 +127,16 @@ dictate_tools_definitions (guint32 areas, gboolean locked)
     {
       g_autoptr (JsonNode) parameters = NULL;
 
-      if (!area_on (areas, tools[i].area) || (locked && tools[i].tier != DICTATE_TIER_READ))
+      if (!area_on (areas, tools[i].area) || (locked && !locked_ok (&tools[i])))
         continue;
-      parameters = json_from_string (tools[i].parameters, NULL);
+      if (!strcmp (tools[i].name, "request_access"))
+        {
+          /* only while something is off, and only for what is */
+          if (!(parameters = access_parameters (areas)))
+            continue;
+        }
+      else
+        parameters = json_from_string (tools[i].parameters, NULL);
       g_return_val_if_fail (parameters, NULL);
       json_builder_begin_object (b);
       json_builder_set_member_name (b, "type");
@@ -107,6 +158,14 @@ dictate_tools_definitions (guint32 areas, gboolean locked)
     return NULL;
   root = json_builder_get_root (b);
   return json_to_string (root, FALSE);
+}
+
+int
+dictate_tools_tier (const char *name)
+{
+  const DictateTool *tool = dictate_tools_find (name);
+
+  return tool ? (int) tool->tier : DICTATE_TIER_READ;
 }
 
 const char *
@@ -135,6 +194,11 @@ static const struct {
   { "get_mobile_network", DICTATE_RISK_EVERYDAY },
   { "get_running_apps", DICTATE_RISK_EVERYDAY },
   { "open_app", DICTATE_RISK_EVERYDAY },
+  { "set_flashlight", DICTATE_RISK_EVERYDAY },
+  { "get_phone_switches", DICTATE_RISK_EVERYDAY },
+  { "set_volume", DICTATE_RISK_EVERYDAY },
+  { "set_brightness", DICTATE_RISK_EVERYDAY },
+  { "media_control", DICTATE_RISK_EVERYDAY },
 
   { "get_recent_calls", DICTATE_RISK_PERSONAL },
   { "get_current_call", DICTATE_RISK_PERSONAL },
@@ -144,6 +208,9 @@ static const struct {
   { "what_did_i_miss", DICTATE_RISK_PERSONAL },
   { "get_action_log", DICTATE_RISK_PERSONAL },
   { "navigate_to", DICTATE_RISK_PERSONAL },     /* the saved Home and Work */
+  { "get_location", DICTATE_RISK_PERSONAL },
+  { "find_files", DICTATE_RISK_PERSONAL },
+  { "open_file", DICTATE_RISK_PERSONAL },
 
   { "propose_call", DICTATE_RISK_ACTIONS },
   { "propose_message", DICTATE_RISK_ACTIONS },
@@ -153,6 +220,8 @@ static const struct {
   { "decline_call", DICTATE_RISK_ACTIONS },
   { "call_control", DICTATE_RISK_ACTIONS },
   { "set_wifi_bluetooth", DICTATE_RISK_ACTIONS },
+  { "set_phone_switch", DICTATE_RISK_ACTIONS },
+  { "request_access", DICTATE_RISK_EVERYDAY },  /* only shows a button */
   { "undo_last_action", DICTATE_RISK_ACTIONS },
 };
 
@@ -227,6 +296,12 @@ tool_run_private (ToolRun *run)
   return run->ctx.private_speaker;
 }
 
+const char *
+tool_run_language (ToolRun *run)
+{
+  return run->ctx.language;
+}
+
 GCancellable *
 tool_run_cancellable (ToolRun *run)
 {
@@ -240,10 +315,29 @@ tool_run_propose (ToolRun *run, DictateAction *action)
   g_mutex_lock (&run->lock);
   if (!run->abandoned && run->ctx.propose)
     {
+      dictate_action_set_countdown (action, run->ctx.countdown);
       run->ctx.propose (action, run->ctx.data);
       run->proposed = TRUE;
     }
   g_mutex_unlock (&run->lock);
+}
+
+void
+tool_run_show (ToolRun *run, const char *kind, const char *const *rows)
+{
+  g_mutex_lock (&run->lock);
+  if (!run->abandoned && run->ctx.show && rows && rows[0])
+    run->ctx.show (kind, rows, run->ctx.data);
+  g_mutex_unlock (&run->lock);
+}
+
+void
+tool_run_fact (ToolRun *run, const char *label, const char *value)
+{
+  const char *rows[] = { label, value, NULL };
+
+  if (label && value)
+    tool_run_show (run, "facts", rows);
 }
 
 void
@@ -337,13 +431,59 @@ withhold_in (JsonNode *node)
     }
 }
 
+/* what the screen shows instead (C5): "Kim Novak · today at 12:10", one line for each entry naming someone */
 static void
-withhold_names (JsonNode *node)
+written_in (JsonNode *node, GPtrArray *lines)
 {
+  static const char *const WHO[] = { "who", "with", "from" };
+  static const char *const WHAT[] = { "text", "latest", "when", "state" };
+
+  if (JSON_NODE_HOLDS_ARRAY (node))
+    {
+      JsonArray *a = json_node_get_array (node);
+      for (guint i = 0; i < json_array_get_length (a) && lines->len < 8; i++)
+        written_in (json_array_get_element (a, i), lines);
+    }
+  else if (JSON_NODE_HOLDS_OBJECT (node))
+    {
+      JsonObject *o = json_node_get_object (node);
+      const char *who = NULL, *what = NULL;
+      g_autoptr (GList) members = json_object_get_members (o);
+
+      for (guint i = 0; i < G_N_ELEMENTS (WHO) && !who; i++)
+        who = json_object_get_string_member_with_default (o, WHO[i], NULL);
+      for (guint i = 0; i < G_N_ELEMENTS (WHAT) && !what; i++)
+        what = json_object_get_string_member_with_default (o, WHAT[i], NULL);
+      if (who && strcmp (who, "the user") && strcmp (who, "them"))
+        g_ptr_array_add (lines, what ? g_strdup_printf ("%s · %s", who, what) : g_strdup (who));
+      for (GList *l = members; l && lines->len < 8; l = l->next)
+        {
+          JsonNode *value = json_object_get_member (o, l->data);
+          if (JSON_NODE_HOLDS_ARRAY (value) || JSON_NODE_HOLDS_OBJECT (value))
+            written_in (value, lines);
+        }
+    }
+}
+
+static void
+withhold_names (ToolRun *run, JsonNode *node)
+{
+  g_autoptr (GPtrArray) lines = g_ptr_array_new_with_free_func (g_free);
+
+  written_in (node, lines);
+  if (lines->len)
+    {
+      g_ptr_array_add (lines, NULL);
+      tool_run_show (run, "written", (const char *const *) lines->pdata);
+    }
   withhold_in (node);
   json_object_set_string_member (json_node_get_object (node), "names_withheld",
-                                 "Private mode is on and the answer plays out loud: who it is is not given. Say only "
-                                 "how many, and that the names can be heard with headphones on.");
+                                 lines->len
+                                 ? "Private mode is on and the answer plays out loud: who it is is not given to you. "
+                                   "Say only how many, and that the names and texts are written on the screen, not "
+                                   "spoken; headphones let them be heard."
+                                 : "Private mode is on and the answer plays out loud: who it is is not given. Say only "
+                                   "how many, and that the names can be heard with headphones on.");
 }
 
 static gpointer
@@ -377,7 +517,7 @@ run_thread (gpointer data)
       json_node_take_object (node, wrapped);
     }
   if (node && run->ctx.private_speaker && JSON_NODE_HOLDS_OBJECT (node) && names_tool (run->tool->name))
-    withhold_names (node);
+    withhold_names (run, node);
   result = node ? json_to_string (node, FALSE) : error_json (error ? error->message : "It did not work.");
   /* the action log: what ran, never what it read; reading the log is not an action of its own */
   if (strcmp (run->tool->name, "get_action_log") != 0)
@@ -421,12 +561,12 @@ dictate_tools_run (const char *name, const char *arguments, const DictateToolCon
       guint n;
       const DictateAccess *list = dictate_access_list (&n);
       int i = area_index (tool->area);
-      g_autofree char *message = g_strdup_printf ("No access: the user has turned off %s in Agent's settings.",
+      g_autofree char *message = g_strdup_printf ("No access: the user has turned off %s in Vibe's settings.",
                                                   i >= 0 ? list[i].named : tool->area);
       return error_json (message);
     }
   /* a locked phone: Agent reads, nothing more, until it is unlocked (asked anyway: refused here) */
-  if (ctx->locked && tool->tier != DICTATE_TIER_READ)
+  if (ctx->locked && !locked_ok (tool))
     return error_json ("The phone is locked: Agent can only read until the user unlocks it. Say so, and that it can "
                        "be done once the phone is unlocked.");
   args = json_from_string (arguments && *arguments ? arguments : "{}", NULL);
@@ -627,6 +767,8 @@ struct _DictateAction {
   gboolean certain;             /* and to whom was not guessed: a number given, or the contact's own name */
   guint countdown;              /* seconds it counts down after its read-back; 0: it waits */
   DictateActionBy by;           /* how it was run */
+  GArray *fields;               /* DictateActionField, its strings owned; NULL for none */
+  gboolean destructive;
 };
 
 DictateAction *
@@ -672,6 +814,8 @@ dictate_action_unref (DictateAction *self)
   g_free (self->failure);
   g_free (self->tool);
   g_free (self->sent);
+  if (self->fields)
+    g_array_unref (self->fields);
   g_free (self);
 }
 
@@ -709,9 +853,44 @@ action_log (DictateAction *self, const char *outcome, gboolean went)
 const char *dictate_action_get_title (DictateAction *self) { return self->title; }
 const char *const *dictate_action_get_lines (DictateAction *self) { return (const char *const *) self->lines; }
 const char *dictate_action_get_button (DictateAction *self) { return self->button; }
-/* not yet: the cards have their title and lines only, and none deletes */
-const DictateActionField *dictate_action_get_fields (DictateAction *self) { return NULL; }
-gboolean dictate_action_get_destructive (DictateAction *self) { return FALSE; }
+const DictateActionField *
+dictate_action_get_fields (DictateAction *self)
+{
+  return self->fields ? (const DictateActionField *) self->fields->data : NULL;
+}
+
+gboolean dictate_action_get_destructive (DictateAction *self) { return self->destructive; }
+
+static void
+field_clear (DictateActionField *field)
+{
+  g_free ((char *) field->label);
+  g_free ((char *) field->value);
+}
+
+void
+dictate_action_add_field (DictateAction *self, const char *label, const char *value)
+{
+  DictateActionField field;
+
+  if (!label || !value)
+    return;
+  field.label = g_strdup (label);
+  field.value = g_strdup (value);
+  if (!self->fields)
+    {
+      /* zero-terminated: the last one's label is NULL */
+      self->fields = g_array_new (TRUE, TRUE, sizeof (DictateActionField));
+      g_array_set_clear_func (self->fields, (GDestroyNotify) field_clear);
+    }
+  g_array_append_val (self->fields, field);
+}
+
+void
+dictate_action_set_destructive (DictateAction *self)
+{
+  self->destructive = TRUE;
+}
 gboolean dictate_action_get_outward (DictateAction *self) { return self->outward; }
 gboolean dictate_action_get_certain (DictateAction *self) { return self->certain; }
 guint dictate_action_get_countdown (DictateAction *self) { return self->countdown; }

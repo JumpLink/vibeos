@@ -11,6 +11,12 @@ struct _DictateVoiceEnroll {
 };
 
 gboolean
+dictate_voice_match_ready (void)
+{
+  return FALSE;
+}
+
+gboolean
 dictate_voice_match_enrolled (void)
 {
   return FALSE;

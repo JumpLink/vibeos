@@ -96,10 +96,12 @@ gboolean         dictate_talk_get_speak (DictateTalk *self);
  *   "tool" (const char *name, const char *arguments, const char *result, double ms): a tool ran, for tests: its
  *          arguments and result may hold the user's data, never log them
  *   "refused" (guint reason, double score, double needed, const char *line): the turn's voice is not the owner's
- *          for what it asks (reason 0); nothing ran, and `line` is what Agent says instead
+ *          for what it asks (DICTATE_REFUSED_VOICE), or there was too little of it to tell (_TOO_SHORT, score -1);
+ *          nothing more runs, `line` is what Vibe says instead, and what the turn showed so far is to be cleared
  *   "acted" (gboolean can_undo): a tool did something for this reply; can_undo: "undo" (DICTATE_ASK_TAPPED) takes it
  *          back
- *   "reply-info" (guint flags): at a reply's start, DICTATE_REPLY_* below
+ *   "reply-info" (guint flags): at a reply's start, DICTATE_REPLY_* below; again with _OFFLINE when the fixed
+ *          commands answer instead of the model (the latest holds)
  *   "written" (const char *const *lines): what is shown and not spoken (private mode on the speaker)
  *   "no-access" (const char *key): the user asked for something whose access-* switch is off
  *   "suggestions" (const char *const *labels): replies the user may tap under the answer ("Read them", "Call back");
@@ -107,10 +109,15 @@ gboolean         dictate_talk_get_speak (DictateTalk *self);
  *   "choices" (const char *const *rows): Vibe asks the user to pick one ("Which Kim?"): the rows alternate a label and
  *          its detail ("Kim Novak", "Mobile", "Kim Ortega", "Work"; a detail may be ""); a tap asks the label, with
  *          DICTATE_ASK_TAPPED
- *   "facts" (const char *const *rows): what a reading tool found, for the card above the answer: the rows alternate a
- *          label and its value ("Battery", "64 %, about 9 hours", "Signal", "Good, 4 of 5")
+ *   "facts" (const char *const *rows): what the turn's reading tools found, for the card above the answer: the rows
+ *          alternate a label and its value ("Battery", "64 %, about 9 hours", "Signal", "Good, 4 of 5"), all of them so
+ *          far each time
  *   "person" (const char *name): the contact the answer is about, for the orb's initials ("Sarah Lind")
- * All of them for the reply being written, before its end; none is emitted for a refused turn. */
+ * All of them for the reply being written, before its end; none after "refused". */
+
+/* "refused"'s reasons */
+#define DICTATE_REFUSED_VOICE     0     /* not the owner's voice */
+#define DICTATE_REFUSED_TOO_SHORT 1     /* too little speech to tell whose; for Personal and Actions */
 
 /* "reply-info"'s flags */
 #define DICTATE_REPLY_OFFLINE         (1 << 0)  /* the fixed commands answered (dictate-offline.h) */

@@ -20,6 +20,14 @@ void           dictate_remote_free        (DictateRemote *self);
 void           dictate_remote_warm        (DictateRemote *self);
 void           dictate_remote_reset       (DictateRemote *self, const char *system);
 void           dictate_remote_set_system  (DictateRemote *self, const char *system);
+/* the exchanges the model is given at most, the newest: older ones are dropped as each question comes
+ * (DICTATE_TALK_HISTORY) */
+#define DICTATE_REMOTE_HISTORY 12
+/* the last question and what followed it dropped */
+void           dictate_remote_forget_turn (DictateRemote *self);
+/* an earlier conversation (`n` questions and their replies, oldest first) goes on: added after the system prompt */
+void           dictate_remote_restore     (DictateRemote *self, const char *const *said, const char *const *replies,
+                                           guint n);
 char          *dictate_remote_reply       (DictateRemote *self, const char *text, DictateBrainPiece piece,
                                            gpointer data, GCancellable *cancellable, GError **error);
 /* as dictate_brain_step () */
