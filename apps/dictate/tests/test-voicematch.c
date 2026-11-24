@@ -285,6 +285,7 @@ test_enroll_and_check (void)
   g_setenv ("DICTATE_VOICE_MATCH_MODELS", dir, TRUE);
   g_assert_true (dictate_voice_match_ready ());
   g_assert_false (dictate_voice_match_enrolled ());
+  g_assert_false (dictate_voice_match_stale ());
   g_assert_cmpuint (dictate_voice_match_phrases (), ==, 0);
   g_assert_cmpfloat (dictate_voice_match_verify (voice (220, 2, 1, 1), &error), ==, -1);
   g_assert_error (error, DICTATE_VOICE_MATCH_ERROR, DICTATE_VOICE_MATCH_ERROR_NOT_ENROLLED);
@@ -307,6 +308,7 @@ test_enroll_and_check (void)
   g_assert_true (dictate_voice_enroll_save (e, &error));
   g_assert_no_error (error);
   g_assert_true (dictate_voice_match_enrolled ());
+  g_assert_false (dictate_voice_match_stale ());
   g_assert_cmpuint (dictate_voice_match_phrases (), ==, DICTATE_VOICE_MATCH_PHRASES);
   g_assert_cmpint (ABS (dictate_voice_match_recorded () - g_get_real_time () / G_USEC_PER_SEC), <=, 5);
   g_assert_cmpint (g_stat (sample, &st), ==, 0);
@@ -336,16 +338,27 @@ test_enroll_and_check (void)
   g_assert_error (error, DICTATE_VOICE_MATCH_ERROR, DICTATE_VOICE_MATCH_ERROR_TOO_SHORT);
   g_clear_error (&error);
 
-  /* another model in their place (an update): not checked, and the sample has to be made again */
+  /* another model in their place (an update), or none: stale, not checked, and the sample has to be made again */
   {
     static const char *const other_model[] = { "c-peaks", NULL };
     g_autofree char *changed = models_dir ("models-new", other_model, NULL);
 
+    g_autofree char *none = g_build_filename (g_get_user_cache_dir (), "models-none", NULL);
+
     g_setenv ("DICTATE_VOICE_MATCH_MODELS", changed, TRUE);
+    g_assert_true (dictate_voice_match_stale ());
+    g_assert_cmpfloat (dictate_voice_match_verify (voice (220, 2, 999, 1), &error), ==, -1);
+    g_assert_error (error, DICTATE_VOICE_MATCH_ERROR, DICTATE_VOICE_MATCH_ERROR_UNAVAILABLE);
+    g_clear_error (&error);
+    /* and none installed any more */
+    g_assert_cmpint (g_mkdir_with_parents (none, 0700), ==, 0);
+    g_setenv ("DICTATE_VOICE_MATCH_MODELS", none, TRUE);
+    g_assert_true (dictate_voice_match_stale ());
     g_assert_cmpfloat (dictate_voice_match_verify (voice (220, 2, 999, 1), &error), ==, -1);
     g_assert_error (error, DICTATE_VOICE_MATCH_ERROR, DICTATE_VOICE_MATCH_ERROR_UNAVAILABLE);
     g_clear_error (&error);
     g_setenv ("DICTATE_VOICE_MATCH_MODELS", dir, TRUE);
+    g_assert_false (dictate_voice_match_stale ());
   }
   g_assert_cmpfloat (dictate_voice_match_verify (voice (220, 2, 999, 1), &error), ==, owner);
   g_assert_no_error (error);
@@ -353,6 +366,7 @@ test_enroll_and_check (void)
   /* removed */
   g_assert_true (dictate_voice_match_delete (&error));
   g_assert_false (dictate_voice_match_enrolled ());
+  g_assert_false (dictate_voice_match_stale ());
   g_assert_false (g_file_test (sample, G_FILE_TEST_EXISTS));
   g_assert_true (dictate_voice_match_delete (&error));
   g_assert_no_error (error);

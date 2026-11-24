@@ -135,15 +135,42 @@ models_find (char **dir)
 
 /* ---------------- the models ---------------- */
 
-static char *
-file_sha256 (const char *path, GError **error)
-{
-  g_autoptr (GMappedFile) mapped = g_mapped_file_new (path, FALSE, error);
+/* a model file's sha256, kept by its path, size and time: a model is some 30 MB, and the settings ask often */
+G_LOCK_DEFINE_STATIC (ids);
+static GHashTable *ids;
 
-  if (!mapped)
+static char *
+model_id (const char *path, GError **error)
+{
+  g_autoptr (GMappedFile) mapped = NULL;
+  g_autofree char *key = NULL;
+  GStatBuf st;
+  char *id;
+
+  if (g_stat (path, &st) < 0)
+    {
+      int saved = errno;
+      g_set_error (error, DICTATE_VOICE_MATCH_ERROR, DICTATE_VOICE_MATCH_ERROR_UNAVAILABLE, "%s: %s", path,
+                   g_strerror (saved));
+      return NULL;
+    }
+  key = g_strdup_printf ("%s\n%" G_GINT64_FORMAT "\n%" G_GINT64_FORMAT, path, (gint64) st.st_size,
+                         (gint64) st.st_mtime);
+  G_LOCK (ids);
+  id = ids ? g_strdup (g_hash_table_lookup (ids, key)) : NULL;
+  G_UNLOCK (ids);
+  if (id)
+    return id;
+  if (!(mapped = g_mapped_file_new (path, FALSE, error)))
     return NULL;
-  return g_compute_checksum_for_data (G_CHECKSUM_SHA256, (const guchar *) g_mapped_file_get_contents (mapped),
-                                      g_mapped_file_get_length (mapped));
+  id = g_compute_checksum_for_data (G_CHECKSUM_SHA256, (const guchar *) g_mapped_file_get_contents (mapped),
+                                    g_mapped_file_get_length (mapped));
+  G_LOCK (ids);
+  if (!ids)
+    ids = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  g_hash_table_replace (ids, g_steal_pointer (&key), g_strdup (id));
+  G_UNLOCK (ids);
+  return id;
 }
 
 static char *
@@ -180,7 +207,7 @@ model_open (Model *m, const char *path, GError **error)
   gboolean ok;
 
   m->file = g_path_get_basename (path);
-  if (!(m->id = file_sha256 (path, error)))
+  if (!(m->id = model_id (path, error)))
     return FALSE;
   /* two threads: a check is about 40 ms of work a second of speech for each model, and the user is waiting */
   ok = ort_ok (ort->CreateSessionOptions (&options), error) &&
@@ -470,6 +497,25 @@ dictate_voice_match_ready (void)
   const OrtApiBase *base = OrtGetApiBase ();
 
   return files && base && base->GetApi (ORT_API_VERSION);
+}
+
+gboolean
+dictate_voice_match_stale (void)
+{
+  g_autoptr (GKeyFile) file = sample_load ();
+  g_auto (GStrv) files = NULL;
+
+  if (!file)
+    return FALSE;
+  if (!dictate_voice_match_ready () || !(files = models_find (NULL)))
+    return TRUE;
+  for (guint i = 0; files[i]; i++)
+    {
+      g_autofree char *id = model_id (files[i], NULL);
+      if (!id || !g_key_file_has_group (file, id))
+        return TRUE;
+    }
+  return FALSE;
 }
 
 gboolean

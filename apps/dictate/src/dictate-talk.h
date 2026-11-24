@@ -96,7 +96,8 @@ gboolean         dictate_talk_get_speak (DictateTalk *self);
  *   "tool" (const char *name, const char *arguments, const char *result, double ms): a tool ran, for tests: its
  *          arguments and result may hold the user's data, never log them
  *   "refused" (guint reason, double score, double needed, const char *line): the turn's voice is not the owner's
- *          for what it asks (DICTATE_REFUSED_VOICE), or there was too little of it to tell (_TOO_SHORT, score -1);
+ *          for what it asks (DICTATE_REFUSED_VOICE), there was too little of it to tell (_TOO_SHORT, score -1), or
+ *          there is a sample and the voice could not be checked against it (_UNCHECKED, score -1);
  *          nothing more runs, `line` is what Vibe says instead, and what the turn showed so far is to be cleared
  *   "acted" (gboolean can_undo): a tool did something for this reply; can_undo: "undo" (DICTATE_ASK_TAPPED) takes it
  *          back
@@ -118,6 +119,9 @@ gboolean         dictate_talk_get_speak (DictateTalk *self);
 /* "refused"'s reasons */
 #define DICTATE_REFUSED_VOICE     0     /* not the owner's voice */
 #define DICTATE_REFUSED_TOO_SHORT 1     /* too little speech to tell whose; for Personal and Actions */
+#define DICTATE_REFUSED_UNCHECKED 2     /* a sample, and the voice could not be checked against it (Voice Match not
+                                         * installed, or its model changed: dictate_voice_match_stale ()); for
+                                         * Personal and Actions */
 
 /* "reply-info"'s flags */
 #define DICTATE_REPLY_OFFLINE         (1 << 0)  /* the fixed commands answered (dictate-offline.h) */

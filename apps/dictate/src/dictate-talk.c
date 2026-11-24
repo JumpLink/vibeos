@@ -79,8 +79,9 @@ typedef struct {
   GBytes *audio;                /* NULL: nothing to check (tapped, the PIN given, Voice Match off or not enrolled) */
   guint gated;                  /* bit DictateRisk: the classes the voice must be the owner's for */
   double needed;                /* the match needed, % */
-  double score;                 /* the match found, %; -1 when too little speech to tell */
+  double score;                 /* the match found, %; -1 when too little speech to tell, or it could not be checked */
   gboolean checked, refused;
+  gboolean unchecked;           /* a sample, and the voice could not be checked against it */
   gboolean debug_log;           /* debug-log: the turn recorded whole, on the phone (dictate-debuglog.h) */
 } Job;
 
@@ -1009,25 +1010,33 @@ answer_offline (DictateTalk *self, Job *job, Writing *w)
 
 /* ---------------- Voice Match: whose voice a turn is ---------------- */
 
-/* what Vibe says to a voice that is not the owner's (reason 0), and to too little speech to tell (1) */
+/* what Vibe says to a voice that is not the owner's (reason 0), to too little speech to tell (1), and when the voice
+ * could not be checked (2) */
 static const struct {
   const char *code;
-  const char *other, *short_;
+  const char *other, *short_, *unchecked;
 } REFUSED_LINES[] = {
   { "en", "That didn't sound like my owner, so I won't do that.",
-    "I couldn't hear enough to tell it's you. Please say it again, a little longer." },
+    "I couldn't hear enough to tell it's you. Please say it again, a little longer.",
+    "I can't check your voice right now, so I won't do that." },
   { "de", "Das klang nicht nach meinem Besitzer, deshalb mache ich das nicht.",
-    "Ich habe zu wenig gehört, um dich zu erkennen. Sag es bitte noch einmal, etwas länger." },
+    "Ich habe zu wenig gehört, um dich zu erkennen. Sag es bitte noch einmal, etwas länger.",
+    "Ich kann deine Stimme gerade nicht prüfen, deshalb mache ich das nicht." },
   { "es", "Eso no sonó como mi dueño, así que no lo haré.",
-    "No oí lo suficiente para saber que eres tú. Dilo otra vez, un poco más largo." },
+    "No oí lo suficiente para saber que eres tú. Dilo otra vez, un poco más largo.",
+    "Ahora no puedo comprobar tu voz, así que no lo haré." },
   { "fr", "Ça ne ressemblait pas à la voix de mon propriétaire, donc je ne le fais pas.",
-    "Je n'ai pas assez entendu pour te reconnaître. Redis-le, un peu plus longuement." },
+    "Je n'ai pas assez entendu pour te reconnaître. Redis-le, un peu plus longuement.",
+    "Je ne peux pas vérifier ta voix pour le moment, donc je ne le fais pas." },
   { "it", "Non sembrava la voce del mio proprietario, quindi non lo faccio.",
-    "Non ho sentito abbastanza per riconoscerti. Ripetilo, un po' più a lungo." },
+    "Non ho sentito abbastanza per riconoscerti. Ripetilo, un po' più a lungo.",
+    "Al momento non posso verificare la tua voce, quindi non lo faccio." },
   { "ru", "Это не похоже на голос моего владельца, поэтому я не буду этого делать.",
-    "Я услышал слишком мало, чтобы узнать тебя. Скажи ещё раз, чуть подробнее." },
+    "Я услышал слишком мало, чтобы узнать тебя. Скажи ещё раз, чуть подробнее.",
+    "Сейчас я не могу проверить твой голос, поэтому не буду этого делать." },
   { "nl", "Dat klonk niet als mijn eigenaar, dus dat doe ik niet.",
-    "Ik hoorde te weinig om je te herkennen. Zeg het nog eens, iets langer." },
+    "Ik hoorde te weinig om je te herkennen. Zeg het nog eens, iets langer.",
+    "Ik kan je stem nu niet controleren, dus dat doe ik niet." },
 };
 
 static const char *
@@ -1038,7 +1047,17 @@ refused_line (const char *language, guint reason)
   for (guint i = 0; i < G_N_ELEMENTS (REFUSED_LINES); i++)
     if (language && g_str_has_prefix (language, REFUSED_LINES[i].code))
       pick = i;
-  return reason == DICTATE_REFUSED_TOO_SHORT ? REFUSED_LINES[pick].short_ : REFUSED_LINES[pick].other;
+  return reason == DICTATE_REFUSED_TOO_SHORT ? REFUSED_LINES[pick].short_
+         : reason == DICTATE_REFUSED_UNCHECKED ? REFUSED_LINES[pick].unchecked
+         : REFUSED_LINES[pick].other;
+}
+
+/* the reason a turn was refused for, from its check */
+static guint
+refused_reason (Job *job)
+{
+  return job->unchecked ? DICTATE_REFUSED_UNCHECKED : job->score < 0 ? DICTATE_REFUSED_TOO_SHORT
+                                                                     : DICTATE_REFUSED_VOICE;
 }
 
 /* a setting the window's schema may not have yet */
@@ -1090,12 +1109,19 @@ check_voice (Job *job)
     return;
   job->score = dictate_voice_match_verify (job->audio, &error);
   job->checked = TRUE;
-  if (error && !g_error_matches (error, DICTATE_VOICE_MATCH_ERROR, DICTATE_VOICE_MATCH_ERROR_TOO_SHORT))
+  if (g_error_matches (error, DICTATE_VOICE_MATCH_ERROR, DICTATE_VOICE_MATCH_ERROR_NOT_ENROLLED))
     {
-      /* no sample after all, or the model could not run: as before enrollment, nothing to check against */
-      g_message ("talk: the voice could not be checked: %s", error->message);
+      /* the sample removed since: as before enrollment, nothing to check against */
       g_clear_pointer (&job->audio, g_bytes_unref);
       return;
+    }
+  if (error && !g_error_matches (error, DICTATE_VOICE_MATCH_ERROR, DICTATE_VOICE_MATCH_ERROR_TOO_SHORT))
+    {
+      /* a sample, and the voice cannot be checked against it (the model is gone or broken, or changed since the
+       * sample was made): as for too little speech, Everyday may run, Personal and Actions may not */
+      g_message ("talk: the voice could not be checked: %s", error->message);
+      dictate_debuglog_note ("voice", "the voice could not be checked: Personal and Actions are not run");
+      job->unchecked = TRUE;
     }
   if (error)
     job->score = -1;
@@ -1109,7 +1135,8 @@ voice_is_owner (Job *job)
   return !job->audio || job->score >= job->needed;
 }
 
-/* before `name` runs: whether this voice may have it. A turn too short to tell may still use Everyday tools */
+/* before `name` runs: whether this voice may have it. A turn too short to tell, or one that could not be checked, may
+ * still use Everyday tools */
 static gboolean
 voice_allows (Job *job, const char *name)
 {
@@ -1375,7 +1402,7 @@ answer (DictateTalk *self, Job *job)
   if (job->refused && current (self, job->turn))
     {
       /* another voice: the line instead of an answer, and the turn gone from the conversation, as if never asked */
-      guint reason = job->score < 0 ? DICTATE_REFUSED_TOO_SHORT : DICTATE_REFUSED_VOICE;
+      guint reason = refused_reason (job);
       const char *line = refused_line (job->language, reason);
 
       post_status (self, job->turn, NULL);
@@ -1696,6 +1723,8 @@ confirm_checked (GObject *source, GAsyncResult *result, gpointer data)
   g_autoptr (GError) error = NULL;
   double score = dictate_voice_match_verify_finish (result, &error);
   gboolean short_ = g_error_matches (error, DICTATE_VOICE_MATCH_ERROR, DICTATE_VOICE_MATCH_ERROR_TOO_SHORT);
+  gboolean unchecked = error && !short_
+                       && !g_error_matches (error, DICTATE_VOICE_MATCH_ERROR, DICTATE_VOICE_MATCH_ERROR_NOT_ENROLLED);
   double needed = c->needed;
 
   g_free (c);
@@ -1704,8 +1733,8 @@ confirm_checked (GObject *source, GAsyncResult *result, gpointer data)
       g_task_return_error (task, g_steal_pointer (&error));
       return;
     }
-  /* no sample after all, or the model could not run: as before enrollment */
-  if ((error && !short_) || (!error && score >= needed))
+  /* the sample removed since: as before enrollment; a voice that could not be checked is not the owner's for this */
+  if ((error && !short_ && !unchecked) || (!error && score >= needed))
     {
       DictateAction *action = g_task_get_task_data (task);
       dictate_action_run_by (action, DICTATE_ACTION_BY_VOICE, g_task_get_cancellable (task), confirmed,
@@ -1713,11 +1742,14 @@ confirm_checked (GObject *source, GAsyncResult *result, gpointer data)
       return;
     }
   {
-    guint reason = short_ ? DICTATE_REFUSED_TOO_SHORT : DICTATE_REFUSED_VOICE;
+    guint reason = unchecked ? DICTATE_REFUSED_UNCHECKED : short_ ? DICTATE_REFUSED_TOO_SHORT : DICTATE_REFUSED_VOICE;
     const char *line = refused_line (self->language, reason);
 
-    g_message ("talk: a \"send\" in a voice %.0f %% close (%.0f %% needed): not run", short_ ? -1 : score, needed);
-    g_signal_emit (self, signals[SIGNAL_REFUSED], 0, reason, short_ ? -1.0 : score, needed, line);
+    if (unchecked)
+      g_message ("talk: a \"send\" in a voice that could not be checked: not run: %s", error->message);
+    else
+      g_message ("talk: a \"send\" in a voice %.0f %% close (%.0f %% needed): not run", short_ ? -1 : score, needed);
+    g_signal_emit (self, signals[SIGNAL_REFUSED], 0, reason, error ? -1.0 : score, needed, line);
     dictate_talk_announce (self, self->language, line);
     g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_PERMISSION_DENIED, "%s", line);
   }

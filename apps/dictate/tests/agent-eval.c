@@ -954,8 +954,9 @@ ask_now (gpointer data)
 
 void agent_eval_voice_set (gboolean sample, double close);
 
-/* a case's "voice": "owner", "other" (20 % close) or "short" (too little to tell), against a sample "enrolled",
- * with "voice_classes" kept for the owner's voice (all three when not given). Without one, Voice Match is off */
+/* a case's "voice": "owner", "other" (20 % close), "short" (too little to tell) or "unchecked" (a sample made for
+ * another model), against a sample "enrolled", with "voice_classes" kept for the owner's voice (all three when not
+ * given). Without one, Voice Match is off */
 static gboolean
 set_up_voice (Eval *e)
 {
@@ -977,7 +978,8 @@ set_up_voice (Eval *e)
       g_autofree char *key = g_strconcat ("voice-match-", CLASSES[i], NULL);
       g_settings_set_boolean (e->settings, key, !classes || in_array (classes, CLASSES[i]));
     }
-  agent_eval_voice_set (voice != NULL, !g_strcmp0 (voice, "short") ? -1 : !g_strcmp0 (voice, "other") ? 20 : 95);
+  agent_eval_voice_set (voice != NULL, !g_strcmp0 (voice, "short") ? -1 : !g_strcmp0 (voice, "unchecked") ? -2
+                                       : !g_strcmp0 (voice, "other") ? 20 : 95);
   return TRUE;
 }
 

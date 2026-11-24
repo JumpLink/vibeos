@@ -7,7 +7,8 @@ G_DEFINE_QUARK (dictate-voice-match-error-quark, dictate_voice_match_error)
 static gboolean enrolled;
 static double score = 100;
 
-/* the case's voice: `close` in %, or -1 for too little speech to tell */
+/* the case's voice: `close` in %, -1 for too little speech to tell, or -2 for one that cannot be checked (the
+ * sample made for another model) */
 void
 agent_eval_voice_set (gboolean sample, double close)
 {
@@ -23,6 +24,12 @@ gboolean
 dictate_voice_match_ready (void)
 {
   return TRUE;
+}
+
+gboolean
+dictate_voice_match_stale (void)
+{
+  return enrolled && score == -2;
 }
 
 gboolean
@@ -62,6 +69,12 @@ dictate_voice_match_verify (GBytes *audio, GError **error)
   if (!enrolled)
     {
       g_set_error_literal (error, DICTATE_VOICE_MATCH_ERROR, DICTATE_VOICE_MATCH_ERROR_NOT_ENROLLED, "No voice sample");
+      return -1;
+    }
+  if (score == -2)
+    {
+      g_set_error_literal (error, DICTATE_VOICE_MATCH_ERROR, DICTATE_VOICE_MATCH_ERROR_UNAVAILABLE,
+                           "The voice sample was made for another Voice Match model: record it again");
       return -1;
     }
   if (score < 0)

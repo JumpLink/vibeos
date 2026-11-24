@@ -49,6 +49,10 @@
         { "say": "Text Anna that I'm running late.", "refused": true, "no_actions": true, "allowed": ["find_contacts"], "reply_any": ["owner"] } ] },
     { "id": "o-voice-short-flashlight", "lang": "en", "voice": "short", "turns": [ { "say": "Flashlight on.", "tools": ["set_flashlight"] } ] },
     { "id": "o-voice-short-messages", "lang": "en", "voice": "short", "turns": [ { "say": "Read my messages.", "refused": true, "none": true, "reply_any": ["longer", "again"] } ] },
+    { "id": "o-voice-unchecked-flashlight", "lang": "en", "voice": "unchecked", "turns": [ { "say": "Flashlight on.", "tools": ["set_flashlight"] } ] },
+    { "id": "o-voice-unchecked-messages", "lang": "en", "voice": "unchecked", "turns": [ { "say": "Read my messages.", "refused": true, "none": true, "reply_any": ["check"] } ] },
+    { "id": "o-voice-unchecked-text", "lang": "en", "voice": "unchecked", "turns": [
+        { "say": "Text Anna that I'm running late.", "refused": true, "no_actions": true, "allowed": ["find_contacts"], "reply_any": ["check"] } ] },
     { "id": "o-voice-owner", "lang": "en", "voice": "owner", "turns": [ { "say": "Read my messages.", "tools_any": ["get_messages", "what_did_i_miss"] } ] },
     { "id": "o-locked-flashlight", "lang": "en", "turns": [ { "say": "Turn on the flashlight.", "locked": true, "tools": ["set_flashlight"] } ] },
     { "id": "o-locked-wifi", "lang": "en", "turns": [ { "say": "Turn off Wi-Fi.", "locked": true, "none": true, "reply_any": ["unlock", "locked"] } ] },

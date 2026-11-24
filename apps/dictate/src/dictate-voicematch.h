@@ -35,6 +35,11 @@ GQuark   dictate_voice_match_error_quark (void);
 /* whether a sample can be made on this phone (the model is installed and runs): until then, nothing asks for one */
 gboolean dictate_voice_match_ready     (void);
 gboolean dictate_voice_match_enrolled  (void);
+/* a sample, and it cannot be checked against: Voice Match is not installed any more, or its model changed (an update)
+ * since the sample was made. It has to be recorded again (or removed); until then Personal and Actions are not run
+ * by voice (DictateTalk's "refused", DICTATE_REFUSED_UNCHECKED). The first call after a model changed reads it
+ * (a fraction of a second); call it off the main thread, or when the settings page opens, not per frame */
+gboolean dictate_voice_match_stale     (void);
 /* the recordings in the saved sample, 0 for none */
 guint    dictate_voice_match_phrases   (void);
 /* when the sample was saved, Unix seconds, 0 for none */
