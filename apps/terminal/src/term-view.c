@@ -35,7 +35,6 @@ typedef struct {
 typedef enum {
   TOUCH_IDLE,
   TOUCH_PENDING,          /* one finger down, still: a tap or a long press to come */
-  TOUCH_MOVED,            /* one finger past the slop */
   TOUCH_SELECT,           /* after a long press: the finger extends the selection */
   TOUCH_HANDLE,           /* a selection handle is being moved */
   TOUCH_SCROLL,           /* two fingers */
@@ -548,8 +547,11 @@ on_fling_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
 static void
 fingers_centre (TermView *self, double *x, double *y)
 {
-  *x = (self->fingers[0].x + self->fingers[1].x) / 2;
-  *y = (self->fingers[0].y + self->fingers[1].y) / 2;
+  *x = *y = 0;
+  for (int i = 0; i < self->n_fingers; i++) {
+    *x += self->fingers[i].x / self->n_fingers;
+    *y += self->fingers[i].y / self->n_fingers;
+  }
 }
 
 static void
@@ -679,11 +681,13 @@ touch_begin (TermView *self, GdkEventSequence *sequence, double x, double y, gui
       return;
     }
     self->state = TOUCH_PENDING;
-    self->long_press = g_timeout_add (LONG_PRESS_MS, on_long_press, self);
+    /* a finger that caught a fling holds the text still: no selecting from it */
+    if (!self->no_tap)
+      self->long_press = g_timeout_add (LONG_PRESS_MS, on_long_press, self);
     return;
   }
-  /* a second finger while the first was a tap to be, or moving: the two scroll */
-  if (self->n_fingers == 1 && (self->state == TOUCH_PENDING || self->state == TOUCH_MOVED)) {
+  /* a second finger while the first was a tap to be, or scrolling: the two scroll, from their centre */
+  if (self->n_fingers == 1 && (self->state == TOUCH_PENDING || self->state == TOUCH_SCROLL)) {
     cancel_long_press (self);
     self->fingers[1] = (Finger) { sequence, x, y };
     self->n_fingers = 2;
@@ -704,8 +708,13 @@ touch_update (TermView *self, GdkEventSequence *sequence, double x, double y, gu
   switch (self->state) {
   case TOUCH_PENDING:
     if (hypot (x - self->down_x, y - self->down_y) > TOUCH_SLOP) {
+      double dy = y - self->down_y;
+
+      /* one finger dragged: a scroll, from where the finger crossed the slop, so the text does not jump by it */
       cancel_long_press (self);
-      self->state = TOUCH_MOVED;
+      scroll_begin (self, time);
+      self->scroll_y = self->down_y + copysign (MIN (fabs (dy), TOUCH_SLOP), dy);
+      scroll_update (self, time);
     }
     break;
   case TOUCH_SELECT:

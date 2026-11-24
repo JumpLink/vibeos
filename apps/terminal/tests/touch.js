@@ -4,13 +4,15 @@
 // (probe.py) asks for a program's modes and logs what the terminal sends it.
 //
 //   A  a tap opens the keyboard over the window: it keeps its size, and output to the bottom slides it up.
-//   B  on the alternate screen (less) two fingers going up 5½ rows send 5 Down keys, and back down 3½ rows 3 Up;
-//      with application cursor keys (DECCKM) they are ESC O B.
+//   B  on the alternate screen (less) two fingers going up 5½ rows send 5 Down keys, and back down 3½ rows 3 Up; one
+//      finger going up 5½ rows past the touch slop 5 more Down keys; with application cursor keys (DECCKM) they are
+//      ESC O B.
 //   C  a flung two-finger scroll goes on after the fingers lift: more keys than the fingers' travel.
 //   D  a program that tracks the mouse (htop) gets wheel buttons, SGR and the original encoding, at the cell under
-//      the fingers; a tap is a click there.
+//      the fingers, from two fingers and from one; a tap is a click there.
 //   E  a long press selects the word under the finger; Ctrl+Shift+C copies it.
-//   F  two fingers going down 10 rows scroll the history back 10 rows: the word under the same spot is 10 lines up.
+//   F  two fingers going down 10 rows scroll the history back 10 rows: the word under the same spot is 10 lines up;
+//      one finger going down 10 rows past the slop, 10 more.
 //   G  the selection's end handle dragged 2 rows down takes the selection to there.
 //   H  a tap ends the selection; Ctrl+Shift+V pastes into the shell.
 import Clutter from 'gi://Clutter';
@@ -96,6 +98,21 @@ async function swipe2(x, y, dy, ms, hold = 150) {
     touch.notify_touch_up(now(), 0);
     touch.notify_touch_up(now(), 1);
 }
+// one finger going dy from y over ms, held still before it lifts as swipe2's
+async function swipe1(x, y, dy, ms, hold = 150) {
+    const steps = Math.max(3, Math.round(ms / 16));
+    finger().notify_touch_down(now(), 0, x, y);
+    await sleep(30);
+    for (let i = 1; i <= steps; i++) {
+        await sleep(ms / steps);
+        touch.notify_touch_motion(now(), 0, x, y + dy * i / steps);
+    }
+    if (hold)
+        await sleep(hold);
+    touch.notify_touch_up(now(), 0);
+}
+// the Terminal's touch slop (term-view.c): a one-finger scroll moves the text by the finger's travel less this
+const SLOP = 8;
 async function keyCombo(modifiers, keyval) {
     keys ??= seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
     for (const m of modifiers)
@@ -265,6 +282,11 @@ export async function run() {
     await sleep(500);
     s = sent(altLog);
     check('B: down 3½ rows: 3 Up keys', count(s, '\x1b[B') === 5 && count(s, '\x1b[A') === 3, show(s));
+    await swipe1(midX, cellY(25), -(5.5 * grid.ch + SLOP), 400);
+    await sleep(500);
+    s = sent(altLog);
+    check('B: one finger up 5½ rows past the slop: 5 more Down keys',
+        count(s, '\x1b[B') === 10 && count(s, '\x1b[A') === 3, show(s));
     await quit(altLog);
     const appLog = `${DIR}/altapp.log`;
     check('B: the probe with application cursor keys', await runProbe('altapp', appLog), readFile(appLog));
@@ -291,6 +313,10 @@ export async function run() {
     const wheels = s.match(/\x1b\[<65;\d+;\d+M/g) ?? [];
     check('D: 4 wheel-down reports (SGR)', wheels.length === 4 && wheels.every(w => w.includes(`;${centreCol + 1};`)),
         show(s));
+    await swipe1(midX, cellY(20) - grid.ch / 2 + 1, -(2.5 * grid.ch + SLOP), 300);
+    await sleep(500);
+    s = sent(mouseLog);
+    check('D: one finger up 2½ rows: 2 more', (s.match(/\x1b\[<65;\d+;\d+M/g) ?? []).length === 6, show(s));
     await tap(cellX(7), cellY(3));
     await sleep(500);
     s = sent(mouseLog);
@@ -334,6 +360,15 @@ export async function run() {
     copied = await clipboard();
     check('F: two fingers down 10 rows: the history 10 lines back', copied === name(lineAt(row) - 10),
         `${show(copied)} expected ${name(lineAt(row) - 10)}`);
+    await swipe1(midX, cellY(10), 10 * grid.ch + SLOP, 500);
+    await sleep(500);
+    await longPress(cellX(1), cellY(row), 900);
+    await sleep(300);
+    await keyCombo([Clutter.KEY_Control_L, Clutter.KEY_Shift_L], Clutter.KEY_C);
+    await sleep(300);
+    copied = await clipboard();
+    check('F: one finger down 10 rows past the slop: 10 more', copied === name(lineAt(row) - 20),
+        `${show(copied)} expected ${name(lineAt(row) - 20)}`);
 
     // G: the end handle (at the word's end, under its row) 2 rows down
     await longPress(cellX(1), cellY(row), 900);
@@ -345,7 +380,7 @@ export async function run() {
     await keyCombo([Clutter.KEY_Control_L, Clutter.KEY_Shift_L], Clutter.KEY_C);
     await sleep(300);
     copied = await clipboard();
-    const first = lineAt(row) - 10;
+    const first = lineAt(row) - 20;
     const want = [name(first), name(first + 1), name(first + 2)].join('\n');
     check('G: the end handle 2 rows down: three lines', copied === want, `${show(copied)} expected ${show(want)}`);
 
