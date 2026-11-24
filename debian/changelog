@@ -1,3 +1,25 @@
+vibeos (1:0.1.4.2) unstable; urgency=medium
+
+  * Home always lands on the home screen. The swipe up, back from an app's
+    first screen and a sideways app's swipe up now take every app window
+    off the phone's screen into recents, as the Home key, recents and the
+    taskbar already did; they took only the app they flew home, so the
+    app a quick switch or a recents card came from was in front of the
+    home screen again, and each further swipe home showed the next one.
+    A window on a TV or monitor plugged into the phone stays where it is.
+  * A system swipe's touch is the system's once it is recognised: the
+    swipe up, back and the sideways swipe cancel the touch the app under
+    them was given, as Android does, and the app sees nothing more of it,
+    its lift included. The quick switch along the gesture bar no longer
+    pages Calendar under the finger.
+  * No more "... is ready" notifications. GNOME's banner for a window that
+    asks for attention is off while VibeOS's shell runs. The app just
+    opened from the launcher, and a screen one app opens from another
+    right after a tap, come to the front; after Home nothing comes up over
+    the home screen by itself until the user touches something.
+
+ -- pulpoff <pashkovsky@gmail.com>  Tue, 24 Nov 2026 18:37:03 +0100
+
 vibeos (1:0.1.4.1) unstable; urgency=medium
 
   * Built against evolution-data-server 3.62, which is in sid: Contacts,
