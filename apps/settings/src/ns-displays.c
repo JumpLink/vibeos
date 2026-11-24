@@ -332,8 +332,8 @@ fill_sub (Sub *s)
         sel = i;
     }
     g_ptr_array_add (labels, NULL);
-    GtkWidget *r = ns_row_pick (s->modes, _("Resolution"), (const char *const *) labels->pdata, sel, resolution_picked,
-                                s);
+    GtkWidget *r = ns_row_pick_names (s->modes, _("Resolution"), (const char *const *) labels->pdata, sel,
+                                      resolution_picked, s);
     g_object_set_data_full (G_OBJECT (r), "ns-sizes", g_array_ref (sizes), (GDestroyNotify) g_array_unref);
 
     g_autoptr (GPtrArray) rates = g_ptr_array_new_with_free_func (g_free);
@@ -350,7 +350,7 @@ fill_sub (Sub *s)
     }
     g_ptr_array_add (rates, NULL);
     g_ptr_array_add (ids, NULL);
-    r = ns_row_pick (s->modes, _("Refresh rate"), (const char *const *) rates->pdata, sel, rate_picked, s);
+    r = ns_row_pick_names (s->modes, _("Refresh rate"), (const char *const *) rates->pdata, sel, rate_picked, s);
     g_object_set_data_full (G_OBJECT (r), "ns-modes", g_ptr_array_steal (ids, NULL), (GDestroyNotify) g_strfreev);
   }
   ns_group_set_visible (s->modes, mon->logical != NULL);
@@ -505,7 +505,7 @@ fill_cards (Displays *d)
     }
     g_ptr_array_add (names, NULL);
     g_ptr_array_add (connectors, NULL);
-    r = ns_row_pick (d->main, _("Main display"), (const char *const *) names->pdata, sel, main_picked, d);
+    r = ns_row_pick_names (d->main, _("Main display"), (const char *const *) names->pdata, sel, main_picked, d);
     g_object_set_data_full (G_OBJECT (r), "ns-connectors", g_ptr_array_steal (connectors, NULL),
                             (GDestroyNotify) g_strfreev);
     ns_group_set_visible (d->main, TRUE);
@@ -564,8 +564,8 @@ fill_scale (Displays *d)
   if (!same) {
     if (d->scale_row)
       ns_group_remove (d->scale_group, d->scale_row);
-    d->scale_row = ns_row_pick (d->scale_group, _("Screen scale"), (const char *const *) labels->pdata, sel,
-                                scale_picked, d);
+    d->scale_row = ns_row_pick_names (d->scale_group, _("Screen scale"), (const char *const *) labels->pdata, sel,
+                                      scale_picked, d);
     g_object_set_data_full (G_OBJECT (d->scale_row), "ns-scales", g_array_ref (scales), (GDestroyNotify) g_array_unref);
   } else {
     ns_row_pick_select (d->scale_row, sel);

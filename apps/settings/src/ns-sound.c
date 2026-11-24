@@ -145,7 +145,8 @@ sinks_got (pa_context *c, const pa_sink_info *i, int eol, void *data)
     g_ptr_array_add (labels, NULL);
     ns_group_clear (shown->outs);
     if (shown->names->len > 1)
-      ns_row_pick (shown->outs, _("Audio will play on"), (const char *const *) labels->pdata, sel, out_picked, NULL);
+      ns_row_pick_names (shown->outs, _("Audio will play on"), (const char *const *) labels->pdata, sel, out_picked,
+                         NULL);
     else if (labels->len > 1)
       ns_row_info (shown->outs, _("Audio will play on"), labels->pdata[0]);
     ns_group_set_visible (shown->outs, labels->len > 1);
@@ -396,11 +397,11 @@ tone_row (GtkWidget *g, const char *title, GSettings *s, const char *key, const 
 
   g_autoptr (GPtrArray) labels = g_ptr_array_new ();
   if (none)
-    g_ptr_array_add (labels, (gpointer) N_("None"));
+    g_ptr_array_add (labels, (gpointer) _("None"));
   for (guint i = 0; i < k->tones->len; i++)
     g_ptr_array_add (labels, ((Tone *) k->tones->pdata[i])->title);
   g_ptr_array_add (labels, NULL);
-  GtkWidget *row = ns_row_pick (g, title, (const char *const *) labels->pdata, tone_index (k), tone_picked, k);
+  GtkWidget *row = ns_row_pick_names (g, title, (const char *const *) labels->pdata, tone_index (k), tone_picked, k);
   g_object_set_data_full (G_OBJECT (row), "ns-tone", k, (GDestroyNotify) tone_key_free);
   /* connected for as long as the row lives: the settings object is the page's and outlives it */
   g_autofree char *signal = g_strconcat ("changed::", key, NULL);

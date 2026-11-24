@@ -1133,8 +1133,8 @@ ns_page_default_apps (GtkWidget *row, gpointer data)
     g_ptr_array_add (labels, NULL);
     GtkWidget *r;
     if (apps->len) {
-      r = ns_row_pick (g, _(kinds[k].title), (const char *const *) labels->pdata, sel, default_picked,
-                       (gpointer) &kinds[k]);
+      r = ns_row_pick_names (g, _(kinds[k].title), (const char *const *) labels->pdata, sel, default_picked,
+                             (gpointer) &kinds[k]);
       if (sel == G_MAXUINT)
         ns_row_set_subtitle (r, _("None chosen"));
     } else {

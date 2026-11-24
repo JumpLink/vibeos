@@ -795,8 +795,8 @@ join_form (NMDevice *dev, const char *ap_path, const char *ssid)
   } else {
     f->sec_i = SEC_EAP;
   }
-  f->eap = ns_row_pick (g, _("Method"), eap_labels, f->eap_i, eap_picked, f);
-  f->phase2 = ns_row_pick (g, _("Inner authentication"), phase2_labels, f->phase2_i, phase2_picked, f);
+  f->eap = ns_row_pick_names (g, _("Method"), eap_labels, f->eap_i, eap_picked, f);
+  f->phase2 = ns_row_pick_names (g, _("Inner authentication"), phase2_labels, f->phase2_i, phase2_picked, f);
   f->ident = ns_row_value (g, _("Identity"), NULL, FALSE, NULL, NULL);
   f->anon = ns_row_value (g, _("Anonymous identity"), NULL, FALSE, NULL, NULL);
   f->pass = ns_row_value (g, _("Password"), NULL, TRUE, NULL, NULL);

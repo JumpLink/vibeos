@@ -503,8 +503,8 @@ ns_page_night_light (GtkWidget *row, gpointer data)
   for (int i = 0; i < 48; i++)
     g_ptr_array_add (times, night_time (i / 2.0));
   g_ptr_array_add (times, NULL);
-  n->start = ns_row_pick (g, _("Start time"), (const char *const *) times->pdata, 0, night_start_picked, n);
-  n->end = ns_row_pick (g, _("End time"), (const char *const *) times->pdata, 0, night_end_picked, n);
+  n->start = ns_row_pick_names (g, _("Start time"), (const char *const *) times->pdata, 0, night_start_picked, n);
+  n->end = ns_row_pick_names (g, _("End time"), (const char *const *) times->pdata, 0, night_end_picked, n);
 
   g = ns_group (c, NULL);
   n->intensity = ns_row_scale (g, _("Intensity"), NULL, 0, 100, 1, &n->scale);
@@ -1853,15 +1853,15 @@ layout_group (NsPage *page, GtkWidget *c, GSettings *vibeos)
   gboolean sizes = ns_has_key (vibeos, "desktop-icon-scale") && ns_has_key (vibeos, "drawer-icon-scale");
 
   GtkWidget *g = ns_group (c, _("Layout"));
-  l->grid = ns_row_pick (g, _("Home screen grid"), grid_labels, 0, grid_picked, l);
+  l->grid = ns_row_pick_names (g, _("Home screen grid"), grid_labels, 0, grid_picked, l);
   if (sizes)
-    l->icons = ns_row_pick (g, _("Home screen icon size"), icon_labels, 0, icons_picked, l);
+    l->icons = ns_row_pick_names (g, _("Home screen icon size"), icon_labels, 0, icons_picked, l);
   GtkWidget *names = ns_row_switch (g, _("App names"), _("Under the home screen's icons"), NULL, NULL);
   g_settings_bind (vibeos, "desktop-hide-app-labels", ns_row_get_switch (names), "active",
                    G_SETTINGS_BIND_DEFAULT | G_SETTINGS_BIND_INVERT_BOOLEAN);
   l->drawer = ns_row_pick (g, _("App drawer grid"), drawer_labels, 0, drawer_picked, l);
   if (sizes)
-    l->drawer_icons = ns_row_pick (g, _("App drawer icon size"), icon_labels, 0, icons_picked, l);
+    l->drawer_icons = ns_row_pick_names (g, _("App drawer icon size"), icon_labels, 0, icons_picked, l);
   ns_row_switch (g, _("Search bar in the app drawer"), NULL, vibeos, "search-drawer-enabled");
 
   static const char *const keys[] = { "changed::desktop-grid-columns", "changed::desktop-grid-rows",
@@ -1907,7 +1907,8 @@ ns_page_home (GtkWidget *row, gpointer data)
   g_object_set_data_full (G_OBJECT (page), "pack-labels", labels, (GDestroyNotify) g_strfreev);
   layout_group (page, c, vibeos);
   GtkWidget *g = ns_group (c, _("Icons"));
-  ns_row_choice (g, _("Icon pack"), vibeos, "icon-pack", (const char *const *) values, (const char *const *) labels);
+  ns_row_choice_names (g, _("Icon pack"), vibeos, "icon-pack", (const char *const *) values,
+                       (const char *const *) labels);
   ns_row_choice (g, _("Icon shape"), vibeos, "icon-shape", shape_values, shape_labels);
   ns_row_switch (g, _("Wrap unthemed icons"), _("Icons the pack does not cover get its background"), vibeos,
                  "icon-wrap-unthemed");

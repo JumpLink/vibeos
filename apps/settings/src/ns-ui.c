@@ -595,8 +595,17 @@ typedef struct {
   GSettings          *s;
   char               *key;
   const char *const  *values, *const *labels;
+  gboolean            translate;       /* the labels are N_() strings */
   GtkWidget          *row;
 } Choice;
+
+/* the label shown for the choice @i; an empty label stays empty, since gettext's translation of "" is the catalog's
+ * header */
+static const char *
+choice_shown (Choice *c, guint i)
+{
+  return c->translate && *c->labels[i] ? _(c->labels[i]) : c->labels[i];
+}
 
 static const char *
 choice_label (Choice *c)
@@ -604,7 +613,7 @@ choice_label (Choice *c)
   g_autofree char *v = g_settings_get_string (c->s, c->key);
   for (guint i = 0; c->values[i]; i++)
     if (!g_strcmp0 (c->values[i], v))
-      return *c->labels[i] ? _(c->labels[i]) : "";
+      return choice_shown (c, i);
   return "";
 }
 
@@ -629,7 +638,7 @@ choice_open (GtkWidget *row, gpointer data)
   GtkWidget *g = ns_group (content, NULL);
   g_autofree char *v = g_settings_get_string (c->s, c->key);
   for (guint i = 0; c->values[i]; i++) {
-    GtkWidget *r = mark_row (g, _(c->labels[i]), !g_strcmp0 (v, c->values[i]));
+    GtkWidget *r = mark_row (g, choice_shown (c, i), !g_strcmp0 (v, c->values[i]));
     g_object_set_data (G_OBJECT (r), "ns-choice", c);
     ns_row_on_activate (r, choice_picked, (gpointer) c->values[i]);
   }
@@ -653,15 +662,16 @@ choice_changed (GSettings *s, const char *key, GtkWidget *row)
     ns_row_set_subtitle (row, choice_label (c));
 }
 
-GtkWidget *
-ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *key,
-               const char *const *values, const char *const *labels)
+static GtkWidget *
+choice_new (GtkWidget *group, const char *title, GSettings *s, const char *key, const char *const *values,
+            const char *const *labels, gboolean translate)
 {
   Choice *c = g_new0 (Choice, 1);
   c->s = s;
   c->key = g_strdup (key);
   c->values = values;
   c->labels = labels;
+  c->translate = translate;
   c->row = ns_row (group, NULL, title, NULL);
   g_object_set_data_full (G_OBJECT (c->row), "ns-title", g_strdup (title), g_free);
   ns_row_set_subtitle (c->row, choice_label (c));
@@ -670,6 +680,20 @@ ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *ke
   g_autofree char *signal = g_strconcat ("changed::", key, NULL);
   g_signal_connect_object (s, signal, G_CALLBACK (choice_changed), c->row, 0);
   return c->row;
+}
+
+GtkWidget *
+ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *key,
+               const char *const *values, const char *const *labels)
+{
+  return choice_new (group, title, s, key, values, labels, TRUE);
+}
+
+GtkWidget *
+ns_row_choice_names (GtkWidget *group, const char *title, GSettings *s, const char *key,
+                     const char *const *values, const char *const *labels)
+{
+  return choice_new (group, title, s, key, values, labels, FALSE);
 }
 
 GtkWidget *
@@ -926,14 +950,14 @@ ns_row_flag (GtkWidget *group, const char *title, const char *subtitle, GSetting
 
 /* ---- a choice by position ---- */
 
-/* a copy of `labels`, translated (a static list of N_() strings is translated here); an empty label stays empty,
- * since gettext's translation of "" is the catalog's header */
+/* a copy of `labels`, translated when they are a static list of N_() strings; an empty label stays empty, since
+ * gettext's translation of "" is the catalog's header */
 static char **
-translated_strv (const char *const *labels)
+labels_copy (const char *const *labels, gboolean translate)
 {
   GStrvBuilder *b = g_strv_builder_new ();
   for (guint i = 0; labels && labels[i]; i++)
-    g_strv_builder_add (b, *labels[i] ? _(labels[i]) : "");
+    g_strv_builder_add (b, translate && *labels[i] ? _(labels[i]) : labels[i]);
   char **out = g_strv_builder_end (b);
   g_strv_builder_unref (b);
   return out;
@@ -984,12 +1008,12 @@ pick_free (Pick *p)
   g_free (p);
 }
 
-GtkWidget *
-ns_row_pick (GtkWidget *group, const char *title, const char *const *labels, guint selected, NsPicked picked,
-             gpointer data)
+static GtkWidget *
+pick_new (GtkWidget *group, const char *title, const char *const *labels, gboolean translate, guint selected,
+          NsPicked picked, gpointer data)
 {
   Pick *p = g_new0 (Pick, 1);
-  p->labels = translated_strv (labels);
+  p->labels = labels_copy (labels, translate);
   p->picked = picked;
   p->data = data;
   p->row = ns_row (group, NULL, title, NULL);
@@ -999,6 +1023,20 @@ ns_row_pick (GtkWidget *group, const char *title, const char *const *labels, gui
   ns_row_on_activate (p->row, pick_open, p);
   g_object_set_data_full (G_OBJECT (p->row), "ns-own", p, (GDestroyNotify) pick_free);
   return p->row;
+}
+
+GtkWidget *
+ns_row_pick (GtkWidget *group, const char *title, const char *const *labels, guint selected, NsPicked picked,
+             gpointer data)
+{
+  return pick_new (group, title, labels, TRUE, selected, picked, data);
+}
+
+GtkWidget *
+ns_row_pick_names (GtkWidget *group, const char *title, const char *const *labels, guint selected, NsPicked picked,
+                   gpointer data)
+{
+  return pick_new (group, title, labels, FALSE, selected, picked, data);
 }
 
 void
@@ -1017,7 +1055,7 @@ ns_row_pick_set_summaries (GtkWidget *row, const char *const *summaries)
   Pick *p = g_object_get_data (G_OBJECT (row), "ns-pick");
 
   g_strfreev (p->summaries);
-  p->summaries = translated_strv (summaries);
+  p->summaries = labels_copy (summaries, TRUE);
   ns_row_pick_select (row, p->selected);
 }
 
