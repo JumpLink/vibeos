@@ -660,3 +660,43 @@ progressbar.dictate-stage-progress > trough > progress {
     outline-offset: -2dp;
   }
 }
+
+/* F3 over an exchange: the call stays under the bar */
+.dictate-call-banner {
+  margin: 0 16dp 8dp;
+  padding: 12dp 16dp;
+  border-radius: 20dp;
+  background-color: @vibeos_surface_container_high;
+}
+
+.dictate-call-banner-name {
+  font-size: 16sp;
+  font-weight: 500;
+}
+
+.dictate-call-banner-status {
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_primary;
+}
+
+.dictate-call-banner-button {
+  min-height: 40dp;
+}
+
+.dictate-call-banner-button label {
+  font-size: 14sp;
+  color: @vibeos_on_surface;
+  padding: 0 8dp;
+}
+
+.dictate-call-banner-button.dictate-call-banner-danger label {
+  color: @vibeos_on_error_container;
+}
+
+@media (prefers-contrast: more) {
+  .dictate-call-banner {
+    background-color: @vibeos_surface;
+    box-shadow: inset 0 0 0 2dp @vibeos_on_surface;
+  }
+}

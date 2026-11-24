@@ -18,6 +18,7 @@ struct _DictateStage
 {
   GtkWidget parent;
   GtkWidget *header, *start, *end, *title, *settings, *call;
+  GtkWidget *banner;            /* under the bar, outside the scroll: the call going on, over an exchange */
   GtkWidget *scroller, *column, *past, *page;
   GtkWidget *mine, *middle, *orb, *card, *text, *who, *headline, *sub, *written, *progress, *buttons, *hint;
   gboolean text_first, large_buttons;
@@ -66,19 +67,21 @@ dictate_stage_measure (GtkWidget *widget, GtkOrientation orientation, int for_si
                        int *minimum_baseline, int *natural_baseline)
 {
   DictateStage *self = DICTATE_STAGE (widget);
-  int header_min, header_nat, scroll_min, scroll_nat;
+  int header_min, header_nat, scroll_min, scroll_nat, banner_min = 0, banner_nat = 0;
 
   gtk_widget_measure (self->header, orientation, for_size, &header_min, &header_nat, NULL, NULL);
   gtk_widget_measure (self->scroller, orientation, -1, &scroll_min, &scroll_nat, NULL, NULL);
+  if (gtk_widget_get_visible (self->banner))
+    gtk_widget_measure (self->banner, orientation, for_size, &banner_min, &banner_nat, NULL, NULL);
   if (orientation == GTK_ORIENTATION_VERTICAL)
     {
-      *minimum = header_min + scroll_min;
-      *natural = header_nat + scroll_nat;
+      *minimum = header_min + banner_min + scroll_min;
+      *natural = header_nat + banner_nat + scroll_nat;
     }
   else
     {
-      *minimum = MAX (header_min, scroll_min);
-      *natural = MAX (header_nat, scroll_nat);
+      *minimum = MAX (MAX (header_min, scroll_min), banner_min);
+      *natural = MAX (MAX (header_nat, scroll_nat), banner_nat);
     }
 }
 
@@ -86,10 +89,12 @@ static void
 dictate_stage_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
   DictateStage *self = DICTATE_STAGE (widget);
-  int header = 0, page;
+  int header = 0, banner = 0, page;
 
   gtk_widget_measure (self->header, GTK_ORIENTATION_VERTICAL, width, NULL, &header, NULL, NULL);
-  page = MAX (0, height - header);
+  if (gtk_widget_get_visible (self->banner))
+    gtk_widget_measure (self->banner, GTK_ORIENTATION_VERTICAL, width, NULL, &banner, NULL, NULL);
+  page = MAX (0, height - header - banner);
   /* the page of the exchange going on, as tall as what shows of the scroller: laid out again in this frame */
   if (page != self->page_height)
     {
@@ -98,7 +103,9 @@ dictate_stage_size_allocate (GtkWidget *widget, int width, int height, int basel
       follow (self);
     }
   gtk_widget_size_allocate (self->header, &(GtkAllocation) { 0, 0, width, header }, -1);
-  gtk_widget_size_allocate (self->scroller, &(GtkAllocation) { 0, header, width, page }, -1);
+  if (gtk_widget_get_visible (self->banner))
+    gtk_widget_size_allocate (self->banner, &(GtkAllocation) { 0, header, width, banner }, -1);
+  gtk_widget_size_allocate (self->scroller, &(GtkAllocation) { 0, header + banner, width, page }, -1);
 }
 
 /* --- taps */
@@ -171,6 +178,20 @@ void
 dictate_stage_set_header_end (DictateStage *self, GtkWidget *widget)
 {
   set_slot (self->end, widget, self->settings);
+}
+
+void
+dictate_stage_set_banner (DictateStage *self, GtkWidget *widget)
+{
+  GtkWidget *child;
+
+  if (widget && gtk_widget_get_first_child (self->banner) == widget)
+    return;
+  while ((child = gtk_widget_get_first_child (self->banner)))
+    gtk_box_remove (GTK_BOX (self->banner), child);
+  if (widget)
+    gtk_box_append (GTK_BOX (self->banner), widget);
+  gtk_widget_set_visible (self->banner, widget != NULL);
 }
 
 void
@@ -585,6 +606,7 @@ dictate_stage_dispose (GObject *object)
   g_clear_object (&self->title);
   g_clear_object (&self->settings);
   g_clear_pointer (&self->header, gtk_widget_unparent);
+  g_clear_pointer (&self->banner, gtk_widget_unparent);
   g_clear_pointer (&self->scroller, gtk_widget_unparent);
   G_OBJECT_CLASS (dictate_stage_parent_class)->dispose (object);
 }
@@ -639,6 +661,10 @@ dictate_stage_init (DictateStage *self)
   gtk_box_append (GTK_BOX (self->end), self->settings);
   gtk_box_append (GTK_BOX (self->header), self->end);
   gtk_widget_set_parent (self->header, widget);
+  self->banner = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_add_css_class (self->banner, "dictate-stage-banner");
+  gtk_widget_set_visible (self->banner, FALSE);
+  gtk_widget_set_parent (self->banner, widget);
 
   /* the page of the exchange going on */
   self->page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);

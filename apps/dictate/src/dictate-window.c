@@ -125,6 +125,9 @@ typedef struct {
   char *call_info;              /* get_current_call's result for it */
   GCancellable *call_fetch;     /* that being asked */
   guint call_tick_id;           /* the length shown, by the second */
+  GtkWidget *call_banner;       /* the call over an exchange, under the bar (weak) */
+  GtkWidget *call_banner_text;  /* its "On a call · 02:41" (weak) */
+  char *call_banner_key;        /* what the banner shows (name, mute, hold): built again only when that changes */
 } Window;
 
 /* --- the document's file */
@@ -1668,36 +1671,44 @@ call_showing (Window *self)
          && dictate_talk_get_state (self->talk) == DICTATE_TALK_IDLE;
 }
 
-/* "On a call · 02:41" */
+/* "On a call · 02:41", "On hold", "Calling…" */
+static char *
+call_status (Window *self)
+{
+  if (self->call_state == DICTATE_CALL_DIALING || self->call_state == DICTATE_CALL_CONNECTING)
+    return g_strdup (_("Calling…"));
+  if (self->call_state == DICTATE_CALL_ONHOLD)
+    return g_strdup (_("On hold"));
+  if (self->call_connected > 0)
+    {
+      gint64 s = MAX (0, (g_get_real_time () / 1000 - self->call_connected) / 1000);
+      g_autofree char *length = s >= 3600 ? g_strdup_printf ("%d:%02d:%02d", (int) (s / 3600), (int) (s / 60 % 60),
+                                                             (int) (s % 60))
+                                          : g_strdup_printf ("%02d:%02d", (int) (s / 60), (int) (s % 60));
+
+      /* TRANSLATORS: over the name of whom the call is with; %s is how long it has gone on: 02:41 or 1:02:41 */
+      return g_strdup_printf (_("On a call · %s"), length);
+    }
+  return g_strdup (_("On a call"));
+}
+
+/* the call's line, by the second: over the call's stage, or in the banner over an exchange */
 static gboolean
 call_tick (gpointer data)
 {
   Window *self = data;
-  DictateStage *stage = DICTATE_STAGE (self->stage);
-  g_autofree char *who = NULL;
+  g_autofree char *status = NULL;
 
-  if (!call_showing (self))
+  if (!self->call_on)
     {
       self->call_tick_id = 0;
       return G_SOURCE_REMOVE;
     }
-  if (self->call_state == DICTATE_CALL_DIALING || self->call_state == DICTATE_CALL_CONNECTING)
-    who = g_strdup (_("Calling…"));
-  else if (self->call_state == DICTATE_CALL_ONHOLD)
-    who = g_strdup (_("On hold"));
-  else if (self->call_connected > 0)
-    {
-      gint64 s = MAX (0, (g_get_real_time () / 1000 - self->call_connected) / 1000);
-
-      /* TRANSLATORS: over the name of whom the call is with; %s is how long it has gone on: 02:41 or 1:02:41 */
-      g_autofree char *length = s >= 3600 ? g_strdup_printf ("%d:%02d:%02d", (int) (s / 3600), (int) (s / 60 % 60),
-                                                             (int) (s % 60))
-                                          : g_strdup_printf ("%02d:%02d", (int) (s / 60), (int) (s % 60));
-      who = g_strdup_printf (_("On a call · %s"), length);
-    }
-  else
-    who = g_strdup (_("On a call"));
-  dictate_stage_set_who (stage, who, FALSE);
+  status = call_status (self);
+  if (call_showing (self))
+    dictate_stage_set_who (DICTATE_STAGE (self->stage), status, FALSE);
+  else if (self->call_banner_text)
+    gtk_label_set_text (GTK_LABEL (self->call_banner_text), status);
   return G_SOURCE_CONTINUE;
 }
 
@@ -1708,9 +1719,13 @@ on_call_control_done (GObject *source, GAsyncResult *result, gpointer data)
   Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
   g_autofree char *outcome = g_task_propagate_pointer (G_TASK (result), NULL);
 
-  /* how the phone is set for the call now (muted, on hold) */
+  /* how the phone is set for the call now (muted, on hold); the banner is built again either way, its pressed button
+   * pressable again */
   if (self && self->call_on)
-    call_fetch (self);
+    {
+      g_clear_pointer (&self->call_banner_key, g_free);
+      call_fetch (self);
+    }
 }
 
 typedef struct {
@@ -1782,8 +1797,93 @@ vibe_show_call (Window *self)
   dictate_stage_set_hint (stage, info.can_hold ? _("Tap anywhere and say “mute”, “hold”, “speaker” or “hang up”")
                                                : _("Tap anywhere and say “mute”, “speaker” or “hang up”"));
   call_tick (self);
-  if (!self->call_tick_id)
-    self->call_tick_id = g_timeout_add_seconds (1, call_tick, self);
+  g_free (info.name);
+  g_free (info.initials);
+}
+
+/* a small button of the banner, doing what call_control does */
+static GtkWidget *
+call_banner_button (Window *self, const char *label, VibeosColor fill, const char *css, const char *action)
+{
+  GtkWidget *text = gtk_label_new (label), *button = vibeos_pressable_new (text);
+
+  gtk_label_set_ellipsize (GTK_LABEL (text), PANGO_ELLIPSIZE_END);
+  gtk_widget_add_css_class (button, "dictate-call-banner-button");
+  if (css)
+    gtk_widget_add_css_class (button, css);
+  vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (button), fill, FALSE);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 20);
+  gtk_widget_set_hexpand (button, TRUE);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, label, -1);
+  g_object_set_data (G_OBJECT (button), "dictate-call-action", (gpointer) action);
+  g_signal_connect (button, "clicked", G_CALLBACK (on_call_control), self);
+  return button;
+}
+
+/* F3 over an exchange: while something is asked or answered in a call, the call stays on top, under the bar: who it
+ * is with, how long, and Mute, Hold and Hang up; the exchange is under it. Over the call's own stage, none */
+static void
+call_banner_update (Window *self)
+{
+  DictateStage *stage = DICTATE_STAGE (self->stage);
+  GtkWidget *banner, *row, *name;
+  g_autofree char *status = NULL, *key = NULL;
+  CallInfo info;
+
+  if (!self->call_on || self->ringing || call_showing (self))
+    {
+      dictate_stage_set_banner (stage, NULL);
+      g_clear_pointer (&self->call_banner_key, g_free);
+      return;
+    }
+  call_info_parse (self->call_info, &info);
+  key = g_strdup_printf ("%s|%d|%d|%d|%d|%d", info.name ? info.name : "", info.read, info.muted, info.can_hold,
+                         self->call_state, self->call_banner != NULL);
+  if (self->call_banner && !g_strcmp0 (key, self->call_banner_key))
+    {
+      g_free (info.name);
+      g_free (info.initials);
+      return;
+    }
+  g_free (self->call_banner_key);
+  self->call_banner_key = g_steal_pointer (&key);
+  banner = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
+  gtk_widget_add_css_class (banner, "dictate-call-banner");
+  name = gtk_label_new (info.name ? info.name : _("Call"));
+  gtk_widget_add_css_class (name, "dictate-call-banner-name");
+  gtk_label_set_xalign (GTK_LABEL (name), 0);
+  gtk_label_set_ellipsize (GTK_LABEL (name), PANGO_ELLIPSIZE_END);
+  status = call_status (self);
+  row = gtk_label_new (status);
+  gtk_widget_add_css_class (row, "dictate-call-banner-status");
+  gtk_label_set_xalign (GTK_LABEL (row), 0);
+  {
+    GtkWidget *top = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
+
+    gtk_widget_set_hexpand (name, TRUE);
+    gtk_box_append (GTK_BOX (top), name);
+    gtk_box_append (GTK_BOX (top), row);
+    gtk_box_append (GTK_BOX (banner), top);
+  }
+  row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
+  gtk_box_set_homogeneous (GTK_BOX (row), TRUE);
+  if (info.read)
+    {
+      gtk_box_append (GTK_BOX (row), call_banner_button (self, info.muted ? _("Unmute") : _("Mute"),
+                                                         VIBEOS_SURFACE_CONTAINER_HIGHEST, NULL,
+                                                         info.muted ? "unmute" : "mute"));
+      if (info.can_hold && self->call_state != DICTATE_CALL_DIALING && self->call_state != DICTATE_CALL_CONNECTING)
+        gtk_box_append (GTK_BOX (row),
+                        call_banner_button (self, self->call_state == DICTATE_CALL_ONHOLD ? _("Resume") : _("Hold"),
+                                            VIBEOS_SURFACE_CONTAINER_HIGHEST, NULL,
+                                            self->call_state == DICTATE_CALL_ONHOLD ? "resume" : "hold"));
+    }
+  gtk_box_append (GTK_BOX (row), call_banner_button (self, _("Hang up"), VIBEOS_ERROR_CONTAINER,
+                                                     "dictate-call-banner-danger", "hang_up"));
+  gtk_box_append (GTK_BOX (banner), row);
+  dictate_stage_set_banner (stage, banner);
+  g_set_weak_pointer (&self->call_banner, banner);
+  g_set_weak_pointer (&self->call_banner_text, gtk_widget_get_last_child (gtk_widget_get_first_child (banner)));
   g_free (info.name);
   g_free (info.initials);
 }
@@ -1804,7 +1904,6 @@ vibe_show_idle (Window *self)
       vibe_show_call (self);
       return;
     }
-  g_clear_handle_id (&self->call_tick_id, g_source_remove);
   dictate_orb_set_look (dictate_stage_get_orb (stage), DICTATE_ORB_REST, NULL);
   dictate_stage_clear_buttons (stage);
   dictate_stage_set_hint (stage, _("Tap anywhere and speak"));
@@ -1841,6 +1940,7 @@ vibe_show (Window *self)
   DictateTalkState talk = dictate_talk_get_state (self->talk);
   gboolean shown = self->ex_said || self->ex_reply->len;
 
+  call_banner_update (self);
   if (state == DICTATE_STARTING || state == DICTATE_LISTENING || state == DICTATE_STOPPING)
     {
       dictate_orb_set_look (orb, DICTATE_ORB_LISTENING, NULL);
@@ -2610,6 +2710,7 @@ dictate_window_calls_changed (GtkWidget *window, GPtrArray *calls)
       g_clear_pointer (&self->call_info, g_free);
       g_clear_handle_id (&self->call_tick_id, g_source_remove);
       dictate_stage_set_title (DICTATE_STAGE (self->stage), _("Vibe"));
+      dictate_stage_set_banner (DICTATE_STAGE (self->stage), NULL);
       vibe_show (self);
       return;
     }
@@ -2620,6 +2721,8 @@ dictate_window_calls_changed (GtkWidget *window, GPtrArray *calls)
   dictate_stage_set_title (DICTATE_STAGE (self->stage), _("Call"));
   self->call_connected = on->connected;
   self->call_state = on->state;
+  if (!self->call_tick_id)
+    self->call_tick_id = g_timeout_add_seconds (1, call_tick, self);
   call_fetch (self);
 }
 
@@ -3229,6 +3332,9 @@ window_free (gpointer data)
     g_cancellable_cancel (self->call_fetch);
   g_clear_object (&self->call_fetch);
   g_clear_pointer (&self->call_info, g_free);
+  g_clear_weak_pointer (&self->call_banner);
+  g_clear_weak_pointer (&self->call_banner_text);
+  g_clear_pointer (&self->call_banner_key, g_free);
   if (self->caller)
     g_cancellable_cancel (self->caller);
   g_clear_object (&self->caller);
