@@ -15,6 +15,7 @@
  *   store.c         history, favourites, prefs (JSON, the old browser's files) */
 #pragma once
 
+#include <glib/gi18n.h>
 #include <gtk/gtk.h>
 #include <webkit/webkit.h>
 

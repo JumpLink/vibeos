@@ -6,6 +6,7 @@ add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers'
                       '-DFM_VERSION="@0@"'.format(meson.project_version()), language: 'c')
 
 gnome = import('gnome')
+i18n = import('i18n')
 # g_sort_array (stable sorting) is 2.82
 gio = dependency('gio-unix-2.0', version: '>= 2.82')
 m = meson.get_compiler('c').find_library('m')
@@ -13,9 +14,15 @@ bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
 src = include_directories('src')
 
+# dates in the user's language: libvibeos's vibeos-locale (GLib and ICU only), which the app has from libvibeos and
+# the tests, without GTK, build in
+icu = [dependency('icu-i18n'), dependency('icu-uc')]
+locale_inc = include_directories('../../libvibeos')
+locale_src = files('../../libvibeos/vibeos-locale.c')
+
 # the listings, the remotes, the locations and what the app remembers: no GTK, so the tests link them alone
 core = static_library('files-core', 'src/fm-item.c', 'src/fm-remotes.c', 'src/fm-state.c', 'src/fm-util.c',
-                      'src/fm-places.c', 'src/fm-scan.c', dependencies: [gio])
+                      'src/fm-places.c', 'src/fm-scan.c', include_directories: locale_inc, dependencies: [gio, icu])
 
 # a removed remote's password goes from the keyring too (the only keyring call the app makes); without libsecret
 # GVfs's saved password stays behind
@@ -38,12 +45,17 @@ executable('vibeos-files', 'src/fm-main.c', 'src/fm-window.c', 'src/fm-ui.c', 's
 unit = configuration_data({'bindir': bindir})
 configure_file(input: 'data/vibeos.Files.service.in', output: 'vibeos.Files.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/vibeos.Files.desktop', install_dir: datadir / 'applications')
+i18n.merge_file(input: 'data/vibeos.Files.desktop.in', output: 'vibeos.Files.desktop', type: 'desktop', po_dir: 'po',
+                install: true, install_dir: datadir / 'applications')
 install_data('data/vibeos.Files.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 install_data('data/vibeos.Files.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
+# the translations, and their checks
+subdir('po')
+
 foreach name : ['fm-item', 'fm-remotes', 'fm-state', 'fm-util', 'fm-places', 'fm-scan']
-  test(name, executable('test-' + name, 'tests/test-' + name + '.c', include_directories: src, link_with: core,
-                        dependencies: [gio]))
+  test(name, executable('test-' + name, 'tests/test-' + name + '.c', locale_src, include_directories: src,
+                        link_with: core, dependencies: [gio, icu]),
+       env: ['LANG=C.UTF-8', 'LANGUAGE=', 'LC_ALL=', 'LC_TIME=', 'LC_MESSAGES='])
 endforeach

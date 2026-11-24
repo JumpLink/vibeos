@@ -11,6 +11,8 @@
 #include "sw-widgets.h"
 #include "sw-window.h"
 
+#include <glib/gi18n.h>
+
 #define SUGGEST_MS 200
 #define RECENT_MAX 8
 
@@ -93,7 +95,8 @@ on_meta (GtkWidget *list, JsonObject *meta, gpointer data)
       sw_app_list_set_header (list, NULL);
       return;
     }
-  text = g_markup_printf_escaped ("Showing results for <b>%s</b>", corrected);
+  /* TRANSLATORS: %s is the search as the store corrected it; keep the markup */
+  text = g_markup_printf_escaped (_("Showing results for <b>%s</b>"), corrected);
   label = sw_label_new (NULL, "sw-corrected");
   gtk_label_set_markup (GTK_LABEL (label), text);
   sw_app_list_set_header (list, label);
@@ -118,10 +121,11 @@ sw_search_results_new (const char *query, const char *type)
   g_object_set_data_full (G_OBJECT (page), "sw-query", g_strdup (query), g_free);
   g_object_set_data_full (G_OBJECT (page), "sw-type", g_strdup (type), g_free);
   button = vibeos_top_bar_add_action (sw_page_get_bar (page), "sw-search-symbolic");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, "Search", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Search"), -1);
   g_signal_connect (button, "clicked", G_CALLBACK (on_search_again), page);
   list = sw_app_list_new (path);
-  empty = g_strdup_printf ("Nothing in the store matches \u201c%s\u201d. Try other words.", query);
+  /* TRANSLATORS: %s is what was searched for; quote it as the language does */
+  empty = g_strdup_printf (_("Nothing in the store matches \u201c%s\u201d. Try other words."), query);
   sw_app_list_set_empty (list, empty);
   sw_app_list_set_meta_func (list, on_meta, NULL);
   sw_page_set_body (page, list);
@@ -185,7 +189,7 @@ query_row (Search *s, const char *text, const char *icon_name, gboolean fill)
   gtk_box_append (GTK_BOX (box), label);
   if (fill)
     {
-      GtkWidget *button = sw_icon_button_new ("sw-north-west-symbolic", "Put it in the search field");
+      GtkWidget *button = sw_icon_button_new ("sw-north-west-symbolic", _("Put it in the search field"));
 
       g_object_set_data_full (G_OBJECT (button), "sw-text", g_strdup (text), g_free);
       g_signal_connect (button, "clicked", G_CALLBACK (on_fill), s);
@@ -250,7 +254,7 @@ show_recent (Search *s)
   clear_box (s);
   if (!recent || !recent[0])
     return;
-  gtk_box_append (GTK_BOX (s->box), sw_section_header_new ("Recent searches", NULL, "Clear",
+  gtk_box_append (GTK_BOX (s->box), sw_section_header_new (_("Recent searches"), NULL, _("Clear"),
                                                            G_CALLBACK (on_clear_recent), s));
   for (guint i = 0; recent[i]; i++)
     gtk_box_append (GTK_BOX (s->box), query_row (s, recent[i], "sw-history-symbolic", TRUE));
@@ -336,21 +340,21 @@ sw_search_open (GtkWidget *from, const char *type, const char *text)
 {
   Search *s = g_new0 (Search, 1);
   GtkWidget *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *marker;
-  static const char *const hints[] = { "Search apps and games", "Search apps", "Search games" };
+  static const char *const hints[] = { N_("Search apps and games"), N_("Search apps"), N_("Search games") };
 
   s->from = g_object_ref (from);
   s->type = g_strdup (type);
   s->settings = settings_new ();
   s->cancellable = g_cancellable_new ();
-  s->view = vibeos_search_view_new (!g_strcmp0 (type, "app") ? hints[1] : !g_strcmp0 (type, "game") ? hints[2]
-                                                                                                    : hints[0]);
+  s->view = vibeos_search_view_new (_(!g_strcmp0 (type, "app") ? hints[1] : !g_strcmp0 (type, "game") ? hints[2]
+                                                                                                       : hints[0]));
   g_object_set_data_full (G_OBJECT (s->view), "sw-search", s, search_free);
   s->box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (s->box, "sw-suggestions");
   gtk_box_append (GTK_BOX (content), sw_scroll_new (s->box));
   /* while the view shows, the shell's back gesture sends Escape (which closes it) instead of leaving the app */
   marker = g_object_new (GTK_TYPE_BOX, "accessible-role", GTK_ACCESSIBLE_ROLE_DIALOG, NULL);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (marker), GTK_ACCESSIBLE_PROPERTY_LABEL, "Search", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (marker), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Search"), -1);
   gtk_widget_set_can_target (marker, FALSE);
   gtk_box_append (GTK_BOX (content), marker);
   vibeos_search_view_set_content (VIBEOS_SEARCH_VIEW (s->view), content);

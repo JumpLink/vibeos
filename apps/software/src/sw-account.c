@@ -4,6 +4,7 @@
 #include "sw-installer.h"
 #include "sw-json.h"
 
+#include <glib/gi18n.h>
 #include <glib/gstdio.h>
 #include <libsecret/secret.h>
 
@@ -111,7 +112,8 @@ on_token_stored (GObject *source, GAsyncResult *res, gpointer data)
     {
       g_warning ("could not keep the store's token in the keyring: %s", error->message);
       g_signal_emit (self, signals[NOTICE], 0,
-                     "Software could not keep your sign-in in the keyring. You will need to sign in again next time.");
+                     _("Software could not keep your sign-in in the keyring. You will need to sign in again next "
+                       "time."));
     }
   g_object_unref (self);
 }
@@ -126,7 +128,8 @@ store_token (SwAccount *self, const char *token)
       write_private (token_file (), token);
       return;
     }
-  label = g_strdup_printf ("VibeOS Software: the store account on %s", sw_api_get_base_url (self->api));
+  /* TRANSLATORS: the keyring entry's name, as a password manager shows it; %s is the store's address */
+  label = g_strdup_printf (_("VibeOS Software: the store account on %s"), sw_api_get_base_url (self->api));
   secret_password_store (&token_schema, SECRET_COLLECTION_DEFAULT, label, token, NULL, on_token_stored,
                          g_object_ref (self), "server", sw_api_get_base_url (self->api), NULL);
 }
@@ -166,7 +169,7 @@ static void
 on_unauthorized (SwApi *api, SwAccount *self)
 {
   forget (self);
-  g_signal_emit (self, signals[NOTICE], 0, "You were signed out of the store. Sign in again to review apps.");
+  g_signal_emit (self, signals[NOTICE], 0, _("You were signed out of the store. Sign in again to review apps."));
 }
 
 /* ---- signing in ------------------------------------------------------------------------------------------------ */

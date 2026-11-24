@@ -411,23 +411,23 @@ on_long_row (VibeosListRow *row, VibeosTopBar *bar)
 static GtkWidget *
 top_bar_page (void)
 {
-  GtkWidget *overlay = gtk_overlay_new ();
+  GtkWidget *page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  GtkWidget *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *list = vibeos_card_list_new ();
-  GtkWidget *scroll = scrolled (list);
+  GtkWidget *scroll = scrolled (content);
   GtkWidget *bar = vibeos_top_bar_new ("Contacts");
-  GdkRGBA page = vibeos_color (VIBEOS_SURFACE);
 
   vibeos_top_bar_set_large (VIBEOS_TOP_BAR (bar), TRUE);
-  vibeos_top_bar_set_fill (VIBEOS_TOP_BAR (bar), &page);
   vibeos_top_bar_add_action (VIBEOS_TOP_BAR (bar), "system-search-symbolic");
   vibeos_top_bar_add_selection_action (VIBEOS_TOP_BAR (bar), "user-trash-symbolic");
   vibeos_top_bar_set_scroll (VIBEOS_TOP_BAR (bar),
                              gtk_scrolled_window_get_vadjustment (GTK_SCROLLED_WINDOW (scroll)));
-  gtk_widget_set_valign (bar, GTK_ALIGN_START);
   g_signal_connect (bar, "selection-closed", G_CALLBACK (on_selection_closed), NULL);
 
-  vibeos_card_list_set_margins (VIBEOS_CARD_LIST (list), 64 + vibeos_top_bar_get_large_extra (VIBEOS_TOP_BAR (bar)),
-                                16);
+  /* the large title first in what scrolls, the list under it */
+  gtk_box_append (GTK_BOX (content), vibeos_top_bar_get_large_title (VIBEOS_TOP_BAR (bar)));
+  gtk_box_append (GTK_BOX (content), list);
+  vibeos_card_list_set_margins (VIBEOS_CARD_LIST (list), 0, 16);
   for (int i = 0; i < 30; i++)
     {
       g_autofree char *name = g_strdup_printf ("Person %d", i + 1);
@@ -440,9 +440,9 @@ top_bar_page (void)
         vibeos_card_list_add_group (VIBEOS_CARD_LIST (list), initials);
       vibeos_card_list_append (VIBEOS_CARD_LIST (list), row);
     }
-  gtk_overlay_set_child (GTK_OVERLAY (overlay), scroll);
-  gtk_overlay_add_overlay (GTK_OVERLAY (overlay), bar);
-  return overlay;
+  gtk_box_append (GTK_BOX (page), bar);
+  gtk_box_append (GTK_BOX (page), scroll);
+  return page;
 }
 
 /* ---- about ----------------------------------------------------------------------------------------------------- */

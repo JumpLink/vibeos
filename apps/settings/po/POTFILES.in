@@ -1,0 +1,23 @@
+# the files with translatable strings
+data/gnome-panel.desktop.in
+data/org.gnome.Settings.desktop.in
+data/vibeos.Settings.desktop.in
+src/main.c
+src/ns-accounts-net.c
+src/ns-accounts.c
+src/ns-apps.c
+src/ns-bt.c
+src/ns-buttons.c
+src/ns-caps.c
+src/ns-charge.c
+src/ns-displays.c
+src/ns-net.c
+src/ns-pages.c
+src/ns-parallax.c
+src/ns-pattern.c
+src/ns-perms.c
+src/ns-privacy.c
+src/ns-shell.c
+src/ns-sound.c
+src/ns-system.c
+src/ns-ui.c

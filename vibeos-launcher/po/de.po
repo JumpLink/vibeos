@@ -1,0 +1,72 @@
+# German translations of vibeos-launcher.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-launcher\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/apps.c
+msgid "Android Settings"
+msgstr "Android-Einstellungen"
+
+# android: Launcher3 taskbar_drag_to_unpin_title
+#: src/drag.c src/popup.c
+msgid "Remove"
+msgstr "Entfernen"
+
+# android: Launcher3 toast_split_select_app_cancel
+#: src/drag.c
+msgid "Cancel"
+msgstr "Abbrechen"
+
+# android: Launcher3 all_apps_search_bar_hint
+#: src/drawer.c
+msgid "Search apps"
+msgstr "Apps finden"
+
+# android: Launcher3 all_apps_no_search_results
+#. TRANSLATORS: %s is what was typed into the search; quote it as the language does
+#: src/drawer.c
+#, c-format
+msgid "No apps found matching “%s”"
+msgstr "Keine Apps für „%s“ gefunden"
+
+# android: Launcher3 app_info_drop_target_label (several translations, short)
+#: src/popup.c
+msgid "App info"
+msgstr "App-Info"
+
+# android: Launcher3 add_to_home_screen
+#: src/popup.c
+msgid "Add to home screen"
+msgstr "Zum Startbildschirm hinzufügen"
+
+# android: Launcher3 styles_wallpaper_button_text (several translations)
+#: src/popup.c
+msgid "Wallpaper & style"
+msgstr "Hintergrund & Stil"
+
+# android: Launcher3 all_apps_list_label
+#: src/popup.c
+msgid "Apps list"
+msgstr "Liste der Apps"
+
+# android: Launcher3 settings_button_text
+#: src/popup.c
+msgid "Home settings"
+msgstr "Einstellungen"
+
+# android: Launcher3 taskbar_button_home (several translations, short)
+#: src/wl.c
+msgid "Home"
+msgstr "Startbildschirm"

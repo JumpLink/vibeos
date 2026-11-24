@@ -40,7 +40,7 @@ const char *fm_proto_label       (FmProto proto);
 int         fm_proto_default_port (FmProto proto);
 gboolean    fm_proto_from_scheme (const char *scheme, FmProto *proto);
 
-/* What the user typed in Host: "192.168.1.101/folder" or "example.com/webdav" splits into the host and the path;
+/* What the user typed in Host: "192.0.2.101/folder" or "example.com/webdav" splits into the host and the path;
  * a whole URI ("smb://server/share") is taken apart too, its scheme setting @proto when it names one. */
 void        fm_remote_set_address (FmRemote *remote, const char *text);
 /* Host as the dialog shows it again: the host and the path */

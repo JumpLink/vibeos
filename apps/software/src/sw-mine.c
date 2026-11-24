@@ -16,6 +16,8 @@
 #include "sw-widgets.h"
 #include "sw-window.h"
 
+#include <glib/gi18n.h>
+
 #define LOOKUP_CHUNK 500
 
 typedef struct {
@@ -55,14 +57,15 @@ update_jobs (Mine *m)
   if (!jobs->len)
     return;
   count = g_strdup_printf ("%u", jobs->len);
-  gtk_box_append (GTK_BOX (m->jobs), sw_section_header_new ("In progress", count, NULL, NULL, NULL));
+  gtk_box_append (GTK_BOX (m->jobs), sw_section_header_new (_("In progress"), count, NULL, NULL, NULL));
   for (guint i = 0; i < jobs->len; i++)
     {
       const SwJob *job = g_ptr_array_index (jobs, i);
       g_autoptr (JsonObject) app = job_app (job);
       g_autofree char *line = sw_job_describe (job);
-      g_autofree char *what = g_strdup_printf ("%s · %s", job->kind == SW_JOB_REMOVE ? "Uninstalling"
-                                                          : job->kind == SW_JOB_UPDATE ? "Updating" : "Installing",
+      /* TRANSLATORS: %s is how far the job has got ("Downloading 42%") */
+      g_autofree char *what = g_strdup_printf (job->kind == SW_JOB_REMOVE ? _("Uninstalling · %s")
+                                               : job->kind == SW_JOB_UPDATE ? _("Updating · %s") : _("Installing · %s"),
                                                line);
 
       gtk_box_append (GTK_BOX (m->jobs), sw_app_row_new (app, what));
@@ -116,7 +119,8 @@ update_updates (Mine *m)
   g_autofree char *count = list->len ? g_strdup_printf ("%u", list->len) : NULL;
 
   clear (m->updates);
-  gtk_box_append (GTK_BOX (m->updates), sw_section_header_new ("Updates", count, list->len > 1 ? "Update all" : NULL,
+  gtk_box_append (GTK_BOX (m->updates), sw_section_header_new (_("Updates"), count,
+                                                               list->len > 1 ? _("Update all") : NULL,
                                                                G_CALLBACK (on_update_all), m));
   if (sw_updates_is_checking (updates) && !list->len)
     {
@@ -131,17 +135,17 @@ update_updates (Mine *m)
     {
       g_autofree char *text = sw_api_error_describe (error);
 
-      gtk_box_append (GTK_BOX (m->updates), note (text, "Retry", G_CALLBACK (on_check), m));
+      gtk_box_append (GTK_BOX (m->updates), note (text, _("Retry"), G_CALLBACK (on_check), m));
       return;
     }
   if (!list->len)
     {
       if (sw_updates_has_checked (updates))
-        gtk_box_append (GTK_BOX (m->updates), note ("Your apps are up to date.", "Check again", G_CALLBACK (on_check),
-                                                    m));
-      else
-        gtk_box_append (GTK_BOX (m->updates), note ("Software has not looked for updates yet.", "Check for updates",
+        gtk_box_append (GTK_BOX (m->updates), note (_("Your apps are up to date."), _("Check again"),
                                                     G_CALLBACK (on_check), m));
+      else
+        gtk_box_append (GTK_BOX (m->updates), note (_("Software has not looked for updates yet."),
+                                                    _("Check for updates"), G_CALLBACK (on_check), m));
       return;
     }
   for (guint i = 0; i < list->len; i++)
@@ -199,7 +203,7 @@ GtkWidget *
 sw_mine_new (void)
 {
   Mine *m = g_new0 (Mine, 1);
-  GtkWidget *header = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0), *title = gtk_label_new ("Mine");
+  GtkWidget *header = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0), *title = gtk_label_new (_("Mine"));
   GtkWidget *avatar, *cards, *row, *sheet;
 
   m->mine = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
@@ -215,7 +219,8 @@ sw_mine_new (void)
   avatar = vibeos_pressable_new (sw_avatar_new (40));
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (avatar), VIBEOS_RIPPLE_CIRCLE, 24);
   gtk_widget_add_css_class (avatar, "sw-avatar-button");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (avatar), GTK_ACCESSIBLE_PROPERTY_LABEL, "Account and settings", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (avatar), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Account and settings"),
+                                  -1);
   g_signal_connect (avatar, "clicked", G_CALLBACK (on_avatar), m);
   gtk_box_append (GTK_BOX (header), avatar);
   gtk_box_append (GTK_BOX (m->mine), header);
@@ -223,7 +228,7 @@ sw_mine_new (void)
   m->column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (m->column, "sw-mine-column");
   cards = vibeos_card_list_new ();
-  row = vibeos_list_row_new ("All apps", "On this device and on your others");
+  row = vibeos_list_row_new (_("All apps"), _("On this device and on your others"));
   vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-apps-symbolic");
   vibeos_list_row_set_chevron (VIBEOS_LIST_ROW (row));
   g_signal_connect (row, "clicked", G_CALLBACK (on_all_apps), m);
@@ -303,12 +308,12 @@ on_lookup (SwApiResult *result, const SwApiError *error, gpointer data)
     {
       JsonObject *app = g_ptr_array_index (a->found, i);
       const char *version = sw_installer_get_installed (sw_installer_get_default (), sw_json_string (app, "package"));
-      g_autofree char *line = version ? g_strdup_printf ("Version %s", version) : NULL;
+      g_autofree char *line = version ? g_strdup_printf (_("Version %s"), version) : NULL;
 
       gtk_box_append (GTK_BOX (a->here_rows), sw_app_row_new (app, line));
     }
   if (!a->found->len)
-    sw_status_empty (SW_STATUS (a->here), "sw-phone-symbolic", "None of the apps on this device are in the store.",
+    sw_status_empty (SW_STATUS (a->here), "sw-phone-symbolic", _("None of the apps on this device are in the store."),
                      NULL, NULL, NULL);
   else
     sw_status_show (SW_STATUS (a->here));
@@ -360,7 +365,7 @@ load_here (AllApps *a)
   if (chunk->len)
     send_lookup (a, chunk);
   if (!a->waiting)
-    sw_status_empty (SW_STATUS (a->here), "sw-phone-symbolic", "Nothing is installed.", NULL, NULL, NULL);
+    sw_status_empty (SW_STATUS (a->here), "sw-phone-symbolic", _("Nothing is installed."), NULL, NULL, NULL);
 }
 
 static void
@@ -392,14 +397,15 @@ on_my_apps (SwApiResult *result, const SwApiError *error, gpointer data)
       /* the store may not know yet that it is back on this one */
       if (!app || sw_installer_get_installed (sw_installer_get_default (), sw_json_string (app, "package")))
         continue;
-      line = sw_json_bool (entry, "on_other_devices", FALSE) ? g_strdup ("On another of your devices")
-             : date ? g_strdup_printf ("Last installed %s", date) : NULL;
+      line = sw_json_bool (entry, "on_other_devices", FALSE) ? g_strdup (_("On another of your devices"))
+             /* TRANSLATORS: %s is a date */
+             : date ? g_strdup_printf (_("Last installed %s"), date) : NULL;
       gtk_box_append (GTK_BOX (a->away_rows), sw_app_row_new (app, line));
       shown++;
     }
   if (!shown)
     sw_status_empty (SW_STATUS (a->away), "sw-phone-symbolic",
-                     "Every app your account had is on this device.", NULL, NULL, NULL);
+                     _("Every app your account had is on this device."), NULL, NULL, NULL);
   else
     sw_status_show (SW_STATUS (a->away));
 }
@@ -410,7 +416,7 @@ load_away (AllApps *a)
   if (!sw_account_is_signed_in (sw_account_get_default ()))
     {
       sw_status_empty (SW_STATUS (a->away), "sw-account-symbolic",
-                       "Sign in to see the apps your account had on your other devices, or before.", "Sign in",
+                       _("Sign in to see the apps your account had on your other devices, or before."), _("Sign in"),
                        (SwRetryFunc) sign_in, a);
       return;
     }
@@ -451,9 +457,9 @@ sw_all_apps_page_new (int tab)
   AllApps *a = g_new0 (AllApps, 1);
 
   a->found = g_ptr_array_new_with_free_func ((GDestroyNotify) json_object_unref);
-  a->page = sw_page_new ("All apps");
+  a->page = sw_page_new (_("All apps"));
   g_object_set_data_full (G_OBJECT (a->page), "sw-all-apps", a, all_apps_free);
-  a->tabs = sw_tabs_new ("On this device", "Not on this device", NULL);
+  a->tabs = sw_tabs_new (_("On this device"), _("Not on this device"), NULL);
   g_signal_connect (a->tabs, "changed", G_CALLBACK (on_tab), a);
   gtk_box_append (GTK_BOX (a->page), a->tabs);
   a->here_rows = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);

@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <vibeos-locale.h>
 
 /* offsets from the moment an instance rings */
 #define LOW_NOTIFICATION_HOURS      -2      /* "Upcoming alarm" shows */
@@ -211,7 +212,7 @@ alarm_days_text (guint days, GDateWeekday first_day)
     {
       g_autoptr(GDateTime) day = g_date_time_add_days (monday, __builtin_ctz (days));
 
-      return g_date_time_format (day, "%A");
+      return vibeos_format_date (day, "EEEE");
     }
 
   text = g_string_new (NULL);
@@ -224,7 +225,7 @@ alarm_days_text (guint days, GDateWeekday first_day)
       if (!(days & (1u << index)))
         continue;
       day = g_date_time_add_days (monday, index);
-      name = g_date_time_format (day, "%a");
+      name = vibeos_format_date (day, "EEE");
       g_string_append_printf (text, "%s%s", text->len ? ", " : "", name);
     }
   return g_string_free (text, FALSE);

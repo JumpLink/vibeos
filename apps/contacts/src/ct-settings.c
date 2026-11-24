@@ -420,7 +420,7 @@ on_export (VibeosPressable *row, Settings *s)
 
 /* --- About Contacts: VibeOS's About sheet, as every VibeOS app has it */
 
-static const VibeosAboutInfo ct_about = { .name = "Contacts", .icon_name = "vibeos.Contacts" };
+static const VibeosAboutInfo ct_about = { .name = N_("Contacts"), .icon_name = "vibeos.Contacts" };
 
 void
 ct_settings_present_about (GtkWidget *window)

@@ -3,6 +3,7 @@
 #include "calc-display.h"
 #include "calc-text.h"
 
+#include <glib/gi18n.h>
 #include <math.h>
 #include <vibeos.h>
 
@@ -252,7 +253,7 @@ calc_display_new_full (gboolean one_line, gboolean tablet)
   self->overflow = vibeos_icon_button_new ("calc-more-symbolic");
   gtk_widget_add_css_class (self->overflow, "calc-toolbar-icon");
   gtk_widget_set_tooltip_text (self->overflow, NULL);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->overflow), GTK_ACCESSIBLE_PROPERTY_LABEL, "More options", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->overflow), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
   gtk_widget_set_parent (self->overflow, GTK_WIDGET (self));
   return GTK_WIDGET (self);
 }

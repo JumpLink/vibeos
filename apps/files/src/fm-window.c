@@ -1141,8 +1141,8 @@ new_folder (FmShell *shell)
 {
   if (shell->page != FM_PAGE_BROWSER || fm_browser_is_virtual (shell->browser))
     return;
-  fm_text_dialog (shell->window, _("Create Folder"), _("New folder"), -1, check_new_folder, on_new_folder_done,
-                  shell);
+  fm_text_dialog (shell->window, _("Create Folder"), C_("the name a new folder starts with", "New folder"), -1,
+                  check_new_folder, on_new_folder_done, shell);
 }
 
 typedef enum {
@@ -1153,7 +1153,7 @@ typedef enum {
 } OverflowChoice;
 
 /* About: VibeOS's About sheet, as every VibeOS app has it */
-static const VibeosAboutInfo fm_about = { .name = "Files", .icon_name = "vibeos.Files" };
+static const VibeosAboutInfo fm_about = { .name = N_("Files"), .icon_name = "vibeos.Files" };
 
 static void
 on_overflow_chosen (int index, gpointer data)
@@ -1198,7 +1198,7 @@ on_overflow (VibeosPressable *button, FmShell *shell)
   int n = 0;
 
   if (shell->page == FM_PAGE_BROWSER && !fm_browser_is_virtual (shell->browser))
-    labels[n++] = _("New folder");
+    labels[n++] = C_("menu item that makes a folder", "New folder");
   labels[n++] = _("Refresh");
   if (shell->page == FM_PAGE_HOME)
     {

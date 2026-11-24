@@ -1,0 +1,702 @@
+# Russian translations of vibeos-messaging.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-messaging\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 14:30+0100\n"
+"PO-Revision-Date: 2026-11-24 03:43+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Russian\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#. About: VibeOS's About sheet, as every VibeOS app has it
+#: data/vibeos.Messaging.desktop.in src/messaging-window.c
+msgid "Messaging"
+msgstr "Сообщения"
+
+#: data/vibeos.Messaging.desktop.in
+msgid "Send and receive text messages"
+msgstr "Отправка и получение SMS"
+
+#: data/vibeos.Messaging.desktop.in
+msgid "SMS;Text;Message;Messages;Chat;"
+msgstr "SMS;Текст;Сообщение;Сообщения;Чат;"
+
+# android: Dialer unblock_number (short)
+#: src/blocked-contacts.c
+msgid "Unblock"
+msgstr "Разблокировать"
+
+# android: Messaging blocked_contacts_title
+#: src/blocked-contacts.c
+msgid "Blocked contacts"
+msgstr "Заблокированные контакты"
+
+# android: Contacts organization_entry_two_field (several translations)
+#: src/contact-picker.c
+#, c-format
+msgctxt "number, type"
+msgid "%s • %s"
+msgstr "%s • %s"
+
+#: src/contact-picker.c
+msgid "Top contacts"
+msgstr "Частые контакты"
+
+#: src/contact-picker.c
+msgid "Type a name or a phone number to start a chat"
+msgstr "Чтобы начать чат, введите имя или номер телефона"
+
+# android: Messaging to_address_label
+#: src/contact-picker.c
+msgid "To:"
+msgstr "Кому: "
+
+#: src/contact-picker.c
+msgid "Type name, phone number, or email"
+msgstr "Введите имя, номер телефона или адрес эл. почты"
+
+# android: Messaging recipient_hint
+#: src/contact-picker.c
+msgid "To"
+msgstr "Кому"
+
+#: src/contact-picker.c
+msgid "New chat"
+msgstr "Новый чат"
+
+#: src/conversation-list.c
+#, c-format
+msgid "%d archived"
+msgid_plural "%d archived"
+msgstr[0] "%d чат архивирован"
+msgstr[1] "%d чата архивированы"
+msgstr[2] "%d чатов архивировано"
+
+#: src/conversation-list.c
+#, c-format
+msgid "%d unarchived"
+msgid_plural "%d unarchived"
+msgstr[0] "%d чат возвращен из архива"
+msgstr[1] "%d чата возвращены из архива"
+msgstr[2] "%d чатов возвращено из архива"
+
+# android: Messaging snack_bar_undo
+#: src/conversation-list.c
+msgid "Undo"
+msgstr "Отменить"
+
+# android: Messaging delete_conversations_confirmation_dialog_title
+#: src/conversation-list.c src/conversation-view.c
+msgid "Delete this conversation?"
+msgid_plural "Delete these conversations?"
+msgstr[0] "Удалить этот чат?"
+msgstr[1] "Удалить эти чаты?"
+msgstr[2] "Удалить эти чаты?"
+
+# android: Messaging delete_conversation_decline_button (several translations, short)
+#: src/conversation-list.c src/conversation-view.c src/msg-add-contact.c
+#: src/people-options.c
+msgid "Cancel"
+msgstr "Отмена"
+
+# android: Messaging action_delete (several translations, short)
+#: src/conversation-list.c src/conversation-view.c
+msgid "Delete"
+msgstr "Удалить"
+
+# android: Messaging unblocked_toast_message
+#: src/conversation-list.c
+msgid "Contact unblocked & unarchived"
+msgstr "Контакт разблокирован, чат возвращен из архива"
+
+# android: Messaging blocked_toast_message
+#: src/conversation-list.c
+msgid "Contact blocked & archived"
+msgstr "Контакт заблокирован, переписка помещена в архив"
+
+# android: Dialer block_number_confirmation_title (several translations)
+#. the title names the number as stored, not the contact
+#: src/conversation-list.c src/conversation-view.c src/people-options.c
+#, c-format
+msgid "Block %s?"
+msgstr "Заблокировать номер %s?"
+
+# android: Messaging block_confirmation_message
+#: src/conversation-list.c src/conversation-view.c src/people-options.c
+msgid ""
+"You'll continue to receive messages from this number but won't be notified "
+"anymore. This conversation will be archived."
+msgstr ""
+"Вы по-прежнему будете получать сообщения с этого номера, но не увидите "
+"оповещений о них. Этот чат будет архивирован."
+
+# android: Messaging notification_reply_choices[2] (several translations, short)
+#: src/conversation-list.c src/conversation-view.c src/people-options.c
+msgid "OK"
+msgstr "ОК"
+
+# android: Messaging conversation_list_item_view_draft_message
+#: src/conversation-list.c
+msgid "Draft"
+msgstr "Черновик"
+
+# android: Messaging message_status_sending
+#: src/conversation-list.c src/conversation-view.c
+msgid "Sending…"
+msgstr "Отправка…"
+
+#: src/conversation-list.c
+#, c-format
+msgid "You: %s"
+msgstr "Вы: %s"
+
+# android: Messaging conversation_deleted
+#: src/conversation-list.c
+msgid "Conversation deleted"
+msgstr "Чат удален"
+
+#: src/conversation-list.c
+msgid "View latest"
+msgstr "К новым"
+
+# android: Messaging archived_conversation_list_empty_text
+#: src/conversation-list.c
+msgid "Archived conversations appear here"
+msgstr "Здесь появятся архивированные чаты"
+
+# android: Messaging conversation_list_empty_text
+#: src/conversation-list.c
+msgid "Once you start a new conversation, you’ll see it listed here"
+msgstr "Когда вы начнете переписку, она появится здесь"
+
+# android: Framework search_go (several translations, short)
+#: src/conversation-list.c
+msgid "Search"
+msgstr "Поиск"
+
+#: src/conversation-list.c
+msgid "Account and settings"
+msgstr "Аккаунт и настройки"
+
+# android: Messaging action_menu_show_archived
+#. "Messages", with search and the account; the archived list: "Archived" with the back arrow
+#: src/conversation-list.c src/msg-account-menu.c
+msgid "Archived"
+msgstr "Архив"
+
+# android: Settings zen_mode_messages (other app, short)
+#. back, the avatar and the name, Call, ⋮
+#: src/conversation-list.c src/conversation-view.c src/messaging-window.c
+msgid "Messages"
+msgstr "Сообщения"
+
+# android: Framework sim_done_button (several translations, short)
+#: src/conversation-list.c src/conversation-view.c
+msgid "Done"
+msgstr "Готово"
+
+#: src/conversation-list.c src/conversation-view.c
+msgid "Archive"
+msgstr "Архивировать"
+
+# android: Messaging action_unarchive
+#: src/conversation-list.c src/conversation-view.c
+msgid "Unarchive"
+msgstr "Вернуть из архива"
+
+# android: Messaging action_add_contact (several translations, short)
+#: src/conversation-list.c
+msgid "Add contact"
+msgstr "Добавить контакт"
+
+# android: Messaging action_block (several translations, short)
+#: src/conversation-list.c src/conversation-view.c
+msgid "Block"
+msgstr "Заблокировать"
+
+#: src/conversation-list.c
+msgid "Start chat"
+msgstr "Начать чат"
+
+# android: Framework lockscreen_pattern_wrong (several translations, short)
+#: src/conversation-view.c
+msgid "Try again"
+msgstr "Повторите попытку"
+
+#: src/conversation-view.c
+msgid "Not sent"
+msgstr "Не отправлено"
+
+#: src/conversation-view.c
+msgid "Not sent. Call emergency services instead."
+msgstr "Не отправлено. Позвоните в экстренные службы."
+
+#: src/conversation-view.c
+msgid "Check options"
+msgstr "Варианты действий"
+
+# android: Messaging message_status_send_retrying
+#: src/conversation-view.c
+msgid "Not sent. Trying again…"
+msgstr "Сообщение не отправлено. Повторная попытка…"
+
+#: src/conversation-view.c
+#, c-format
+msgctxt "time, status"
+msgid "%s • Delivered"
+msgstr "%s • Доставлено"
+
+# android: Messaging message_type_label
+#. Message details: an SMS's type, who, and when
+#: src/conversation-view.c
+msgid "Type: "
+msgstr "Тип: "
+
+# android: Messaging text_message (several translations, short)
+#: src/conversation-view.c
+msgid "Text message"
+msgstr "SMS"
+
+# android: Messaging from_label
+#: src/conversation-view.c
+msgid "From: "
+msgstr "От: "
+
+# android: Messaging sent_label
+#: src/conversation-view.c
+msgid "Sent: "
+msgstr "Отправлено: "
+
+# android: Messaging received_label
+#: src/conversation-view.c
+msgid "Received: "
+msgstr "Получено: "
+
+# android: Messaging to_address_label
+#: src/conversation-view.c
+msgid "To: "
+msgstr "Кому: "
+
+# android: Messaging message_details_title
+#: src/conversation-view.c
+msgid "Message details"
+msgstr "Сведения о сообщении"
+
+# android: Messaging delete_message_confirmation_dialog_title
+#: src/conversation-view.c
+msgid "Delete this message?"
+msgstr "Удалить сообщение?"
+
+# android: Messaging delete_message_confirmation_dialog_text
+#: src/conversation-view.c
+msgid "This action cannot be undone."
+msgstr "Это действие нельзя будет отменить."
+
+# android: Messaging in_conversation_notify_new_message_text
+#: src/conversation-view.c
+msgid "New message"
+msgstr "Новое сообщение"
+
+# android: Dialer view (several translations, short)
+#: src/conversation-view.c
+msgid "View"
+msgstr "Просмотреть"
+
+#: src/conversation-view.c
+msgid "Show attach options"
+msgstr "Показать варианты вложений"
+
+# android: Dialer search_shortcut_send_sms_message (short)
+#: src/conversation-view.c
+msgid "Send SMS"
+msgstr "Отправить SMS"
+
+#: src/conversation-view.c
+msgid "Sender can't accept replies. Contact them directly."
+msgstr "Отправитель не принимает ответы. Свяжитесь с ним напрямую."
+
+#: src/conversation-view.c
+msgid "Can't make a voice call to emergency services here."
+msgstr "Отсюда нельзя позвонить в экстренные службы."
+
+# android: DocumentsUI peek_metadata_header_title (other app, several translations, short)
+#: src/conversation-view.c
+msgid "Details"
+msgstr "Сведения"
+
+# android: Dialer call (several translations, short)
+#: src/conversation-view.c
+msgid "Call"
+msgstr "Позвонить"
+
+# android: Messaging message_context_menu_forward_message
+#: src/conversation-view.c
+msgid "Forward"
+msgstr "Переслать"
+
+# android: Messaging message_context_menu_copy_text
+#: src/conversation-view.c
+msgid "Copy text"
+msgstr "Копировать текст"
+
+# android: Settings location_recent_location_access_view_details (other app, several translations, short)
+#: src/conversation-view.c
+msgid "View details"
+msgstr "Подробнее"
+
+# android: Messaging action_send
+#: src/conversation-view.c
+msgid "Send"
+msgstr "Отправить"
+
+#: src/messaging-window.c
+msgid "Start a chat to see it here"
+msgstr "Начните чат, чтобы увидеть его здесь"
+
+#: src/messaging-window.c
+msgid "Pick a conversation to see it here"
+msgstr "Выберите чат, чтобы увидеть его здесь"
+
+# android: Messaging forward_message_activity_title
+#: src/messaging-window.c
+msgid "Forward message"
+msgstr "Пересылка сообщения"
+
+# android: Messaging back
+#. the ✕ is what Back does here: the back gesture presses it
+#: src/msg-account-menu.c src/msg-action-bar.c src/msg-search.c
+msgid "Back"
+msgstr "Назад"
+
+# android: Dialer toolbar_close (several translations, short)
+#: src/msg-account-menu.c
+msgid "Close"
+msgstr "Закрыть"
+
+#: src/msg-account-menu.c
+msgid "Spam & blocked"
+msgstr "Спам и заблокированные"
+
+#: src/msg-account-menu.c
+msgid "Mark all as read"
+msgstr "Отметить все как прочитанные"
+
+#: src/msg-account-menu.c src/msg-settings.c
+msgid "Messages settings"
+msgstr "Настройки сообщений"
+
+#: src/msg-account-menu.c
+msgid "About"
+msgstr "О приложении"
+
+# android: Framework action_bar_up_description (short)
+#: src/msg-action-bar.c
+msgid "Navigate up"
+msgstr "Перейти вверх"
+
+# android: Dialer description_dialpad_overflow (several translations, short)
+#: src/msg-action-bar.c
+msgid "More options"
+msgstr "Ещё"
+
+# android: Messaging add_contact_confirmation_dialog_title
+#: src/msg-add-contact.c
+msgid "Add to Contacts?"
+msgstr "Добавить в контакты?"
+
+# android: Messaging add_contact_confirmation
+#: src/msg-add-contact.c
+msgid "Add Contact"
+msgstr "Добавить"
+
+# android: Messaging posted_just_now
+#: src/msg-dates.c
+msgid "Just now"
+msgstr "Только что"
+
+# android: Messaging posted_now
+#: src/msg-dates.c
+msgid "Now"
+msgstr "Только что"
+
+# android: Messaging num_minutes_ago
+#: src/msg-dates.c
+#, c-format
+msgid "%d min"
+msgid_plural "%d mins"
+msgstr[0] "%d мин"
+msgstr[1] "%d мин"
+msgstr[2] "%d мин"
+
+#: src/msg-search.c
+msgid "Unread"
+msgstr "Непрочитанные"
+
+#: src/msg-search.c
+msgid "Known"
+msgstr "Известные"
+
+#: src/msg-search.c ../dialer/src/phone-number.c
+msgid "Unknown"
+msgstr "Неизвестные"
+
+#: src/msg-search.c
+msgid "Links"
+msgstr "Ссылки"
+
+#: src/msg-search.c
+msgid "Search messages"
+msgstr "Поиск сообщений"
+
+#: src/msg-search.c
+msgid "No results"
+msgstr "Ничего не найдено"
+
+#. what this app acts on, less what msg-settings.h leaves out
+#: src/msg-settings.c
+msgid "Hear outgoing message sounds"
+msgstr "Звук при отправке сообщений"
+
+#: src/msg-settings.c
+msgid "Swipe to delete"
+msgstr "Удаление пролистыванием"
+
+#: src/msg-settings.c
+msgid "Swipe to the right to delete a conversation"
+msgstr "Чтобы удалить чат, проведите по нему вправо"
+
+# android: Messaging advanced_category_pref_title (several translations, short)
+#. the sub-page: the SIM's settings
+#: src/msg-settings.c
+msgid "Advanced"
+msgstr "Дополнительные настройки"
+
+# android: Messaging delivery_reports_pref_title
+#. the SIM's settings, less their MMS ones (msg-settings.h)
+#: src/msg-settings.c
+msgid "SMS delivery reports"
+msgstr "Отчеты о доставке SMS"
+
+# android: Messaging delivery_reports_pref_summary
+#: src/msg-settings.c
+msgid "Request a delivery report for each SMS you send"
+msgstr "Запрашивать отчет о доставке для всех отправляемых SMS"
+
+# android: Dialer call_log_header_today (short)
+#: src/msg-thread.c
+msgid "Today"
+msgstr "Сегодня"
+
+# android: Dialer call_log_header_yesterday (short)
+#: src/msg-thread.c
+msgid "Yesterday"
+msgstr "Вчера"
+
+# android: Contacts organization_entry_two_field (several translations)
+#. the day, a bullet, the time
+#: src/msg-thread.c
+#, c-format
+msgctxt "separator"
+msgid "%s • %s"
+msgstr "%s • %s"
+
+# android: Messaging unblock_contact_title
+#: src/people-options.c
+#, c-format
+msgid "Unblock %s"
+msgstr "Разблокировать пользователя %s"
+
+# android: Messaging block_contact_title
+#: src/people-options.c
+#, c-format
+msgid "Block %s"
+msgstr "Заблокировать пользователя %s"
+
+# android: Messaging copy_to_clipboard_dialog_title
+#: src/people-options.c
+msgid "Copy to clipboard?"
+msgstr "Скопировать в буфер обмена?"
+
+# android: Framework copy (several translations, short)
+#: src/people-options.c
+msgid "Copy"
+msgstr "Копировать"
+
+# android: Messaging general_settings_title
+#: src/people-options.c
+msgid "General"
+msgstr "Общие"
+
+# android: Messaging participant_list_title
+#: src/people-options.c
+msgid "People in this conversation"
+msgstr "Участники чата"
+
+# android: Messaging action_people_and_options
+#: src/people-options.c
+msgid "People & options"
+msgstr "Участники и параметры"
+
+# android: Framework whichViewApplicationLabel (short)
+#. the notification's button: its action, then its label
+#: src/sms-service.c
+msgid "Open"
+msgstr "Открыть"
+
+#. messages in two or more conversations
+#: src/sms-service.c
+#, c-format
+msgid "%d new message"
+msgid_plural "%d new messages"
+msgstr[0] "%d новое сообщение"
+msgstr[1] "%d новых сообщения"
+msgstr[2] "%d новых сообщений"
+
+# android: Messaging notification_send_failures_line1_singular
+#: src/sms-service.c
+msgid "Message not sent"
+msgstr "Сообщение не отправлено"
+
+#. TRANSLATORS: %d is the number of messages not sent (two or more), all in one conversation; Android's
+#. * notification_send_failures
+#: src/sms-service.c
+#, c-format
+msgid "%d message in one conversation"
+msgid_plural "%d messages in one conversation"
+msgstr[0] "%d сообщение в одном чате"
+msgstr[1] "%d сообщения в одном чате"
+msgstr[2] "%d сообщений в одном чате"
+
+#. TRANSLATORS: the messages not sent, as "%s" in the next string: "5 messages"
+#: src/sms-service.c
+#, c-format
+msgid "%d message"
+msgid_plural "%d messages"
+msgstr[0] "%d сообщение"
+msgstr[1] "%d сообщения"
+msgstr[2] "%d сообщений"
+
+#: src/sms-service.c
+msgid "Some messages not sent in Messaging"
+msgstr "Некоторые сообщения не отправлены"
+
+#. TRANSLATORS: %s is the messages not sent ("5 messages"), %u the conversations they are in (two or more)
+#: src/sms-service.c
+#, c-format
+msgid "%s in %u conversation"
+msgid_plural "%s in %u conversations"
+msgstr[0] "%s в %u чате"
+msgstr[1] "%s в %u чатах"
+msgstr[2] "%s в %u чатах"
+
+# android: Dialer add_contact_not_available
+#: ../dialer/src/contacts-app.c
+msgid "No contacts app available"
+msgstr "Нет приложения для работы с контактами"
+
+# android: Framework phoneTypeCar (several translations, short)
+#: ../dialer/src/contacts.c
+msgid "Car"
+msgstr "В авто"
+
+# android: Framework phoneTypeIsdn (short)
+#: ../dialer/src/contacts.c
+msgid "ISDN"
+msgstr "ISDN"
+
+# android: Framework phoneTypeAssistant (several translations, short)
+#: ../dialer/src/contacts.c
+msgid "Assistant"
+msgstr "Секретарь"
+
+# android: Framework phoneTypeCallback (short)
+#: ../dialer/src/contacts.c
+msgid "Callback"
+msgstr "Обр. вызов"
+
+# android: Framework phoneTypeCompanyMain (adapted, short)
+#: ../dialer/src/contacts.c
+msgid "Company main"
+msgstr "Телефон офиса"
+
+# android: Framework phoneTypeRadio (short)
+#: ../dialer/src/contacts.c
+msgid "Radio"
+msgstr "Радиотелефон"
+
+# android: Framework phoneTypeTelex (short)
+#: ../dialer/src/contacts.c
+msgid "Telex"
+msgstr "Телекс"
+
+#: ../dialer/src/contacts.c
+msgid "TTY/TDD"
+msgstr "TTY/TDD"
+
+# android: Framework phoneTypes[3] (adapted, short)
+#: ../dialer/src/contacts.c
+msgid "Work fax"
+msgstr "Рабочий факс"
+
+# android: Framework phoneTypes[4] (adapted, short)
+#: ../dialer/src/contacts.c
+msgid "Home fax"
+msgstr "Домашний факс"
+
+# android: Framework phoneTypeOtherFax (adapted, short)
+#: ../dialer/src/contacts.c
+msgid "Other fax"
+msgstr "Доп. факс"
+
+# android: Framework phoneTypeWorkPager (adapted, short)
+#: ../dialer/src/contacts.c
+msgid "Work pager"
+msgstr "Раб. пейджер"
+
+# android: Framework phoneTypes[5] (short)
+#: ../dialer/src/contacts.c
+msgid "Pager"
+msgstr "Пейджер"
+
+# android: Framework phoneTypeWorkMobile (adapted, short)
+#: ../dialer/src/contacts.c
+msgid "Work mobile"
+msgstr "Рабочий моб."
+
+# android: Framework phoneTypes[1] (several translations, short)
+#: ../dialer/src/contacts.c
+msgid "Mobile"
+msgstr "Мобильный"
+
+# android: Framework phoneTypes[2] (several translations, short)
+#: ../dialer/src/contacts.c
+msgid "Work"
+msgstr "Рабочий"
+
+# android: Framework phoneTypes[0] (several translations, short)
+#: ../dialer/src/contacts.c
+msgid "Home"
+msgstr "Домашний"
+
+# android: Framework phoneTypes[6] (several translations, short)
+#: ../dialer/src/contacts.c
+msgid "Other"
+msgstr "Другой"
+
+# android: Dialer private_num_non_verizon (short)
+#: ../dialer/src/phone-number.c
+msgid "Private number"
+msgstr "Номер скрыт"
+
+# android: Dialer payphone (short)
+#: ../dialer/src/phone-number.c
+msgid "Payphone"
+msgstr "Телефон-автомат"

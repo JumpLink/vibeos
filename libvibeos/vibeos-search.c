@@ -1,5 +1,7 @@
 /* VibeosSearchBar and VibeosSearchView: see vibeos-search.h. */
 #include "vibeos-search.h"
+
+#include <glib/gi18n-lib.h>
 #include "vibeos-anim.h"
 #include "vibeos-pressable.h"
 #include "vibeos-style.h"
@@ -460,7 +462,7 @@ vibeos_search_view_init (VibeosSearchView *self)
   GtkEventController *keys = gtk_event_controller_key_new ();
 
   self->back = vibeos_icon_button_new ("go-previous-symbolic");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_LABEL, "Back", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Back"), -1);
   g_signal_connect (self->back, "clicked", G_CALLBACK (on_back), self);
   gtk_widget_set_parent (self->back, widget);
 
@@ -471,7 +473,7 @@ vibeos_search_view_init (VibeosSearchView *self)
   gtk_widget_set_parent (self->entry, widget);
 
   self->clear = vibeos_icon_button_new ("edit-clear-symbolic");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->clear), GTK_ACCESSIBLE_PROPERTY_LABEL, "Clear", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->clear), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Clear"), -1);
   g_signal_connect (self->clear, "clicked", G_CALLBACK (on_clear), self);
   gtk_widget_set_parent (self->clear, widget);
   gtk_widget_set_visible (self->clear, FALSE);

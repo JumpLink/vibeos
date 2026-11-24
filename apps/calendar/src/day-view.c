@@ -623,7 +623,7 @@ draw_all_day_events (CalDayView *self, GtkSnapshot *snapshot, const Metrics *m, 
         fill (snapshot, CAL_MORE_EVENTS, x + EVENT_SQUARE_WIDTH - 1, sy - 1, EVENT_RECT_STROKE_WIDTH,
               EVENT_SQUARE_WIDTH + 2);
         /* "+%d" */
-        text = g_strdup_printf (_("+%d"), skipped[d]);
+        text = g_strdup_printf (g_dngettext (NULL, "+%d", "+%d", skipped[d]), skipped[d]);
         layout = make_layout (self, text, m->event_text_size, PANGO_WEIGHT_NORMAL);
         draw_text (snapshot, layout, x + EVENT_SQUARE_WIDTH + EVENT_LINE_PADDING, sy + EVENT_SQUARE_WIDTH,
                    CAL_MORE_EVENTS);

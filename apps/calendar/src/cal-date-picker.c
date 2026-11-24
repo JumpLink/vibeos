@@ -128,12 +128,11 @@ cal_day_grid_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
   cal_text_line (DAY_TEXT_SIZE, scale, &baseline, &height);
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT ((float) self->drag_x, 0));
-  /* the weekday initials ("S M T W T F S"), from the locale's first day */
+  /* the weekday initials ("S M T W T F S"), from the locale's first day: the language's narrow names */
   for (int i = 0; i < 7; i++)
     {
       g_autoptr(GDateTime) date = g_date_time_new_from_unix_local (cal_day_start (first - offset + i));
-      g_autofree char *name = g_date_time_format (date, "%a");
-      g_autofree char *initial = g_utf8_substring (name, 0, 1);
+      g_autofree char *initial = vibeos_format_date (date, "EEEEE");
       g_autofree char *upper = g_utf8_strup (initial, -1);
       g_autoptr(PangoLayout) layout = cal_text_layout (widget, upper, DAY_TEXT_SIZE, 700);
 
@@ -268,7 +267,7 @@ update (Picker *picker)
                                                           : g_strdup (_("Selected date"));
   g_autofree char *month = cal_format_month_year (month_start (picker->month));
   g_autofree char *current = picker->selected != NO_DAY ? g_strdup_printf (_("Current selection: %s"), selection)
-                                                        : g_strdup (_("None"));
+                                                        : g_strdup (_("No date selected"));
 
   gtk_label_set_label (GTK_LABEL (picker->selection), selection);
   gtk_accessible_update_property (GTK_ACCESSIBLE (picker->selection), GTK_ACCESSIBLE_PROPERTY_LABEL, current, -1);

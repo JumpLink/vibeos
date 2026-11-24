@@ -1,3 +1,4 @@
 usr/bin/vibeos-launcher
 usr/share/glib-2.0/schemas/vibeos.Shell.gschema.xml
 usr/share/vibeos-launcher/layout.json
+usr/share/locale/*/LC_MESSAGES/vibeos-launcher.mo

@@ -551,6 +551,17 @@ typedef struct {
   GtkWidget *size, *contents;
 } Properties;
 
+/* "3 folders, 12 files", each count with its noun's plural */
+static char *
+counts_text (guint folders, guint files)
+{
+  g_autofree char *f = g_strdup_printf (g_dngettext (NULL, "%u folder", "%u folders", folders), folders);
+  g_autofree char *n = g_strdup_printf (g_dngettext (NULL, "%u file", "%u files", files), files);
+
+  /* TRANSLATORS: a list of two counts, "3 folders, 12 files" */
+  return g_strdup_printf (_("%s, %s"), f, n);
+}
+
 static void
 on_properties_counted (const FmCount *count, gpointer data)
 {
@@ -565,8 +576,7 @@ on_properties_counted (const FmCount *count, gpointer data)
       /* the folders asked about are not their own contents */
       guint top = GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (properties->contents), "fm-top"));
 
-      contents = g_strdup_printf (_("Folder : %u, File : %u"), count->folders > top ? count->folders - top : 0,
-                                  count->files);
+      contents = counts_text (count->folders > top ? count->folders - top : 0, count->files);
       gtk_label_set_text (GTK_LABEL (properties->contents), contents);
     }
 }
@@ -811,7 +821,9 @@ on_delete_counted (const FmCount *count, gpointer data)
 {
   Delete *del = data;
   g_autofree char *size = fm_format_size (count->bytes);
-  g_autofree char *text = g_strdup_printf (_("Folder : %u, File : %u, Size : %s"), count->folders, count->files, size);
+  g_autofree char *counts = counts_text (count->folders, count->files);
+  /* TRANSLATORS: the counts and the size of what is deleted, "3 folders, 12 files, 4.2 MB" */
+  g_autofree char *text = g_strdup_printf (_("%s, %s"), counts, size);
 
   gtk_label_set_text (GTK_LABEL (del->count), text);
   gtk_widget_set_visible (del->count, TRUE);

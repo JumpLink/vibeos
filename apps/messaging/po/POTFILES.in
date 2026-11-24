@@ -1,0 +1,20 @@
+# the files with translatable strings
+data/vibeos.Messaging.desktop.in
+src/blocked-contacts.c
+src/contact-picker.c
+src/conversation-list.c
+src/conversation-view.c
+src/messaging-window.c
+src/msg-account-menu.c
+src/msg-action-bar.c
+src/msg-add-contact.c
+src/msg-dates.c
+src/msg-search.c
+src/msg-settings.c
+src/msg-thread.c
+src/people-options.c
+src/sms-service.c
+# the Phone source files the app and the service are built with
+../dialer/src/contacts-app.c
+../dialer/src/contacts.c
+../dialer/src/phone-number.c

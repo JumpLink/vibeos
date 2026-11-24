@@ -106,14 +106,14 @@ void
 ns_page_connections (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Network and Internet", &c);
+  NsPage *page = ns_page_new (_("Network and Internet"), &c);
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, "network-wireless-symbolic", "Wi-Fi", "Networks, saved networks", ns_page_wifi);
+  page_row (g, "network-wireless-symbolic", _("Wi-Fi"), _("Networks, saved networks"), ns_page_wifi);
   /* a SIM's mobile data and a hotspot that shares it: with a modem only */
-  GtkWidget *r = page_row (g, "network-cellular-symbolic", "SIMs", "Mobile data, access points", ns_page_mobile);
+  GtkWidget *r = page_row (g, "network-cellular-symbolic", _("SIMs"), _("Mobile data, access points"), ns_page_mobile);
   ns_caps_bind_visible (r, NS_CAP_MODEM);
-  GtkWidget *air = ns_row (g, "airplane-mode-symbolic", "Airplane mode",
-                           "Turn off Wi-Fi, Bluetooth and the mobile network");
+  GtkWidget *air = ns_row (g, "airplane-mode-symbolic", _("Airplane mode"),
+                           _("Turn off Wi-Fi, Bluetooth and the mobile network"));
   GtkWidget *sw = ns_row_add_switch (air, FALSE);
   g_signal_connect (sw, "notify::active", G_CALLBACK (airplane_set), NULL);
   gtk_widget_set_visible (air, FALSE);
@@ -136,10 +136,11 @@ ns_page_connections (GtkWidget *row, gpointer data)
                             G_VARIANT_TYPE ("(v)"), G_DBUS_CALL_FLAGS_NONE, 3000, NULL, airplane_got,
                             g_object_ref (air));
   }
-  r = page_row (g, "network-wireless-hotspot-symbolic", "Wi-Fi hotspot", "Share the mobile data", ns_page_hotspot);
+  r = page_row (g, "network-wireless-hotspot-symbolic", _("Wi-Fi hotspot"), _("Share the mobile data"),
+                ns_page_hotspot);
   ns_caps_bind_visible (r, NS_CAP_MODEM);
   g = ns_group (c, NULL);
-  page_row (g, "network-vpn-symbolic", "Network and VPN", "VPN, wired, proxy", ns_page_network);
+  page_row (g, "network-vpn-symbolic", _("Network and VPN"), _("VPN, wired, proxy"), ns_page_network);
   ns_push (page);
 }
 
@@ -154,7 +155,9 @@ visible_as_got (GObject *src, GAsyncResult *res, gpointer label)
   if (v)
     g_variant_get (v, "(v)", &hn);
   const char *pretty = hn ? g_variant_get_string (hn, NULL) : "";
-  g_autofree char *text = g_strdup_printf ("Visible as “%s” to other devices", *pretty ? pretty : g_get_host_name ());
+  /* TRANSLATORS: %s is the device name; quote it as the language does */
+  g_autofree char *text = g_strdup_printf (_("Visible as “%s” to other devices"),
+                                           *pretty ? pretty : g_get_host_name ());
   gtk_label_set_text (GTK_LABEL (label), text);
   g_object_unref (label);
 }
@@ -165,16 +168,17 @@ void
 ns_page_connected_devices (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Connected devices", &c);
-  GtkWidget *g = ns_group (c, "Other devices");
-  page_row (g, "list-add-symbolic", "Pair new device", NULL, ns_page_bluetooth);
-  g = ns_group (c, "Saved devices");
-  page_row (g, "go-next-symbolic", "See all", NULL, ns_page_bluetooth);
+  NsPage *page = ns_page_new (_("Connected devices"), &c);
+  GtkWidget *g = ns_group (c, _("Other devices"));
+  page_row (g, "list-add-symbolic", _("Pair new device"), NULL, ns_page_bluetooth);
+  g = ns_group (c, _("Saved devices"));
+  page_row (g, "go-next-symbolic", _("See all"), NULL, ns_page_bluetooth);
   g = ns_group (c, NULL);
   g_autofree char *cups = g_find_program_in_path ("lpstat");
-  page_row (g, NULL, "Connection preferences", cups ? "Bluetooth, sharing, printing" : "Bluetooth, sharing",
+  page_row (g, NULL, _("Connection preferences"), cups ? _("Bluetooth, sharing, printing") : _("Bluetooth, sharing"),
             ns_page_connection_preferences);
-  g_autofree char *name = g_strdup_printf ("Visible as “%s” to other devices", g_get_host_name ());
+  /* TRANSLATORS: %s is the device name; quote it as the language does */
+  g_autofree char *name = g_strdup_printf (_("Visible as “%s” to other devices"), g_get_host_name ());
   GtkWidget *foot = ns_footnote (c, name);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
   if (bus)
@@ -190,14 +194,14 @@ void
 ns_page_connection_preferences (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Connection preferences", &c);
+  NsPage *page = ns_page_new (_("Connection preferences"), &c);
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, "bluetooth-symbolic", "Bluetooth", NULL, ns_page_bluetooth);
-  page_row (g, "emblem-shared-symbolic", "Sharing", "Device name, visibility", ns_page_sharing);
+  page_row (g, "bluetooth-symbolic", _("Bluetooth"), NULL, ns_page_bluetooth);
+  page_row (g, "emblem-shared-symbolic", _("Sharing"), _("Device name, visibility"), ns_page_sharing);
   /* printing needs CUPS, which a phone rarely has: GNOME Settings' page, only when it is there */
   g_autofree char *cups = g_find_program_in_path ("lpstat");
   if (cups)
-    page_row (g, "printer-symbolic", "Printing", NULL, ns_page_printers);
+    page_row (g, "printer-symbolic", _("Printing"), NULL, ns_page_printers);
   ns_push (page);
 }
 
@@ -260,8 +264,9 @@ display_has_gamma (void)
 #define NIGHT_COOLEST 4700
 
 enum { NIGHT_NONE, NIGHT_CUSTOM, NIGHT_SUN };
-static const char *const night_schedules[] = { "None", "Turns on at custom time", "Turns on from sunset to sunrise",
-                                               NULL };
+static const char *const night_schedules[] = { NC_("Night Light schedule", "None"),
+                                               NC_("Night Light schedule", "Turns on at custom time"),
+                                               NC_("Night Light schedule", "Turns on from sunset to sunrise"), NULL };
 
 typedef struct {
   GSettings  *color, *iface;
@@ -294,12 +299,11 @@ night_mode (GSettings *color)
 
 /* an hour of the day as gsd keeps it (20.5), the way the clock shows times: "20:30" or "8:30 PM" */
 static char *
-night_time (GSettings *iface, double hours)
+night_time (double hours)
 {
   int minutes = ((int) lround (hours * 60) % (24 * 60) + 24 * 60) % (24 * 60);
   g_autoptr (GDateTime) t = g_date_time_new_utc (2000, 1, 1, minutes / 60, minutes % 60, 0);
-  g_autofree char *format = iface ? g_settings_get_string (iface, "clock-format") : NULL;
-  return g_date_time_format (t, !g_strcmp0 (format, "12h") ? "%-I:%M %p" : "%H:%M");
+  return vibeos_format_time (t);
 }
 
 /* gsd's sunset or sunrise, or 0 when it does not know (no object, no location yet) */
@@ -315,17 +319,18 @@ static char *
 night_summary (GSettings *color, GSettings *iface)
 {
   if (!g_settings_get_boolean (color, "night-light-enabled"))
-    return g_strdup ("Off");
+    return g_strdup (_("Off"));
   switch (night_mode (color)) {
   case NIGHT_SUN:
-    return g_strdup ("On from sunset to sunrise");
+    return g_strdup (_("On from sunset to sunrise"));
   case NIGHT_CUSTOM: {
-    g_autofree char *from = night_time (iface, g_settings_get_double (color, "night-light-schedule-from"));
-    g_autofree char *to = night_time (iface, g_settings_get_double (color, "night-light-schedule-to"));
-    return g_strdup_printf ("On from %s to %s", from, to);
+    g_autofree char *from = night_time (g_settings_get_double (color, "night-light-schedule-from"));
+    g_autofree char *to = night_time (g_settings_get_double (color, "night-light-schedule-to"));
+    /* TRANSLATORS: night light's start and end times */
+    return g_strdup_printf (_("On from %s to %s"), from, to);
   }
   default:
-    return g_strdup ("On");
+    return g_strdup (_("On"));
   }
 }
 
@@ -338,7 +343,7 @@ night_time_show (Night *n, GtkWidget *row, const char *key)
   gboolean half = fabs (h * 2 - round (h * 2)) < 1e-6 && h >= 0 && h < 24;
   ns_row_pick_select (row, half ? (guint) lround (h * 2) : G_MAXUINT);
   if (!half) {
-    g_autofree char *t = night_time (n->iface, h);
+    g_autofree char *t = night_time (h);
     ns_row_set_subtitle (row, t);
   }
 }
@@ -354,15 +359,20 @@ night_show (Night *n)
   ns_row_pick_select (n->schedule, mode);
   double sunset = night_sun (n, "Sunset"), sunrise = night_sun (n, "Sunrise");
   if (mode == NIGHT_SUN && sunset > 0 && sunrise > 0) {
-    g_autofree char *set = night_time (n->iface, sunset), *rise = night_time (n->iface, sunrise);
-    g_autofree char *line = g_strdup_printf ("From sunset (%s) to sunrise (%s)", set, rise);
+    g_autofree char *set = night_time (sunset), *rise = night_time (sunrise);
+    /* TRANSLATORS: the times of sunset and sunrise where the device is */
+    g_autofree char *line = g_strdup_printf (_("From sunset (%s) to sunrise (%s)"), set, rise);
     ns_row_set_subtitle (n->schedule, line);
   } else if (mode == NIGHT_SUN && n->gsd) {
     /* gsd falls back to the custom times while it does not know where the phone is */
-    g_autofree char *from = night_time (n->iface, g_settings_get_double (n->color, "night-light-schedule-from"));
-    g_autofree char *to = night_time (n->iface, g_settings_get_double (n->color, "night-light-schedule-to"));
-    g_autofree char *line = g_strdup_printf ("The %s's location is not known yet: %s to %s until it is",
-                                             ns_device_noun (), from, to);
+    g_autofree char *from = night_time (g_settings_get_double (n->color, "night-light-schedule-from"));
+    g_autofree char *to = night_time (g_settings_get_double (n->color, "night-light-schedule-to"));
+    /* TRANSLATORS: %s and %s are the custom start and end times night light keeps to until then */
+    g_autofree char *line = g_strdup_printf (ns_device_text (_("The phone's location is not known yet: %s to %s until "
+                                                               "it is"),
+                                                             _("The tablet's location is not known yet: %s to %s until "
+                                                               "it is")),
+                                             from, to);
     ns_row_set_subtitle (n->schedule, line);
   }
 
@@ -467,15 +477,15 @@ void
 ns_page_night_light (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Night light", &c);
+  NsPage *page = ns_page_new (_("Night light"), &c);
   GSettings *color = ns_page_settings (page, "org.gnome.settings-daemon.plugins.color");
-  GtkWidget *intro = ns_note (c, "Night light tints your screen amber. This makes it easier to look at your screen "
-                                 "or read in dim light, and may help you fall asleep more easily.");
+  GtkWidget *intro = ns_note (c, _("Night light tints your screen amber. This makes it easier to look at your screen "
+                                 "or read in dim light, and may help you fall asleep more easily."));
   gtk_widget_remove_css_class (intro, "ns-note");
   gtk_widget_add_css_class (intro, "ns-intro");
   if (!color || !display_has_gamma ()) {
-    ns_note (c, color ? "This screen cannot change its colours." : "Night light is GNOME's settings daemon's, "
-                                                                   "which is not installed.");
+    ns_note (c, color ? _("This screen cannot change its colors.")
+                      : _("Night light is GNOME's settings daemon's, which is not installed."));
     ns_push (page);
     return;
   }
@@ -485,19 +495,20 @@ ns_page_night_light (GtkWidget *row, gpointer data)
   g_object_set_data_full (G_OBJECT (page), "ns-night", n, (GDestroyNotify) night_free);
 
   GtkWidget *g = ns_group (c, NULL);
-  n->use = ns_row_switch (g, "Use night light", NULL, color, "night-light-enabled");
+  n->use = ns_row_switch (g, _("Use night light"), NULL, color, "night-light-enabled");
 
   g = ns_group (c, NULL);
-  n->schedule = ns_row_pick (g, "Schedule", night_schedules, night_mode (color), night_schedule_picked, NULL);
+  n->schedule = ns_row_pick_in (g, _("Schedule"), "Night Light schedule", night_schedules, night_mode (color),
+                                night_schedule_picked, NULL);
   g_autoptr (GPtrArray) times = g_ptr_array_new_with_free_func (g_free);
   for (int i = 0; i < 48; i++)
-    g_ptr_array_add (times, night_time (n->iface, i / 2.0));
+    g_ptr_array_add (times, night_time (i / 2.0));
   g_ptr_array_add (times, NULL);
-  n->start = ns_row_pick (g, "Start time", (const char *const *) times->pdata, 0, night_start_picked, n);
-  n->end = ns_row_pick (g, "End time", (const char *const *) times->pdata, 0, night_end_picked, n);
+  n->start = ns_row_pick_names (g, _("Start time"), (const char *const *) times->pdata, 0, night_start_picked, n);
+  n->end = ns_row_pick_names (g, _("End time"), (const char *const *) times->pdata, 0, night_end_picked, n);
 
   g = ns_group (c, NULL);
-  n->intensity = ns_row_scale (g, "Intensity", NULL, 0, 100, 1, &n->scale);
+  n->intensity = ns_row_scale (g, _("Intensity"), NULL, 0, 100, 1, &n->scale);
   g_signal_connect (n->scale, "value-changed", G_CALLBACK (night_moved), n);
 
   /* the page follows the keys, whoever changes them (the shell's quick setting, GNOME Settings) */
@@ -520,7 +531,7 @@ night_row_changed (GSettings *color, const char *key, GtkWidget *row)
 static void
 night_row (GtkWidget *g, GSettings *color, GSettings *iface)
 {
-  GtkWidget *r = ns_row (g, NULL, "Night light", NULL);
+  GtkWidget *r = ns_row (g, NULL, _("Night light"), NULL);
   GtkWidget *sw = ns_row_add_switch (r, TRUE);
   g_settings_bind (color, "night-light-enabled", sw, "active", G_SETTINGS_BIND_DEFAULT);
   ns_row_on_activate (r, ns_page_night_light, NULL);
@@ -637,7 +648,7 @@ static void
 brightness_row (GtkWidget *g)
 {
   Brightness *b = g_new0 (Brightness, 1);
-  b->row = ns_row_scale (g, "Brightness", "display-brightness-symbolic", 0, 100, 1, &b->scale);
+  b->row = ns_row_scale (g, _("Brightness"), "display-brightness-symbolic", 0, 100, 1, &b->scale);
   gtk_widget_set_visible (b->row, FALSE);
   g_object_set_data_full (G_OBJECT (b->row), "ns-brightness", b, (GDestroyNotify) brightness_free);
   g_signal_connect (b->scale, "value-changed", G_CALLBACK (brightness_moved), b);
@@ -668,7 +679,7 @@ adaptive_row (GtkWidget *g, GSettings *power)
 {
   if (!ns_has_key (power, "ambient-enabled"))
     return;
-  GtkWidget *r = ns_row_switch (g, "Adaptive brightness", NULL, power, "ambient-enabled");
+  GtkWidget *r = ns_row_switch (g, _("Adaptive brightness"), NULL, power, "ambient-enabled");
   gtk_widget_set_visible (r, FALSE);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
   if (bus)
@@ -697,14 +708,14 @@ dark_say (GSettings *iface, const char *key, GtkWidget *row)
 {
   g_autofree char *scheme = g_settings_get_string (iface, "color-scheme");
 
-  ns_row_set_subtitle (row, !g_strcmp0 (scheme, "prefer-dark") ? "Will never turn off automatically"
-                                                                 : "Will never turn on automatically");
+  ns_row_set_subtitle (row, !g_strcmp0 (scheme, "prefer-dark") ? _("Will never turn off automatically")
+                                                                 : _("Will never turn on automatically"));
 }
 
 static GtkWidget *
 dark_row (GtkWidget *g, GSettings *iface)
 {
-  GtkWidget *r = ns_row_switch (g, "Dark theme", NULL, NULL, NULL);
+  GtkWidget *r = ns_row_switch (g, _("Dark theme"), NULL, NULL, NULL);
   g_settings_bind_with_mapping (iface, "color-scheme", ns_row_get_switch (r), "active", G_SETTINGS_BIND_DEFAULT,
                                 dark_get, dark_set, NULL, NULL);
   g_signal_connect_object (iface, "changed::color-scheme", G_CALLBACK (dark_say), r, 0);
@@ -715,19 +726,20 @@ dark_row (GtkWidget *g, GSettings *iface)
 /* Font size: org.gnome.desktop.interface text-scaling-factor, which GNOME's apps follow too */
 static const double text_scales[] = { 0.85, 1.0, 1.15, 1.3, 1.5, 1.8, 2.0 };
 static const guint timeouts[] = { 15, 30, 60, 120, 300, 600, 1800, 0 };
-static const char *const timeout_labels[] = { "15 seconds", "30 seconds", "1 minute", "2 minutes", "5 minutes",
-                                              "10 minutes", "30 minutes", "Never", NULL };
+static const char *const timeout_labels[] = { N_("15 seconds"), N_("30 seconds"), N_("1 minute"), N_("2 minutes"),
+                                              N_("5 minutes"), N_("10 minutes"), N_("30 minutes"), N_("Never"),
+                                              NULL };
 static const char *const timeout_summaries[] = {
-  "After 15 seconds of inactivity", "After 30 seconds of inactivity", "After 1 minute of inactivity",
-  "After 2 minutes of inactivity", "After 5 minutes of inactivity", "After 10 minutes of inactivity",
-  "After 30 minutes of inactivity", "Never", NULL };
+  N_("After 15 seconds of inactivity"), N_("After 30 seconds of inactivity"), N_("After 1 minute of inactivity"),
+  N_("After 2 minutes of inactivity"), N_("After 5 minutes of inactivity"), N_("After 10 minutes of inactivity"),
+  N_("After 30 minutes of inactivity"), N_("Never"), NULL };
 
 /* the lock screen row's summary: what the lock screen shows of notifications, as Android's says */
 static void
 lock_say (GSettings *notifications, const char *key, GtkWidget *row)
 {
   ns_row_set_subtitle (row, g_settings_get_boolean (notifications, "show-in-lock-screen")
-                              ? "Show notification icons" : "Don't show any notifications");
+                              ? _("Show notification icons") : _("Don't show any notifications"));
 }
 
 
@@ -768,22 +780,22 @@ void
 ns_page_display (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Display", &c);
+  NsPage *page = ns_page_new (_("Display"), &c);
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
 
   /* the displays connected, Join or Mirror, the main display: shown while there is more than one (ns-displays.c) */
   ns_displays_cards (GTK_WIDGET (page), c);
 
   /* both rows wait for an answer (mutter's, the sensor's): the card shows with the first that has something */
-  GtkWidget *g = ns_group (c, "Brightness");
+  GtkWidget *g = ns_group (c, _("Brightness"));
   ns_group_set_visible (g, FALSE);
   brightness_row (g);
   adaptive_row (g, ns_page_settings (page, "org.gnome.settings-daemon.plugins.power"));
 
-  g = ns_group (c, "Lock display");
+  g = ns_group (c, _("Lock display"));
   GSettings *vibeos = ns_page_settings (page, "vibeos.Shell");
   if (vibeos && ns_has_key (vibeos, "lock-type")) {
-    GtkWidget *lock = page_row (g, NULL, "Lock screen", NULL, ns_page_lock_screen);
+    GtkWidget *lock = page_row (g, NULL, _("Lock screen"), NULL, ns_page_lock_screen);
     GSettings *notifications = ns_page_settings (page, "org.gnome.desktop.notifications");
     if (notifications) {
       g_signal_connect_object (notifications, "changed::show-in-lock-screen", G_CALLBACK (lock_say), lock, 0);
@@ -791,37 +803,39 @@ ns_page_display (GtkWidget *row, gpointer data)
     }
   }
   if (vibeos && ns_has_key (vibeos, "aod") && ns_panel_is_oled ())
-    ns_row_switch (g, "Always On Display", "The time, battery and notifications on a black screen while it is off",
+    ns_row_switch (g, _("Always On Display"),
+                   _("The time, battery and notifications on a black screen while it is off"),
                    vibeos, "aod");
   GSettings *session = ns_page_settings (page, "org.gnome.desktop.session");
   guint idle = g_settings_get_uint (session, "idle-delay"), sel = 2;
   for (guint i = 0; i < G_N_ELEMENTS (timeouts); i++)
     if (timeouts[i] == idle)
       sel = i;
-  GtkWidget *timeout = ns_row_pick (g, "Screen timeout", timeout_labels, sel, timeout_picked, session);
+  GtkWidget *timeout = ns_row_pick (g, _("Screen timeout"), timeout_labels, sel, timeout_picked, session);
   ns_row_pick_set_summaries (timeout, timeout_summaries);
 
-  g = ns_group (c, "Appearance");
+  g = ns_group (c, _("Appearance"));
   dark_row (g, iface);
-  page_row (g, NULL, "Display size and text", "Font size, display size, bold text", ns_page_display_size);
+  page_row (g, NULL, _("Display size and text"), _("Font size, display size, bold text"), ns_page_display_size);
   ns_displays_scale_row (GTK_WIDGET (page), g);
 
   GSettings *color = ns_page_settings (page, "org.gnome.settings-daemon.plugins.color");
   if (color && display_has_gamma ()) {
-    g = ns_group (c, "Color");
+    g = ns_group (c, _("Color"));
     night_row (g, color, iface);
   }
 
   GSettings *touch = ns_page_settings (page, "org.gnome.settings-daemon.peripherals.touchscreen");
   if (touch || vibeos) {
-    g = ns_group (c, "Other display controls");
+    g = ns_group (c, _("Other display controls"));
     if (touch) {
-      g_autofree char *sub = g_strdup_printf ("Turn the screen with the %s", ns_device_noun ());
-      GtkWidget *r = ns_row_switch (g, "Auto-rotate screen", sub, NULL, NULL);
+      GtkWidget *r = ns_row_switch (g, _("Auto-rotate screen"),
+                                    ns_device_text (_("Turn the screen with the phone"),
+                                                    _("Turn the screen with the tablet")), NULL, NULL);
       g_settings_bind (touch, "orientation-lock", ns_row_get_switch (r), "active", G_SETTINGS_BIND_INVERT_BOOLEAN);
     }
     if (vibeos && ns_has_key (vibeos, "double-tap-wake") && has_wake_key ())
-      ns_row_switch (g, "Tap to wake", "Wake the screen with a double tap", vibeos, "double-tap-wake");
+      ns_row_switch (g, _("Tap to wake"), _("Wake the screen with a double tap"), vibeos, "double-tap-wake");
   }
   ns_push (page);
 }
@@ -875,8 +889,9 @@ size_reset (gboolean yes, gpointer page)
 static void
 size_reset_tapped (GtkWidget *button, gpointer page)
 {
-  ns_confirm (button, "Reset display size and text?",
-              "Font size, Display size and Bold text go back to how they were at first.", "Reset", FALSE, size_reset,
+  ns_confirm (button, _("Reset display size and text?"),
+              _("Font size, Display size and Bold text go back to how they were at "
+                "first."), _("Reset"), FALSE, size_reset,
               page);
 }
 
@@ -911,10 +926,10 @@ preview_home (void)
   static const struct {
     const char *icon, *name;
   } apps[] = {
-    { "vibeos.Clock", "Clock" }, { "vibeos.Contacts", "Contacts" }, { "vibeos.Messaging", "Messages" },
-    { "vibeos.Dialer", "Phone" }, { "vibeos.Software", "Software" }, { "vibeos.Settings", "Settings" },
+    { "vibeos.Clock", N_("Clock") }, { "vibeos.Contacts", N_("Contacts") }, { "vibeos.Messaging", N_("Messages") },
+    { "vibeos.Dialer", N_("Phone") }, { "vibeos.Software", N_("Software") }, { "vibeos.Settings", N_("Settings") },
   };
-  GtkWidget *v = preview_page ("Home screen");
+  GtkWidget *v = preview_page (_("Home screen"));
   GtkWidget *grid = gtk_grid_new ();
   gtk_grid_set_column_homogeneous (GTK_GRID (grid), TRUE);
   gtk_grid_set_row_spacing (GTK_GRID (grid), 12);
@@ -926,7 +941,7 @@ preview_home (void)
                                                    ? apps[i].icon : "application-x-executable");
     gtk_image_set_pixel_size (GTK_IMAGE (img), 48);
     gtk_box_append (GTK_BOX (cell), img);
-    GtkWidget *name = gtk_label_new (apps[i].name);
+    GtkWidget *name = gtk_label_new (_(apps[i].name));
     /* one line, as the launcher's labels: a longer name ends in an ellipsis */
     gtk_label_set_ellipsize (GTK_LABEL (name), PANGO_ELLIPSIZE_END);
     gtk_label_set_single_line_mode (GTK_LABEL (name), TRUE);
@@ -952,21 +967,21 @@ preview_bubble (const char *text, gboolean mine)
 static GtkWidget *
 preview_message (void)
 {
-  GtkWidget *v = preview_page ("Message");
-  gtk_box_append (GTK_BOX (v), preview_bubble ("Are we still on for lunch tomorrow?", FALSE));
-  gtk_box_append (GTK_BOX (v), preview_bubble ("Yes! See you at noon by the river.", TRUE));
-  gtk_box_append (GTK_BOX (v), preview_bubble ("Great, I'll book a table.", FALSE));
+  GtkWidget *v = preview_page (_("Message"));
+  gtk_box_append (GTK_BOX (v), preview_bubble (_("Are we still on for lunch tomorrow?"), FALSE));
+  gtk_box_append (GTK_BOX (v), preview_bubble (_("Yes! See you at noon by the river."), TRUE));
+  gtk_box_append (GTK_BOX (v), preview_bubble (_("Great, I'll book a table."), FALSE));
   return v;
 }
 
 static GtkWidget *
 preview_email (void)
 {
-  GtkWidget *v = preview_page ("Email");
-  gtk_box_append (GTK_BOX (v), preview_text ("Photos from the weekend", "ns-preview-subject"));
-  gtk_box_append (GTK_BOX (v), preview_text ("Sam · to me", "ns-preview-meta"));
-  gtk_box_append (GTK_BOX (v), preview_text ("Hi! Here are the pictures from the hike. The view from the top was "
-                                             "worth every step. Let's do it again next month.", "ns-preview-body"));
+  GtkWidget *v = preview_page (_("Email"));
+  gtk_box_append (GTK_BOX (v), preview_text (_("Photos from the weekend"), "ns-preview-subject"));
+  gtk_box_append (GTK_BOX (v), preview_text (_("Sam · to me"), "ns-preview-meta"));
+  gtk_box_append (GTK_BOX (v), preview_text (_("Hi! Here are the pictures from the hike. The view from the top was "
+                                             "worth every step. Let's do it again next month."), "ns-preview-body"));
   return v;
 }
 
@@ -1022,7 +1037,7 @@ preview_pager (void)
   GtkWidget *v = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
   gtk_widget_add_css_class (v, "ns-preview");
   g_object_set_data_full (G_OBJECT (v), "ns-preview", p, g_free);
-  GtkWidget *l = gtk_label_new ("Preview");
+  GtkWidget *l = gtk_label_new (_("Preview"));
   gtk_widget_add_css_class (l, "ns-preview-label");
   gtk_box_append (GTK_BOX (v), l);
 
@@ -1057,8 +1072,8 @@ preview_pager (void)
   gtk_widget_set_halign (h, GTK_ALIGN_CENTER);
   p->prev = vibeos_icon_button_new ("go-previous-symbolic");
   p->next = vibeos_icon_button_new ("go-next-symbolic");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (p->prev), GTK_ACCESSIBLE_PROPERTY_LABEL, "Previous preview", -1);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (p->next), GTK_ACCESSIBLE_PROPERTY_LABEL, "Next preview", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (p->prev), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Previous preview"), -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (p->next), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Next preview"), -1);
   p->dots = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
   gtk_widget_set_valign (p->dots, GTK_ALIGN_CENTER);
   for (guint i = 0; i < p->n; i++) {
@@ -1084,7 +1099,7 @@ void
 ns_page_display_size (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Display size and text", &c);
+  NsPage *page = ns_page_new (_("Display size and text"), &c);
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
   GSettings *vi = ns_page_settings (page, "vibeos.Interface");
   g_object_set_data (G_OBJECT (page), "ns-iface", iface);
@@ -1092,9 +1107,9 @@ ns_page_display_size (GtkWidget *row, gpointer data)
 
   gtk_box_append (GTK_BOX (c), preview_pager ());
 
-  GtkWidget *g = ns_group (c, "Size options");
+  GtkWidget *g = ns_group (c, _("Size options"));
   GtkWidget *sc;
-  GtkWidget *font = ns_row_steps (g, "Font size", G_N_ELEMENTS (text_scales), text_step (iface), &sc);
+  GtkWidget *font = ns_row_steps (g, _("Font size"), G_N_ELEMENTS (text_scales), text_step (iface), &sc);
   g_object_set_data (G_OBJECT (font), "ns-scale", sc);
   g_signal_connect (sc, "value-changed", G_CALLBACK (text_moved), iface);
   g_signal_connect_object (iface, "changed::text-scaling-factor", G_CALLBACK (text_changed), font, 0);
@@ -1103,15 +1118,15 @@ ns_page_display_size (GtkWidget *row, gpointer data)
   ns_displays_size_row (GTK_WIDGET (page), g, TRUE);
 
   if (vi && ns_has_key (vi, "bold-text")) {
-    g = ns_group (c, "Style options");
-    ns_row_switch (g, "Bold text", NULL, vi, "bold-text");
+    g = ns_group (c, _("Style options"));
+    ns_row_switch (g, _("Bold text"), NULL, vi, "bold-text");
   }
 
-  GtkWidget *reset = ns_button_new ("Reset settings", FALSE);
+  GtkWidget *reset = ns_button_new (_("Reset settings"), FALSE);
   GtkWidget *inner = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
   GtkWidget *icon = gtk_image_new_from_icon_name ("edit-undo-symbolic");
   gtk_box_append (GTK_BOX (inner), icon);
-  gtk_box_append (GTK_BOX (inner), gtk_label_new ("Reset settings"));
+  gtk_box_append (GTK_BOX (inner), gtk_label_new (_("Reset settings")));
   gtk_button_set_child (GTK_BUTTON (reset), inner);
   gtk_widget_add_css_class (reset, "ns-reset");
   gtk_widget_set_halign (reset, GTK_ALIGN_START);
@@ -1127,8 +1142,9 @@ duration (gint64 s)
 {
   if (s <= 0)
     return NULL;
-  return s >= 3600 ? g_strdup_printf ("%d h %d min", (int) (s / 3600), (int) (s % 3600 / 60))
-                   : g_strdup_printf ("%d min", (int) (s / 60));
+  /* TRANSLATORS: a time left on the battery or to a full charge: hours and minutes, then minutes alone */
+  return s >= 3600 ? g_strdup_printf (_("%d h %d min"), (int) (s / 3600), (int) (s % 3600 / 60))
+                   : g_strdup_printf (_("%d min"), (int) (s / 60));
 }
 
 typedef struct {
@@ -1217,10 +1233,12 @@ charge_got (GObject *src, GAsyncResult *res, gpointer page)
   gtk_widget_queue_draw (ch->bar);
   g_autofree char *left = duration (empty);
   g_autofree char *tofull = duration (full);
-  g_autofree char *say = st == 1 ? (tofull ? g_strdup_printf ("Charging • full in %s", tofull) : g_strdup ("Charging"))
-                       : st == 4 ? g_strdup ("Fully charged")
-                       : left ? g_strdup_printf ("About %s left", left) : g_strdup ("On battery");
-  gtk_label_set_text (GTK_LABEL (ch->state), props ? say : "No battery information");
+  /* TRANSLATORS: %s is a time ("1 h 20 min") */
+  g_autofree char *say = st == 1 ? (tofull ? g_strdup_printf (_("Charging • full in %s"),
+                                                              tofull) : g_strdup (_("Charging")))
+                       : st == 4 ? g_strdup (_("Fully charged"))
+                       : left ? g_strdup_printf (_("About %s left"), left) : g_strdup (_("On battery"));
+  gtk_label_set_text (GTK_LABEL (ch->state), props ? say : _("No battery information"));
   g_object_unref (page);
 }
 
@@ -1247,8 +1265,8 @@ charge_got (GObject *src, GAsyncResult *res, gpointer page)
 static const char *const battery_health_chargers[] = { "qcom-smbx-charger", NULL };
 
 enum { BAT_TECHNOLOGY, BAT_HEALTH, BAT_TEMPERATURE, BAT_VOLTAGE, BAT_DESIGN, BAT_MAXIMUM, BAT_ROWS };
-static const char *const battery_titles[BAT_ROWS] = { "Technology", "Health", "Temperature", "Voltage",
-                                                      "Design capacity", "Maximum capacity" };
+static const char *const battery_titles[BAT_ROWS] = { N_("Technology"), N_("Health"), N_("Temperature"), N_("Voltage"),
+                                                      N_("Design capacity"), N_("Maximum capacity") };
 
 static char *
 supply_read (const char *dir, const char *file)
@@ -1407,17 +1425,17 @@ void
 ns_page_battery_info (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Battery information", &c);
+  NsPage *page = ns_page_new (_("Battery information"), &c);
   BatInfo *b = g_new0 (BatInfo, 1);
   GtkWidget *g = ns_group (c, NULL);
   g_object_set_data_full (G_OBJECT (g), "ns-batinfo", b, (GDestroyNotify) bat_info_free);
   for (int i = 0; i < BAT_ROWS; i++) {
-    b->rows[i] = ns_row_info (g, battery_titles[i], NULL);
+    b->rows[i] = ns_row_info (g, _(battery_titles[i]), NULL);
     gtk_widget_set_visible (b->rows[i], FALSE);
   }
   ns_group_set_visible (g, FALSE);
-  g_autofree char *no_info = g_strdup_printf ("This %s's battery reports none of these.", ns_device_noun ());
-  b->none = ns_note (c, no_info);
+  b->none = ns_note (c, ns_device_text (_("This phone's battery reports none of these."),
+                                        _("This tablet's battery reports none of these.")));
   gtk_widget_set_visible (b->none, FALSE);
   /* shown once read: the first reading comes before the page has slid in */
   ns_push (page);
@@ -1432,8 +1450,8 @@ void
 ns_page_battery_usage (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Battery usage", &c);
-  ns_row_widget (ns_group (c, "Since last full charge"), NULL, ns_charge_history_new ());
+  NsPage *page = ns_page_new (_("Battery usage"), &c);
+  ns_row_widget (ns_group (c, _("Since last full charge")), NULL, ns_charge_history_new ());
   ns_push (page);
 }
 
@@ -1441,7 +1459,7 @@ void
 ns_page_battery (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Battery", &c);
+  NsPage *page = ns_page_new (_("Battery"), &c);
   Charge *ch = g_new0 (Charge, 1);
   g_object_set_data_full (G_OBJECT (page), "charge", ch, g_free);
 
@@ -1489,13 +1507,13 @@ ns_page_battery (GtkWidget *row, gpointer data)
    * (statusbar.js paintBattery) has no number in it yet. It needs the level drawn into the battery's body when the
    * key is on. */
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, NULL, "Battery usage", "View usage since last full charge", ns_page_battery_usage);
-  page_row (g, NULL, "Power and screen blank",
-            ns_screen_off_sleeper () ? "Dim the screen" : "Automatic suspend, dim the screen", ns_page_power);
+  page_row (g, NULL, _("Battery usage"), _("View usage since last full charge"), ns_page_battery_usage);
+  page_row (g, NULL, _("Power and screen blank"),
+            ns_screen_off_sleeper () ? _("Dim the screen") : _("Automatic suspend, dim the screen"), ns_page_power);
   g = ns_group (c, NULL);
-  page_row (g, NULL, "Battery information", "Health, temperature, capacity", ns_page_battery_info);
+  page_row (g, NULL, _("Battery information"), _("Health, temperature, capacity"), ns_page_battery_info);
 
-  ns_footnote (c, "Remaining battery life is approximate and may change based on usage");
+  ns_footnote (c, _("Remaining battery life is approximate and may change based on usage"));
   ns_push (page);
 }
 
@@ -1508,9 +1526,9 @@ static const struct {
   const char *name, *gnome;
   guint32     seed;
 } accents[] = {
-  { "Teal", "teal", 0x007c88 }, { "Blue", "blue", 0x3584e4 }, { "Green", "green", 0x3a944a },
-  { "Yellow", "yellow", 0xc88800 }, { "Orange", "orange", 0xed5b00 }, { "Red", "red", 0xe62d42 },
-  { "Pink", "pink", 0xd56199 }, { "Purple", "purple", 0x9141ac }, { "Slate", "slate", 0x6f8396 },
+  { N_("Teal"), "teal", 0x007c88 }, { N_("Blue"), "blue", 0x3584e4 }, { N_("Green"), "green", 0x3a944a },
+  { N_("Yellow"), "yellow", 0xc88800 }, { N_("Orange"), "orange", 0xed5b00 }, { N_("Red"), "red", 0xe62d42 },
+  { N_("Pink"), "pink", 0xd56199 }, { N_("Purple"), "purple", 0x9141ac }, { N_("Slate"), "slate", 0x6f8396 },
 };
 
 static void
@@ -1584,7 +1602,7 @@ accent_picker (GSettings *theme)
   for (guint i = 0; i < G_N_ELEMENTS (accents); i++) {
     GtkWidget *b = gtk_toggle_button_new ();
     gtk_widget_add_css_class (b, "ns-swatch");
-    gtk_accessible_update_property (GTK_ACCESSIBLE (b), GTK_ACCESSIBLE_PROPERTY_LABEL, accents[i].name, -1);
+    gtk_accessible_update_property (GTK_ACCESSIBLE (b), GTK_ACCESSIBLE_PROPERTY_LABEL, _(accents[i].name), -1);
     GtkWidget *dot = gtk_drawing_area_new ();
     gtk_widget_set_hexpand (dot, TRUE);
     gtk_widget_set_vexpand (dot, TRUE);
@@ -1627,16 +1645,17 @@ void
 ns_page_wallpaper (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Wallpaper and style", &c);
+  NsPage *page = ns_page_new (_("Wallpaper and style"), &c);
   GSettings *bg = ns_page_settings (page, "org.gnome.desktop.background");
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
 
   GSettings *vibeos = ns_page_settings (page, "vibeos.Shell");
   if (vibeos) {
-    GtkWidget *g = ns_group (c, "Parallax wallpaper");
-    g_autofree char *text = g_strdup_printf ("Layers that move as you tilt the %s. Off picks a still picture "
-                                             "instead.", ns_device_noun ());
-    GtkWidget *hint = gtk_label_new (text);
+    GtkWidget *g = ns_group (c, _("Parallax wallpaper"));
+    GtkWidget *hint = gtk_label_new (ns_device_text (_("Layers that move as you tilt the phone. Off picks a still "
+                                                       "picture instead."),
+                                                     _("Layers that move as you tilt the tablet. Off picks a still "
+                                                       "picture instead.")));
     gtk_label_set_wrap (GTK_LABEL (hint), TRUE);
     gtk_label_set_xalign (GTK_LABEL (hint), 0);
     gtk_widget_add_css_class (hint, "ns-sub");
@@ -1646,22 +1665,22 @@ ns_page_wallpaper (GtkWidget *row, gpointer data)
     ns_row_widget (g, NULL, v);
   }
 
-  GtkWidget *g = ns_group (c, "Picture");
-  GtkWidget *r = page_row (g, "preferences-desktop-wallpaper-symbolic", "Wallpapers", NULL,
+  GtkWidget *g = ns_group (c, _("Picture"));
+  GtkWidget *r = page_row (g, "preferences-desktop-wallpaper-symbolic", _("Wallpapers"), NULL,
                            ns_page_wallpapers);
   picture_changed (bg, NULL, r);
   g_signal_connect_object (bg, "changed::picture-uri", G_CALLBACK (picture_changed), r, 0);
 
-  g = ns_group (c, "Style");
+  g = ns_group (c, _("Style"));
   dark_row (g, iface);
   GSettings *theme = ns_page_settings (page, "vibeos.Theme");
   if (theme)
-    ns_row_widget (g, "Colour", accent_picker (theme));
+    ns_row_widget (g, _("Color"), accent_picker (theme));
 
   /* the launcher's own options: its grid, its icons */
   if (vibeos) {
-    g = ns_group (c, "Home screen");
-    page_row (g, "view-app-grid-symbolic", "Home screen", "Grid, icon size, icon pack", ns_page_home);
+    g = ns_group (c, _("Home screen"));
+    page_row (g, "view-app-grid-symbolic", _("Home screen"), _("Grid, icon size, icon pack"), ns_page_home);
   }
   ns_push (page);
 }
@@ -1670,9 +1689,9 @@ ns_page_wallpaper (GtkWidget *row, gpointer data)
 
 static const char *const shape_values[] = { "system", "circle", "squircle", "rounded", "square", "teardrop",
                                             "cupertino", "cylinder", "egg", "octagon", "hexagon", "diamond", NULL };
-static const char *const shape_labels[] = { "Pack / system", "Circle", "Squircle", "Rounded square", "Square",
-                                            "Teardrop", "Cupertino", "Cylinder", "Egg", "Octagon", "Hexagon",
-                                            "Diamond", NULL };
+static const char *const shape_labels[] = { N_("Pack / system"), N_("Circle"), N_("Squircle"), N_("Rounded square"),
+                                            N_("Square"), N_("Teardrop"), N_("Cupertino"), N_("Cylinder"), N_("Egg"),
+                                            N_("Octagon"), N_("Hexagon"), N_("Diamond"), NULL };
 
 typedef struct {
   char *id, *title;
@@ -1736,7 +1755,7 @@ icon_packs (void)
 static const int grid_sizes[][2] = { { 4, 5 }, { 4, 6 }, { 5, 5 }, { 5, 6 } };
 static const char *const grid_labels[] = { "4 × 5", "4 × 6", "5 × 5", "5 × 6", NULL };
 static const int drawer_sizes[] = { 4, 5 };
-static const char *const drawer_labels[] = { "4 columns", "5 columns", NULL };
+static const char *const drawer_labels[] = { N_("4 columns"), N_("5 columns"), NULL };
 /* the icons' size, of the launcher's 56 px: 110 % is the most a 5-column cell holds (the press grows it by 10 %) */
 static const double icon_scales[] = { 0.8, 0.9, 1.0, 1.1 };
 static const char *const icon_labels[] = { "80%", "90%", "100%", "110%", NULL };
@@ -1785,7 +1804,7 @@ layout_show (Layout *l)
   int dcols = g_settings_get_int (l->vibeos, "drawer-grid-columns");
   for (i = 0; i < G_N_ELEMENTS (drawer_sizes) && drawer_sizes[i] != dcols; i++)
     ;
-  g_autofree char *drawer = g_strdup_printf ("%d columns", dcols);
+  g_autofree char *drawer = g_strdup_printf (g_dngettext (NULL, "%d column", "%d columns", dcols), dcols);
   pick_show (l->drawer, i, G_N_ELEMENTS (drawer_sizes), drawer);
 
   GtkWidget *sizes[] = { l->icons, l->drawer_icons };
@@ -1834,17 +1853,17 @@ layout_group (NsPage *page, GtkWidget *c, GSettings *vibeos)
   g_object_set_data_full (G_OBJECT (page), "ns-layout", l, (GDestroyNotify) layout_free);
   gboolean sizes = ns_has_key (vibeos, "desktop-icon-scale") && ns_has_key (vibeos, "drawer-icon-scale");
 
-  GtkWidget *g = ns_group (c, "Layout");
-  l->grid = ns_row_pick (g, "Home screen grid", grid_labels, 0, grid_picked, l);
+  GtkWidget *g = ns_group (c, _("Layout"));
+  l->grid = ns_row_pick_names (g, _("Home screen grid"), grid_labels, 0, grid_picked, l);
   if (sizes)
-    l->icons = ns_row_pick (g, "Home screen icon size", icon_labels, 0, icons_picked, l);
-  GtkWidget *names = ns_row_switch (g, "App names", "Under the home screen's icons", NULL, NULL);
+    l->icons = ns_row_pick_names (g, _("Home screen icon size"), icon_labels, 0, icons_picked, l);
+  GtkWidget *names = ns_row_switch (g, _("App names"), _("Under the home screen's icons"), NULL, NULL);
   g_settings_bind (vibeos, "desktop-hide-app-labels", ns_row_get_switch (names), "active",
                    G_SETTINGS_BIND_DEFAULT | G_SETTINGS_BIND_INVERT_BOOLEAN);
-  l->drawer = ns_row_pick (g, "App drawer grid", drawer_labels, 0, drawer_picked, l);
+  l->drawer = ns_row_pick (g, _("App drawer grid"), drawer_labels, 0, drawer_picked, l);
   if (sizes)
-    l->drawer_icons = ns_row_pick (g, "App drawer icon size", icon_labels, 0, icons_picked, l);
-  ns_row_switch (g, "Search bar in the app drawer", NULL, vibeos, "search-drawer-enabled");
+    l->drawer_icons = ns_row_pick_names (g, _("App drawer icon size"), icon_labels, 0, icons_picked, l);
+  ns_row_switch (g, _("Search bar in the app drawer"), NULL, vibeos, "search-drawer-enabled");
 
   static const char *const keys[] = { "changed::desktop-grid-columns", "changed::desktop-grid-rows",
                                       "changed::drawer-grid-columns", "changed::desktop-icon-scale",
@@ -1869,13 +1888,13 @@ ns_page_home (GtkWidget *row, gpointer data)
   if (!vibeos)
     return;
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Home screen", &c);
+  NsPage *page = ns_page_new (_("Home screen"), &c);
   g_object_set_data_full (G_OBJECT (page), "vibeos", vibeos, g_object_unref);
 
   /* icon packs: what is installed */
   GStrvBuilder *vb = g_strv_builder_new (), *lb = g_strv_builder_new ();
   g_strv_builder_add (vb, "");
-  g_strv_builder_add (lb, "None (theme icons)");
+  g_strv_builder_add (lb, _("None (theme icons)"));
   g_autoptr (GPtrArray) packs = icon_packs ();
   for (guint i = 0; i < packs->len; i++) {
     PackName *p = packs->pdata[i];
@@ -1888,13 +1907,14 @@ ns_page_home (GtkWidget *row, gpointer data)
   g_object_set_data_full (G_OBJECT (page), "packs", values, (GDestroyNotify) g_strfreev);
   g_object_set_data_full (G_OBJECT (page), "pack-labels", labels, (GDestroyNotify) g_strfreev);
   layout_group (page, c, vibeos);
-  GtkWidget *g = ns_group (c, "Icons");
-  ns_row_choice (g, "Icon pack", vibeos, "icon-pack", (const char *const *) values, (const char *const *) labels);
-  ns_row_choice (g, "Icon shape", vibeos, "icon-shape", shape_values, shape_labels);
-  ns_row_switch (g, "Wrap unthemed icons", "Icons the pack does not cover get its background", vibeos,
+  GtkWidget *g = ns_group (c, _("Icons"));
+  ns_row_choice_names (g, _("Icon pack"), vibeos, "icon-pack", (const char *const *) values,
+                       (const char *const *) labels);
+  ns_row_choice (g, _("Icon shape"), vibeos, "icon-shape", shape_values, shape_labels);
+  ns_row_switch (g, _("Wrap unthemed icons"), _("Icons the pack does not cover get its background"), vibeos,
                  "icon-wrap-unthemed");
   if (ns_has_key (vibeos, "icon-shape-legacy"))
-    ns_row_switch (g, "Shape legacy icons", "Icons without pack art on a shaped background", vibeos,
+    ns_row_switch (g, _("Shape legacy icons"), _("Icons without pack art on a shaped background"), vibeos,
                    "icon-shape-legacy");
 
   ns_push (page);
@@ -1929,24 +1949,26 @@ void
 ns_page_general (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("System", &c);
+  NsPage *page = ns_page_new (_("System"), &c);
   GtkWidget *g = ns_group (c, NULL);
-  page_row (g, "preferences-desktop-locale-symbolic", "Language and region", "Language, formats", ns_page_language);
-  page_row (g, "input-keyboard-symbolic", "Keyboard", "On-screen keyboard, layouts", ns_page_keyboard);
+  page_row (g, "preferences-desktop-locale-symbolic", _("Language and region"), _("Language, formats"),
+            ns_page_language);
+  page_row (g, "input-keyboard-symbolic", _("Keyboard"), _("On-screen keyboard, layouts"), ns_page_keyboard);
   /* Android 17's place for it, after Keyboard */
   if (ns_gestures_available ())
-    page_row (g, "phone-symbolic", "Gestures",
-              ns_caps_has (NS_CAP_SIDE_KEY) ? "Power button, side button" : "Double-press power button",
+    page_row (g, "phone-symbolic", _("Gestures"),
+              ns_caps_has (NS_CAP_SIDE_KEY) ? _("Power button, side button") : _("Double-press power button"),
               ns_page_gestures);
-  page_row (g, "input-mouse-symbolic", "Mouse and touchpad", "Pointer speed, hardware keyboard", ns_page_mouse);
-  page_row (g, "preferences-system-time-symbolic", "Date and time", "Automatic time, time zone", ns_page_datetime);
+  page_row (g, "input-mouse-symbolic", _("Mouse and touchpad"), _("Pointer speed, hardware keyboard"), ns_page_mouse);
+  page_row (g, "preferences-system-time-symbolic", _("Date and time"), _("Automatic time, time zone"),
+            ns_page_datetime);
   if (have_updates ()) {
     g = ns_group (c, NULL);
-    GtkWidget *r = ns_row (g, "software-update-available-symbolic", "System updates", "Download and install");
+    GtkWidget *r = ns_row (g, "software-update-available-symbolic", _("System updates"), _("Download and install"));
     ns_row_on_activate (r, updates_tapped, NULL);
   }
   g = ns_group (c, NULL);
-  page_row (g, "system-users-symbolic", "Users", "Your account, password", ns_page_users);
+  page_row (g, "system-users-symbolic", _("Users"), _("Your account, password"), ns_page_users);
   ns_push (page);
 }
 
@@ -2017,12 +2039,12 @@ ns_page_about (GtkWidget *row, gpointer data)
   g_autofree char *os = first_line_after ("/etc/os-release", "PRETTY_NAME=");
   struct utsname u;
   uname (&u);
-  ns_row_info (g, "Operating system", os);
-  ns_row_info (g, "Kernel", u.release);
+  ns_row_info (g, _("Operating system"), os);
+  ns_row_info (g, _("Kernel"), u.release);
   g_autofree char *mem = first_line_after ("/proc/meminfo", "MemTotal:");
   g_autofree char *memh = mem ? g_format_size_full ((guint64) g_ascii_strtoull (mem, NULL, 10) * 1024,
                                                     G_FORMAT_SIZE_IEC_UNITS) : NULL;
-  ns_row_info (g, "Memory", memh);
+  ns_row_info (g, _("Memory"), memh);
   g_autoptr (GFile) root = g_file_new_for_path ("/");
   g_autoptr (GFileInfo) fi = g_file_query_filesystem_info (root, G_FILE_ATTRIBUTE_FILESYSTEM_SIZE ","
                                                            G_FILE_ATTRIBUTE_FILESYSTEM_FREE, NULL, NULL);
@@ -2030,13 +2052,15 @@ ns_page_about (GtkWidget *row, gpointer data)
   if (fi) {
     g_autofree char *size = g_format_size (g_file_info_get_attribute_uint64 (fi, G_FILE_ATTRIBUTE_FILESYSTEM_SIZE));
     g_autofree char *free_ = g_format_size (g_file_info_get_attribute_uint64 (fi, G_FILE_ATTRIBUTE_FILESYSTEM_FREE));
-    st = g_strdup_printf ("%s free of %s", free_, size);
+    /* TRANSLATORS: storage, the space free of the whole ("12.3 GB free of 64 GB") */
+    st = g_strdup_printf (_("%s free of %s"), free_, size);
   }
-  ns_row_info (g, "Storage", st);
-  g_autofree char *cpus = g_strdup_printf ("%u cores", g_get_num_processors ());
-  ns_row_info (g, "Processor", cpus);
+  ns_row_info (g, _("Storage"), st);
+  guint n_cpus = g_get_num_processors ();
+  g_autofree char *cpus = g_strdup_printf (g_dngettext (NULL, "%u core", "%u cores", n_cpus), n_cpus);
+  ns_row_info (g, _("Processor"), cpus);
 
   g = ns_group (c, NULL);
-  page_row (g, NULL, "Software information", "Device name, versions", ns_page_software);
+  page_row (g, NULL, _("Software information"), _("Device name, versions"), ns_page_software);
   ns_push (page);
 }

@@ -31,6 +31,9 @@
 #include <mpv/client.h>
 #include <mpv/render_gl.h>
 #include <spongy-gtk.h>
+#include <unicode/ucasemap.h>
+#include <unicode/uloc.h>
+#include <unicode/ustring.h>
 #include <vibeos.h>
 
 #define APP_ID "vibeos.Video"
@@ -198,7 +201,7 @@ sync_inhibit (Player *p)
   gboolean playing = p->have_file && !p->paused && !p->ended;
   if (playing && !p->inhibit)
     p->inhibit = gtk_application_inhibit (p->app, GTK_WINDOW (p->win), GTK_APPLICATION_INHIBIT_IDLE,
-                                          "Playing a video");
+                                          _("Playing a video"));
   else if (!playing && p->inhibit) {
     gtk_application_uninhibit (p->app, p->inhibit);
     p->inhibit = 0;
@@ -310,7 +313,7 @@ drain_events (gpointer data)
         /* nothing plays: the controls stay */
         p->have_file = FALSE;
         sync_inhibit (p);
-        gtk_label_set_text (GTK_LABEL (p->message), "Can’t play this video");
+        gtk_label_set_text (GTK_LABEL (p->message), _("Can’t play this video"));
         gtk_widget_set_visible (p->message, TRUE);
         show_controls (p, TRUE);
       }
@@ -447,7 +450,8 @@ start_mpv (Player *p)
     {"osc", "no"},
     {"ytdl", "no"},
     {"terminal", "no"},
-    {"audio-client-name", "Video Player"},
+    /* the name the sound settings list it under */
+    {"audio-client-name", _("Video Player")},
   };
   for (gsize i = 0; i < G_N_ELEMENTS (options); i++)
     mpv_set_option_string (p->mpv, options[i][0], options[i][1]);
@@ -562,7 +566,7 @@ static void
 on_fullscreen (GtkWindow *win, GParamSpec *pspec, Player *p)
 {
   p->fullscreen = gtk_window_is_fullscreen (win);
-  gtk_widget_set_tooltip_text (p->full, p->fullscreen ? "Exit full screen" : "Full screen");
+  gtk_widget_set_tooltip_text (p->full, p->fullscreen ? _("Exit full screen") : _("Full screen"));
   gtk_widget_queue_draw (gtk_button_get_child (GTK_BUTTON (p->full)));
   sync_crop (p, FALSE);
 }
@@ -642,39 +646,42 @@ on_window_unrealize (GtkWidget *win, Player *p)
 /* ---- the ⋮ menu: the audio track, the subtitles, About ---- */
 
 static const VibeosAboutSection video_legal[] = {
-  { "mpv", "Videos are played by <a href=\"https://mpv.io/\">mpv</a> (libmpv), under the GNU GPL 2.0 or later." },
-  { "FFmpeg", "<a href=\"https://ffmpeg.org/\">FFmpeg</a> reads and decodes them, under the GNU LGPL 2.1 or later "
-              "(the GPL 2.0 or later as Debian builds it)." },
+  /* TRANSLATORS: keep the links' markup as it is */
+  { "mpv", N_("Videos are played by <a href=\"https://mpv.io/\">mpv</a> (libmpv), under the GNU GPL 2.0 or later.") },
+  /* TRANSLATORS: keep the links' markup as it is */
+  { "FFmpeg", N_("<a href=\"https://ffmpeg.org/\">FFmpeg</a> reads and decodes them, under the GNU LGPL 2.1 or later "
+                 "(the GPL 2.0 or later as Debian builds it).") },
   { NULL }
 };
 
-static const VibeosAboutInfo video_about = { .name = "Video Player", .icon_name = APP_ID, .legal = video_legal };
+static const VibeosAboutInfo video_about = { .name = N_("Video Player"), .icon_name = APP_ID, .legal = video_legal };
 
-/* the languages films name their tracks in most (ISO 639-2 and -1 codes), by their English names */
-static const char *const languages[][2] = {
-  { "eng", "English" }, { "en", "English" }, { "deu", "German" }, { "ger", "German" }, { "de", "German" },
-  { "fra", "French" }, { "fre", "French" }, { "fr", "French" }, { "spa", "Spanish" }, { "es", "Spanish" },
-  { "ita", "Italian" }, { "it", "Italian" }, { "rus", "Russian" }, { "ru", "Russian" }, { "ukr", "Ukrainian" },
-  { "uk", "Ukrainian" }, { "por", "Portuguese" }, { "pt", "Portuguese" }, { "nld", "Dutch" }, { "dut", "Dutch" },
-  { "nl", "Dutch" }, { "pol", "Polish" }, { "pl", "Polish" }, { "ces", "Czech" }, { "cze", "Czech" },
-  { "cs", "Czech" }, { "swe", "Swedish" }, { "sv", "Swedish" }, { "nor", "Norwegian" }, { "nob", "Norwegian" },
-  { "no", "Norwegian" }, { "dan", "Danish" }, { "da", "Danish" }, { "fin", "Finnish" }, { "fi", "Finnish" },
-  { "hun", "Hungarian" }, { "hu", "Hungarian" }, { "ell", "Greek" }, { "gre", "Greek" }, { "el", "Greek" },
-  { "tur", "Turkish" }, { "tr", "Turkish" }, { "heb", "Hebrew" }, { "he", "Hebrew" }, { "ara", "Arabic" },
-  { "ar", "Arabic" }, { "hin", "Hindi" }, { "hi", "Hindi" }, { "jpn", "Japanese" }, { "ja", "Japanese" },
-  { "kor", "Korean" }, { "ko", "Korean" }, { "zho", "Chinese" }, { "chi", "Chinese" }, { "zh", "Chinese" },
-  { "ron", "Romanian" }, { "rum", "Romanian" }, { "ro", "Romanian" }, { "bul", "Bulgarian" }, { "bg", "Bulgarian" },
-  { "hrv", "Croatian" }, { "hr", "Croatian" }, { "srp", "Serbian" }, { "sr", "Serbian" }, { "tha", "Thai" },
-  { "vie", "Vietnamese" }, { "ind", "Indonesian" }, { "und", NULL },
-};
-
-static const char *
+/* A track's language, its ISO 639 code (-1 or -2, as films name them: "de", "deu", "ger"), by its name in the screen's
+ * language, from ICU: "Deutsch" on a German screen, "German" on an English one. Its first letter is a capital, as the
+ * name stands alone in the list (CLDR writes most in lower case: "allemand"). NULL for none and "und" (undetermined);
+ * a code ICU does not know as it is. */
+static char *
 language_name (const char *code)
 {
-  for (guint i = 0; code && i < G_N_ELEMENTS (languages); i++)
-    if (!g_ascii_strcasecmp (code, languages[i][0]))
-      return languages[i][1];
-  return code && *code ? code : NULL;
+  if (!code || !*code || !g_ascii_strcasecmp (code, "und"))
+    return NULL;
+  UErrorCode status = U_ZERO_ERROR;
+  UChar name[128];
+  int32_t length = uloc_getDisplayLanguage (code, NULL, name, G_N_ELEMENTS (name), &status);
+  if (U_FAILURE (status) || status == U_USING_DEFAULT_WARNING || status == U_STRING_NOT_TERMINATED_WARNING ||
+      length <= 0)
+    return g_strdup (code);
+  char text[512];
+  u_strToUTF8 (text, sizeof text, NULL, name, length, &status);
+  if (U_FAILURE (status) || status == U_STRING_NOT_TERMINATED_WARNING)
+    return g_strdup (code);
+  UCaseMap *map = ucasemap_open (NULL, U_TITLECASE_WHOLE_STRING | U_TITLECASE_NO_LOWERCASE, &status);
+  char title[512];
+  int32_t n = U_SUCCESS (status) ? ucasemap_utf8ToTitle (map, title, sizeof title, text, -1, &status) : 0;
+  ucasemap_close (map);
+  if (U_FAILURE (status) || status == U_STRING_NOT_TERMINATED_WARNING || n <= 0)
+    return g_strdup (text);
+  return g_strndup (title, n);
 }
 
 typedef struct {
@@ -729,12 +736,12 @@ codec_label (const char *codec)
 {
   static const struct { const char *mpv, *label; } names[] = {
     { "subrip", "SRT" }, { "webvtt", "WebVTT" }, { "hdmv_pgs_subtitle", "PGS" }, { "dvd_subtitle", "VobSub" },
-    { "dvb_subtitle", "DVB" }, { "mov_text", "Timed text" }, { "eac3", "E-AC-3" }, { "ac3", "AC-3" },
+    { "dvb_subtitle", "DVB" }, { "mov_text", N_("Timed text") }, { "eac3", "E-AC-3" }, { "ac3", "AC-3" },
     { "truehd", "TrueHD" }, { "vorbis", "Vorbis" }, { "opus", "Opus" },
   };
   for (guint i = 0; i < G_N_ELEMENTS (names); i++)
     if (!g_strcmp0 (codec, names[i].mpv))
-      return g_strdup (names[i].label);
+      return g_strdup (_(names[i].label));
   return g_ascii_strup (codec, -1);
 }
 
@@ -753,7 +760,8 @@ tracks_of (Player *p, const char *type)
       const mpv_node *t = &list.u.list->values[i];
       if (g_strcmp0 (node_string (t, "type"), type))
         continue;
-      const char *title = node_string (t, "title"), *lang = language_name (node_string (t, "lang"));
+      const char *title = node_string (t, "title");
+      g_autofree char *lang = language_name (node_string (t, "lang"));
       const char *codec = node_string (t, "codec");
       gint64 channels = node_int (t, "demux-channel-count");
       GPtrArray *parts = g_ptr_array_new_with_free_func (g_free);
@@ -765,18 +773,20 @@ tracks_of (Player *p, const char *type)
       } else if (lang) {
         track.name = g_strdup (lang);
       } else {
-        track.name = g_strdup_printf ("Track %u", tracks->len + 1);
+        /* TRANSLATORS: a track with neither a title nor a language; %u is its number */
+        track.name = g_strdup_printf (_("Track %u"), tracks->len + 1);
       }
       if (codec && *codec)
         g_ptr_array_add (parts, codec_label (codec));
       if (channels == 1)
-        g_ptr_array_add (parts, g_strdup ("Mono"));
+        g_ptr_array_add (parts, g_strdup (_("Mono")));
       else if (channels == 2)
-        g_ptr_array_add (parts, g_strdup ("Stereo"));
+        g_ptr_array_add (parts, g_strdup (_("Stereo")));
       else if (channels > 2)
         g_ptr_array_add (parts, g_strdup_printf ("%" G_GINT64_FORMAT ".1", channels - 1));
       if (node_flag (t, "external"))
-        g_ptr_array_add (parts, g_strdup ("From a file"));
+        /* TRANSLATORS: a subtitle track read from a file of its own, next to the video */
+        g_ptr_array_add (parts, g_strdup (_("From a file")));
       g_ptr_array_add (parts, NULL);
       track.details = g_strjoinv (" · ", (char **) parts->pdata);
       g_ptr_array_unref (parts);
@@ -835,7 +845,7 @@ choose_track (Player *p, const char *title, const char *type, const char *proper
   for (guint i = 0; i < tracks->len; i++)
     any |= g_array_index (tracks, Track, i).selected;
   if (sub)
-    add_choice (p, list, property, 0, "Off", NULL, !any);
+    add_choice (p, list, property, 0, C_("no track", "Off"), NULL, !any);
   for (guint i = 0; i < tracks->len; i++) {
     Track *t = &g_array_index (tracks, Track, i);
     add_choice (p, list, property, t->id, t->name, t->details, t->selected);
@@ -850,13 +860,13 @@ choose_track (Player *p, const char *title, const char *type, const char *proper
 static void
 choose_audio (gpointer data)
 {
-  choose_track (data, "Audio track", "audio", "aid");
+  choose_track (data, _("Audio track"), "audio", "aid");
 }
 
 static void
 choose_subtitles (gpointer data)
 {
-  choose_track (data, "Subtitles", "sub", "sid");
+  choose_track (data, _("Subtitles"), "sub", "sid");
 }
 
 /* ---- Settings: the black bar at the camera ---- */
@@ -929,9 +939,9 @@ open_menu (Player *p)
   g_autoptr (GArray) subs = tracks_of (p, "sub");
   VibeosMenu *menu = vibeos_menu_new ();
   if (audio->len > 0)
-    vibeos_menu_append (menu, "Audio track", choose_audio, p);
+    vibeos_menu_append (menu, _("Audio track"), choose_audio, p);
   if (subs->len > 0)
-    vibeos_menu_append (menu, "Subtitles", choose_subtitles, p);
+    vibeos_menu_append (menu, _("Subtitles"), choose_subtitles, p);
   if (shell_settings ())
     vibeos_menu_append (menu, _("Settings"), open_settings, p);
   vibeos_menu_append_about (menu, &video_about);
@@ -1078,7 +1088,7 @@ static void
 build (Player *p)
 {
   p->win = vibeos_window_new (p->app);
-  gtk_window_set_title (GTK_WINDOW (p->win), "Video Player");
+  gtk_window_set_title (GTK_WINDOW (p->win), _("Video Player"));
   gtk_widget_add_css_class (p->win, "video");
 
   GtkWidget *overlay = gtk_overlay_new ();
@@ -1102,16 +1112,16 @@ build (Player *p)
 
   GtkWidget *top = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
   gtk_widget_add_css_class (top, "video-top");
-  gtk_box_append (GTK_BOX (top), icon_button (p, ICON_BACK, TOP_BUTTON_DP, "Back", G_CALLBACK (go_back)));
+  gtk_box_append (GTK_BOX (top), icon_button (p, ICON_BACK, TOP_BUTTON_DP, _("Back"), G_CALLBACK (go_back)));
   p->title = gtk_label_new ("");
   gtk_widget_add_css_class (p->title, "video-title");
   gtk_label_set_ellipsize (GTK_LABEL (p->title), PANGO_ELLIPSIZE_END);
   gtk_label_set_xalign (GTK_LABEL (p->title), 0);
   gtk_widget_set_hexpand (p->title, TRUE);
   gtk_box_append (GTK_BOX (top), p->title);
-  p->full = icon_button (p, ICON_FULLSCREEN, TOP_BUTTON_DP, "Full screen", G_CALLBACK (toggle_fullscreen));
+  p->full = icon_button (p, ICON_FULLSCREEN, TOP_BUTTON_DP, _("Full screen"), G_CALLBACK (toggle_fullscreen));
   gtk_box_append (GTK_BOX (top), p->full);
-  p->more = icon_button (p, ICON_MORE, TOP_BUTTON_DP, "More options", G_CALLBACK (open_menu));
+  p->more = icon_button (p, ICON_MORE, TOP_BUTTON_DP, _("More options"), G_CALLBACK (open_menu));
   gtk_box_append (GTK_BOX (top), p->more);
   gtk_box_append (GTK_BOX (p->controls), top);
 
@@ -1119,12 +1129,12 @@ build (Player *p)
   gtk_widget_set_halign (middle, GTK_ALIGN_CENTER);
   gtk_widget_set_valign (middle, GTK_ALIGN_CENTER);
   gtk_widget_set_vexpand (middle, TRUE);
-  GtkWidget *replay_button = icon_button (p, ICON_REPLAY, SIDE_BUTTON_DP, "Back 10 seconds", G_CALLBACK (replay));
+  GtkWidget *replay_button = icon_button (p, ICON_REPLAY, SIDE_BUTTON_DP, _("Back 10 seconds"), G_CALLBACK (replay));
   gtk_widget_set_valign (replay_button, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (middle), replay_button);
-  p->play = icon_button (p, ICON_PLAY, CENTER_BUTTON_DP, "Play or pause", G_CALLBACK (toggle_pause));
+  p->play = icon_button (p, ICON_PLAY, CENTER_BUTTON_DP, _("Play or pause"), G_CALLBACK (toggle_pause));
   gtk_box_append (GTK_BOX (middle), p->play);
-  GtkWidget *forward_button = icon_button (p, ICON_FORWARD, SIDE_BUTTON_DP, "On 10 seconds", G_CALLBACK (forward));
+  GtkWidget *forward_button = icon_button (p, ICON_FORWARD, SIDE_BUTTON_DP, _("On 10 seconds"), G_CALLBACK (forward));
   gtk_widget_set_valign (forward_button, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (middle), forward_button);
   gtk_box_append (GTK_BOX (p->controls), middle);
@@ -1156,8 +1166,14 @@ build (Player *p)
   gtk_widget_set_visible (p->spinner, FALSE);
   gtk_overlay_add_overlay (GTK_OVERLAY (overlay), p->spinner);
 
-  p->message = gtk_label_new ("Open a video from Files");
+  p->message = gtk_label_new (_("Open a video from Files"));
   gtk_widget_add_css_class (p->message, "video-message");
+  /* a message wider than the screen (Russian's, at a large font size) goes on to more lines, centred */
+  gtk_label_set_wrap (GTK_LABEL (p->message), TRUE);
+  gtk_label_set_wrap_mode (GTK_LABEL (p->message), PANGO_WRAP_WORD_CHAR);
+  gtk_label_set_justify (GTK_LABEL (p->message), GTK_JUSTIFY_CENTER);
+  gtk_widget_set_margin_start (p->message, 24);
+  gtk_widget_set_margin_end (p->message, 24);
   gtk_widget_set_halign (p->message, GTK_ALIGN_CENTER);
   gtk_widget_set_valign (p->message, GTK_ALIGN_END);
   gtk_widget_set_margin_bottom (p->message, 120);
@@ -1202,13 +1218,13 @@ play_file (Player *p, GFile *file, gboolean mounted)
   gboolean web = g_str_has_prefix (uri, "http://") || g_str_has_prefix (uri, "https://");
   if (!path && !web && !mounted) {
     g_autoptr (GMountOperation) op = gtk_mount_operation_new (GTK_WINDOW (p->win));
-    gtk_label_set_text (GTK_LABEL (p->message), "Opening…");
+    gtk_label_set_text (GTK_LABEL (p->message), _("Opening…"));
     gtk_widget_set_visible (p->message, TRUE);
     g_file_mount_enclosing_volume (file, G_MOUNT_MOUNT_NONE, op, NULL, on_mounted, g_object_ref (p->app));
     return;
   }
   if (!path && !web) {
-    gtk_label_set_text (GTK_LABEL (p->message), "Can’t reach this video");
+    gtk_label_set_text (GTK_LABEL (p->message), _("Can’t reach this video"));
     gtk_widget_set_visible (p->message, TRUE);
     return;
   }
@@ -1231,7 +1247,7 @@ ensure_window (Player *p)
     return;
   build (p);
   if (!start_mpv (p)) {
-    gtk_label_set_text (GTK_LABEL (p->message), "The player could not start");
+    gtk_label_set_text (GTK_LABEL (p->message), _("The player could not start"));
     gtk_widget_set_visible (p->message, TRUE);
   }
   /* on a screen wider than tall it opens full screen (asked before it shows, so that it shows so at once) */

@@ -1,0 +1,3 @@
+# the files with translatable strings
+data/vibeos.Compass.desktop.in
+main.c

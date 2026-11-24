@@ -30,6 +30,19 @@ Comment:
  converted from AOSP and LineageOS sources (frameworks/base SystemUI,
  Launcher3, DeskClock, Dialer, Messaging, ExactCalculator).
 
+Files: */po/*.po
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+           The Android Open Source Project
+           The LineageOS Project
+License: Expat and Apache-2.0
+Comment:
+ The translations whose translator comment says "android: <app> <resource>"
+ are that AOSP or LineageOS app's translations of the same English string
+ (lineage-24.0, at the commits tools/i18n/android-sources.json pins), some of
+ them adapted as the comment says; they are under the Apache License 2.0. The
+ other translations are VibeOS's own, under the Expat licence.
+ tools/i18n/NOTICE repeats the notice.
+
 Files: apps/installer/data/icons/*
        apps/installer/data/vibeos.Installer.svg
 Copyright: Google LLC (Material Symbols)

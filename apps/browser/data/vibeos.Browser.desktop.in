@@ -1,0 +1,19 @@
+[Desktop Entry]
+Type=Application
+Name=Browser
+GenericName=Web Browser
+Comment=Browse the web
+Exec=vibeos-browser %U
+Icon=vibeos.Browser
+Terminal=false
+Categories=Network;WebBrowser;
+MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;
+StartupNotify=false
+DBusActivatable=true
+StartupWMClass=vibeos.Browser
+X-Purism-FormFactor=Workstation;Mobile;
+Actions=new-incognito-tab;
+
+[Desktop Action new-incognito-tab]
+Name=New incognito tab
+Exec=vibeos-browser --incognito

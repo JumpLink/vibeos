@@ -5,6 +5,7 @@
 #include "vibeos-list-row.h"
 #include "vibeos-sheet.h"
 
+#include <glib/gi18n-lib.h>
 #include <spongy-gtk.h>
 
 /* debian/changelog's newest version, without its epoch: meson.build passes it in */
@@ -15,25 +16,28 @@
 #define DEVELOPER     "VibeOS Project"
 #define WEBSITE       "https://vibeos.top"
 #define ISSUES        "https://github.com/pulpoff/vibeos/issues"
-#define LICENSE       "https://github.com/pulpoff/vibeos/blob/main/LICENSE"
 #define ICON_SIZE     128
 #define LINK_ICON     "vibeos-external-link-symbolic"
 
-/* what every app's Credits and Legal say first: title, text, ..., NULL */
+/* what every app's Credits and Legal say first: title, text, ..., NULL; translated when shown */
 static const char *const vibeos_credits[] = {
-  "Developed by",
-  "The VibeOS Project\n<a href=\"https://github.com/pulpoff/vibeos\">github.com/pulpoff/vibeos</a>",
-  "Built on",
-  "Debian, GNOME and GTK.",
+  N_("Developed by"),
+  /* TRANSLATORS: keep the link's markup as it is */
+  N_("The VibeOS Project\n<a href=\"https://github.com/pulpoff/vibeos\">github.com/pulpoff/vibeos</a>"),
+  N_("Built on"),
+  N_("Debian, GNOME and GTK."),
   NULL,
 };
 
 static const char *const vibeos_legal[] = {
   "VibeOS",
-  "© 2026 pulpoff\n\n"
-  "VibeOS is free software under the <a href=\"" LICENSE "\">MIT License</a>. It comes with absolutely no warranty.\n\n"
-  "Some of its icons and images come from the Android Open Source Project and LineageOS, under the Apache License "
-  "2.0.",
+  /* TRANSLATORS: keep the markup (the link and the line breaks) as it is */
+  N_("© 2026 pulpoff\n\n"
+     "VibeOS is free software under the "
+     "<a href=\"https://github.com/pulpoff/vibeos/blob/main/LICENSE\">MIT License</a>. "
+     "It comes with absolutely no warranty.\n\n"
+     "Some of its icons and images come from the Android Open Source Project and LineageOS, under the Apache "
+     "License 2.0, and so do many of its translations."),
   NULL,
 };
 
@@ -59,8 +63,8 @@ copy_sections (const VibeosAboutSection *sections)
 
   for (const VibeosAboutSection *s = sections; s && s->title; s++)
     {
-      g_ptr_array_add (copy, g_strdup (s->title));
-      g_ptr_array_add (copy, g_strdup (s->text ? s->text : ""));
+      g_ptr_array_add (copy, g_strdup (g_dgettext (NULL, s->title)));
+      g_ptr_array_add (copy, g_strdup (s->text ? g_dgettext (NULL, s->text) : ""));
     }
   return copy;
 }
@@ -144,8 +148,8 @@ sections_page (const char *const *own, GPtrArray *app)
   vibeos_card_list_set_margins (VIBEOS_CARD_LIST (list), 0, 24);
   for (guint i = 0; own[i] && own[i + 1]; i += 2)
     {
-      vibeos_card_list_add_group (VIBEOS_CARD_LIST (list), own[i]);
-      vibeos_card_list_append (VIBEOS_CARD_LIST (list), text_card (own[i + 1]));
+      vibeos_card_list_add_group (VIBEOS_CARD_LIST (list), _(own[i]));
+      vibeos_card_list_append (VIBEOS_CARD_LIST (list), text_card (_(own[i + 1])));
     }
   for (guint i = 0; i + 1 < app->len; i += 2)
     {
@@ -164,13 +168,13 @@ about_of (GtkWidget *row)
 static void
 on_credits (VibeosListRow *row, VibeosSheet *sheet)
 {
-  vibeos_sheet_push (sheet, "Credits", sections_page (vibeos_credits, about_of (GTK_WIDGET (row))->credits));
+  vibeos_sheet_push (sheet, _("Credits"), sections_page (vibeos_credits, about_of (GTK_WIDGET (row))->credits));
 }
 
 static void
 on_legal (VibeosListRow *row, VibeosSheet *sheet)
 {
-  vibeos_sheet_push (sheet, "Legal", sections_page (vibeos_legal, about_of (GTK_WIDGET (row))->legal));
+  vibeos_sheet_push (sheet, _("Legal"), sections_page (vibeos_legal, about_of (GTK_WIDGET (row))->legal));
 }
 
 /* the first page: the app, then the rows, in libadwaita's groups (its website; its issues; credits and legal) */
@@ -179,7 +183,7 @@ main_page (VibeosSheet *sheet, const VibeosAboutInfo *info)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *icon = gtk_image_new_from_icon_name (info->icon_name);
-  GtkWidget *name = gtk_label_new (info->name);
+  GtkWidget *name = gtk_label_new (g_dgettext (NULL, info->name));
   GtkWidget *developer = gtk_label_new (DEVELOPER);
   GtkWidget *version = gtk_label_new (vibeos_release ());
   GtkWidget *list = vibeos_card_list_new ();
@@ -208,15 +212,15 @@ main_page (VibeosSheet *sheet, const VibeosAboutInfo *info)
   gtk_box_append (GTK_BOX (box), version);
 
   vibeos_card_list_set_margins (cards, 24, 16);
-  row = add_row (cards, "Website", LINK_ICON);
+  row = add_row (cards, _("Website"), LINK_ICON);
   g_signal_connect (row, "clicked", G_CALLBACK (on_link_row), (gpointer) WEBSITE);
   vibeos_card_list_add_group (cards, NULL);
-  row = add_row (cards, "Report an Issue", LINK_ICON);
+  row = add_row (cards, _("Report an Issue"), LINK_ICON);
   g_signal_connect (row, "clicked", G_CALLBACK (on_link_row), (gpointer) ISSUES);
   vibeos_card_list_add_group (cards, NULL);
-  row = add_row (cards, "Credits", NULL);
+  row = add_row (cards, _("Credits"), NULL);
   g_signal_connect (row, "clicked", G_CALLBACK (on_credits), sheet);
-  row = add_row (cards, "Legal", NULL);
+  row = add_row (cards, _("Legal"), NULL);
   g_signal_connect (row, "clicked", G_CALLBACK (on_legal), sheet);
   gtk_box_append (GTK_BOX (box), list);
 
@@ -234,7 +238,8 @@ vibeos_about_present (GtkWidget *parent, const VibeosAboutInfo *info)
   g_return_val_if_fail (info != NULL && info->name != NULL, NULL);
 
   sheet = vibeos_sheet_new (NULL);
-  label = g_strdup_printf ("About %s", info->name);
+  /* TRANSLATORS: the About sheet's name for a screen reader; %s is the app's name */
+  label = g_strdup_printf (_("About %s"), g_dgettext (NULL, info->name));
   gtk_accessible_update_property (GTK_ACCESSIBLE (sheet), GTK_ACCESSIBLE_PROPERTY_LABEL, label, -1);
   about = g_new0 (About, 1);
   about->credits = copy_sections (info->credits);

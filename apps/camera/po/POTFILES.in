@@ -1,0 +1,8 @@
+# the files with translatable strings
+data/vibeos.Camera.desktop.in
+src/cam-dialogs.c
+src/cam-mode-selector.c
+src/cam-qr-sheet.c
+src/cam-settings.c
+src/cam-widgets.c
+src/cam-window.c

@@ -3,6 +3,7 @@
  * and the page of the entry chosen in it are side by side (VibeosListDetail); on a phone the pages open over it. */
 #pragma once
 
+#include <glib/gi18n.h>
 #include <gtk/gtk.h>
 #include <vibeos.h>
 
@@ -68,9 +69,13 @@ GtkWidget *ns_row_add_switch (GtkWidget *row, gboolean split);
 GtkWidget *ns_row_widget (GtkWidget *group, const char *title, GtkWidget *child);
 /* an integer key as a −/+ stepper */
 GtkWidget *ns_row_spin (GtkWidget *group, const char *title, GSettings *s, const char *key, int lo, int hi);
-/* a string key from a fixed list: a row that shows the choice and opens a picker page */
+/* a string key from a fixed list: a row that shows the choice and opens a picker page. The labels are a static list
+ * of N_() strings, translated here (as ns_row_pick's labels and summaries are) */
 GtkWidget *ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *key,
                           const char *const *values, const char *const *labels);
+/* the same with labels shown as they are (ns_row_pick_names) */
+GtkWidget *ns_row_choice_names (GtkWidget *group, const char *title, GSettings *s, const char *key,
+                                const char *const *values, const char *const *labels);
 
 /* a switch row with an icon, for a switch the caller drives (ns_switch_quiet sets it without its handler acting) */
 GtkWidget *ns_row_toggle (GtkWidget *group, const char *icon, const char *title, const char *subtitle);
@@ -100,11 +105,20 @@ GtkWidget *ns_row_volume (GtkWidget *group, const char *title, const char *icon,
 GtkWidget *ns_row_steps (GtkWidget *group, const char *title, guint n, guint selected, GtkWidget **scale);
 /* a line under the title of ns_row_steps (the step chosen, why it cannot change), or none */
 void       ns_row_steps_set_value_text (GtkWidget *row, const char *text);
-/* a choice by position: a row that shows labels[selected] and opens a picker page (the labels are copied);
- * `picked` gets the position */
+/* a choice by position: a row that shows labels[selected] and opens a picker page; `labels` is a static list of N_()
+ * strings, translated here (and copied); `picked` gets the position */
 typedef void (*NsPicked) (GtkWidget *row, guint index, gpointer data);
 GtkWidget *ns_row_pick (GtkWidget *group, const char *title, const char *const *labels, guint selected,
                         NsPicked picked, gpointer data);
+/* the same with NC_() strings, all in @context ("Short" a delay's, "Medium" a speed's: words that agree with what
+ * they describe); NULL for N_() ones */
+GtkWidget *ns_row_pick_in (GtkWidget *group, const char *title, const char *context, const char *const *labels,
+                           guint selected, NsPicked picked, gpointer data);
+/* the same with labels shown as they are (copied): names found at run time (an app's, a display mode's, a sound's, a
+ * language's), text that is never translated ("4 × 5", "PEAP") or that the caller translated. Only strings marked
+ * for translation are looked up: a name that happened to be one of them would come out translated. */
+GtkWidget *ns_row_pick_names (GtkWidget *group, const char *title, const char *const *labels, guint selected,
+                              NsPicked picked, gpointer data);
 void       ns_row_pick_select (GtkWidget *row, guint selected);
 /* what the row says under its title for each choice, in place of the choice's label ("After 1 minute of
  * inactivity" for "1 minute"); copied, as many as the labels */

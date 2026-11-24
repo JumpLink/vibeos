@@ -87,13 +87,13 @@ show_main_time (ClockPage *self, GDateTime *now, gboolean seconds)
     time = g_strdup_printf ("%02d:%02d:%02d", hour, minute, g_date_time_get_second (now));
   else if (seconds)
     time = g_strdup_printf ("%d:%02d:%02d <span size='40%%' weight='900'>%s</span>", hour % 12 ? hour % 12 : 12,
-                            minute, g_date_time_get_second (now), hour < 12 ? "AM" : "PM");
+                            minute, g_date_time_get_second (now), clock_day_period (hour));
   else
     time = clock_time_markup (hour, minute, use_24h, 0.4);
   gtk_label_set_markup (GTK_LABEL (self->time), time);
 
   /* the best "EEEMMMd" pattern, in capitals: "SAT, NOV 7" */
-  date = g_date_time_format (now, "%a, %b %-d");
+  date = vibeos_format_date (now, "EEEMMMd");
   upper = g_utf8_strup (date, -1);
   gtk_label_set_text (GTK_LABEL (self->date), upper);
 }
@@ -278,7 +278,7 @@ show_cards (ClockPage *self)
     {
       City *city = cities->pdata[i];
 
-      g_ptr_array_add (self->cards, make_card (self, city->data->name, city->tz));
+      g_ptr_array_add (self->cards, make_card (self, city->name, city->tz));
     }
   for (guint i = 0; i < self->cards->len; i++)
     {

@@ -9,6 +9,7 @@
 #include "ns-accounts-net.h"
 
 #define GOA_API_IS_SUBJECT_TO_CHANGE
+#include <glib/gi18n.h>
 #include <goa/goa.h>
 #include <json-glib/json-glib.h>
 #include <libsoup/soup.h>
@@ -104,25 +105,25 @@ set_error_ssl (GError **error, GTlsCertificateFlags flags)
   g_clear_error (error);
   switch (flags) {
   case G_TLS_CERTIFICATE_UNKNOWN_CA:
-    message = "The signing certificate authority is not known.";
+    message = _("The signing certificate authority is not known.");
     break;
   case G_TLS_CERTIFICATE_BAD_IDENTITY:
-    message = "The certificate does not match the expected identity of the site that it was retrieved from.";
+    message = _("The certificate does not match the expected identity of the site that it was retrieved from.");
     break;
   case G_TLS_CERTIFICATE_NOT_ACTIVATED:
-    message = "The certificate’s activation time is still in the future.";
+    message = _("The certificate’s activation time is still in the future.");
     break;
   case G_TLS_CERTIFICATE_EXPIRED:
-    message = "The certificate has expired.";
+    message = _("The certificate has expired.");
     break;
   case G_TLS_CERTIFICATE_REVOKED:
-    message = "The certificate has been revoked.";
+    message = _("The certificate has been revoked.");
     break;
   case G_TLS_CERTIFICATE_INSECURE:
-    message = "The certificate’s algorithm is considered insecure.";
+    message = _("The certificate’s algorithm is considered insecure.");
     break;
   default:
-    message = "Invalid certificate.";
+    message = _("Invalid certificate.");
     break;
   }
   g_clear_error (error);
@@ -138,16 +139,16 @@ set_error_status (GError **error, guint status)
   case SOUP_STATUS_METHOD_NOT_ALLOWED:
   case SOUP_STATUS_INTERNAL_SERVER_ERROR:
   case SOUP_STATUS_NOT_IMPLEMENTED:
-    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, "Not supported");
+    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, _("Not supported"));
     break;
   case SOUP_STATUS_NOT_FOUND:
-    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, "Not found");
+    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, _("Not found"));
     break;
   case SOUP_STATUS_UNAUTHORIZED:
   case SOUP_STATUS_FORBIDDEN:
   case SOUP_STATUS_PROXY_AUTHENTICATION_REQUIRED:
   case SOUP_STATUS_PRECONDITION_FAILED:
-    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_NOT_AUTHORIZED, "Authentication failed");
+    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_NOT_AUTHORIZED, _("Authentication failed"));
     break;
   default:
     g_set_error (error, GOA_ERROR, GOA_ERROR_FAILED, "Code: %u — Unexpected response from server", status);
@@ -291,7 +292,7 @@ dav_options (Dav *d, const char *uri, DavAnswer *a, GError **error)
   dav_answer_clear (a);
   g_autoptr (SoupMessage) msg = soup_message_new (SOUP_METHOD_OPTIONS, uri);
   if (!msg) {
-    g_set_error (error, GOA_ERROR, GOA_ERROR_FAILED, "Invalid URI: %s", uri);
+    g_set_error (error, GOA_ERROR, GOA_ERROR_FAILED, _("Invalid URI: %s"), uri);
     return FALSE;
   }
   http_watch (&d->http, msg);
@@ -349,7 +350,7 @@ dav_check_sync (Dav *d, DavService service, const char *uri, GError **error)
     if (status_is_answer (a.status)) {
       if (dav_features (a.dav))
         return TRUE;
-      g_set_error_literal (&failed, GOA_ERROR, GOA_ERROR_NOT_SUPPORTED, "DAV not supported");
+      g_set_error_literal (&failed, GOA_ERROR, GOA_ERROR_NOT_SUPPORTED, _("DAV not supported"));
     } else if (!status_is_fallback (a.status)) {
       set_error_status (error, a.status);
       return FALSE;
@@ -506,7 +507,7 @@ dav_discover_sync (Dav *d, const char *uri_text, GError **error)
 {
   g_autoptr (GUri) uri = g_uri_parse (uri_text, SOUP_HTTP_URI_FLAGS, NULL);
   if (!uri) {
-    g_set_error (error, GOA_ERROR, GOA_ERROR_FAILED, "Invalid URI: %s", uri_text);
+    g_set_error (error, GOA_ERROR, GOA_ERROR_FAILED, _("Invalid URI: %s"), uri_text);
     return NULL;
   }
   g_autofree char *base = g_uri_to_string (uri);
@@ -544,9 +545,9 @@ dav_discover_sync (Dav *d, const char *uri_text, GError **error)
         continue;
       }
       if (auth_error)
-        g_set_error_literal (error, GOA_ERROR, GOA_ERROR_NOT_AUTHORIZED, "Authentication failed");
+        g_set_error_literal (error, GOA_ERROR, GOA_ERROR_NOT_AUTHORIZED, _("Authentication failed"));
       else
-        g_set_error_literal (error, GOA_ERROR, GOA_ERROR_NOT_SUPPORTED, "Cannot find WebDAV endpoint");
+        g_set_error_literal (error, GOA_ERROR, GOA_ERROR_NOT_SUPPORTED, _("Cannot find WebDAV endpoint"));
       return NULL;
     }
 
@@ -684,7 +685,7 @@ dav_add_thread (GTask *task, gpointer source, gpointer data, GCancellable *cance
       continue;
     g_autofree char *uri = ns_goa_normalize_url (j->uri, typed[i], NULL);
     if (!uri) {
-      error = g_error_new (GOA_ERROR, GOA_ERROR_FAILED, "Invalid URI: %s", typed[i]);
+      error = g_error_new (GOA_ERROR, GOA_ERROR_FAILED, _("Invalid URI: %s"), typed[i]);
       goto out;
     }
     if (i == 0) {
@@ -870,7 +871,7 @@ line_read (Line *l, GError **error)
     if (e)
       g_propagate_error (error, g_steal_pointer (&e));
     else
-      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Connection closed");
+      g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED, _("Connection closed"));
     return NULL;
   }
   g_strchomp (s);
@@ -892,7 +893,7 @@ imap_bye (const char *r, GError **error)
 {
   if (!g_str_has_prefix (r, "* BYE"))
     return FALSE;
-  g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, "Service not available");
+  g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, _("Service not available"));
   return TRUE;
 }
 
@@ -915,7 +916,7 @@ imap_read_response (Line *l, GError **error)
       return FALSE;
     if (g_str_has_prefix (r, IMAP_TAG)) {
       if (g_str_has_prefix (r, IMAP_TAG " NO")) {
-        g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, "Authentication failed");
+        g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, _("Authentication failed"));
         return FALSE;
       }
       return !imap_not_ok (r, TRUE, error);
@@ -956,7 +957,7 @@ imap_check (Line *l, NsTls tls, const char *user, const char *password, GError *
     if (!caps)
       return FALSE;
     if (!strstr (caps, "STARTTLS")) {
-      g_set_error_literal (error, GOA_ERROR, GOA_ERROR_NOT_SUPPORTED, "Server does not support STARTTLS");
+      g_set_error_literal (error, GOA_ERROR, GOA_ERROR_NOT_SUPPORTED, _("Server does not support STARTTLS"));
       return FALSE;
     }
     if (!imap_read_response (l, error) || !line_send (l, IMAP_TAG " STARTTLS\r\n", error) ||
@@ -975,7 +976,7 @@ static gboolean
 smtp_unexpected (const char *r, const char *code, GError **error)
 {
   if (g_str_has_prefix (r, "421")) {
-    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, "Service not available");
+    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, _("Service not available"));
     return TRUE;
   }
   if (g_str_has_prefix (r, code) && strlen (r) >= 4)
@@ -1032,7 +1033,7 @@ smtp_check (Line *l, NsTls tls, const char *user, const char *password, const ch
     if (!smtp_ehlo (l, domain, &starttls, NULL, error))
       return FALSE;
     if (!starttls) {
-      g_set_error_literal (error, GOA_ERROR, GOA_ERROR_NOT_SUPPORTED, "Server does not support STARTTLS");
+      g_set_error_literal (error, GOA_ERROR, GOA_ERROR_NOT_SUPPORTED, _("Server does not support STARTTLS"));
       return FALSE;
     }
     if (!line_send (l, "STARTTLS\r\n", error))
@@ -1041,7 +1042,7 @@ smtp_check (Line *l, NsTls tls, const char *user, const char *password, const ch
     if (!r)
       return FALSE;
     if (g_str_has_prefix (r, "454")) {
-      g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, "TLS not available");
+      g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, _("TLS not available"));
       return FALSE;
     }
     if (smtp_unexpected (r, "220", error) || !line_tls (l, error))
@@ -1053,7 +1054,7 @@ smtp_check (Line *l, NsTls tls, const char *user, const char *password, const ch
   if (!auth->use_auth)
     return TRUE;
   if (!auth->auth_login && !auth->auth_plain) {
-    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_NOT_SUPPORTED, "Unknown authentication mechanism");
+    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_NOT_SUPPORTED, _("Unknown authentication mechanism"));
     return FALSE;
   }
   g_autofree char *request = NULL;
@@ -1091,7 +1092,7 @@ smtp_check (Line *l, NsTls tls, const char *user, const char *password, const ch
   if (!r)
     return FALSE;
   if (!g_str_has_prefix (r, "235")) {
-    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, "Authentication failed");
+    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, _("Authentication failed"));
     return FALSE;
   }
   return TRUE;
@@ -1393,7 +1394,8 @@ autoconfig_thread (GTask *task, gpointer source, gpointer data, GCancellable *ca
   else if (error)
     g_task_return_error (task, error);
   else
-    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_FAILED, "Failed to autoconfig '%s'", email);
+    /* TRANSLATORS: %s is the email address */
+    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_FAILED, _("Failed to autoconfig '%s'"), email);
 }
 
 void
@@ -1481,7 +1483,7 @@ ews_parse (GBytes *body, GError **error)
     if (e && e->domain == GOA_ERROR)
       g_propagate_error (error, g_steal_pointer (&e));
     else
-      g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, "Failed to parse autodiscover response XML");
+      g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, _("Failed to parse autodiscover response XML"));
     return FALSE;
   }
   /* GOA's messages for what is missing */
@@ -1494,7 +1496,7 @@ ews_parse (GBytes *body, GError **error)
     return FALSE;
   }
   if (p.reached < 5) {
-    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, "Failed to find ASUrl in autodiscover response");
+    g_set_error_literal (error, GOA_ERROR, GOA_ERROR_FAILED, _("Failed to find ASUrl in autodiscover response"));
     return FALSE;
   }
   return TRUE;
@@ -1589,7 +1591,7 @@ ns_ews_autodiscover (const char *email, const char *password, const char *user, 
                                       g_object_ref (task));
   }
   if (e->pending == 0)
-    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_FAILED, "Invalid URI: %s", server);
+    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_FAILED, _("Invalid URI: %s"), server);
 }
 
 gboolean
@@ -1673,7 +1675,7 @@ flow_started (GObject *src, GAsyncResult *res, gpointer data)
   }
   /* GOA's own words for a server without the flow */
   if (soup_message_get_status (msg) != SOUP_STATUS_OK) {
-    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_NOT_SUPPORTED, "Not supported");
+    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_NOT_SUPPORTED, _("Not supported"));
     return;
   }
   g_autoptr (JsonParser) parser = json_parser_new ();
@@ -1685,7 +1687,7 @@ flow_started (GObject *src, GAsyncResult *res, gpointer data)
   const char *login = json_string (o, "login"), *endpoint = json_string (poll, "endpoint");
   const char *token = json_string (poll, "token");
   if (!login || !endpoint || !token) {
-    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_FAILED, "Could not parse response");
+    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_FAILED, _("Could not parse response"));
     return;
   }
   Three *t = g_new0 (Three, 1);
@@ -1708,7 +1710,7 @@ ns_nextcloud_start (const char *uri, gboolean accept_ssl_errors, GCancellable *c
                                                                                       NULL);
   g_autoptr (SoupMessage) msg = target ? soup_message_new (SOUP_METHOD_POST, target) : NULL;
   if (!msg) {
-    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_FAILED, "Invalid URI: %s", uri);
+    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_FAILED, _("Invalid URI: %s"), uri);
     return;
   }
   http_watch (&f->http, msg);
@@ -1758,7 +1760,7 @@ flow_polled (GObject *src, GAsyncResult *res, gpointer data)
   const char *server = json_string (o, "server"), *login = json_string (o, "loginName");
   const char *password = json_string (o, "appPassword");
   if (!server || !login || !password) {
-    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_FAILED, "Could not parse response");
+    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_FAILED, _("Could not parse response"));
     return;
   }
   Three *t = g_new0 (Three, 1);
@@ -1777,7 +1779,7 @@ ns_nextcloud_poll (const char *poll, const char *token, gboolean accept_ssl_erro
   g_autofree char *form = g_strdup_printf ("token=%s", token);
   g_autoptr (SoupMessage) msg = soup_message_new_from_encoded_form (SOUP_METHOD_POST, poll, g_steal_pointer (&form));
   if (!msg) {
-    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_FAILED, "Invalid URI: %s", poll);
+    g_task_return_new_error (task, GOA_ERROR, GOA_ERROR_FAILED, _("Invalid URI: %s"), poll);
     return;
   }
   http_watch (&f->http, msg);

@@ -384,7 +384,8 @@ nb_urlbar_sync_count (NbTab *t)
   guint n = nb->tabs->len;
   /* the number up to 99, then a smile */
   g_autofree char *text = n > 99 ? g_strdup (":D") : g_strdup_printf ("%u", n);
-  g_autofree char *name = g_strdup_printf (n == 1 ? "Switch tabs, %u open tab" : "Switch tabs, %u open tabs", n);
+  g_autofree char *name = g_strdup_printf (g_dngettext (NULL, "Switch tabs, %u open tab", "Switch tabs, %u open tabs",
+                                                       n), n);
   nb_tab_count_set_text (NB_TAB_COUNT (t->count_label), text);
   gtk_accessible_update_property (GTK_ACCESSIBLE (t->count), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
 }
@@ -456,7 +457,7 @@ url_group (NbTab *t)
 
   t->entry = gtk_entry_new ();
   gtk_widget_add_css_class (t->entry, "nb-url-entry");
-  gtk_entry_set_placeholder_text (GTK_ENTRY (t->entry), "Search or type URL");
+  gtk_entry_set_placeholder_text (GTK_ENTRY (t->entry), _("Search or type URL"));
   gtk_entry_set_input_purpose (GTK_ENTRY (t->entry), GTK_INPUT_PURPOSE_URL);
   gtk_entry_set_input_hints (GTK_ENTRY (t->entry), GTK_INPUT_HINT_NO_SPELLCHECK | GTK_INPUT_HINT_NO_EMOJI |
                              (t->incognito ? GTK_INPUT_HINT_PRIVATE : 0));
@@ -482,7 +483,7 @@ url_group (NbTab *t)
   gtk_box_append (GTK_BOX (row), card);
 
   gtk_box_append (GTK_BOX (row), count_button (t));
-  t->more = bar_icon_button ("jelly-menu-symbolic", "More", "nb-bar-icon");
+  t->more = bar_icon_button ("jelly-menu-symbolic", _("More"), "nb-bar-icon");
   gtk_widget_set_margin_end (t->more, 4);
   g_signal_connect_swapped (t->more, "clicked", G_CALLBACK (nb_menu_open), t);
   gtk_box_append (GTK_BOX (row), t->more);
@@ -494,7 +495,7 @@ find_group (NbTab *t)
 {
   GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *card = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *cancel = bar_icon_button ("jelly-cancel-symbolic", "Cancel search", "nb-bar-icon");
+  GtkWidget *cancel = bar_icon_button ("jelly-cancel-symbolic", _("Cancel search"), "nb-bar-icon");
 
   gtk_widget_set_margin_start (cancel, 4);
   g_signal_connect_swapped (cancel, "clicked", G_CALLBACK (on_find_cancel), t);
@@ -504,7 +505,7 @@ find_group (NbTab *t)
   gtk_widget_set_hexpand (card, TRUE);
   t->find_entry = gtk_entry_new ();
   gtk_widget_add_css_class (t->find_entry, "nb-find-entry");
-  gtk_entry_set_placeholder_text (GTK_ENTRY (t->find_entry), "Search");
+  gtk_entry_set_placeholder_text (GTK_ENTRY (t->find_entry), _("Search"));
   gtk_entry_set_input_hints (GTK_ENTRY (t->find_entry), GTK_INPUT_HINT_NO_SPELLCHECK);
   gtk_widget_set_hexpand (t->find_entry, TRUE);
   gtk_widget_set_margin_start (t->find_entry, 16);
@@ -523,14 +524,15 @@ find_group (NbTab *t)
   gtk_widget_add_css_class (t->find_clear, "nb-card-icon");
   gtk_widget_set_valign (t->find_clear, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_end (t->find_clear, 12);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (t->find_clear), GTK_ACCESSIBLE_PROPERTY_LABEL, "Clear search", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (t->find_clear), GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                  _("Clear search"), -1);
   g_signal_connect_swapped (t->find_clear, "clicked", G_CALLBACK (clear_search), t);
   gtk_widget_set_visible (t->find_clear, FALSE);
   gtk_box_append (GTK_BOX (card), t->find_clear);
   gtk_box_append (GTK_BOX (row), card);
 
-  t->find_prev = bar_icon_button ("jelly-prev-symbolic", "Previous", "nb-bar-icon");
-  t->find_next = bar_icon_button ("jelly-next-symbolic", "Next", "nb-bar-icon");
+  t->find_prev = bar_icon_button ("jelly-prev-symbolic", _("Previous"), "nb-bar-icon");
+  t->find_next = bar_icon_button ("jelly-next-symbolic", _("Next"), "nb-bar-icon");
   gtk_widget_set_margin_end (t->find_next, 4);
   g_signal_connect (t->find_prev, "clicked", G_CALLBACK (on_find_step), t);
   g_signal_connect (t->find_next, "clicked", G_CALLBACK (on_find_step), t);

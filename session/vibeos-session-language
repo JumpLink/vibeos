@@ -1,0 +1,25 @@
+#!/bin/sh
+# Starts the session (the command line given) in the user's language: AccountsService's Language for the user, which
+# VibeOS Settings sets (Language and region) and a display manager gives the sessions it starts. vibeos.service and
+# gnome-desktop.service start gnome-session without one, so this does it for them. With no language set, or one the
+# system does not have, the session keeps the system's: LANG from /etc/default/locale, which PAM sets, else C.UTF-8.
+# The Formats region (LC_TIME and the others) is gnome-session's own: it reads org.gnome.system.locale's region.
+user=$(busctl --system --timeout=5 call org.freedesktop.Accounts /org/freedesktop/Accounts \
+	org.freedesktop.Accounts FindUserById x "$(id -u)" 2>/dev/null) || user=
+user=${user#o \"}
+user=${user%\"}
+lang=
+if [ -n "$user" ]; then
+	lang=$(busctl --system --timeout=5 get-property org.freedesktop.Accounts "$user" \
+		org.freedesktop.Accounts.User Language 2>/dev/null) || lang=
+	lang=${lang#s \"}
+	lang=${lang%\"}
+fi
+# a locale the system has: its character set is UTF-8, where one it lacks falls back to C's ASCII
+if [ -n "$lang" ] && [ "$(LC_ALL=$lang locale charmap 2>/dev/null)" = UTF-8 ]; then
+	export LANG="$lang"
+	# each would stand in front of LANG, as Settings' change at once leaves them unset too
+	unset LANGUAGE LC_ALL LC_MESSAGES
+fi
+[ -n "${LANG:-}" ] || export LANG=C.UTF-8
+exec "$@"

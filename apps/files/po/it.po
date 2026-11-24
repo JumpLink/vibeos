@@ -1,0 +1,878 @@
+# Italian translations of vibeos-files.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-files\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 14:24+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Italian\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# android: DocumentsUI files_label (several translations, short)
+#. About: VibeOS's About sheet, as every VibeOS app has it
+#: data/vibeos.Files.desktop.in src/fm-drawer.c src/fm-main.c src/fm-window.c
+msgid "Files"
+msgstr "File"
+
+#: data/vibeos.Files.desktop.in
+msgid "Browse the phone's files and the servers on your network"
+msgstr "Sfoglia i file del telefono e i server della tua rete"
+
+#: data/vibeos.Files.desktop.in
+msgid ""
+"Files;Folders;File Manager;Browse;SMB;Samba;SFTP;FTP;WebDAV;Network;Recycle "
+"Bin;Trash;"
+msgstr ""
+"File;Cartelle;Gestore file;Sfoglia;SMB;Samba;SFTP;FTP;WebDAV;Rete;Cestino;"
+
+# android: Framework accessibility_system_action_home_label (several translations, short)
+#: src/fm-browser.c src/fm-drawer.c
+msgid "Home"
+msgstr "Home"
+
+#: src/fm-browser.c
+msgid "Up"
+msgstr "Cartella superiore"
+
+# android: DocumentsUI root_available_bytes
+#: src/fm-browser.c src/fm-home.c
+#, c-format
+msgid "%s free"
+msgstr "%s liberi"
+
+#: src/fm-browser.c
+msgid "No results"
+msgstr "Nessun risultato"
+
+#: src/fm-browser.c src/fm-jobs.c
+msgid "The Recycle Bin is empty"
+msgstr "Il cestino è vuoto"
+
+#: src/fm-browser.c
+msgid "Empty folder"
+msgstr "Cartella vuota"
+
+# android: DocumentsUI menu_open
+#: src/fm-browser.c
+msgid "Open"
+msgstr "Apri"
+
+#: src/fm-browser.c
+msgid "Open location"
+msgstr "Apri percorso"
+
+# android: Framework cancel (short)
+#: src/fm-dialogs.c src/fm-jobs.c src/fm-mount.c src/fm-remote-page.c
+#: src/fm-window.c
+msgid "Cancel"
+msgstr "Annulla"
+
+# android: DocumentsUI get_info_positive_button (several translations, short)
+#: src/fm-dialogs.c src/fm-mount.c src/fm-remote-page.c
+msgid "OK"
+msgstr "OK"
+
+#: src/fm-dialogs.c
+msgid "Batch Rename"
+msgstr "Rinomina in blocco"
+
+# android: DocumentsUI sort_dimension_name
+#: src/fm-dialogs.c
+msgid "Name"
+msgstr "Nome"
+
+# android: Dialer helpline_number (other app, short)
+#: src/fm-dialogs.c
+msgid "Number"
+msgstr "Numero"
+
+# android: Framework more_item_label (short)
+#: src/fm-dialogs.c src/fm-window.c
+msgid "More"
+msgstr "Altro"
+
+#: src/fm-dialogs.c
+#, c-format
+msgid "%u folder"
+msgid_plural "%u folders"
+msgstr[0] "%u cartella"
+msgstr[1] "%u cartelle"
+
+#: src/fm-dialogs.c
+#, c-format
+msgid "%u file"
+msgid_plural "%u files"
+msgstr[0] "%u file"
+msgstr[1] "%u file"
+
+#. TRANSLATORS: a list of two counts, "3 folders, 12 files"
+#. TRANSLATORS: the counts and the size of what is deleted, "3 folders, 12 files, 4.2 MB"
+#: src/fm-dialogs.c
+#, c-format
+msgid "%s, %s"
+msgstr "%s, %s"
+
+#: src/fm-dialogs.c src/fm-window.c
+msgid "Properties"
+msgstr "Proprietà"
+
+# android: Framework mime_type_folder (short)
+#: src/fm-dialogs.c
+msgid "Folder"
+msgstr "Cartella"
+
+# android: DocumentsUI sort_dimension_file_type
+#: src/fm-dialogs.c
+msgid "Type"
+msgstr "Tipo"
+
+# android: DocumentsUI sort_dimension_size
+#: src/fm-dialogs.c
+msgid "Size"
+msgstr "Dimensioni"
+
+# android: Settings memory_calculating_size (other app, several translations, short)
+#: src/fm-dialogs.c
+msgid "Calculating…"
+msgstr "Calcolo…"
+
+#: src/fm-dialogs.c
+msgid "Contents"
+msgstr "Contenuto"
+
+# android: DocumentsUI sort_dimension_date
+#: src/fm-dialogs.c
+msgid "Modified"
+msgstr "Ultima modifica"
+
+#: src/fm-dialogs.c
+msgid "Path"
+msgstr "Percorso"
+
+# android: Settings permissions_label (other app, short)
+#: src/fm-dialogs.c
+msgid "Permissions"
+msgstr "Autorizzazioni"
+
+#: src/fm-dialogs.c
+msgid "Hidden"
+msgstr "Nascosto"
+
+# android: Framework gpsVerifYes (short)
+#: src/fm-dialogs.c
+msgid "Yes"
+msgstr "Sì"
+
+# android: Framework gpsVerifNo (short)
+#: src/fm-dialogs.c
+msgid "No"
+msgstr "No"
+
+#: src/fm-dialogs.c
+msgid "Name ▲"
+msgstr "Nome ▲"
+
+#: src/fm-dialogs.c
+msgid "Name ▼"
+msgstr "Nome ▼"
+
+#: src/fm-dialogs.c
+msgid "Size ▲"
+msgstr "Dimensioni ▲"
+
+#: src/fm-dialogs.c
+msgid "Size ▼"
+msgstr "Dimensioni ▼"
+
+#: src/fm-dialogs.c
+msgid "Date ▲"
+msgstr "Data ▲"
+
+#: src/fm-dialogs.c
+msgid "Date ▼"
+msgstr "Data ▼"
+
+#: src/fm-dialogs.c
+msgid "Type ▲"
+msgstr "Tipo ▲"
+
+#: src/fm-dialogs.c
+msgid "Type ▼"
+msgstr "Tipo ▼"
+
+# android: SystemUI label_view (other app, short)
+#. File Manager+'s own categories, with only what applies on a Linux phone
+#: src/fm-dialogs.c src/fm-settings.c src/fm-window.c
+msgid "View"
+msgstr "Visualizza"
+
+#. the view type: the radios side by side, each with its glyph
+#: src/fm-dialogs.c
+msgid "List"
+msgstr "Elenco"
+
+# android: DocumentsUI menu_list
+#: src/fm-dialogs.c
+msgid "List view"
+msgstr "Visualizzazione elenco"
+
+#: src/fm-dialogs.c
+msgid "Grid"
+msgstr "Griglia"
+
+# android: DocumentsUI menu_grid
+#: src/fm-dialogs.c
+msgid "Grid view"
+msgstr "Visualizzazione griglia"
+
+# android: DocumentsUI sort_dimension_dialog_title (adapted)
+#: src/fm-dialogs.c
+msgid "Sort By"
+msgstr "Ordina per"
+
+# android: DocumentsUI menu_show_hidden_files
+#: src/fm-dialogs.c src/fm-settings.c
+msgid "Show hidden files"
+msgstr "Mostra file nascosti"
+
+#: src/fm-dialogs.c src/fm-settings.c
+msgid "Show thumbnails"
+msgstr "Mostra miniature"
+
+#: src/fm-dialogs.c
+#, c-format
+msgid "Are you sure you want to delete '%s'?"
+msgstr "Vuoi davvero eliminare «%s»?"
+
+#: src/fm-dialogs.c
+#, c-format
+msgid "Are you sure you want to move '%s' to the Recycle Bin?"
+msgstr "Vuoi davvero spostare «%s» nel cestino?"
+
+#: src/fm-dialogs.c
+#, c-format
+msgid "Are you sure you want to delete %d item?"
+msgid_plural "Are you sure you want to delete %d items?"
+msgstr[0] "Vuoi davvero eliminare %d elemento?"
+msgstr[1] "Vuoi davvero eliminare %d elementi?"
+
+#: src/fm-dialogs.c
+#, c-format
+msgid "Are you sure you want to move %d item to the Recycle Bin?"
+msgid_plural "Are you sure you want to move %d items to the Recycle Bin?"
+msgstr[0] "Vuoi davvero spostare %d elemento nel cestino?"
+msgstr[1] "Vuoi davvero spostare %d elementi nel cestino?"
+
+# android: DocumentsUI menu_delete (several translations, short)
+#: src/fm-dialogs.c src/fm-window.c
+msgid "Delete"
+msgstr "Elimina"
+
+#: src/fm-dialogs.c
+msgid "Permanently delete"
+msgstr "Elimina definitivamente"
+
+# android: Framework unpin_target (short)
+#: src/fm-drawer.c
+msgid "Unpin"
+msgstr "Stacca"
+
+# android: Framework pin_target (several translations, short)
+#: src/fm-drawer.c
+msgid "Pin"
+msgstr "Fissa"
+
+# android: Framework kg_reordering_delete_drop_target_text (short)
+#: src/fm-drawer.c src/fm-remote-page.c
+msgid "Remove"
+msgstr "Rimuovi"
+
+# android: DocumentsUI menu_eject_root
+#: src/fm-drawer.c
+msgid "Eject"
+msgstr "Espelli"
+
+#: src/fm-drawer.c src/fm-home.c src/fm-places.c
+msgid "Main storage"
+msgstr "Memoria principale"
+
+# android: Framework default_audio_route_category_name (short)
+#: src/fm-drawer.c src/fm-places.c
+msgid "System"
+msgstr "Sistema"
+
+#: src/fm-drawer.c src/fm-home.c src/fm-places.c
+msgid "Recycle Bin"
+msgstr "Cestino"
+
+# android: Framework action_menu_overflow_description (several translations, short)
+#. a smaller ⋮ than the toolbar's
+#: src/fm-drawer.c src/fm-window.c
+msgid "More options"
+msgstr "Altre opzioni"
+
+#: src/fm-drawer.c src/fm-jobs.c src/fm-remote-page.c src/fm-window.c
+msgid "Renamed successfully"
+msgstr "Rinominato"
+
+#: src/fm-drawer.c src/fm-util.c
+msgid "File name cannot be empty."
+msgstr "Il nome del file non può essere vuoto."
+
+#: src/fm-drawer.c
+#, c-format
+msgid "Bookmark [%s] deleted successfully"
+msgstr "Segnalibro [%s] eliminato"
+
+# android: DocumentsUI menu_rename
+#: src/fm-drawer.c src/fm-jobs.c src/fm-remote-page.c src/fm-window.c
+msgid "Rename"
+msgstr "Rinomina"
+
+# android: Framework sim_done_button (several translations, short)
+#. selection: ✕, "N selected", Select All, Select a range
+#: src/fm-drawer.c src/fm-window.c
+msgid "Done"
+msgstr "Fine"
+
+# android: Framework whichEditApplicationLabel (short)
+#: src/fm-drawer.c src/fm-remote-page.c src/fm-window.c
+msgid "Edit"
+msgstr "Modifica"
+
+# android: ExactCalculator no_history (adapted, other app, short)
+#: src/fm-drawer.c
+msgid "No history"
+msgstr "Nessuna cronologia"
+
+# android: DocumentsUI button_clear (several translations, short)
+#: src/fm-drawer.c
+msgid "Clear"
+msgstr "Cancella"
+
+#. normal: ☰, the title, the actions and the overflow
+#: src/fm-drawer.c src/fm-window.c
+msgid "Navigation menu"
+msgstr "Menu di navigazione"
+
+#: src/fm-drawer.c
+msgid "Locations"
+msgstr "Posizioni"
+
+#: src/fm-drawer.c
+msgid "Bookmarks"
+msgstr "Segnalibri"
+
+# android: SystemUI manage_notifications_history_text (other app, short)
+#: src/fm-drawer.c
+msgid "History"
+msgstr "Cronologia"
+
+# android: DocumentsUI downloads_label
+#: src/fm-home.c
+msgid "Downloads"
+msgstr "Download"
+
+#: src/fm-home.c
+msgid "Pictures"
+msgstr "Immagini"
+
+# android: Framework keyboard_shortcut_group_applications_music (short)
+#: src/fm-home.c
+msgid "Music"
+msgstr "Musica"
+
+# android: DocumentsUI chip_title_videos
+#: src/fm-home.c
+msgid "Videos"
+msgstr "Video"
+
+# android: DocumentsUI chip_title_documents
+#: src/fm-home.c
+msgid "Documents"
+msgstr "Documenti"
+
+# android: DocumentsUI root_info_header_recent
+#: src/fm-home.c src/fm-places.c
+msgid "Recent files"
+msgstr "File recenti"
+
+#: src/fm-home.c src/fm-window.c
+msgid "Remote"
+msgstr "Server remoti"
+
+#: src/fm-home.c src/fm-places.c src/fm-remote-page.c
+msgid "Local Network"
+msgstr "Rete locale"
+
+#: src/fm-jobs.c
+msgid "Overwrite"
+msgstr "Sovrascrivi"
+
+# android: Framework skip_button_label (short)
+#: src/fm-jobs.c
+msgid "Skip"
+msgstr "Salta"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "%s already exists. Do you want to overwrite?"
+msgstr "%s esiste già. Vuoi sovrascriverlo?"
+
+#: src/fm-jobs.c
+msgid "Apply to all"
+msgstr "Applica a tutti"
+
+#: src/fm-jobs.c
+msgid "Target is the same as the source."
+msgstr "La destinazione coincide con l'origine."
+
+#: src/fm-jobs.c src/fm-window.c
+msgid "Failed to rename"
+msgstr "Impossibile rinominare"
+
+#: src/fm-jobs.c src/fm-window.c
+msgid "File or folder already exists"
+msgstr "Il file o la cartella esiste già"
+
+#: src/fm-jobs.c
+msgid "Copying"
+msgstr "Copia in corso"
+
+#: src/fm-jobs.c
+msgid "Moving"
+msgstr "Spostamento in corso"
+
+#: src/fm-jobs.c
+msgid "Recycling"
+msgstr "Spostamento nel cestino"
+
+# android: Settings restoring_step_one (other app, short)
+#: src/fm-jobs.c
+msgid "Restoring"
+msgstr "Ripristino in corso"
+
+#: src/fm-jobs.c
+msgid "Compressing"
+msgstr "Compressione in corso"
+
+#: src/fm-jobs.c
+msgid "Renaming"
+msgstr "Ridenominazione in corso"
+
+#: src/fm-jobs.c
+msgid "Deleting"
+msgstr "Eliminazione in corso"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "%1$s/%2$s"
+msgstr "%1$s/%2$s"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "Progress : %s"
+msgstr "Avanzamento: %s"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "Remaining time : %s"
+msgstr "Tempo rimanente: %s"
+
+# android: DocumentsUI copy_preparing (several translations, short)
+#: src/fm-jobs.c
+msgid "Preparing…"
+msgstr "Preparazione…"
+
+# android: Settings private_space_category_hide (other app, short)
+#: src/fm-jobs.c
+msgid "Hide"
+msgstr "Nascondi"
+
+#: src/fm-jobs.c
+msgid "Failed to copy files"
+msgstr "Impossibile copiare i file"
+
+#: src/fm-jobs.c
+msgid "Failed to move files"
+msgstr "Impossibile spostare i file"
+
+#: src/fm-jobs.c
+msgid "Failed to restore files"
+msgstr "Impossibile ripristinare i file"
+
+#: src/fm-jobs.c src/fm-window.c
+msgid "Failed to compress"
+msgstr "Impossibile comprimere"
+
+#: src/fm-jobs.c
+msgid "Failed to delete files"
+msgstr "Impossibile eliminare i file"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "'%1$s' copied to %2$s"
+msgstr "«%1$s» copiato in %2$s"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "%1$d item copied to %2$s"
+msgid_plural "%1$d items copied to %2$s"
+msgstr[0] "%1$d elemento copiato in %2$s"
+msgstr[1] "%1$d elementi copiati in %2$s"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "'%1$s' moved to %2$s"
+msgstr "«%1$s» spostato in %2$s"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "%1$d item moved to %2$s"
+msgid_plural "%1$d items moved to %2$s"
+msgstr[0] "%1$d elemento spostato in %2$s"
+msgstr[1] "%1$d elementi spostati in %2$s"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "'%s' moved to the Recycle Bin"
+msgstr "«%s» spostato nel cestino"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "%d item moved to the Recycle Bin"
+msgid_plural "%d items moved to the Recycle Bin"
+msgstr[0] "%d elemento spostato nel cestino"
+msgstr[1] "%d elementi spostati nel cestino"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "'%s' deleted"
+msgstr "«%s» eliminato"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "%1$d item deleted"
+msgid_plural "%1$d items deleted"
+msgstr[0] "%1$d elemento eliminato"
+msgstr[1] "%1$d elementi eliminati"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "'%s' restored from the Recycle Bin"
+msgstr "«%s» ripristinato dal cestino"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "%d item restored from the Recycle Bin"
+msgid_plural "%d items restored from the Recycle Bin"
+msgstr[0] "%d elemento ripristinato dal cestino"
+msgstr[1] "%d elementi ripristinati dal cestino"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "'%s' created"
+msgstr "«%s» creato"
+
+#: src/fm-jobs.c
+#, c-format
+msgid "%d item renamed"
+msgid_plural "%d items renamed"
+msgstr[0] "%d elemento rinominato"
+msgstr[1] "%d elementi rinominati"
+
+# android: DocumentsUI undo (several translations, short)
+#: src/fm-jobs.c
+msgid "Undo"
+msgstr "Annulla"
+
+#: src/fm-mount.c
+#, c-format
+msgid "Could not connect to %1$s with user %2$s."
+msgstr "Impossibile connettersi a %1$s con l'utente %2$s."
+
+#: src/fm-mount.c
+#, c-format
+msgid "Could not connect to %s."
+msgstr "Impossibile connettersi a %s."
+
+# android: Settings apn_user (other app, short)
+#: src/fm-mount.c src/fm-remote-page.c
+msgid "Username"
+msgstr "Nome utente"
+
+# android: Settings wifi_eap_domain (other app, short)
+#: src/fm-mount.c src/fm-remote-page.c
+msgid "Domain"
+msgstr "Dominio"
+
+# android: Framework lockscreen_glogin_password_hint (short)
+#: src/fm-mount.c src/fm-remote-page.c
+msgid "Password"
+msgstr "Password"
+
+#: src/fm-mount.c src/fm-remote-page.c
+msgid "Anonymous"
+msgstr "Anonimo"
+
+#: src/fm-mount.c
+msgid "Remember password"
+msgstr "Ricorda la password"
+
+# android: Framework storage_sd_card (short)
+#: src/fm-places.c
+msgid "SD card"
+msgstr "Scheda SD"
+
+# android: Framework storage_usb (short)
+#: src/fm-places.c
+msgid "USB storage"
+msgstr "Archivio USB"
+
+#: src/fm-remote-page.c
+msgid "e.g. 192.0.2.101 or 192.0.2.101/folder"
+msgstr "es. indirizzo IP o indirizzo IP/cartella"
+
+#: src/fm-remote-page.c
+msgid "e.g. example.com/webdav"
+msgstr "es. example.com/webdav"
+
+#: src/fm-remote-page.c
+msgid "e.g. 192.0.2.101"
+msgstr "es. un indirizzo IP"
+
+#: src/fm-remote-page.c
+msgid "Host"
+msgstr "Host"
+
+# android: Settings apn_http_port (other app, short)
+#: src/fm-remote-page.c
+msgid "Port"
+msgstr "Porta"
+
+#: src/fm-remote-page.c
+msgid "Security mode"
+msgstr "Modalità di sicurezza"
+
+#: src/fm-remote-page.c
+msgid "(saved)"
+msgstr "(salvata)"
+
+#: src/fm-remote-page.c
+msgid "Optional domain name"
+msgstr "Nome di dominio (facoltativo)"
+
+#: src/fm-remote-page.c
+msgid "Optional"
+msgstr "Facoltativo"
+
+#: src/fm-remote-page.c
+msgid "Display name"
+msgstr "Nome visualizzato"
+
+# android: Framework keyguard_accessibility_widget_empty_slot (short)
+#: src/fm-remote-page.c
+msgid "Empty"
+msgstr "Vuoto"
+
+#: src/fm-remote-page.c
+msgid "Manual input"
+msgstr "Inserimento manuale"
+
+#: src/fm-remote-page.c
+msgid "Add Remote"
+msgstr "Aggiungi server"
+
+#: src/fm-remote-page.c
+msgid "Add a remote location"
+msgstr "Aggiungi una posizione remota"
+
+#: src/fm-settings.c
+msgid "Recycle Bin Settings"
+msgstr "Impostazioni del cestino"
+
+#: src/fm-settings.c
+msgid "Use Recycle bin by default"
+msgstr "Usa il cestino per impostazione predefinita"
+
+#: src/fm-settings.c
+msgid "Show recycle confirmation"
+msgstr "Chiedi conferma per lo spostamento nel cestino"
+
+# android: Dialer voicemail_advanced_settings_title (other app, short)
+#: src/fm-settings.c
+msgid "Advanced Settings"
+msgstr "Impostazioni avanzate"
+
+#: src/fm-settings.c
+msgid "Show history"
+msgstr "Mostra cronologia"
+
+#: src/fm-settings.c
+msgid "Show system storage"
+msgstr "Mostra memoria di sistema"
+
+#: src/fm-share.c
+msgid "Could not share the files"
+msgstr "Impossibile condividere i file"
+
+# android: Framework accessibility_system_action_menu_label (short)
+#. a dialog to the shell's back gesture, which then sends Escape
+#: src/fm-ui.c
+msgid "Menu"
+msgstr "Menu"
+
+#: src/fm-util.c
+msgid "- items"
+msgstr "- elementi"
+
+# android: DocumentsUI elements_dragged
+#: src/fm-util.c
+#, c-format
+msgid "%d item"
+msgid_plural "%d items"
+msgstr[0] "%d elemento"
+msgstr[1] "%d elementi"
+
+#. only '/' is forbidden on Linux; File Manager+'s longer list of characters is the FAT file system's rule
+#: src/fm-util.c
+msgid "A filename cannot contain the character /"
+msgstr "Un nome file non può contenere il carattere /"
+
+#: src/fm-util.c
+msgid " - Copy"
+msgstr " - Copia"
+
+# android: Settings preview_pager_message_title (other app, several translations, short)
+#: src/fm-window.c
+msgid "Message"
+msgstr "Messaggio"
+
+#: src/fm-window.c
+msgid "No apps are installed to open this type of file"
+msgstr "Nessuna app installata può aprire questo tipo di file"
+
+# android: DocumentsUI menu_open_with
+#: src/fm-window.c
+msgid "Open with"
+msgstr "Apri con"
+
+#: src/fm-window.c
+msgid "Bookmark created successfully"
+msgstr "Segnalibro creato"
+
+#: src/fm-window.c
+msgid "This folder is already bookmarked"
+msgstr "Questa cartella è già nei segnalibri"
+
+# android: DocumentsUI menu_compress
+#: src/fm-window.c
+msgid "Compress"
+msgstr "Comprimi"
+
+# android: DocumentsUI menu_share
+#: src/fm-window.c
+msgid "Share"
+msgstr "Condividi"
+
+#: src/fm-window.c
+msgid "Add Bookmark"
+msgstr "Aggiungi segnalibro"
+
+# android: Framework global_action_settings (short)
+#: src/fm-window.c
+msgid "Settings"
+msgstr "Impostazioni"
+
+#: src/fm-window.c
+msgid "Empty Recycle Bin"
+msgstr "Svuota cestino"
+
+#: src/fm-window.c
+msgid "Are you sure you want to empty the Recycle Bin?"
+msgstr "Vuoi davvero svuotare il cestino?"
+
+#: src/fm-window.c
+msgid "Folder name cannot be empty."
+msgstr "Il nome della cartella non può essere vuoto."
+
+#: src/fm-window.c
+msgid "Failed to create a folder"
+msgstr "Impossibile creare la cartella"
+
+#: src/fm-window.c
+msgid "Create Folder"
+msgstr "Crea cartella"
+
+#: src/fm-window.c
+msgctxt "the name a new folder starts with"
+msgid "New folder"
+msgstr "Nuova cartella"
+
+#: src/fm-window.c
+msgctxt "menu item that makes a folder"
+msgid "New folder"
+msgstr "Nuova cartella"
+
+# android: DocumentsUI menu_refresh
+#: src/fm-window.c
+msgid "Refresh"
+msgstr "Aggiorna"
+
+#: src/fm-window.c
+msgid "About"
+msgstr "Informazioni"
+
+# android: DocumentsUI menu_restore_from_trash
+#: src/fm-window.c
+msgid "Restore"
+msgstr "Ripristina"
+
+# android: DocumentsUI menu_copy_to_clipboard
+#. File Manager+'s action bar: Rename with several selected is Batch Rename
+#: src/fm-window.c
+msgid "Copy"
+msgstr "Copia"
+
+# android: DocumentsUI button_move
+#: src/fm-window.c
+msgid "Move"
+msgstr "Sposta"
+
+# android: DocumentsUI menu_paste_from_clipboard
+#: src/fm-window.c
+msgid "Paste"
+msgstr "Incolla"
+
+# android: DocumentsUI menu_search
+#: src/fm-window.c
+msgid "Search"
+msgstr "Cerca"
+
+#. the theme's list-add drawn larger than the other glyphs, as its + fills less of its box
+#: src/fm-window.c
+msgid "New location"
+msgstr "Nuova posizione"
+
+# android: DocumentsUI button_back
+#. Settings: ← and the title
+#. search: ←, the field with its hint, the spinner while the folders are searched
+#: src/fm-window.c
+msgid "Back"
+msgstr "Indietro"
+
+# android: DocumentsUI menu_select_all (adapted, several translations, short)
+#: src/fm-window.c
+msgid "Select All"
+msgstr "Seleziona tutto"
+
+#: src/fm-window.c
+msgid "Select a range"
+msgstr "Seleziona un intervallo"

@@ -1,8 +1,10 @@
 /* sw-json: see sw-json.h */
 #include "sw-json.h"
 
+#include <glib/gi18n.h>
 #include <math.h>
 #include <string.h>
+#include <vibeos-locale.h>
 
 static JsonNode *
 member (JsonObject *object, const char *name)
@@ -139,34 +141,30 @@ char *
 sw_format_date (const char *iso)
 {
   g_autoptr (GDateTime) time = iso ? g_date_time_new_from_iso8601 (iso, NULL) : NULL;
-  static const char *months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov",
-                                  "Dec" };
+  g_autoptr (GDateTime) local = time ? g_date_time_to_local (time) : NULL;
 
-  if (!time)
+  if (!local)
     return NULL;
-  /* the month in English whatever the locale: the store's texts are English */
-  return g_strdup_printf ("%d %s %d", g_date_time_get_day_of_month (time),
-                          months[g_date_time_get_month (time) - 1], g_date_time_get_year (time));
+  /* the day, the month abbreviated and the year, in the user's language and its order ("14 Mar 2025") */
+  return vibeos_format_date (local, "yMMMd");
 }
 
 char *
 sw_format_rating (double rating)
 {
-  char buffer[G_ASCII_DTOSTR_BUF_SIZE];
-
   if (isnan (rating))
     return g_strdup ("");
-  return g_strdup (g_ascii_formatd (buffer, sizeof buffer, "%.1f", rating));
+  /* with the locale's decimal separator ("4,5" in German) */
+  return g_strdup_printf ("%.1f", rating);
 }
 
 char *
 sw_format_ratings_count (gint64 count)
 {
   if (count <= 0)
-    return g_strdup ("No ratings yet");
-  if (count == 1)
-    return g_strdup ("1 rating");
-  return g_strdup_printf ("%" G_GINT64_FORMAT " ratings", count);
+    return g_strdup (_("No ratings yet"));
+  /* an int for gettext's sake (the format of a translated string cannot name gint64's) */
+  return g_strdup_printf (g_dngettext (NULL, "%d rating", "%d ratings", count), (int) MIN (count, G_MAXINT));
 }
 
 glong

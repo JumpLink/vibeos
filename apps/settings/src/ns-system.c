@@ -6,7 +6,8 @@
 #include "ns-pages.h"
 #include "ns-ui.h"
 
-#include <json-glib/json-glib.h>
+#include <errno.h>
+#include <gio/gdesktopappinfo.h>
 #include <sys/utsname.h>
 #include <unistd.h>
 
@@ -18,58 +19,18 @@ bus (GBusType t)
 
 /* ---- Language and region ---- */
 
+/* What the page shows: the installed UTF-8 locales, their names, each in its own language as Android's list has them
+ * (labels: NULL-terminated, as ns_row_pick_names takes them), the same locales as regions for the Formats list,
+ * named in the user's language (regions: NULL-terminated too, or empty when not made), and the user's language.
+ * Finding them out is slow:
+ * localectl reads every installed locale (0.7 s, and seconds for the first look after a boot), AccountsService
+ * answers after that, and the Language row stood empty all the while (owner, 11-21). So the last answer is kept, for
+ * the app's life and in ~/.cache/vibeos-settings/language, and the page shows it at once; each time it opens it asks
+ * again in the background and redraws only if something changed. With nothing kept yet (the first look ever), the
+ * Language row shows a loading indicator until the answer comes. */
 typedef struct {
-  GHashTable *langs, *countries;     /* "de" → "German", "DE" → "Germany" */
-} Names;
-
-static GHashTable *
-iso_table (const char *file, const char *list, const char *key)
-{
-  GHashTable *t = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
-  g_autoptr (JsonParser) p = json_parser_new ();
-  if (!json_parser_load_from_file (p, file, NULL) || !JSON_NODE_HOLDS_OBJECT (json_parser_get_root (p)))
-    return t;
-  JsonObject *o = json_node_get_object (json_parser_get_root (p));
-  JsonArray *a = json_object_has_member (o, list) ? json_object_get_array_member (o, list) : NULL;
-  for (guint i = 0; a && i < json_array_get_length (a); i++) {
-    JsonObject *e = json_array_get_object_element (a, i);
-    const char *k = json_object_get_string_member_with_default (e, key, NULL);
-    const char *k3 = json_object_get_string_member_with_default (e, "alpha_3", NULL);
-    const char *n = json_object_get_string_member_with_default (e, "common_name", NULL);
-    if (!n)
-      n = json_object_get_string_member_with_default (e, "name", NULL);
-    if (n && k)
-      g_hash_table_insert (t, g_strdup (k), g_strdup (n));
-    if (n && k3 && !g_hash_table_contains (t, k3))
-      g_hash_table_insert (t, g_strdup (k3), g_strdup (n));
-  }
-  return t;
-}
-
-/* "de_DE.UTF-8" → "German (Germany)" */
-static char *
-locale_name (Names *n, const char *locale)
-{
-  g_autofree char *l = g_strdup (locale);
-  char *cut = strpbrk (l, ".@");
-  if (cut)
-    *cut = 0;
-  g_auto (GStrv) parts = g_strsplit (l, "_", 2);
-  const char *lang = g_hash_table_lookup (n->langs, parts[0]);
-  const char *country = parts[1] ? g_hash_table_lookup (n->countries, parts[1]) : NULL;
-  if (!lang)
-    return g_strdup (locale);
-  return country ? g_strdup_printf ("%s (%s)", lang, country) : g_strdup (lang);
-}
-
-/* What the page shows: the installed UTF-8 locales, their names (labels: NULL-terminated, as ns_row_pick takes them)
- * and the user's language. Finding them out is slow: localectl reads every installed locale (0.7 s, and seconds for
- * the first look after a boot), AccountsService answers after that, and the Language row stood empty all the while
- * (owner, 11-21). So the last answer is kept, for the app's life and in ~/.cache/vibeos-settings/language, and the
- * page shows it at once; each time it opens it asks again in the background and redraws only if something changed.
- * With nothing kept yet (the first look ever), the Language row shows a loading indicator until the answer comes. */
-typedef struct {
-  GPtrArray *locales, *labels;
+  GPtrArray *locales, *labels, *regions;
+  char      *regions_in;             /* the ICU locale the regions are named in (the user's when they were made) */
   char      *language;               /* AccountsService's Language for the user, "" when it has none */
 } Known;
 
@@ -83,6 +44,8 @@ known_free (Known *k)
     return;
   g_clear_pointer (&k->locales, g_ptr_array_unref);
   g_clear_pointer (&k->labels, g_ptr_array_unref);
+  g_clear_pointer (&k->regions, g_ptr_array_unref);
+  g_free (k->regions_in);
   g_free (k->language);
   g_free (k);
 }
@@ -93,7 +56,15 @@ known_new (void)
   Known *k = g_new0 (Known, 1);
   k->locales = g_ptr_array_new_with_free_func (g_free);
   k->labels = g_ptr_array_new_with_free_func (g_free);
+  k->regions = g_ptr_array_new_with_free_func (g_free);
   return k;
+}
+
+/* the regions' names, when @k has them in the language of @in */
+static gboolean
+known_regions_in (Known *k, const char *in)
+{
+  return k->regions->len == k->locales->len + 1 && !g_strcmp0 (k->regions_in, in);
 }
 
 static char *
@@ -102,7 +73,9 @@ known_file (void)
   return g_build_filename (g_get_user_cache_dir (), "vibeos-settings", "language", NULL);
 }
 
-/* the cache: "language\t<it>", then "<locale>\t<its name>" a line each. A few kilobytes, read once. */
+/* the cache: "language\t<it>", "regions\t<the ICU locale they are named in>", then "<locale>\t<its name>\t<its
+ * region's name>" a line each (an older cache has neither the regions line nor the third field). A few tens of
+ * kilobytes, read once. */
 static Known *
 known_get (void)
 {
@@ -117,14 +90,25 @@ known_get (void)
     return NULL;
   Known *k = known_new ();
   k->language = g_strdup (lines[0] + strlen ("language\t"));
-  for (guint i = 1; lines[i]; i++) {
-    char *tab = strchr (lines[i], '\t');
-    if (!tab || tab == lines[i] || !tab[1])
+  guint i = 1;
+  if (lines[i] && g_str_has_prefix (lines[i], "regions\t"))
+    k->regions_in = g_strdup (lines[i++] + strlen ("regions\t"));
+  gboolean regions = TRUE;
+  for (; lines[i]; i++) {
+    g_auto (GStrv) f = g_strsplit (lines[i], "\t", 3);
+    if (!f[0] || !*f[0] || !f[1] || !*f[1])
       continue;
-    g_ptr_array_add (k->locales, g_strndup (lines[i], tab - lines[i]));
-    g_ptr_array_add (k->labels, g_strdup (tab + 1));
+    g_ptr_array_add (k->locales, g_strdup (f[0]));
+    g_ptr_array_add (k->labels, g_strdup (f[1]));
+    regions = regions && f[2] && *f[2];
+    if (regions)
+      g_ptr_array_add (k->regions, g_strdup (f[2]));
   }
   g_ptr_array_add (k->labels, NULL);
+  if (regions)
+    g_ptr_array_add (k->regions, NULL);
+  else
+    g_ptr_array_set_size (k->regions, 0);
   known = k;
   return known;
 }
@@ -137,9 +121,10 @@ known_written (GObject *src, GAsyncResult *res, gpointer unused)
     g_debug ("the language cache: %s", error->message);
 }
 
-/* keeps @k (taking it) as the last answer, and writes it out in the background */
+/* keeps @k (taking it) as the last answer, and writes it out: in the background, or at once with @now (Settings is
+ * about to start over, and a write in the background would be cut short) */
 static void
-known_keep (Known *k)
+known_keep (Known *k, gboolean now)
 {
   if (k != known) {
     known_free (known);
@@ -147,12 +132,23 @@ known_keep (Known *k)
   }
   known_read = TRUE;
   GString *out = g_string_new (NULL);
+  gboolean regions = k->regions_in && known_regions_in (k, k->regions_in);
   g_string_append_printf (out, "language\t%s\n", k->language ? k->language : "");
+  if (regions)
+    g_string_append_printf (out, "regions\t%s\n", k->regions_in);
   for (guint i = 0; i < k->locales->len; i++)
-    g_string_append_printf (out, "%s\t%s\n", (char *) k->locales->pdata[i], (char *) k->labels->pdata[i]);
+    g_string_append_printf (out, "%s\t%s%s%s\n", (char *) k->locales->pdata[i], (char *) k->labels->pdata[i],
+                            regions ? "\t" : "", regions ? (char *) k->regions->pdata[i] : "");
   g_autofree char *file = known_file ();
   g_autofree char *dir = g_path_get_dirname (file);
   g_mkdir_with_parents (dir, 0700);
+  g_autoptr (GError) error = NULL;
+  if (now) {
+    if (!g_file_set_contents (file, out->str, out->len, &error))
+      g_debug ("the language cache: %s", error->message);
+    g_string_free (out, TRUE);
+    return;
+  }
   g_autoptr (GFile) f = g_file_new_for_path (file);
   g_autoptr (GBytes) bytes = g_string_free_to_bytes (out);
   g_file_replace_contents_bytes_async (f, bytes, NULL, FALSE, G_FILE_CREATE_REPLACE_DESTINATION, NULL, known_written,
@@ -175,7 +171,7 @@ typedef struct {
   char      *shown;                  /* the language they show */
   char      *path;                   /* the user in AccountsService */
   Known     *fresh;                  /* the background look, until AccountsService has answered */
-  GtkWidget *group, *logout;
+  GtkWidget *group, *restart;
 } Lang;
 
 static void
@@ -189,13 +185,54 @@ lang_free (Lang *l)
   g_free (l);
 }
 
+/* Settings started over after a language change sets this, for the page to offer the restart again */
+#define RESTARTED "VIBEOS_SETTINGS_LANGUAGE_CHANGED"
+
+/* Settings again, in the session's new language, on the Language page: this program started over in place, its
+ * environment the new one already (vibeos_locale_set_session). An activation token, as an app launch passes one,
+ * lets its new window take the front this one has. */
 static void
-lang_set (GObject *src, GAsyncResult *res, gpointer what)
+start_over (void)
+{
+  g_settings_sync ();
+  GdkDisplay *display = gdk_display_get_default ();
+  g_autoptr (GDesktopAppInfo) info = g_desktop_app_info_new ("vibeos.Settings.desktop");
+  if (display && info) {
+    g_autoptr (GdkAppLaunchContext) launch = gdk_display_get_app_launch_context (display);
+    g_autofree char *token =
+      g_app_launch_context_get_startup_notify_id (G_APP_LAUNCH_CONTEXT (launch), G_APP_INFO (info), NULL);
+    if (token)
+      g_setenv ("XDG_ACTIVATION_TOKEN", token, TRUE);
+  }
+  g_setenv (RESTARTED, "1", TRUE);
+  char *argv[] = { (char *) g_get_prgname (), "--page", "language", NULL };
+  execv ("/proc/self/exe", argv);
+  g_warning ("Settings could not start over: %s", g_strerror (errno));
+}
+
+/* The session in @loc at once (Android's way): the programs started from now on, the launcher (it follows the
+ * change), and Settings, started over in it. Apps that are open keep theirs until they start again. */
+static void
+switch_language (const char *loc)
+{
+  g_autoptr (GSettings) s = ns_settings ("org.gnome.system.locale");
+  g_autofree char *region = s ? g_settings_get_string (s, "region") : NULL;
+  g_autoptr (GError) error = NULL;
+  if (!vibeos_locale_set_session (loc, region, &error))
+    g_warning ("the session's new language: %s", error->message);
+  start_over ();
+}
+
+/* AccountsService has the language (or said no): the session takes it now */
+static void
+lang_saved (GObject *src, GAsyncResult *res, gpointer loc)
 {
   g_autoptr (GError) error = NULL;
   g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, &error);
   if (!v)
-    g_warning ("%s: %s", (const char *) what, error->message);
+    g_warning ("AccountsService SetLanguage: %s", error->message);
+  switch_language (loc);
+  g_free (loc);
 }
 
 static void
@@ -203,42 +240,71 @@ lang_picked (GtkWidget *row, guint i, gpointer data)
 {
   Lang *l = data;
   const char *loc = l->locales->pdata[i];
-  g_autoptr (GDBusConnection) sys = bus (G_BUS_TYPE_SYSTEM);
-  if (!sys)
+  if (!g_strcmp0 (loc, l->shown))
     return;
-  if (l->path)
-    g_dbus_connection_call (sys, "org.freedesktop.Accounts", l->path, "org.freedesktop.Accounts.User", "SetLanguage",
-                            g_variant_new ("(s)", loc), NULL, G_DBUS_CALL_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION, -1,
-                            NULL, lang_set, (gpointer) "AccountsService SetLanguage");
-  /* The language is the user's (AccountsService), as GNOME Settings sets it on Debian: the session takes it at the
-   * next log in. Not the system's: Debian's systemd keeps localed read-only (org.freedesktop.locale1.read-only.conf
-   * denies SetLocale to everyone, root too), so the SetLocale this page used to send was refused every time. */
-  gtk_widget_set_visible (l->logout, TRUE);
   g_free (l->shown);
   l->shown = g_strdup (loc);
   if (known && same_strings (known->locales, l->locales)) {
     g_free (known->language);
     known->language = g_strdup (loc);
-    known_keep (known);
+    known_keep (known, TRUE);
   }
+  /* The language is the user's (AccountsService), as GNOME Settings sets it on Debian: a display manager gives it to
+   * the session it starts, and so does vibeos.service (vibeos-session-language). Not the system's: Debian's systemd
+   * keeps localed read-only (org.freedesktop.locale1.read-only.conf denies SetLocale to everyone, root too). The
+   * change waits for AccountsService's answer: it asks polkit about this program, which would be gone by then. */
+  g_autoptr (GDBusConnection) sys = bus (G_BUS_TYPE_SYSTEM);
+  if (sys && l->path) {
+    gtk_widget_set_sensitive (l->group, FALSE);
+    g_dbus_connection_call (sys, "org.freedesktop.Accounts", l->path, "org.freedesktop.Accounts.User", "SetLanguage",
+                            g_variant_new ("(s)", loc), NULL, G_DBUS_CALL_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION, -1,
+                            NULL, lang_saved, g_strdup (loc));
+    return;
+  }
+  switch_language (loc);
 }
 
+/* the Formats region: the session's at once too (the launcher's clock, the apps started from now on), Settings
+ * itself with it; nothing to start over, since no text of its own changes */
 static void
 region_picked (GtkWidget *row, guint i, gpointer data)
 {
   Lang *l = data;
   GSettings *s = g_object_get_data (G_OBJECT (row), "ns-locale");
-  g_settings_set_string (s, "region", i == 0 ? "" : (const char *) l->locales->pdata[i - 1]);
-  gtk_widget_set_visible (l->logout, TRUE);
+  const char *region = i == 0 ? "" : (const char *) l->locales->pdata[i - 1];
+  g_settings_set_string (s, "region", region);
+  const char *lang = l->shown && *l->shown ? l->shown : g_getenv ("LANG");
+  g_autoptr (GError) error = NULL;
+  if (!vibeos_locale_set_session (lang && *lang ? lang : "C.UTF-8", region, &error))
+    g_warning ("the session's new formats: %s", error->message);
+  gtk_widget_set_visible (l->restart, TRUE);
 }
 
 static void
-logout (GtkWidget *row, gpointer data)
+call_done (GObject *src, GAsyncResult *res, gpointer what)
 {
-  g_autoptr (GDBusConnection) ses = bus (G_BUS_TYPE_SESSION);
-  if (ses)
-    g_dbus_connection_call (ses, "org.gnome.SessionManager", "/org/gnome/SessionManager", "org.gnome.SessionManager",
-                            "Logout", g_variant_new ("(u)", 0), NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+  g_autoptr (GError) error = NULL;
+  g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, &error);
+  if (!v)
+    g_warning ("%s: %s", (const char *) what, error->message);
+}
+
+/* the device started again, for what keeps the language it started in: logind's restart, as the power menu's
+ * Restart does it (the default reboot mode: this system again) */
+static void
+restart_device (GtkWidget *row, gpointer data)
+{
+  g_autoptr (GDBusConnection) sys = bus (G_BUS_TYPE_SYSTEM);
+  if (!sys)
+    return;
+  g_autoptr (GVariant) v = g_dbus_connection_call_sync (sys, "org.freedesktop.login1", "/org/freedesktop/login1",
+                                                        "org.freedesktop.login1.Manager", "SetRebootParameter",
+                                                        g_variant_new ("(s)", ""), NULL, G_DBUS_CALL_FLAGS_NONE, 3000,
+                                                        NULL, NULL);
+  g_dbus_connection_call (sys, "org.freedesktop.login1", "/org/freedesktop/login1", "org.freedesktop.login1.Manager",
+                          "Reboot", g_variant_new ("(b)", TRUE), NULL,
+                          G_DBUS_CALL_FLAGS_ALLOW_INTERACTIVE_AUTHORIZATION, -1, NULL, call_done,
+                          (gpointer) "logind Reboot");
 }
 
 /* the Language and Formats rows, from @k */
@@ -258,24 +324,34 @@ lang_rows (NsPage *page, Known *k)
     if (current && !g_strcmp0 (l->locales->pdata[i], current))
       sel = i;
   ns_group_clear (l->group);
-  GtkWidget *r = ns_row_pick (l->group, "Language", (const char *const *) l->labels->pdata, sel, lang_picked, l);
-  /* "C.UTF-8" and the like: no language chosen yet, programs speak their own (English) */
-  if (sel == G_MAXUINT)
-    ns_row_set_subtitle (r, !current || g_str_has_prefix (current, "C.") || !g_strcmp0 (current, "C")
-                            || !g_strcmp0 (current, "POSIX") ? "System default (English)" : current);
+  GtkWidget *r = ns_row_pick_names (l->group, _("Language"), (const char *const *) l->labels->pdata, sel, lang_picked,
+                                    l);
+  /* one the list lacks by its name; "C.UTF-8" and the like (no name): no language chosen yet, programs speak their
+   * own (English) */
+  if (sel == G_MAXUINT) {
+    g_autofree char *name = vibeos_locale_name (current, NULL);
+    ns_row_set_subtitle (r, name ? name : _("System default (English)"));
+  }
   GSettings *s = ns_page_settings (page, "org.gnome.system.locale");
   if (s) {
-    g_autoptr (GPtrArray) rl = g_ptr_array_new ();
-    g_ptr_array_add (rl, (gpointer) "Same as the language");
-    for (guint i = 0; i + 1 < l->labels->len; i++)
-      g_ptr_array_add (rl, l->labels->pdata[i]);
+    /* the regions in the user's language ("German (Switzerland)"): what is picked is how dates and numbers look,
+     * not a language to read. Named in the background with the list, or here when the list kept was named in
+     * another language (the one before a change) or not at all (an older cache). */
+    g_autofree char *ui = vibeos_locale_id ();
+    gboolean named = known_regions_in (k, ui);
+    g_autoptr (GPtrArray) rl = g_ptr_array_new_with_free_func (g_free);
+    g_ptr_array_add (rl, g_strdup (_("Same as the language")));
+    for (guint i = 0; i < l->locales->len; i++) {
+      char *name = named ? g_strdup (k->regions->pdata[i]) : vibeos_locale_name (l->locales->pdata[i], ui);
+      g_ptr_array_add (rl, name ? name : g_strdup (l->locales->pdata[i]));
+    }
     g_ptr_array_add (rl, NULL);
     g_autofree char *region = g_settings_get_string (s, "region");
     guint rs = 0;
     for (guint i = 0; i < l->locales->len; i++)
       if (!g_strcmp0 (l->locales->pdata[i], region))
         rs = i + 1;
-    r = ns_row_pick (l->group, "Formats", (const char *const *) rl->pdata, rs, region_picked, l);
+    r = ns_row_pick_names (l->group, _("Formats"), (const char *const *) rl->pdata, rs, region_picked, l);
     g_object_set_data (G_OBJECT (r), "ns-locale", s);
   }
 }
@@ -300,8 +376,10 @@ lang_fresh (NsPage *page, const char *language)
     known_free (k);
     k = known;
   }
-  gboolean same = same_strings (l->locales, k->locales) && !g_strcmp0 (l->shown, k->language);
-  known_keep (k);
+  /* the regions' names need no second look: the rows named them here when the list had none in this language */
+  gboolean same = same_strings (l->locales, k->locales) && same_strings (l->labels, k->labels) &&
+                  !g_strcmp0 (l->shown, k->language);
+  known_keep (k, FALSE);
   if (!same)
     lang_rows (page, known);
 }
@@ -335,7 +413,9 @@ user_found (GObject *src, GAsyncResult *res, gpointer page)
                           G_DBUS_CALL_FLAGS_NONE, 3000, NULL, user_lang_got, page);
 }
 
-/* in a thread: the installed locales from localectl, the UTF-8 ones that name a language, with their names */
+/* in a thread: the installed locales from localectl, the UTF-8 ones that name a language, with their names, and
+ * their regions' names in the language of @data (the user's ICU locale, found before: the environment is read in
+ * the main thread only) */
 static void
 locales_thread (GTask *task, gpointer src, gpointer data, GCancellable *cancel)
 {
@@ -343,8 +423,6 @@ locales_thread (GTask *task, gpointer src, gpointer data, GCancellable *cancel)
   g_autofree char *out = NULL;
   g_spawn_sync (NULL, (char **) argv, NULL, G_SPAWN_SEARCH_PATH | G_SPAWN_STDERR_TO_DEV_NULL, NULL, NULL, &out, NULL,
                 NULL, NULL);
-  Names n = { iso_table ("/usr/share/iso-codes/json/iso_639-2.json", "639-2", "alpha_2"),
-              iso_table ("/usr/share/iso-codes/json/iso_3166-1.json", "3166-1", "alpha_2") };
   Known *k = known_new ();
   g_auto (GStrv) lines = g_strsplit (out ? out : "", "\n", -1);
   for (guint i = 0; lines[i]; i++) {
@@ -352,11 +430,13 @@ locales_thread (GTask *task, gpointer src, gpointer data, GCancellable *cancel)
     if (!*loc || !strstr (loc, "UTF-8") || g_str_has_prefix (loc, "C."))
       continue;
     g_ptr_array_add (k->locales, g_strdup (loc));
-    g_ptr_array_add (k->labels, locale_name (&n, loc));
+    char *name = vibeos_locale_name (loc, NULL), *region = vibeos_locale_name (loc, data);
+    g_ptr_array_add (k->labels, name ? name : g_strdup (loc));
+    g_ptr_array_add (k->regions, region ? region : g_strdup (loc));
   }
   g_ptr_array_add (k->labels, NULL);
-  g_hash_table_unref (n.langs);
-  g_hash_table_unref (n.countries);
+  g_ptr_array_add (k->regions, NULL);
+  k->regions_in = g_strdup (data);
   g_task_return_pointer (task, k, (GDestroyNotify) known_free);
 }
 
@@ -383,7 +463,7 @@ void
 ns_page_language (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Language and region", &c);
+  NsPage *page = ns_page_new (_("Language and region"), &c);
   Lang *l = g_new0 (Lang, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-lang", l, (GDestroyNotify) lang_free);
   l->group = ns_group (c, NULL);
@@ -391,12 +471,14 @@ ns_page_language (GtkWidget *row, gpointer data)
   if (k)
     lang_rows (page, k);
   else
-    ns_row_suffix (ns_row (l->group, NULL, "Language", NULL), ns_spinner_new ());
-  ns_note (c, "A new language or format shows in apps after you log out and in again.");
+    ns_row_suffix (ns_row (l->group, NULL, _("Language"), NULL), ns_spinner_new ());
+  ns_note (c, _("Apps that were already open change language after a restart."));
   GtkWidget *g = ns_group (c, NULL);
-  l->logout = ns_row_button (g, "Log out now", FALSE, logout, NULL);
-  gtk_widget_set_visible (l->logout, FALSE);
+  l->restart = ns_row_button (g, _("Restart now"), FALSE, restart_device, NULL);
+  /* shown once a language or a format has been picked: Settings started over after a language change says so */
+  gtk_widget_set_visible (l->restart, g_getenv (RESTARTED) != NULL);
   g_autoptr (GTask) t = g_task_new (NULL, NULL, locales_listed, g_object_ref (page));
+  g_task_set_task_data (t, vibeos_locale_id (), g_free);
   g_task_run_in_thread (t, locales_thread);
   ns_push (page);
 }
@@ -473,7 +555,7 @@ zones_page (GtkWidget *row, gpointer page)
   if (!t->zones)
     return;
   GtkWidget *c;
-  NsPage *regions = ns_page_new ("Time zone", &c);
+  NsPage *regions = ns_page_new (_("Time zone"), &c);
   GtkWidget *g = ns_group (c, NULL);
   g_autoptr (GHashTable) seen = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   for (guint i = 0; i < t->zones->len; i++) {
@@ -546,25 +628,26 @@ void
 ns_page_datetime (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Date and time", &c);
+  NsPage *page = ns_page_new (_("Date and time"), &c);
   Time *t = g_new0 (Time, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-time", t, (GDestroyNotify) time_free);
   GtkWidget *g = ns_group (c, NULL);
-  t->ntp = ns_row_switch (g, "Automatic date and time", "From the network", NULL, NULL);
+  t->ntp = ns_row_switch (g, _("Automatic date and time"), _("From the network"), NULL, NULL);
   g_signal_connect (ns_row_get_switch (t->ntp), "notify::active", G_CALLBACK (ntp_set), NULL);
   GSettings *dt = ns_page_settings (page, "org.gnome.desktop.datetime");
   if (ns_has_key (dt, "automatic-timezone")) {
-    g_autofree char *from = g_strdup_printf ("From the %s's location", ns_device_noun ());
-    ns_row_switch (g, "Automatic time zone", from, dt, "automatic-timezone");
+    ns_row_switch (g, _("Automatic time zone"),
+                   ns_device_text (_("From the phone's location"), _("From the tablet's location")), dt,
+                   "automatic-timezone");
   }
-  t->zone = ns_row (g, NULL, "Time zone", NULL);
+  t->zone = ns_row (g, NULL, _("Time zone"), NULL);
   ns_row_on_activate (t->zone, zones_page, page);
 
   GSettings *iface = ns_page_settings (page, "org.gnome.desktop.interface");
-  g = ns_group (c, "Clock");
+  g = ns_group (c, _("Clock"));
   /* clock-format is read by the status bar and the lock screen (statusbar.js, keyguard.js) and by the apps.
    * No weekday, date or seconds switches (clock-show-*): the status bar shows the time alone. */
-  GtkWidget *r = ns_row_switch (g, "24-hour time", "13:00 rather than 1:00 PM", NULL, NULL);
+  GtkWidget *r = ns_row_switch (g, _("24-hour time"), _("13:00 rather than 1:00 PM"), NULL, NULL);
   g_settings_bind_with_mapping (iface, "clock-format", ns_row_get_switch (r), "active", G_SETTINGS_BIND_DEFAULT,
                                 h24_get, h24_set, NULL, NULL);
 
@@ -600,7 +683,7 @@ real_name_set (const char *text, gpointer row)
 static void
 real_name_tapped (GtkWidget *row, gpointer data)
 {
-  ns_ask (row, "Your name", NULL, g_object_get_data (G_OBJECT (row), "ns-name"), FALSE, "Save", real_name_set,
+  ns_ask (row, _("Your name"), NULL, g_object_get_data (G_OBJECT (row), "ns-name"), FALSE, _("Save"), real_name_set,
           g_object_ref (row));
 }
 
@@ -637,10 +720,10 @@ me_got (GObject *src, GAsyncResult *res, gpointer page)
     g_variant_lookup (props, "RealName", "&s", &real);
     g_variant_lookup (props, "UserName", "&s", &login);
     g_variant_lookup (props, "AccountType", "i", &type);
-    ns_row_set_subtitle (u->name, *real ? real : "Not set");
+    ns_row_set_subtitle (u->name, *real ? real : _("Not set"));
     g_object_set_data_full (G_OBJECT (u->name), "ns-name", g_strdup (real), g_free);
     ns_row_set_subtitle (u->login, login);
-    ns_row_set_subtitle (u->type, type == 1 ? "Administrator" : "Standard");
+    ns_row_set_subtitle (u->type, type == 1 ? _("Administrator") : _("Standard"));
   }
   g_object_unref (page);
 }
@@ -688,18 +771,18 @@ void
 ns_page_users (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Users", &c);
+  NsPage *page = ns_page_new (_("Users"), &c);
   Users *u = g_new0 (Users, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-users", u, g_free);
-  GtkWidget *g = ns_group (c, "Your account");
-  u->name = ns_row (g, NULL, "Name", NULL);
+  GtkWidget *g = ns_group (c, _("Your account"));
+  u->name = ns_row (g, NULL, _("Name"), NULL);
   ns_row_on_activate (u->name, real_name_tapped, NULL);
-  u->login = ns_row_info (g, "User name", g_get_user_name ());
-  u->type = ns_row_info (g, "Account type", NULL);
+  u->login = ns_row_info (g, _("User name"), g_get_user_name ());
+  u->type = ns_row_info (g, _("Account type"), NULL);
   g = ns_group (c, NULL);
-  GtkWidget *r = ns_row (g, NULL, "Screen lock and password", "A pattern or PIN is also your password");
+  GtkWidget *r = ns_row (g, NULL, _("Screen lock and password"), _("A pattern or PIN is also your password"));
   ns_row_on_activate (r, ns_page_lock_screen, NULL);
-  u->others = ns_group (c, "Other users");
+  u->others = ns_group (c, _("Other users"));
   ns_group_set_visible (u->others, FALSE);
   g_autoptr (GDBusConnection) sys = bus (G_BUS_TYPE_SYSTEM);
   if (sys)
@@ -735,8 +818,9 @@ ns_screen_off_sleeper (void)
 }
 
 static const int sleeps[] = { 0, 300, 600, 900, 1800, 3600 };
-static const char *const sleep_labels[] = { "Never", "After 5 minutes", "After 10 minutes", "After 15 minutes",
-                                            "After 30 minutes", "After 1 hour", NULL };
+static const char *const sleep_labels[] = { N_("Never"), N_("After 5 minutes"), N_("After 10 minutes"),
+                                            N_("After 15 minutes"),
+                                            N_("After 30 minutes"), N_("After 1 hour"), NULL };
 
 static void
 sleep_picked (GtkWidget *row, guint i, gpointer power)
@@ -770,32 +854,33 @@ void
 ns_page_power (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Power and screen blank", &c);
+  NsPage *page = ns_page_new (_("Power and screen blank"), &c);
   GSettings *power = ns_page_settings (page, "org.gnome.settings-daemon.plugins.power");
   if (!power)
     return;
   GtkWidget *g;
   if (!ns_screen_off_sleeper ()) {
-    g = ns_group (c, "Automatic suspend");
-    sleep_row (g, power, "On battery", "battery");
-    sleep_row (g, power, "Plugged in", "ac");
-    g_autofree char *missed = g_strdup_printf ("Suspend saves the most power, but calls, messages and alarms can be "
-                                              "missed while the %s sleeps.", ns_device_noun ());
-    ns_note (c, missed);
+    g = ns_group (c, _("Automatic suspend"));
+    sleep_row (g, power, _("On battery"), "battery");
+    sleep_row (g, power, _("Plugged in"), "ac");
+    ns_note (c, ns_device_text (_("Suspend saves the most power, but calls, messages and alarms can be missed "
+                                  "while the phone sleeps."),
+                                _("Suspend saves the most power, but calls, messages and alarms can be missed "
+                                  "while the tablet sleeps.")));
   }
   g = ns_group (c, NULL);
   /* gnome-settings-daemon dims the backlight through the shell a little before the screen timeout */
   if (ns_has_key (power, "idle-dim"))
-    ns_row_switch (g, "Dim the screen", "Before it turns off", power, "idle-dim");
+    ns_row_switch (g, _("Dim the screen"), _("Before it turns off"), power, "idle-dim");
   /* only with power-profiles-daemon, which switches the profile */
   if (ns_has_key (power, "power-saver-profile-on-low-battery") &&
       (g_file_test ("/usr/share/dbus-1/system-services/org.freedesktop.UPower.PowerProfiles.service",
                     G_FILE_TEST_EXISTS) ||
        g_file_test ("/usr/share/dbus-1/system-services/net.hadess.PowerProfiles.service", G_FILE_TEST_EXISTS)))
-    ns_row_switch (g, "Power saving on low battery", NULL, power, "power-saver-profile-on-low-battery");
+    ns_row_switch (g, _("Power saving on low battery"), NULL, power, "power-saver-profile-on-low-battery");
   if (ns_screen_off_sleeper ()) {
-    g_autofree char *sleeps = g_strdup_printf ("This %s sleeps as soon as its screen is off.", ns_device_noun ());
-    ns_note (c, sleeps);
+    ns_note (c, ns_device_text (_("This phone sleeps as soon as its screen is off."),
+                                _("This tablet sleeps as soon as its screen is off.")));
   }
   ns_push (page);
 }
@@ -904,7 +989,8 @@ ns_wallpaper_ask (GtkWidget *w, const char *path, const char *dark)
   a->path = g_strdup (path);
   a->dark = g_strdup (dark);
   a->w = g_object_ref (w);
-  ns_confirm (w, "Set as wallpaper", "On the home screen and the lock screen", "Set", FALSE, apply_response, a);
+  ns_confirm (w, _("Set as wallpaper"), _("On the home screen and the lock screen"), _("Set"), FALSE, apply_response,
+              a);
 }
 
 static void
@@ -930,7 +1016,7 @@ from_files (GtkWidget *row, gpointer data)
 {
   GtkFileDialog *fd = gtk_file_dialog_new ();
   GtkFileFilter *ff = gtk_file_filter_new ();
-  gtk_file_filter_set_name (ff, "Pictures");
+  gtk_file_filter_set_name (ff, _("Pictures"));
   gtk_file_filter_add_mime_type (ff, "image/*");
   gtk_file_dialog_set_default_filter (fd, ff);
   g_autoptr (GFile) pics = g_file_new_for_path (g_get_user_special_dir (G_USER_DIRECTORY_PICTURES)
@@ -959,9 +1045,9 @@ void
 ns_page_wallpapers (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Wallpapers", &c);
+  NsPage *page = ns_page_new (_("Wallpapers"), &c);
   GtkWidget *g = ns_group (c, NULL);
-  ns_row_button (g, "Choose from your pictures", FALSE, from_files, NULL);
+  ns_row_button (g, _("Choose from your pictures"), FALSE, from_files, NULL);
 
   g = ns_group (c, NULL);
   GtkWidget *flow = gtk_flow_box_new ();
@@ -1038,7 +1124,7 @@ void
 ns_page_software (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Software information", &c);
+  NsPage *page = ns_page_new (_("Software information"), &c);
   GtkWidget *g = ns_group (c, NULL);
   ns_bt_name_row (g);
 
@@ -1060,9 +1146,9 @@ ns_page_software (GtkWidget *row, gpointer data)
   ns_row_info (g, "GTK", gtk);
   struct utsname u;
   uname (&u);
-  ns_row_info (g, "Kernel", u.release);
-  ns_row_info (g, "Kernel build", u.version);
-  ns_row_info (g, "Settings", NS_VERSION);
+  ns_row_info (g, _("Kernel"), u.release);
+  ns_row_info (g, _("Kernel build"), u.version);
+  ns_row_info (g, _("Settings"), NS_VERSION);
   ns_push (page);
 }
 
@@ -1072,14 +1158,16 @@ static void
 speed_row (GtkWidget *g, GSettings *s)
 {
   GtkWidget *scale;
-  ns_row_scale (g, "Pointer speed", "input-mouse-symbolic", -1, 1, 0.1, &scale);
+  ns_row_scale (g, _("Pointer speed"), "input-mouse-symbolic", -1, 1, 0.1, &scale);
   g_settings_bind (s, "speed", gtk_range_get_adjustment (GTK_RANGE (scale)), "value", G_SETTINGS_BIND_DEFAULT);
 }
 
 static const guint delays[] = { 250, 500, 800 };
-static const char *const delay_labels[] = { "Short", "Medium", "Long", NULL };
+static const char *const delay_labels[] = { NC_("key repeat delay", "Short"), NC_("key repeat delay", "Medium"),
+                                            NC_("key repeat delay", "Long"), NULL };
 static const guint rates[] = { 15, 30, 60 };
-static const char *const rate_labels[] = { "Fast", "Medium", "Slow", NULL };
+static const char *const rate_labels[] = { NC_("key repeat speed", "Fast"), NC_("key repeat speed", "Medium"),
+                                           NC_("key repeat speed", "Slow"), NULL };
 
 static void
 uint_picked (GtkWidget *row, guint i, gpointer s)
@@ -1090,13 +1178,13 @@ uint_picked (GtkWidget *row, guint i, gpointer s)
 
 static GtkWidget *
 uint_row (GtkWidget *g, const char *title, GSettings *s, const char *key, const guint *values, guint n,
-          const char *const *labels)
+          const char *context, const char *const *labels)
 {
   guint v = g_settings_get_uint (s, key), sel = 0;
   for (guint i = 0; i < n; i++)
     if (ABS ((int) values[i] - (int) v) < ABS ((int) values[sel] - (int) v))
       sel = i;
-  GtkWidget *r = ns_row_pick (g, title, labels, sel, uint_picked, s);
+  GtkWidget *r = ns_row_pick_in (g, title, context, labels, sel, uint_picked, s);
   g_object_set_data (G_OBJECT (r), "ns-uints", (gpointer) values);
   g_object_set_data (G_OBJECT (r), "ns-key", (gpointer) key);
   return r;
@@ -1106,31 +1194,33 @@ void
 ns_page_mouse (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Mouse and touchpad", &c);
+  NsPage *page = ns_page_new (_("Mouse and touchpad"), &c);
   GSettings *mouse = ns_page_settings (page, "org.gnome.desktop.peripherals.mouse");
   GSettings *pad = ns_page_settings (page, "org.gnome.desktop.peripherals.touchpad");
   GSettings *kbd = ns_page_settings (page, "org.gnome.desktop.peripherals.keyboard");
   if (mouse) {
-    GtkWidget *g = ns_group (c, "Mouse");
+    GtkWidget *g = ns_group (c, _("Mouse"));
     speed_row (g, mouse);
-    ns_row_switch (g, "Natural scrolling", "The content moves with the wheel, like a touchscreen", mouse,
+    ns_row_switch (g, _("Natural scrolling"), _("The content moves with the wheel, like a touchscreen"), mouse,
                    "natural-scroll");
-    ns_row_switch (g, "Left-handed", "The right button is the main one", mouse, "left-handed");
+    ns_row_switch (g, _("Left-handed"), _("The right button is the main one"), mouse, "left-handed");
   }
   if (pad) {
-    GtkWidget *g = ns_group (c, "Touchpad");
+    GtkWidget *g = ns_group (c, _("Touchpad"));
     speed_row (g, pad);
-    ns_row_switch (g, "Tap to click", "A tap counts as a click", pad, "tap-to-click");
-    ns_row_switch (g, "Natural scrolling", "The content moves with your fingers", pad, "natural-scroll");
+    ns_row_switch (g, _("Tap to click"), _("A tap counts as a click"), pad, "tap-to-click");
+    ns_row_switch (g, _("Natural scrolling"), _("The content moves with your fingers"), pad, "natural-scroll");
   }
   if (kbd) {
-    GtkWidget *g = ns_group (c, "Hardware keyboard");
-    ns_row_switch (g, "Repeat keys", "A held key types again and again", kbd, "repeat");
-    GtkWidget *r = uint_row (g, "Delay before repeating", kbd, "delay", delays, G_N_ELEMENTS (delays), delay_labels);
+    GtkWidget *g = ns_group (c, _("Hardware keyboard"));
+    ns_row_switch (g, _("Repeat keys"), _("A held key types again and again"), kbd, "repeat");
+    GtkWidget *r = uint_row (g, _("Delay before repeating"), kbd, "delay", delays, G_N_ELEMENTS (delays),
+                             "key repeat delay", delay_labels);
     g_settings_bind (kbd, "repeat", r, "sensitive", G_SETTINGS_BIND_GET);
-    r = uint_row (g, "Repeat speed", kbd, "repeat-interval", rates, G_N_ELEMENTS (rates), rate_labels);
+    r = uint_row (g, _("Repeat speed"), kbd, "repeat-interval", rates, G_N_ELEMENTS (rates), "key repeat speed",
+                  rate_labels);
     g_settings_bind (kbd, "repeat", r, "sensitive", G_SETTINGS_BIND_GET);
   }
-  ns_note (c, "For a Bluetooth or USB mouse, touchpad or keyboard.");
+  ns_note (c, _("For a Bluetooth or USB mouse, touchpad or keyboard."));
   ns_push (page);
 }

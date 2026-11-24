@@ -519,7 +519,7 @@ char *
 cal_alerts_sound_label (const char *value)
 {
   if (!value || !*value)
-    return g_strdup (_("None"));
+    return g_strdup (C_("no sound", "None"));
   if (g_str_equal (value, "default"))
     return g_strdup (_("Default notification sound"));
   {

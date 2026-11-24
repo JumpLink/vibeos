@@ -1,7 +1,8 @@
 /* The world-clock cities.
  *
  * The 340 cities come from DeskClock's own list (cities-data.h, made by tools/cities.py): an id ("C61"), the letter the
- * picker files it under, an English name and an IANA time zone. The time zones are the system's (tzdata); the few old
+ * picker files it under, an English name and an IANA time zone. The name is shown in the user's language (the app's
+ * translations, context "city"), filed under its own first letter. The time zones are the system's (tzdata); the few old
  * names in the list ("Asia/Calcutta") are followed to their new ones through tzdata's links, as ICU does. The user's
  * choice is the "selected-cities" setting, a list of ids.
  *
@@ -24,9 +25,12 @@ typedef struct
 typedef struct
 {
   const CityData *data;
+  const char *name;             /* data->name in the user's language: "Moskau" */
+  char *index;                  /* the picker's section: data->index, or the translated name's first letter */
   GTimeZone *tz;
   int number;                   /* a number in the index, or -1 */
   char *search_key;             /* the name upper-cased without " -.'" */
+  char *search_key_en;          /* the English name's */
 } City;
 
 typedef enum {
@@ -48,7 +52,8 @@ int         cities_compare (gconstpointer a, gconstpointer b, gpointer data);
 /* only the section part of that order: the index letters, or the offsets */
 int         cities_compare_index (const City *a, const City *b, CitySort sort);
 
-/* whether @city's name starts with @query, both upper-cased and without " -.'" ("StL" finds "St. Lucia") */
+/* whether @city's name, in the user's language or in English, starts with @query, both upper-cased and without
+ * " -.'" ("StL" finds "St. Lucia") */
 gboolean    cities_matches (const City *city, const char *query);
 /* @query as cities_matches wants it */
 char       *cities_search_key (const char *query);
@@ -70,6 +75,8 @@ typedef struct
 
 guint               home_zones_count (void);
 const HomeZoneData *home_zones_get (guint i);
+/* a home time zone's place names in the user's language: "Amsterdam, Berlin" */
+const char         *home_zone_name (const HomeZoneData *zone);
 /* clock_home_zone takes a stored zone only if it is one of these */
 gboolean            home_zones_contains (const char *zone);
 

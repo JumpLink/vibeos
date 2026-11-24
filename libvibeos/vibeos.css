@@ -261,10 +261,13 @@ window.vibeos label {
   color: @vibeos_on_surface;
 }
 
+/* the large title's band: one line's is 88dp, the bar's own 64dp and this make Material 3's large bar (152dp) */
 .vibeos-top-bar-large-title {
   font-size: 36sp;
   font-weight: 400;
   color: @vibeos_on_surface;
+  min-height: 64dp;
+  padding: 0 24dp 24dp 24dp;
 }
 
 .vibeos-top-bar-back {

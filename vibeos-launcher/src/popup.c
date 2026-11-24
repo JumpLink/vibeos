@@ -143,7 +143,8 @@ add_row (Act act, int icon, const char *label, const char *action)
   if (P.n_rows >= MAX_ROWS)
     return;
   float max = dp (POP_W_DP - TEXT_X_DP - TEXT_END_DP);
-  P.rows[P.n_rows++] = (Row) { act, icon, text_layout (P.font, label, max, 1, TEXT_LEFT), g_strdup (action), 0 };
+  /* two lines when one is too narrow for the label (many a translation's), ellipsized after the second */
+  P.rows[P.n_rows++] = (Row) { act, icon, text_layout (P.font, label, max, 2, TEXT_LEFT), g_strdup (action), 0 };
 }
 
 static void
@@ -202,11 +203,11 @@ popup_open_icon (Tile *t, ModelPos pos, bool from_drawer, float ix, float iy, fl
   P.tile = t;
   P.pos = pos;
 
-  add_row (ACT_INFO, ICON_INFO, "App info", NULL);
+  add_row (ACT_INFO, ICON_INFO, _("App info"), NULL);
   if (from_drawer)
-    add_row (ACT_ADD_HOME, ICON_PLUS, "Add to home screen", NULL);
+    add_row (ACT_ADD_HOME, ICON_PLUS, _("Add to home screen"), NULL);
   else
-    add_row (ACT_REMOVE, ICON_REMOVE, "Remove", NULL);
+    add_row (ACT_REMOVE, ICON_REMOVE, _("Remove"), NULL);
   int n_sys = P.n_rows;
   GDesktopAppInfo *d = G_IS_DESKTOP_APP_INFO (t->info) ? G_DESKTOP_APP_INFO (t->info) : NULL;
   const char *const *actions = d ? g_desktop_app_info_list_actions (d) : NULL;
@@ -253,9 +254,9 @@ popup_open_options (float x, float y)
 {
   load_icons ();
   clear_rows ();
-  add_row (ACT_WALLPAPER, ICON_PALETTE, "Wallpaper & style", NULL);
-  add_row (ACT_APPS, ICON_APPS, "Apps list", NULL);
-  add_row (ACT_HOME_SETTINGS, ICON_SETTING, "Home settings", NULL);
+  add_row (ACT_WALLPAPER, ICON_PALETTE, _("Wallpaper & style"), NULL);
+  add_row (ACT_APPS, ICON_APPS, _("Apps list"), NULL);
+  add_row (ACT_HOME_SETTINGS, ICON_SETTING, _("Home settings"), NULL);
   for (int i = 0; i < P.n_rows; i++)
     add_card (i, 1);
   P.w = dp (POP_W_DP);
@@ -392,7 +393,7 @@ popup_draw (void)
       gfx_rect_corners (P.x, P.rows[P.pressed].y, P.w, dp (ROW_DP), r, (GfxColor) { 1, 1, 1, PRESSED_ALPHA });
     }
   }
-  float cap = dp (TEXT_SP) * CAP_HEIGHT;
+  float cap = dp (TEXT_SP) * CAP_HEIGHT, line_h = text_line_height (P.font);
   for (int i = 0; i < P.n_rows; i++) {
     Row *r = &P.rows[i];
     float mid = r->y + dp (ROW_DP) / 2;
@@ -404,7 +405,9 @@ popup_draw (void)
       if (P.tile->icon)
         gfx_image (P.tile->icon, roundf (P.x + dp (APP_ICON_X_DP)), roundf (mid - sz / 2), sz, sz, 0, 1);
     }
-    text_draw (r->label, P.x + dp (TEXT_X_DP), roundf (mid + cap / 2 - text_ascent (P.font)), text);
+    /* the lines centred on the row, from the first one's capitals to the last one's baseline */
+    float block = cap + (MAX (text_layout_lines (r->label), 1) - 1) * line_h;
+    text_draw (r->label, P.x + dp (TEXT_X_DP), roundf (mid - block / 2 + cap - text_ascent (P.font)), text);
   }
   gfx_restore ();
 }

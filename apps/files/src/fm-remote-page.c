@@ -238,13 +238,13 @@ server_dialog (FmRemotePage *page, FmProto proto, const FmRemote *editing, const
     {
     case FM_PROTO_SMB:
     case FM_PROTO_SFTP:
-      hint = _("e.g. 192.168.1.101 or 192.168.1.101/folder");
+      hint = _("e.g. 192.0.2.101 or 192.0.2.101/folder");
       break;
     case FM_PROTO_DAV:
       hint = _("e.g. example.com/webdav");
       break;
     default:
-      hint = _("e.g. 192.168.1.101");
+      hint = _("e.g. 192.0.2.101");
       break;
     }
   server->host = field (address, hint);

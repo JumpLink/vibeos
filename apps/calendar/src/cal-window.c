@@ -652,7 +652,7 @@ on_settings_item (VibeosPressable *item, Shell *shell)
 }
 
 /* About, from the drawer or the ⋮ menu: VibeOS's About sheet, as every VibeOS app has it */
-static const VibeosAboutInfo cal_about = { .name = "Calendar", .icon_name = "vibeos.Calendar" };
+static const VibeosAboutInfo cal_about = { .name = N_("Calendar"), .icon_name = "vibeos.Calendar" };
 
 static void
 on_about_item (VibeosPressable *item, Shell *shell)

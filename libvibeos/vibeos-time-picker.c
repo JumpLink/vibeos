@@ -8,6 +8,7 @@
 #include "vibeos-style.h"
 #include "vibeos-text.h"
 
+#include <glib/gi18n-lib.h>
 #include <math.h>
 
 #define HEADER_H        100
@@ -60,22 +61,6 @@ struct _VibeosTimePicker {
 };
 
 G_DEFINE_FINAL_TYPE (VibeosTimePicker, vibeos_time_picker, GTK_TYPE_WIDGET)
-
-gboolean
-vibeos_clock_uses_24h (void)
-{
-  GSettingsSchema *schema = g_settings_schema_source_lookup (g_settings_schema_source_get_default (),
-                                                              "org.gnome.desktop.interface", TRUE);
-  if (!schema)
-    return TRUE;
-  g_settings_schema_unref (schema);
-  GSettings *settings = g_settings_new ("org.gnome.desktop.interface");
-  char *format = g_settings_get_string (settings, "clock-format");
-  gboolean is_24h = g_strcmp0 (format, "12h") != 0;
-  g_free (format);
-  g_object_unref (settings);
-  return is_24h;
-}
 
 /* ---- text ------------------------------------------------------------------------------------------------------ */
 
@@ -602,8 +587,11 @@ vibeos_time_picker_new (int hour, int minute, gboolean use_24h)
   self->time_hours = make_layout (self, "", TIME_SIZE);
   self->time_minutes = make_layout (self, "", TIME_SIZE);
   self->separator = make_layout (self, ":", TIME_SIZE);
-  self->am = make_layout (self, "AM", AMPM_SIZE);
-  self->pm = make_layout (self, "PM", AMPM_SIZE);
+  /* the language's own names for them ("a. m.", "p. m." in Spanish) */
+  g_autofree char *am = NULL, *pm = NULL;
+  vibeos_locale_am_pm (&am, &pm);
+  self->am = make_layout (self, am, AMPM_SIZE);
+  self->pm = make_layout (self, pm, AMPM_SIZE);
   g_signal_connect_object (vibeos_text_get_default (), "changed", G_CALLBACK (on_text_changed), self,
                            G_CONNECT_SWAPPED);
   update_header (self);
@@ -674,8 +662,8 @@ vibeos_time_picker_dialog (GtkWidget *parent, int hour, int minute, VibeosTimeCh
   /* Cancel and OK in the picker's corner rather than in a row of the dialog's under it, so that sideways the time's
    * column reaches the card's bottom beside them */
   self->buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, BUTTONS_GAP);
-  add_button (self->buttons, dialog, "Cancel", VIBEOS_RESPONSE_CANCEL);
-  add_button (self->buttons, dialog, "OK", VIBEOS_RESPONSE_OK);
+  add_button (self->buttons, dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  add_button (self->buttons, dialog, _("OK"), VIBEOS_RESPONSE_OK);
   gtk_widget_set_parent (self->buttons, picker);
   /* sideways in a window wider than tall (a tablet or a phone held sideways), and turned with the window */
   if (GTK_IS_WINDOW (root))

@@ -250,7 +250,9 @@ ns_parallax_grid (GSettings *bg, GSettings *iface)
   gtk_flow_box_set_column_spacing (GTK_FLOW_BOX (flow), 10);
   gtk_flow_box_set_row_spacing (GTK_FLOW_BOX (flow), 12);
   gtk_flow_box_set_activate_on_single_click (GTK_FLOW_BOX (flow), TRUE);
-  gtk_flow_box_append (GTK_FLOW_BOX (flow), card_new ("", "Off"));
+  /* TRANSLATORS: the card that turns the parallax wallpaper off, beside the wallpapers' own cards; it names the choice
+     under a picture a third of the screen wide, so a short word ("None" says it as well as "Off") */
+  gtk_flow_box_append (GTK_FLOW_BOX (flow), card_new ("", C_("parallax wallpaper", "Off")));
   g_autoptr (GHashTable) seen = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   g_autofree char *mine = g_build_filename (g_get_user_data_dir (), "vibeos-launcher", "parallax", NULL);
   add_sets (flow, mine, seen);

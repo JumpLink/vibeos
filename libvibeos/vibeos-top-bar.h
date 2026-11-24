@@ -4,9 +4,10 @@
  * an arrow in a tonal circle, a larger circle on a tablet; a tap on it emits "back". The bar has no shadow and no
  * fill of its own unless given one (vibeos_top_bar_set_fill), so it takes the page's colour.
  *
- * Large: the title starts big, in a taller band under the bar, and as the content scrolls (the adjustment given to
- * vibeos_top_bar_set_scroll) the band collapses and the big title gives way to the small one. A large bar goes over
- * its content in an overlay, the content starting under the expanded band; it takes touches only where it is drawn.
+ * Large: the title starts big, first in the page's content (vibeos_top_bar_get_large_title: the app puts it at the
+ * top of what scrolls), and as the content scrolls (the adjustment given to vibeos_top_bar_set_scroll) it goes under
+ * the bar, fading, and the bar's small title comes in. The big title takes up to three lines: smaller first, as
+ * VibeosFitLabel draws it, then ellipsized. Its band grows with its lines, as Android Settings' collapsing title does.
  *
  * Contextual (selection mode, vibeos_top_bar_set_selection): the back button becomes a close button, which emits
  * "selection-closed", the title says what is selected, and the selection's actions replace the usual ones. */
@@ -30,11 +31,11 @@ void       vibeos_top_bar_set_compact   (VibeosTopBar *self, gboolean compact);
 /* a fill behind the bar (NULL: none, the default) */
 void       vibeos_top_bar_set_fill      (VibeosTopBar *self, const GdkRGBA *fill);
 
-/* the large title; it collapses as `vadjustment` scrolls (NULL: it stays expanded) */
+/* the large title; it goes under the bar as `vadjustment` scrolls (NULL: the small title never shows) */
 void       vibeos_top_bar_set_large     (VibeosTopBar *self, gboolean large);
 void       vibeos_top_bar_set_scroll    (VibeosTopBar *self, GtkAdjustment *vadjustment);
-/* how much taller the expanded large bar is than the small one, in px: the content's top margin under it */
-int        vibeos_top_bar_get_large_extra (VibeosTopBar *self);
+/* the large title, for the app to put first in the content that `vadjustment` scrolls; shown while the bar is large */
+GtkWidget *vibeos_top_bar_get_large_title (VibeosTopBar *self);
 
 /* selection mode with `title` ("3 selected"), or out of it with NULL */
 void       vibeos_top_bar_set_selection (VibeosTopBar *self, const char *title);

@@ -8,6 +8,7 @@
 #include "sw-updates.h"
 #include "sw-widgets.h"
 
+#include <glib/gi18n.h>
 #include <spongy-gtk.h>
 #include <stdlib.h>
 #include <string.h>
@@ -314,10 +315,12 @@ on_job_finished (SwInstaller *installer, const char *package, const char *name, 
   if (!g_strcmp0 (result, "done"))
     {
       if (kind == SW_JOB_REMOVE)
-        text = g_strdup_printf ("%s is uninstalled", name);
+        /* TRANSLATORS: %s is the app's name */
+        text = g_strdup_printf (_("%s is uninstalled"), name);
       else
         {
-          text = g_strdup_printf (kind == SW_JOB_UPDATE ? "%s is updated" : "%s is installed", name);
+          /* TRANSLATORS: %s is the app's name */
+          text = g_strdup_printf (kind == SW_JOB_UPDATE ? _("%s is updated") : _("%s is installed"), name);
           open = g_new0 (OpenAfter, 1);
           open->window = win->window;
           open->package = g_strdup (package);
@@ -327,15 +330,17 @@ on_job_finished (SwInstaller *installer, const char *package, const char *name, 
         }
     }
   else if (!g_strcmp0 (result, "cancelled"))
-    text = g_strdup_printf (kind == SW_JOB_REMOVE ? "%s was not uninstalled" : "%s was not installed", name);
+    /* TRANSLATORS: %s is the app's name */
+    text = g_strdup_printf (kind == SW_JOB_REMOVE ? _("%s was not uninstalled") : _("%s was not installed"), name);
   else
     text = g_strdup (message && *message ? message
-                     : kind == SW_JOB_REMOVE ? "The app could not be uninstalled." : "The app could not be installed.");
+                     : kind == SW_JOB_REMOVE ? _("The app could not be uninstalled.")
+                     : _("The app could not be installed."));
   if (open)
     {
       /* kept until the next message: the snackbar's action may run until then */
       g_object_set_data_full (G_OBJECT (win->snackbar), "sw-open", open, open_after_free);
-      vibeos_snackbar_show (VIBEOS_SNACKBAR (win->snackbar), text, "Open", on_snackbar_open, open, 6000);
+      vibeos_snackbar_show (VIBEOS_SNACKBAR (win->snackbar), text, _("Open"), on_snackbar_open, open, 6000);
     }
   else
     vibeos_snackbar_show (VIBEOS_SNACKBAR (win->snackbar), text, NULL, NULL, NULL, 6000);
@@ -831,11 +836,11 @@ sw_window_new (GtkApplication *app)
   GtkShortcutAction *action;
   static const char *const icons[] = { "sw-featured-symbolic", "sw-apps-symbolic", "sw-games-symbolic",
                                        "sw-mine-symbolic" };
-  static const char *const labels[] = { "Featured", "Apps", "Games", "Mine" };
+  static const char *const labels[] = { N_("Featured"), N_("Apps"), N_("Games"), N_("Mine") };
 
   win->window = window;
   g_object_set_data_full (G_OBJECT (window), "sw-win", win, win_free);
-  gtk_window_set_title (GTK_WINDOW (window), "Software");
+  gtk_window_set_title (GTK_WINDOW (window), _("Software"));
   gtk_widget_add_css_class (window, "sw-window");
 
   /* the tabs: the four homes over the nav bar, or beside the rail (which is the window's, beside the pages) */
@@ -857,8 +862,8 @@ sw_window_new (GtkApplication *app)
   win->nav = vibeos_nav_bar_new ();
   for (int i = 0; i < 4; i++)
     {
-      vibeos_nav_bar_append (VIBEOS_NAV_BAR (win->nav), icons[i], labels[i]);
-      vibeos_nav_rail_append (VIBEOS_NAV_RAIL (win->rail), icons[i], labels[i]);
+      vibeos_nav_bar_append (VIBEOS_NAV_BAR (win->nav), icons[i], _(labels[i]));
+      vibeos_nav_rail_append (VIBEOS_NAV_RAIL (win->rail), icons[i], _(labels[i]));
     }
   g_signal_connect (win->nav, "selected", G_CALLBACK (on_nav_selected), win);
   g_signal_connect (win->rail, "selected", G_CALLBACK (on_nav_selected), win);
@@ -884,7 +889,7 @@ sw_window_new (GtkApplication *app)
   gtk_box_append (GTK_BOX (root), page_row);
 
   win->marker = g_object_new (GTK_TYPE_BOX, "accessible-role", GTK_ACCESSIBLE_ROLE_DIALOG, NULL);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (win->marker), GTK_ACCESSIBLE_PROPERTY_LABEL, "Software", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (win->marker), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Software"), -1);
   gtk_widget_set_can_target (win->marker, FALSE);
   gtk_box_append (GTK_BOX (root), win->marker);
   vibeos_window_set_content (GTK_WINDOW (window), root);

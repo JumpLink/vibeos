@@ -1,0 +1,310 @@
+# Spanish translations of vibeos-weather.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-weather\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: data/vibeos.Weather.desktop.in src/main.c
+msgid "Weather"
+msgstr "El tiempo"
+
+#: data/vibeos.Weather.desktop.in
+msgid "The weather where you are"
+msgstr "El tiempo donde estás"
+
+#: data/vibeos.Weather.desktop.in
+msgid "forecast;temperature;rain;"
+msgstr "previsión;pronóstico;temperatura;lluvia;tiempo;"
+
+#. TRANSLATORS: the sky, as the page names it under the temperature
+#: src/main.c
+msgctxt "sky"
+msgid "Clear"
+msgstr "Despejado"
+
+#: src/main.c
+msgid "Mostly clear"
+msgstr "Mayormente despejado"
+
+#: src/main.c
+msgid "Partly cloudy"
+msgstr "Parcialmente nublado"
+
+#: src/main.c
+msgid "Cloudy"
+msgstr "Nublado"
+
+#: src/main.c
+msgid "Fog"
+msgstr "Niebla"
+
+#: src/main.c
+msgid "Drizzle"
+msgstr "Llovizna"
+
+#: src/main.c
+msgid "Freezing drizzle"
+msgstr "Llovizna helada"
+
+#: src/main.c
+msgid "Rain"
+msgstr "Lluvia"
+
+#: src/main.c
+msgid "Heavy rain"
+msgstr "Lluvia fuerte"
+
+#: src/main.c
+msgid "Freezing rain"
+msgstr "Lluvia helada"
+
+#: src/main.c
+msgid "Snow"
+msgstr "Nieve"
+
+#: src/main.c
+msgid "Snow grains"
+msgstr "Cinarra"
+
+#: src/main.c
+msgid "Showers"
+msgstr "Chubascos"
+
+#: src/main.c
+msgid "Heavy showers"
+msgstr "Chubascos fuertes"
+
+#: src/main.c
+msgid "Snow showers"
+msgstr "Chubascos de nieve"
+
+#: src/main.c
+msgid "Thunderstorm"
+msgstr "Tormenta"
+
+#: src/main.c
+msgid "Sunrise"
+msgstr "Amanecer"
+
+#: src/main.c
+msgid "Sunset"
+msgstr "Atardecer"
+
+#. TRANSLATORS: the UV index's levels
+#: src/main.c
+msgctxt "uv"
+msgid "Low"
+msgstr "Bajo"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Moderate"
+msgstr "Moderado"
+
+#: src/main.c
+msgctxt "uv"
+msgid "High"
+msgstr "Alto"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Very high"
+msgstr "Muy alto"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Extreme"
+msgstr "Extremo"
+
+#. TRANSLATORS: today's highest and lowest temperatures, then what it feels like now
+#: src/main.c
+#, c-format
+msgid ""
+"↑%s / ↓%s\n"
+"Feels like %s"
+msgstr ""
+"↑%s / ↓%s\n"
+"Sensación térmica: %s"
+
+#. TRANSLATORS: today's sky ("Partly cloudy"), then its highest and lowest temperatures ("12°")
+#: src/main.c
+#, c-format
+msgid "%s. High %s, low %s."
+msgstr "%s. Máxima %s, mínima %s."
+
+#: src/main.c
+msgid "Today's temperature"
+msgstr "Temperatura de hoy"
+
+#: src/main.c
+msgid "About the same as yesterday"
+msgstr "Más o menos igual que ayer"
+
+#: src/main.c
+msgid "Temperatures a little lower than yesterday"
+msgstr "Temperaturas algo más bajas que ayer"
+
+#: src/main.c
+msgid "Much colder than yesterday"
+msgstr "Mucho más frío que ayer"
+
+#: src/main.c
+msgid "Temperatures a little higher than yesterday"
+msgstr "Temperaturas algo más altas que ayer"
+
+#: src/main.c
+msgid "Much warmer than yesterday"
+msgstr "Mucho más calor que ayer"
+
+# android: DocumentsUI search_last_modified_2_days (short)
+#: src/main.c
+msgid "Yesterday"
+msgstr "Ayer"
+
+# android: DocumentsUI search_last_modified_1_day (short)
+#: src/main.c
+msgid "Today"
+msgstr "Hoy"
+
+#. TRANSLATORS: under the sunrise's time; %s is the sunset's
+#: src/main.c
+#, c-format
+msgid "Sunset %s"
+msgstr "Atardecer: %s"
+
+#. TRANSLATORS: the wind's speed in kilometres an hour
+#: src/main.c
+#, c-format
+msgid "%.0f km/h"
+msgstr "%.0f km/h"
+
+#. TRANSLATORS: the air pressure in hectopascals
+#: src/main.c
+#, c-format
+msgid "%.0f hPa"
+msgstr "%.0f hPa"
+
+#: src/main.c
+msgid "UV index"
+msgstr "Índice UV"
+
+#: src/main.c
+msgid "Humidity"
+msgstr "Humedad"
+
+#: src/main.c
+msgid "Wind"
+msgstr "Viento"
+
+#: src/main.c
+msgid "Pressure"
+msgstr "Presión"
+
+#: src/main.c
+msgid "No forecast: Open-Meteo did not answer. Tap reload to try again."
+msgstr ""
+"No hay previsión: Open-Meteo no ha respondido. Toca Recargar para volver a "
+"intentarlo."
+
+#: src/main.c
+msgid ""
+"No location. Turn on Location in Settings, then tap reload, or set a city in "
+"the ⋮ menu."
+msgstr ""
+"No hay ubicación. Activa la ubicación en Ajustes y toca Recargar, o elige "
+"una ciudad en el menú ⋮."
+
+#: src/main.c
+#, c-format
+msgid "Getting the weather for %s…"
+msgstr "Obteniendo el tiempo de %s…"
+
+#. TRANSLATORS: under "Use my location"; %s is the city chosen now
+#: src/main.c
+#, c-format
+msgid "Instead of %s"
+msgstr "En lugar de %s"
+
+#: src/main.c
+msgid "Use my location"
+msgstr "Usar mi ubicación"
+
+#: src/main.c
+msgid "No answer. Check the connection, then type again."
+msgstr "Sin respuesta. Comprueba la conexión y vuelve a escribir."
+
+#: src/main.c
+msgid "No cities found"
+msgstr "No se han encontrado ciudades"
+
+#: src/main.c
+msgid "Set City"
+msgstr "Elegir ciudad"
+
+#: src/main.c
+msgid "City name"
+msgstr "Nombre de la ciudad"
+
+# android: Settings proxy_clear_text (short)
+#: src/main.c
+msgid "Clear"
+msgstr "Borrar"
+
+#: src/main.c
+msgid ""
+"Weather forecasts by <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, "
+"under <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</"
+"a>.\n"
+"\n"
+"Set City finds cities with Open-Meteo's geocoding, on data from <a "
+"href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0."
+msgstr ""
+"Previsiones meteorológicas de <a href=\"https://open-meteo.com/\">Open-"
+"Meteo.com</a>, con la licencia <a href=\"https://creativecommons.org/"
+"licenses/by/4.0/\">CC BY 4.0</a>.\n"
+"\n"
+"Elegir ciudad busca ciudades con la geocodificación de Open-Meteo, con datos "
+"de <a href=\"https://www.geonames.org/\">GeoNames</a>, con la licencia CC BY "
+"4.0."
+
+#: src/main.c
+msgid ""
+"The place's name, where the phone is, from OpenStreetMap's <a href=\"https://"
+"nominatim.openstreetmap.org/\">Nominatim</a>. Data © <a href=\"https://"
+"www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the "
+"<a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database "
+"License</a> (ODbL)."
+msgstr ""
+"El nombre del lugar donde está el teléfono, de <a href=\"https://"
+"nominatim.openstreetmap.org/\">Nominatim</a> de OpenStreetMap. Datos © <a "
+"href=\"https://www.openstreetmap.org/copyright\">colaboradores de "
+"OpenStreetMap</a>, con la <a href=\"https://opendatacommons.org/licenses/"
+"odbl/\">Open Database License</a> (ODbL)."
+
+#: src/main.c
+msgid "About"
+msgstr "Información"
+
+#: src/main.c
+msgid "Reload"
+msgstr "Recargar"
+
+# android: Framework action_menu_overflow_description (short)
+#: src/main.c
+msgid "More options"
+msgstr "Más opciones"
+
+#: src/main.c
+msgid "Finding where you are…"
+msgstr "Buscando tu ubicación…"

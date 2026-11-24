@@ -1,7 +1,10 @@
 project('vibeos-weather', 'c', version: '0.1', default_options: ['warning_level=2', 'c_std=gnu11'])
-add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: 'c')
+add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers',
+                      '-DGETTEXT_PACKAGE="vibeos-weather"',
+                      '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')), language: 'c')
 
 gnome = import('gnome')
+i18n = import('i18n')
 # the page scrolls the way the launcher's drawer does (VibeOS's libspongy: the fling, the stretch at the ends); its
 # window, menu, the About sheet and Set City are libvibeos's, as in the other VibeOS apps
 deps = [dependency('gtk4', version: '>= 4.14'), dependency('json-glib-1.0'), dependency('vibeos-1'),
@@ -10,8 +13,16 @@ deps = [dependency('gtk4', version: '>= 4.14'), dependency('json-glib-1.0'), dep
 resources = gnome.compile_resources('wx-resources', 'src/vibeos-weather.gresource.xml', source_dir: 'src')
 
 executable('vibeos-weather', 'src/main.c', 'src/wx-menu.c', resources, dependencies: deps, install: true)
-install_data('data/vibeos.Weather.desktop', install_dir: get_option('datadir') / 'applications')
+i18n.merge_file(input: 'data/vibeos.Weather.desktop.in', output: 'vibeos.Weather.desktop', type: 'desktop', po_dir: 'po',
+                install: true, install_dir: get_option('datadir') / 'applications')
+# started by its D-Bus name, with the session's activation environment (a language changed in Settings)
+configure_file(input: 'data/vibeos.Weather.service.in', output: 'vibeos.Weather.service',
+               configuration: {'bindir': get_option('prefix') / get_option('bindir')},
+               install_dir: get_option('datadir') / 'dbus-1/services')
 install_data('data/vibeos.Weather.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')
 # vibeos.Weather: the city chosen in Set City
 install_data('data/vibeos.Weather.gschema.xml', install_dir: get_option('datadir') / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
+
+# the translations, and their checks
+subdir('po')

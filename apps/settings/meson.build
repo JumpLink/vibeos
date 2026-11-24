@@ -1,6 +1,8 @@
 project('vibeos-settings', 'c', version: '0.2', default_options: ['warning_level=2', 'c_std=gnu11'])
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: 'c')
 add_project_arguments('-DNS_VERSION="@0@"'.format(meson.project_version()), language: 'c')
+add_project_arguments('-DGETTEXT_PACKAGE="vibeos-settings"',
+                      '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')), language: 'c')
 # the keyring helper the pattern dialog runs, where this project installs it
 add_project_arguments('-DNS_REKEY="@0@"'.format(get_option('prefix') / get_option('libexecdir') / 'vibeos-keyring-rekey'),
                       language: 'c')
@@ -9,6 +11,7 @@ add_project_arguments('-DNS_SET_PASSWORD="@0@"'.format(get_option('prefix') / ge
                                                        'vibeos-set-own-password'), language: 'c')
 
 gnome = import('gnome')
+i18n = import('i18n')
 cc = meson.get_compiler('c')
 deps = [dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'),
         # App Installer's sheet over Settings' window, for an uninstall (xdg-foreign)
@@ -45,7 +48,8 @@ executable('vibeos-settings',
   install: true)
 test('monitors', executable('test-monitors', 'tests/test-monitors.c', link_with: monitors, dependencies: gio,
                             c_args: '-DTEST_DATA="@0@"'.format(meson.current_source_dir() / 'tests')))
-install_data('data/vibeos.Settings.desktop', install_dir: get_option('datadir') / 'applications')
+i18n.merge_file(input: 'data/vibeos.Settings.desktop.in', output: 'vibeos.Settings.desktop', type: 'desktop',
+                po_dir: 'po', install: true, install_dir: get_option('datadir') / 'applications')
 install_data('data/vibeos.Settings.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')
 install_data('data/vibeos-keyring-rekey', install_dir: get_option('libexecdir'), install_mode: 'rwxr-xr-x')
 # Set PIN / Set pattern: the helper that changes the user's own password after checking the current one, run through
@@ -81,10 +85,16 @@ foreach panel : gnome_panels
   panel_conf = configuration_data()
   panel_conf.set('panel', panel)
   panel_conf.set('page', panel_pages.get(panel, panel))
-  configure_file(input: 'data/gnome-panel.desktop.in', output: 'gnome-@0@-panel.desktop'.format(panel),
-                 configuration: panel_conf, install_dir: get_option('datadir') / 'applications')
+  panel_in = configure_file(input: 'data/gnome-panel.desktop.in', output: 'gnome-@0@-panel.desktop.in'.format(panel),
+                            configuration: panel_conf)
+  i18n.merge_file(input: panel_in, output: 'gnome-@0@-panel.desktop'.format(panel), type: 'desktop', po_dir: 'po',
+                  install: true, install_dir: get_option('datadir') / 'applications')
 endforeach
-install_data('data/org.gnome.Settings.desktop', install_dir: get_option('datadir') / 'applications')
+i18n.merge_file(input: 'data/org.gnome.Settings.desktop.in', output: 'org.gnome.Settings.desktop', type: 'desktop',
+                po_dir: 'po', install: true, install_dir: get_option('datadir') / 'applications')
 configure_file(input: 'data/org.gnome.Settings.service.in', output: 'org.gnome.Settings.service',
                configuration: service, install_dir: get_option('datadir') / 'dbus-1' / 'services')
 install_data('data/gnome-control-center', install_dir: get_option('bindir'), install_mode: 'rwxr-xr-x')
+
+# the translations, and their checks
+subdir('po')

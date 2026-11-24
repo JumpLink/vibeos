@@ -18,6 +18,8 @@
  *
  * ⋮ in the top end corner, over the dial, opens the menu: About, VibeOS's About sheet. */
 #include <vibeos.h>
+#include <glib/gi18n.h>
+#include <locale.h>
 #include <math.h>
 
 #define APP_ID      "vibeos.Compass"
@@ -32,7 +34,10 @@
 #define GEO_EXACT   8          /* GClueAccuracyLevel: exact (the dial prints tenths of a second) */
 #define PHONE_RADIUS 155.0     /* the dial's radius on an upright phone, which the ticks and pointer are drawn for */
 
-static const char *const NAMES[] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
+/* TRANSLATORS: the compass points, as the dial and the heading ("245°SW") show them */
+static const char *const NAMES[] = {NC_("direction", "N"), NC_("direction", "NE"), NC_("direction", "E"),
+                                    NC_("direction", "SE"), NC_("direction", "S"), NC_("direction", "SW"),
+                                    NC_("direction", "W"), NC_("direction", "NW")};
 
 typedef struct {
   GtkWidget    *win, *area, *status;
@@ -193,8 +198,8 @@ sensor_error_text (const GError *error)
 {
   if (g_error_matches (error, G_DBUS_ERROR, G_DBUS_ERROR_SERVICE_UNKNOWN)
       || g_error_matches (error, G_DBUS_ERROR, G_DBUS_ERROR_NAME_HAS_NO_OWNER))
-    return "The sensor service is not running, so the compass cannot be read.";
-  return "The compass cannot be read right now.";
+    return _("The sensor service is not running, so the compass cannot be read.");
+  return _("The compass cannot be read right now.");
 }
 
 static void
@@ -210,7 +215,7 @@ on_claimed (GObject *src, GAsyncResult *res, gpointer data)
     set_status (c, sensor_error_text (error));
     return;
   }
-  set_status (c, "Hold the device flat, away from metal. Move it in a figure 8 to calibrate.");
+  set_status (c, _("Hold the device flat, away from metal. Move it in a figure 8 to calibrate."));
 }
 
 static void
@@ -237,7 +242,7 @@ on_sensor_proxy (GObject *src, GAsyncResult *res, gpointer data)
   }
   g_autoptr (GVariant) has = g_dbus_proxy_get_cached_property (c->sensor, "HasCompass");
   if (has && !g_variant_get_boolean (has)) {
-    set_status (c, "This device has no compass.");
+    set_status (c, _("This device has no compass."));
     g_clear_object (&c->sensor);
     return;
   }
@@ -275,7 +280,7 @@ geo_failed (Compass *c, const char *what, GError *error)
 {
   g_message ("compass: %s: %s", what, error ? error->message : "?");
   g_free (c->geo_error);
-  c->geo_error = g_strdup ("Location unavailable");
+  c->geo_error = g_strdup (_("Location unavailable"));
   gtk_widget_queue_draw (c->area);
 }
 
@@ -567,15 +572,14 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
     g_snprintf (deg, sizeof deg, "%d", a);
     along (cr, wd, a, R - 38 * u, deg, R * 0.075, FALSE, VIBEOS_ON_SURFACE);
   }
-  static const struct { int a; const char *t; } cardinals[] = {{0, "N"}, {90, "E"}, {180, "S"}, {270, "W"}},
-                                                 inter[] = {{45, "NE"}, {135, "SE"}, {225, "SW"}, {315, "NW"}};
-  for (guint i = 0; i < G_N_ELEMENTS (cardinals); i++) {
-    gboolean north = cardinals[i].a == 0;
-    along (cr, wd, cardinals[i].a, rim * 0.80, cardinals[i].t, R * 0.14, TRUE,
-           north ? VIBEOS_ERROR : VIBEOS_ON_SURFACE);
+  /* the cardinal points large, the others small: NAMES has them every 45° from north */
+  for (int i = 0; i < 8; i++) {
+    const char *name = g_dpgettext2 (NULL, "direction", NAMES[i]);
+    if (i % 2 == 0)
+      along (cr, wd, i * 45, rim * 0.80, name, R * 0.14, TRUE, i == 0 ? VIBEOS_ERROR : VIBEOS_ON_SURFACE);
+    else
+      along (cr, wd, i * 45, rim * 0.80, name, R * 0.065, FALSE, VIBEOS_ON_SURFACE_VARIANT);
   }
-  for (guint i = 0; i < G_N_ELEMENTS (inter); i++)
-    along (cr, wd, inter[i].a, rim * 0.80, inter[i].t, R * 0.065, FALSE, VIBEOS_ON_SURFACE_VARIANT);
   cairo_restore (cr);
 
   /* the fixed red pointer at the top: where the phone points */
@@ -595,7 +599,8 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
   if (c->heading < 0)
     g_strlcpy (hd, "—", sizeof hd);
   else
-    g_snprintf (hd, sizeof hd, "%d°%s", (int) lround (c->heading) % 360, NAMES[(int) lround (c->heading / 45) % 8]);
+    g_snprintf (hd, sizeof hd, "%d°%s", (int) lround (c->heading) % 360,
+                g_dpgettext2 (NULL, "direction", NAMES[(int) lround (c->heading / 45) % 8]));
   source (cr, VIBEOS_ON_SURFACE, 1);
   centred (cr, wd, hd, R * 0.24, FALSE, cx, cy - R * 0.04);
   source (cr, VIBEOS_ON_SURFACE, 0.35);
@@ -615,16 +620,16 @@ draw (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
   cairo_arc (cr, cx, py, pr * 0.42, 0, 2 * G_PI);
   cairo_fill (cr);
   source (cr, VIBEOS_ON_SURFACE, 1);
-  centred (cr, wd, "Location", R * 0.07, TRUE, cx, cy + R * 0.38);
+  centred (cr, wd, _("Location"), R * 0.07, TRUE, cx, cy + R * 0.38);
   if (c->have_position) {
     char lat[32], lon[32];
-    dms (lat, sizeof lat, c->lat, "N", "S");
-    dms (lon, sizeof lon, c->lon, "E", "W");
+    dms (lat, sizeof lat, c->lat, C_("direction", "N"), C_("direction", "S"));
+    dms (lon, sizeof lon, c->lon, C_("direction", "E"), C_("direction", "W"));
     centred (cr, wd, lat, R * 0.062, FALSE, cx, cy + R * 0.49);
     centred (cr, wd, lon, R * 0.062, FALSE, cx, cy + R * 0.59);
   } else {
     source (cr, VIBEOS_ON_SURFACE_VARIANT, 1);
-    centred (cr, wd, c->geo_error ? c->geo_error : "Locating…", R * 0.062, FALSE, cx, cy + R * 0.49);
+    centred (cr, wd, c->geo_error ? c->geo_error : _("Locating…"), R * 0.062, FALSE, cx, cy + R * 0.49);
   }
 }
 
@@ -635,7 +640,7 @@ static const char CSS[] =
   "window.compass, window.compass .compass-bg { background-color: @vibeos_surface; color: @vibeos_on_surface; }"
   ".compass-status { color: @vibeos_on_surface_variant; font-size: 13sp; font-weight: 400; }";
 
-static const VibeosAboutInfo compass_about = { .name = "Compass", .icon_name = APP_ID };
+static const VibeosAboutInfo compass_about = { .name = N_("Compass"), .icon_name = APP_ID };
 
 static void
 on_more (GtkWidget *button, gpointer data)
@@ -655,7 +660,7 @@ on_activate (GtkApplication *app, gpointer data)
     return;
   }
   c->win = vibeos_window_new (app);
-  gtk_window_set_title (GTK_WINDOW (c->win), "Compass");
+  gtk_window_set_title (GTK_WINDOW (c->win), _("Compass"));
   gtk_widget_add_css_class (c->win, "compass");
   /* the window's size from the start: the dial is laid out once for it */
   vibeos_layout_get_for_window (GTK_WINDOW (c->win));
@@ -678,7 +683,7 @@ on_activate (GtkApplication *app, gpointer data)
   GtkWidget *over = gtk_overlay_new ();
   gtk_overlay_set_child (GTK_OVERLAY (over), box);
   GtkWidget *more = vibeos_icon_button_new ("view-more-symbolic");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, "More options", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
   gtk_widget_set_halign (more, GTK_ALIGN_END);
   gtk_widget_set_valign (more, GTK_ALIGN_START);
   gtk_widget_set_margin_top (more, 4);
@@ -707,8 +712,13 @@ int
 main (int argc, char **argv)
 {
   Compass c = {.heading = -1};
-  g_autoptr (GtkApplication) app = gtk_application_new (APP_ID, G_APPLICATION_DEFAULT_FLAGS);
+  g_autoptr (GtkApplication) app = NULL;
 
+  setlocale (LC_ALL, "");
+  bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+  textdomain (GETTEXT_PACKAGE);
+  app = gtk_application_new (APP_ID, G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   g_signal_connect (app, "activate", G_CALLBACK (on_activate), &c);
   int status = g_application_run (G_APPLICATION (app), argc, argv);

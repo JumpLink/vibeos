@@ -1,0 +1,3352 @@
+# Russian translations of vibeos-clock.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-clock\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 14:32+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Russian\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+# android: DeskClock default_label (several translations, short)
+#. the label, or "Alarm"
+#: data/vibeos.Clock.Ringing.desktop.in src/alarm-notifications.c
+#: src/clock-window.c src/ringing-window.c
+msgid "Alarm"
+msgstr "Будильник"
+
+# android: DeskClock app_label
+#. ⋮: About, VibeOS's About sheet, as every VibeOS app has it
+#: data/vibeos.Clock.desktop.in src/clock-window.c src/settings-page.c
+msgid "Clock"
+msgstr "Часы"
+
+#: data/vibeos.Clock.desktop.in
+msgid "Alarms and the time"
+msgstr "Будильники и время"
+
+#: data/vibeos.Clock.desktop.in
+msgid "alarm;time;"
+msgstr "будильник;время;часы;таймер;секундомер;"
+
+#: src/alarm-card.c
+msgid "Add label"
+msgstr "Добавить описание"
+
+# android: DeskClock alarm_tomorrow
+#: src/alarm-card.c
+msgid "Tomorrow"
+msgstr "Завтра"
+
+# android: DeskClock alarm_today
+#: src/alarm-card.c
+msgid "Today"
+msgstr "Сегодня"
+
+# android: DeskClock alarm_alert_snooze_until
+#: src/alarm-card.c src/alarm-notifications.c
+#, c-format
+msgid "Snoozing until %s"
+msgstr "Повтор в %s"
+
+# android: Framework review_notification_settings_dismiss (several translations, short)
+#. actions: key, label pairs; "default" is a tap on the notification
+#: src/alarm-card.c src/alarm-notifications.c src/settings-page.c
+msgid "Dismiss"
+msgstr "Закрыть"
+
+# android: DeskClock label (several translations, short)
+#. the hint "Label" until it has one; on the expired screen no hint, and no label at all without one
+#: src/alarm-card.c src/timer-card.c
+msgid "Label"
+msgstr "Описание"
+
+# android: DeskClock timer_cancel (several translations, short)
+#: src/alarm-card.c src/clock-dialogs.c src/ringtone-picker.c src/timer-card.c
+#: src/timer-page.c
+msgid "Cancel"
+msgstr "Отмена"
+
+# android: Framework httpErrorOk (several translations, short)
+#: src/alarm-card.c src/timer-card.c
+msgid "OK"
+msgstr "ОК"
+
+# android: DeskClock alarm_is_dismissed
+#: src/alarm-card.c
+#, c-format
+msgid "%s alarm dismissed"
+msgstr "Будильник на %s отключен"
+
+# android: DeskClock alarm_vibrate (several translations, short)
+#: src/alarm-card.c
+msgid "Vibrate"
+msgstr "Вибросигнал"
+
+# android: DeskClock delete (several translations, short)
+#: src/alarm-card.c src/timer-card.c src/timer-setup.c
+msgid "Delete"
+msgstr "Удалить"
+
+# android: DeskClock alarm_alert_snooze_text
+#: src/alarm-notifications.c src/settings-page.c
+msgid "Snooze"
+msgstr "Отложить"
+
+# android: DeskClock alarm_alert_predismiss_title
+#: src/alarm-notifications.c
+msgid "Upcoming alarm"
+msgstr "Следующий будильник"
+
+# android: DeskClock alarm_missed_title
+#: src/alarm-notifications.c
+msgid "Missed alarm"
+msgstr "Пропущенный будильник"
+
+# android: DeskClock alarm_deleted
+#: src/alarm-page.c
+msgid "Alarm deleted"
+msgstr "Будильник удален"
+
+#: src/alarm-page.c
+msgid "Undo"
+msgstr "Отменить"
+
+#: src/alarm-page.c
+msgid "Missed alarm has been deleted"
+msgstr "Пропущенный будильник удален"
+
+# android: DeskClock button_alarms
+#: src/alarm-page.c
+msgid "Add alarm"
+msgstr "Добавить будильник"
+
+# android: DeskClock no_alarms
+#: src/alarm-page.c
+msgid "No Alarms"
+msgstr "Нет будильников"
+
+# android: DeskClock C1
+#: src/cities-data.h
+msgctxt "city"
+msgid "Abidjan"
+msgstr "Абиджан"
+
+# android: DeskClock C2
+#: src/cities-data.h
+msgctxt "city"
+msgid "Accra"
+msgstr "Аккра"
+
+# android: DeskClock C3
+#: src/cities-data.h
+msgctxt "city"
+msgid "Addis Ababa"
+msgstr "Аддис-Абеба"
+
+# android: DeskClock C4
+#: src/cities-data.h
+msgctxt "city"
+msgid "Algiers"
+msgstr "Алжир"
+
+# android: DeskClock C5
+#: src/cities-data.h
+msgctxt "city"
+msgid "Blantyre"
+msgstr "Блантайр"
+
+# android: DeskClock C6
+#: src/cities-data.h
+msgctxt "city"
+msgid "Brazzaville"
+msgstr "Браззавиль"
+
+# android: DeskClock C7
+#: src/cities-data.h
+msgctxt "city"
+msgid "Cairo"
+msgstr "Каир"
+
+# android: DeskClock C8
+#: src/cities-data.h
+msgctxt "city"
+msgid "Casablanca"
+msgstr "Касабланка"
+
+# android: DeskClock C9
+#: src/cities-data.h
+msgctxt "city"
+msgid "Conakry"
+msgstr "Конакри"
+
+# android: DeskClock C10
+#: src/cities-data.h
+msgctxt "city"
+msgid "Dakar"
+msgstr "Дакар"
+
+# android: DeskClock C11
+#: src/cities-data.h
+msgctxt "city"
+msgid "Dar es Salaam"
+msgstr "Дар-эс-Салам"
+
+# android: DeskClock C12
+#: src/cities-data.h
+msgctxt "city"
+msgid "Djibouti"
+msgstr "Джибути"
+
+# android: DeskClock C13
+#: src/cities-data.h
+msgctxt "city"
+msgid "Freetown"
+msgstr "Фритаун"
+
+# android: DeskClock C14
+#: src/cities-data.h
+msgctxt "city"
+msgid "Gaborone"
+msgstr "Габороне"
+
+# android: DeskClock C15
+#: src/cities-data.h
+msgctxt "city"
+msgid "Harare"
+msgstr "Хараре"
+
+# android: DeskClock C16
+#: src/cities-data.h
+msgctxt "city"
+msgid "Johannesburg"
+msgstr "Йоханнесбург"
+
+# android: DeskClock C17
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kampala"
+msgstr "Кампала"
+
+# android: DeskClock C18
+#: src/cities-data.h
+msgctxt "city"
+msgid "Khartoum"
+msgstr "Хартум"
+
+# android: DeskClock C19
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kigali"
+msgstr "Кигали"
+
+# android: DeskClock C20
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kinshasa"
+msgstr "Киншаса"
+
+# android: DeskClock C21
+#: src/cities-data.h
+msgctxt "city"
+msgid "Lagos"
+msgstr "Лагос"
+
+# android: DeskClock C22
+#: src/cities-data.h
+msgctxt "city"
+msgid "Maseru"
+msgstr "Масеру"
+
+# android: DeskClock C23
+#: src/cities-data.h
+msgctxt "city"
+msgid "Mogadishu"
+msgstr "Могадишо"
+
+# android: DeskClock C24
+#: src/cities-data.h
+msgctxt "city"
+msgid "Nairobi"
+msgstr "Найроби"
+
+# android: DeskClock C25
+#: src/cities-data.h
+msgctxt "city"
+msgid "São Tomé"
+msgstr "Сан-Томе"
+
+# android: DeskClock C26
+#: src/cities-data.h
+msgctxt "city"
+msgid "Timbuktu"
+msgstr "Томбукту"
+
+# android: DeskClock C27
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tripoli"
+msgstr "Триполи"
+
+# android: DeskClock C28
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tunis"
+msgstr "Тунис"
+
+# android: DeskClock C29
+#: src/cities-data.h
+msgctxt "city"
+msgid "Anchorage"
+msgstr "Анкоридж"
+
+# android: DeskClock C31
+#: src/cities-data.h
+msgctxt "city"
+msgid "Aruba"
+msgstr "Аруба"
+
+# android: DeskClock C32
+#: src/cities-data.h
+msgctxt "city"
+msgid "Asunción"
+msgstr "Асунсьон"
+
+# android: DeskClock C33
+#: src/cities-data.h
+msgctxt "city"
+msgid "Barbados"
+msgstr "Барбадос"
+
+# android: DeskClock C34
+#: src/cities-data.h
+msgctxt "city"
+msgid "Belize"
+msgstr "Белиз"
+
+# android: DeskClock C35
+#: src/cities-data.h
+msgctxt "city"
+msgid "Bogotá"
+msgstr "Богота"
+
+# android: DeskClock C36
+#: src/cities-data.h
+msgctxt "city"
+msgid "Buenos Aires"
+msgstr "Буэнос-Айрес"
+
+# android: DeskClock C37
+#: src/cities-data.h
+msgctxt "city"
+msgid "Cancun"
+msgstr "Канкун"
+
+# android: DeskClock C38
+#: src/cities-data.h
+msgctxt "city"
+msgid "Caracas"
+msgstr "Каракас"
+
+# android: DeskClock C39
+#: src/cities-data.h
+msgctxt "city"
+msgid "Cayman"
+msgstr "Каймановы острова"
+
+# android: DeskClock C40
+#: src/cities-data.h
+msgctxt "city"
+msgid "Chicago"
+msgstr "Чикаго"
+
+# android: DeskClock C42
+#: src/cities-data.h
+msgctxt "city"
+msgid "Curaçao"
+msgstr "Кюрасао"
+
+# android: DeskClock C43
+#: src/cities-data.h
+msgctxt "city"
+msgid "Dawson Creek"
+msgstr "Досон-Крик"
+
+# android: DeskClock C44
+#: src/cities-data.h
+msgctxt "city"
+msgid "Denver"
+msgstr "Денвер"
+
+# android: DeskClock C45
+#: src/cities-data.h
+msgctxt "city"
+msgid "Detroit"
+msgstr "Детройт"
+
+# android: DeskClock C46
+#: src/cities-data.h
+msgctxt "city"
+msgid "Dominica"
+msgstr "Доминика"
+
+# android: DeskClock C47
+#: src/cities-data.h
+msgctxt "city"
+msgid "Edmonton"
+msgstr "Эдмонтон"
+
+# android: DeskClock C48
+#: src/cities-data.h
+msgctxt "city"
+msgid "El Salvador"
+msgstr "Сальвадор"
+
+# android: DeskClock C49
+#: src/cities-data.h
+msgctxt "city"
+msgid "Fortaleza"
+msgstr "Форталеза"
+
+# android: DeskClock C50
+#: src/cities-data.h
+msgctxt "city"
+msgid "Grand Turk"
+msgstr "Гранд-Терк"
+
+# android: DeskClock C51
+#: src/cities-data.h
+msgctxt "city"
+msgid "Grenada"
+msgstr "Гренада"
+
+# android: DeskClock C52
+#: src/cities-data.h
+msgctxt "city"
+msgid "Guatemala City"
+msgstr "Гватемала"
+
+# android: DeskClock C53
+#: src/cities-data.h
+msgctxt "city"
+msgid "Guyana"
+msgstr "Гайана"
+
+# android: DeskClock C54
+#: src/cities-data.h
+msgctxt "city"
+msgid "Halifax"
+msgstr "Галифакс"
+
+# android: DeskClock C55
+#: src/cities-data.h
+msgctxt "city"
+msgid "Havana"
+msgstr "Гавана"
+
+# android: DeskClock C56
+#: src/cities-data.h
+msgctxt "city"
+msgid "Indianapolis"
+msgstr "Индианаполис"
+
+# android: DeskClock C57
+#: src/cities-data.h
+msgctxt "city"
+msgid "Knox"
+msgstr "Нокс"
+
+# android: DeskClock C58
+#: src/cities-data.h
+msgctxt "city"
+msgid "Marengo"
+msgstr "Маренго"
+
+# android: DeskClock C59
+#: src/cities-data.h
+msgctxt "city"
+msgid "Petersburg"
+msgstr "Питерсберг"
+
+# android: DeskClock C60
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tell City"
+msgstr "Телл-Сити"
+
+# android: DeskClock C61
+#: src/cities-data.h
+msgctxt "city"
+msgid "Vevay"
+msgstr "Вевей"
+
+# android: DeskClock C62
+#: src/cities-data.h
+msgctxt "city"
+msgid "Vincennes"
+msgstr "Венсен"
+
+# android: DeskClock C63
+#: src/cities-data.h
+msgctxt "city"
+msgid "Winamac"
+msgstr "Уинамак"
+
+# android: DeskClock C64
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kingston"
+msgstr "Кингстон"
+
+# android: DeskClock C65
+#: src/cities-data.h
+msgctxt "city"
+msgid "Nuestra Señora de La Paz"
+msgstr "Ла-Пас"
+
+# android: DeskClock C66
+#: src/cities-data.h
+msgctxt "city"
+msgid "Lima"
+msgstr "Лима"
+
+# android: DeskClock C67
+#: src/cities-data.h
+msgctxt "city"
+msgid "Los Angeles"
+msgstr "Лос-Анджелес"
+
+# android: DeskClock C68
+#: src/cities-data.h
+msgctxt "city"
+msgid "Louisville"
+msgstr "Луисвилл"
+
+# android: DeskClock C69
+#: src/cities-data.h
+msgctxt "city"
+msgid "Managua"
+msgstr "Манагуа"
+
+# android: DeskClock C70
+#: src/cities-data.h
+msgctxt "city"
+msgid "Martinique"
+msgstr "Мартиника"
+
+# android: DeskClock C71
+#: src/cities-data.h
+msgctxt "city"
+msgid "Mendoza"
+msgstr "Мендоса"
+
+# android: DeskClock C72
+#: src/cities-data.h
+msgctxt "city"
+msgid "Metlakatla"
+msgstr "Метлакатла"
+
+# android: DeskClock C73
+#: src/cities-data.h
+msgctxt "city"
+msgid "Mexico City"
+msgstr "Мехико"
+
+# android: DeskClock C74
+#: src/cities-data.h
+msgctxt "city"
+msgid "Monterrey"
+msgstr "Монтеррей"
+
+# android: DeskClock C75
+#: src/cities-data.h
+msgctxt "city"
+msgid "Montevideo"
+msgstr "Монтевидео"
+
+# android: DeskClock C76
+#: src/cities-data.h
+msgctxt "city"
+msgid "Montreal"
+msgstr "Монреаль"
+
+# android: DeskClock C77
+#: src/cities-data.h
+msgctxt "city"
+msgid "Nassau"
+msgstr "Нассау"
+
+# android: DeskClock C78
+#: src/cities-data.h
+msgctxt "city"
+msgid "New York"
+msgstr "Нью-Йорк"
+
+# android: DeskClock C79
+#: src/cities-data.h
+msgctxt "city"
+msgid "Beulah"
+msgstr "Бойла"
+
+# android: DeskClock C80
+#: src/cities-data.h
+msgctxt "city"
+msgid "Center"
+msgstr "Сентер"
+
+# android: DeskClock C81
+#: src/cities-data.h
+msgctxt "city"
+msgid "New Salem"
+msgstr "Нью-Сейлем"
+
+# android: DeskClock C82
+#: src/cities-data.h
+msgctxt "city"
+msgid "Panama"
+msgstr "Панама"
+
+# android: DeskClock C83
+#: src/cities-data.h
+msgctxt "city"
+msgid "Phoenix"
+msgstr "Финикс"
+
+# android: DeskClock C84
+#: src/cities-data.h
+msgctxt "city"
+msgid "Port of Spain"
+msgstr "Порт-оф-Спейн"
+
+# android: DeskClock C85
+#: src/cities-data.h
+msgctxt "city"
+msgid "Port-au-Prince"
+msgstr "Порт-о-Пренс"
+
+# android: DeskClock C86
+#: src/cities-data.h
+msgctxt "city"
+msgid "Puerto Rico"
+msgstr "Пуэрто-Рико"
+
+# android: DeskClock C87
+#: src/cities-data.h
+msgctxt "city"
+msgid "Santo Domingo"
+msgstr "Санто-Доминго"
+
+# android: DeskClock C88
+#: src/cities-data.h
+msgctxt "city"
+msgid "São Paulo"
+msgstr "Сан-Паулу"
+
+# android: DeskClock C89
+#: src/cities-data.h
+msgctxt "city"
+msgid "St. Johns"
+msgstr "Сент-Джонс"
+
+# android: DeskClock C90
+#: src/cities-data.h
+msgctxt "city"
+msgid "St. Kitts"
+msgstr "Сент-Китс"
+
+# android: DeskClock C91
+#: src/cities-data.h
+msgctxt "city"
+msgid "St. Lucia"
+msgstr "Сент-Люсия"
+
+# android: DeskClock C92
+#: src/cities-data.h
+msgctxt "city"
+msgid "St. Thomas"
+msgstr "Сент-Томас"
+
+# android: DeskClock C93
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tijuana"
+msgstr "Тихуана"
+
+# android: DeskClock C94
+#: src/cities-data.h
+msgctxt "city"
+msgid "Toronto"
+msgstr "Торонто"
+
+# android: DeskClock C95
+#: src/cities-data.h
+msgctxt "city"
+msgid "Vancouver"
+msgstr "Ванкувер"
+
+# android: DeskClock C96
+#: src/cities-data.h
+msgctxt "city"
+msgid "Winnipeg"
+msgstr "Виннипег"
+
+# android: DeskClock C97 (adapted)
+#: src/cities-data.h
+msgctxt "city"
+msgid "South Pole"
+msgstr "Южный полюс"
+
+# android: DeskClock C98
+#: src/cities-data.h
+msgctxt "city"
+msgid "Longyearbyen"
+msgstr "Лонгйир"
+
+# android: DeskClock C99
+#: src/cities-data.h
+msgctxt "city"
+msgid "Almaty"
+msgstr "Алма-Ата"
+
+# android: DeskClock C100
+#: src/cities-data.h
+msgctxt "city"
+msgid "Amman"
+msgstr "Амман"
+
+# android: DeskClock C101
+#: src/cities-data.h
+msgctxt "city"
+msgid "Anadyr"
+msgstr "Анадырь"
+
+# android: DeskClock C102
+#: src/cities-data.h
+msgctxt "city"
+msgid "Aqtau"
+msgstr "Актау"
+
+# android: DeskClock C103
+#: src/cities-data.h
+msgctxt "city"
+msgid "Baghdad"
+msgstr "Багдад"
+
+# android: DeskClock C104
+#: src/cities-data.h
+msgctxt "city"
+msgid "Bahrain"
+msgstr "Бахрейн"
+
+# android: DeskClock C105
+#: src/cities-data.h
+msgctxt "city"
+msgid "Baku"
+msgstr "Баку"
+
+# android: DeskClock C106
+#: src/cities-data.h
+msgctxt "city"
+msgid "Bangkok"
+msgstr "Бангкок"
+
+# android: DeskClock C107
+#: src/cities-data.h
+msgctxt "city"
+msgid "Beirut"
+msgstr "Бейрут"
+
+# android: DeskClock C108
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kolkata"
+msgstr "Калькутта"
+
+# android: DeskClock C109
+#: src/cities-data.h
+msgctxt "city"
+msgid "Damascus"
+msgstr "Дамаск"
+
+# android: DeskClock C110
+#: src/cities-data.h
+msgctxt "city"
+msgid "Dhaka"
+msgstr "Дакка"
+
+# android: DeskClock C111
+#: src/cities-data.h
+msgctxt "city"
+msgid "Dubai"
+msgstr "Дубай"
+
+# android: DeskClock C112
+#: src/cities-data.h
+msgctxt "city"
+msgid "Gaza"
+msgstr "Газа"
+
+# android: DeskClock C113
+#: src/cities-data.h
+msgctxt "city"
+msgid "Hebron"
+msgstr "Хеврон"
+
+# android: DeskClock C114
+#: src/cities-data.h
+msgctxt "city"
+msgid "Ho Chi Minh"
+msgstr "Хошимин"
+
+# android: DeskClock timezone_labels[65]
+#: src/cities-data.h
+msgctxt "city"
+msgid "Hong Kong"
+msgstr "Гонконг"
+
+# android: DeskClock C117
+#: src/cities-data.h
+msgctxt "city"
+msgid "Jakarta"
+msgstr "Джакарта"
+
+# android: DeskClock C118
+#: src/cities-data.h
+msgctxt "city"
+msgid "Jerusalem"
+msgstr "Иерусалим"
+
+# android: DeskClock C119
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kabul"
+msgstr "Кабул"
+
+# android: DeskClock C120
+#: src/cities-data.h
+msgctxt "city"
+msgid "Karachi"
+msgstr "Карачи"
+
+# android: DeskClock C121
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kathmandu"
+msgstr "Катманду"
+
+# android: DeskClock C122
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kuala Lumpur"
+msgstr "Куала-Лумпур"
+
+# android: DeskClock C123
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kuwait"
+msgstr "Кувейт"
+
+# android: DeskClock C124
+#: src/cities-data.h
+msgctxt "city"
+msgid "Macau"
+msgstr "Макао"
+
+# android: DeskClock C125
+#: src/cities-data.h
+msgctxt "city"
+msgid "Manila"
+msgstr "Манила"
+
+# android: DeskClock C126
+#: src/cities-data.h
+msgctxt "city"
+msgid "Muscat"
+msgstr "Маскат"
+
+# android: DeskClock C127
+#: src/cities-data.h
+msgctxt "city"
+msgid "Phnom Penh"
+msgstr "Пномпень"
+
+# android: DeskClock C128 (adapted)
+#: src/cities-data.h
+msgctxt "city"
+msgid "Pyongyang"
+msgstr "Пхеньян"
+
+# android: DeskClock C130
+#: src/cities-data.h
+msgctxt "city"
+msgid "Rangoon"
+msgstr "Янгон"
+
+# android: DeskClock C131
+#: src/cities-data.h
+msgctxt "city"
+msgid "Riyadh"
+msgstr "Эр-Рияд"
+
+# android: DeskClock C133
+#: src/cities-data.h
+msgctxt "city"
+msgid "Seoul"
+msgstr "Сеул"
+
+# android: DeskClock C134 (adapted)
+#: src/cities-data.h
+msgctxt "city"
+msgid "Shanghai"
+msgstr "Шанхай"
+
+# android: DeskClock C135
+#: src/cities-data.h
+msgctxt "city"
+msgid "Singapore"
+msgstr "Сингапур"
+
+# android: DeskClock timezone_labels[69]
+#: src/cities-data.h
+msgctxt "city"
+msgid "Taipei"
+msgstr "Тайбэй"
+
+# android: DeskClock C137
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tehran"
+msgstr "Тегеран"
+
+# android: DeskClock C138
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tel Aviv"
+msgstr "Тель-Авив"
+
+# android: DeskClock C139 (adapted)
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tokyo"
+msgstr "Токио"
+
+# android: DeskClock C140
+#: src/cities-data.h
+msgctxt "city"
+msgid "Ulaanbaatar"
+msgstr "Улан-Батор"
+
+# android: DeskClock C141
+#: src/cities-data.h
+msgctxt "city"
+msgid "Bermuda"
+msgstr "Бермудские острова"
+
+# android: DeskClock C142
+#: src/cities-data.h
+msgctxt "city"
+msgid "Canary"
+msgstr "Канарские острова"
+
+# android: DeskClock C143
+#: src/cities-data.h
+msgctxt "city"
+msgid "Cape Verde"
+msgstr "Кабо-Верде"
+
+# android: DeskClock C144
+#: src/cities-data.h
+msgctxt "city"
+msgid "Reykjavik"
+msgstr "Рейкьявик"
+
+# android: DeskClock C145
+#: src/cities-data.h
+msgctxt "city"
+msgid "Stanley"
+msgstr "Стэнли"
+
+# android: DeskClock C146
+#: src/cities-data.h
+msgctxt "city"
+msgid "Adelaide"
+msgstr "Аделаида"
+
+# android: DeskClock C147
+#: src/cities-data.h
+msgctxt "city"
+msgid "Brisbane"
+msgstr "Брисбен"
+
+# android: DeskClock C148
+#: src/cities-data.h
+msgctxt "city"
+msgid "Canberra"
+msgstr "Канберра"
+
+# android: DeskClock C149
+#: src/cities-data.h
+msgctxt "city"
+msgid "Darwin"
+msgstr "Дарвин"
+
+# android: DeskClock C150
+#: src/cities-data.h
+msgctxt "city"
+msgid "Melbourne"
+msgstr "Мельбурн"
+
+# android: DeskClock C151
+#: src/cities-data.h
+msgctxt "city"
+msgid "New South Wales"
+msgstr "Новый Южный Уэльс"
+
+# android: DeskClock C152
+#: src/cities-data.h
+msgctxt "city"
+msgid "Perth"
+msgstr "Перт"
+
+# android: DeskClock C153
+#: src/cities-data.h
+msgctxt "city"
+msgid "Queensland"
+msgstr "Квинсленд"
+
+# android: DeskClock C154
+#: src/cities-data.h
+msgctxt "city"
+msgid "Sydney"
+msgstr "Сидней"
+
+# android: DeskClock C155
+#: src/cities-data.h
+msgctxt "city"
+msgid "Victoria"
+msgstr "Виктория"
+
+# android: DeskClock C156
+#: src/cities-data.h
+msgctxt "city"
+msgid "Newfoundland"
+msgstr "Ньюфаундленд"
+
+# android: DeskClock C157
+#: src/cities-data.h
+msgctxt "city"
+msgid "Saskatchewan"
+msgstr "Саскачеван"
+
+# android: DeskClock C158
+#: src/cities-data.h
+msgctxt "city"
+msgid "Easter Island"
+msgstr "Остров Пасхи"
+
+# android: DeskClock C159
+#: src/cities-data.h
+msgctxt "city"
+msgid "Amsterdam"
+msgstr "Амстердам"
+
+# android: DeskClock C160
+#: src/cities-data.h
+msgctxt "city"
+msgid "Andorra"
+msgstr "Андорра"
+
+# android: DeskClock C161
+#: src/cities-data.h
+msgctxt "city"
+msgid "Athens"
+msgstr "Афины"
+
+# android: DeskClock C162
+#: src/cities-data.h
+msgctxt "city"
+msgid "Belfast"
+msgstr "Белфаст"
+
+# android: DeskClock C163
+#: src/cities-data.h
+msgctxt "city"
+msgid "Belgrade"
+msgstr "Белград"
+
+# android: DeskClock C164
+#: src/cities-data.h
+msgctxt "city"
+msgid "Berlin"
+msgstr "Берлин"
+
+# android: DeskClock C165
+#: src/cities-data.h
+msgctxt "city"
+msgid "Bratislava"
+msgstr "Братислава"
+
+# android: DeskClock C166
+#: src/cities-data.h
+msgctxt "city"
+msgid "Brussels"
+msgstr "Брюссель"
+
+# android: DeskClock C167
+#: src/cities-data.h
+msgctxt "city"
+msgid "Bucharest"
+msgstr "Бухарест"
+
+# android: DeskClock C168
+#: src/cities-data.h
+msgctxt "city"
+msgid "Budapest"
+msgstr "Будапешт"
+
+# android: DeskClock C169
+#: src/cities-data.h
+msgctxt "city"
+msgid "Chisinau"
+msgstr "Кишинев"
+
+# android: DeskClock C170
+#: src/cities-data.h
+msgctxt "city"
+msgid "Copenhagen"
+msgstr "Копенгаген"
+
+# android: DeskClock C171
+#: src/cities-data.h
+msgctxt "city"
+msgid "Dublin"
+msgstr "Дублин"
+
+# android: DeskClock C172
+#: src/cities-data.h
+msgctxt "city"
+msgid "Gibraltar"
+msgstr "Гибралтар"
+
+# android: DeskClock C173
+#: src/cities-data.h
+msgctxt "city"
+msgid "Helsinki"
+msgstr "Хельсинки"
+
+# android: DeskClock C174
+#: src/cities-data.h
+msgctxt "city"
+msgid "Isle of Man"
+msgstr "Остров Мэн"
+
+# android: DeskClock C175
+#: src/cities-data.h
+msgctxt "city"
+msgid "Istanbul"
+msgstr "Стамбул"
+
+# android: DeskClock C176
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kiev"
+msgstr "Киев"
+
+# android: DeskClock C177
+#: src/cities-data.h
+msgctxt "city"
+msgid "Lisbon"
+msgstr "Лиссабон"
+
+# android: DeskClock C178
+#: src/cities-data.h
+msgctxt "city"
+msgid "London"
+msgstr "Лондон"
+
+# android: DeskClock C179
+#: src/cities-data.h
+msgctxt "city"
+msgid "Luxembourg"
+msgstr "Люксембург"
+
+# android: DeskClock C180
+#: src/cities-data.h
+msgctxt "city"
+msgid "Madrid"
+msgstr "Мадрид"
+
+# android: DeskClock C181
+#: src/cities-data.h
+msgctxt "city"
+msgid "Malta"
+msgstr "Мальта"
+
+# android: DeskClock C182
+#: src/cities-data.h
+msgctxt "city"
+msgid "Minsk"
+msgstr "Минск"
+
+# android: DeskClock C183
+#: src/cities-data.h
+msgctxt "city"
+msgid "Monaco"
+msgstr "Монако"
+
+# android: DeskClock C184
+#: src/cities-data.h
+msgctxt "city"
+msgid "Moscow"
+msgstr "Москва"
+
+# android: DeskClock C185
+#: src/cities-data.h
+msgctxt "city"
+msgid "Oslo"
+msgstr "Осло"
+
+# android: DeskClock C186
+#: src/cities-data.h
+msgctxt "city"
+msgid "Paris"
+msgstr "Париж"
+
+# android: DeskClock C187
+#: src/cities-data.h
+msgctxt "city"
+msgid "Prague"
+msgstr "Прага"
+
+# android: DeskClock C188
+#: src/cities-data.h
+msgctxt "city"
+msgid "Riga"
+msgstr "Рига"
+
+# android: DeskClock C189
+#: src/cities-data.h
+msgctxt "city"
+msgid "Rome"
+msgstr "Рим"
+
+# android: DeskClock C190
+#: src/cities-data.h
+msgctxt "city"
+msgid "San Marino"
+msgstr "Сан-Марино"
+
+# android: DeskClock C191
+#: src/cities-data.h
+msgctxt "city"
+msgid "Sarajevo"
+msgstr "Сараево"
+
+# android: DeskClock C192
+#: src/cities-data.h
+msgctxt "city"
+msgid "Simferopol"
+msgstr "Симферополь"
+
+# android: DeskClock C193
+#: src/cities-data.h
+msgctxt "city"
+msgid "Skopje"
+msgstr "Скопье"
+
+# android: DeskClock C194
+#: src/cities-data.h
+msgctxt "city"
+msgid "Sofia"
+msgstr "София"
+
+# android: DeskClock C195
+#: src/cities-data.h
+msgctxt "city"
+msgid "Stockholm"
+msgstr "Стокгольм"
+
+# android: DeskClock C196
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tallinn"
+msgstr "Таллин"
+
+# android: DeskClock C197
+#: src/cities-data.h
+msgctxt "city"
+msgid "Vatican"
+msgstr "Ватикан"
+
+# android: DeskClock C198
+#: src/cities-data.h
+msgctxt "city"
+msgid "Vienna"
+msgstr "Вена"
+
+# android: DeskClock C199
+#: src/cities-data.h
+msgctxt "city"
+msgid "Vilnius"
+msgstr "Вильнюс"
+
+# android: DeskClock C200
+#: src/cities-data.h
+msgctxt "city"
+msgid "Warsaw"
+msgstr "Варшава"
+
+# android: DeskClock C201
+#: src/cities-data.h
+msgctxt "city"
+msgid "Zagreb"
+msgstr "Загреб"
+
+# android: DeskClock C202
+#: src/cities-data.h
+msgctxt "city"
+msgid "Zurich"
+msgstr "Цюрих"
+
+# android: DeskClock C203
+#: src/cities-data.h
+msgctxt "city"
+msgid "Antananarivo"
+msgstr "Антананариву"
+
+# android: DeskClock C204
+#: src/cities-data.h
+msgctxt "city"
+msgid "Maldives"
+msgstr "Мальдивы"
+
+# android: DeskClock C205
+#: src/cities-data.h
+msgctxt "city"
+msgid "Mauritius"
+msgstr "Маврикий"
+
+# android: DeskClock C206
+#: src/cities-data.h
+msgctxt "city"
+msgid "Auckland"
+msgstr "Окленд"
+
+# android: DeskClock C207
+#: src/cities-data.h
+msgctxt "city"
+msgid "Fiji"
+msgstr "Фиджи"
+
+# android: DeskClock C208
+#: src/cities-data.h
+msgctxt "city"
+msgid "Guam"
+msgstr "Гуам"
+
+# android: DeskClock C209
+#: src/cities-data.h
+msgctxt "city"
+msgid "Honolulu"
+msgstr "Гонолулу"
+
+# android: DeskClock C210
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kiritimati"
+msgstr "Остров Рождества"
+
+# android: DeskClock C211
+#: src/cities-data.h
+msgctxt "city"
+msgid "Noumea"
+msgstr "Нумеа"
+
+# android: DeskClock C214
+#: src/cities-data.h
+msgctxt "city"
+msgid "Antigua"
+msgstr "Антигуа"
+
+# android: DeskClock C215
+#: src/cities-data.h
+msgctxt "city"
+msgid "Austin"
+msgstr "Остин"
+
+# android: DeskClock C216
+#: src/cities-data.h
+msgctxt "city"
+msgid "Boston"
+msgstr "Бостон"
+
+# android: DeskClock C217
+#: src/cities-data.h
+msgctxt "city"
+msgid "Calgary"
+msgstr "Калгари"
+
+# android: DeskClock C218
+#: src/cities-data.h
+msgctxt "city"
+msgid "Columbus"
+msgstr "Колумбус"
+
+# android: DeskClock C219
+#: src/cities-data.h
+msgctxt "city"
+msgid "Dallas"
+msgstr "Даллас"
+
+# android: DeskClock C220
+#: src/cities-data.h
+msgctxt "city"
+msgid "Knoxville"
+msgstr "Ноксвилл"
+
+# android: DeskClock C221
+#: src/cities-data.h
+msgctxt "city"
+msgid "Memphis"
+msgstr "Мемфис"
+
+# android: DeskClock C222
+#: src/cities-data.h
+msgctxt "city"
+msgid "Miami"
+msgstr "Майами"
+
+# android: DeskClock C223
+#: src/cities-data.h
+msgctxt "city"
+msgid "Minneapolis"
+msgstr "Миннеаполис"
+
+# android: DeskClock C224
+#: src/cities-data.h
+msgctxt "city"
+msgid "Ottawa"
+msgstr "Оттава"
+
+# android: DeskClock C225
+#: src/cities-data.h
+msgctxt "city"
+msgid "Philadelphia"
+msgstr "Филадельфия"
+
+# android: DeskClock C226
+#: src/cities-data.h
+msgctxt "city"
+msgid "Portland"
+msgstr "Портленд"
+
+# android: DeskClock C227
+#: src/cities-data.h
+msgctxt "city"
+msgid "San Diego"
+msgstr "Сан-Диего"
+
+# android: DeskClock C228
+#: src/cities-data.h
+msgctxt "city"
+msgid "San Francisco"
+msgstr "Сан-Франциско"
+
+# android: DeskClock C229
+#: src/cities-data.h
+msgctxt "city"
+msgid "Salt Lake City"
+msgstr "Солт-Лейк-Сити"
+
+# android: DeskClock C230
+#: src/cities-data.h
+msgctxt "city"
+msgid "San Jose"
+msgstr "Сан-Хосе"
+
+# android: DeskClock C231
+#: src/cities-data.h
+msgctxt "city"
+msgid "San Salvador"
+msgstr "Сан-Сальвадор"
+
+# android: DeskClock C232
+#: src/cities-data.h
+msgctxt "city"
+msgid "Seattle"
+msgstr "Сиэтл"
+
+# android: DeskClock C233
+#: src/cities-data.h
+msgctxt "city"
+msgid "St. Louis"
+msgstr "Сент-Луис"
+
+# android: DeskClock C234
+#: src/cities-data.h
+msgctxt "city"
+msgid "Washington D.C."
+msgstr "Вашингтон"
+
+# android: DeskClock C235
+#: src/cities-data.h
+msgctxt "city"
+msgid "Houston"
+msgstr "Хьюстон"
+
+# android: DeskClock C236
+#: src/cities-data.h
+msgctxt "city"
+msgid "San Antonio"
+msgstr "Сан-Антонио"
+
+# android: DeskClock C237
+#: src/cities-data.h
+msgctxt "city"
+msgid "Jacksonville"
+msgstr "Джэксонвилл"
+
+# android: DeskClock C238
+#: src/cities-data.h
+msgctxt "city"
+msgid "Baltimore"
+msgstr "Балтимор"
+
+# android: DeskClock C239
+#: src/cities-data.h
+msgctxt "city"
+msgid "Nashville"
+msgstr "Нашвилл"
+
+# android: DeskClock C240
+#: src/cities-data.h
+msgctxt "city"
+msgid "Milwaukee"
+msgstr "Милуоки"
+
+# android: DeskClock C241
+#: src/cities-data.h
+msgctxt "city"
+msgid "Oklahoma City"
+msgstr "Оклахома-Сити"
+
+# android: DeskClock C242
+#: src/cities-data.h
+msgctxt "city"
+msgid "Las Vegas"
+msgstr "Лас-Вегас"
+
+# android: DeskClock C243
+#: src/cities-data.h
+msgctxt "city"
+msgid "Albuquerque"
+msgstr "Альбукерке"
+
+# android: DeskClock C244
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tucson"
+msgstr "Тусон"
+
+# android: DeskClock C245
+#: src/cities-data.h
+msgctxt "city"
+msgid "Sacramento"
+msgstr "Сакраменто"
+
+# android: DeskClock C246
+#: src/cities-data.h
+msgctxt "city"
+msgid "Atlanta"
+msgstr "Атланта"
+
+# android: DeskClock C247
+#: src/cities-data.h
+msgctxt "city"
+msgid "Cleveland"
+msgstr "Кливленд"
+
+# android: DeskClock C248
+#: src/cities-data.h
+msgctxt "city"
+msgid "New Orleans"
+msgstr "Новый Орлеан"
+
+# android: DeskClock C249
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tampa"
+msgstr "Тампа"
+
+# android: DeskClock C250
+#: src/cities-data.h
+msgctxt "city"
+msgid "Pittsburgh"
+msgstr "Питтсбург"
+
+# android: DeskClock C251
+#: src/cities-data.h
+msgctxt "city"
+msgid "Cincinnati"
+msgstr "Цинциннати"
+
+# android: DeskClock C252
+#: src/cities-data.h
+msgctxt "city"
+msgid "Mountain View"
+msgstr "Маунтин-Вью"
+
+# android: DeskClock C253
+#: src/cities-data.h
+msgctxt "city"
+msgid "Reno"
+msgstr "Рино"
+
+# android: DeskClock C254
+#: src/cities-data.h
+msgctxt "city"
+msgid "Black Rock City"
+msgstr "Блэк-Рок-Сити"
+
+# android: DeskClock C255
+#: src/cities-data.h
+msgctxt "city"
+msgid "Doha"
+msgstr "Доха"
+
+# android: DeskClock timezone_labels[64]
+#: src/cities-data.h
+msgctxt "city"
+msgid "Beijing"
+msgstr "Пекин"
+
+# android: DeskClock C257
+#: src/cities-data.h
+msgctxt "city"
+msgid "Mumbai"
+msgstr "Мумбаи"
+
+# android: DeskClock C258
+#: src/cities-data.h
+msgctxt "city"
+msgid "Delhi"
+msgstr "Дели"
+
+# android: DeskClock C259 (adapted)
+#: src/cities-data.h
+msgctxt "city"
+msgid "Osaka"
+msgstr "Осака"
+
+# android: DeskClock C260
+#: src/cities-data.h
+msgctxt "city"
+msgid "Lahore"
+msgstr "Лахор"
+
+# android: DeskClock C261
+#: src/cities-data.h
+msgctxt "city"
+msgid "Sana'a"
+msgstr "Сана"
+
+# android: DeskClock C262
+#: src/cities-data.h
+msgctxt "city"
+msgid "Barcelona"
+msgstr "Барселона"
+
+# android: DeskClock C263
+#: src/cities-data.h
+msgctxt "city"
+msgid "Munich"
+msgstr "Мюнхен"
+
+# android: DeskClock C264
+#: src/cities-data.h
+msgctxt "city"
+msgid "Milan"
+msgstr "Милан"
+
+# android: DeskClock C265
+#: src/cities-data.h
+msgctxt "city"
+msgid "Frankfurt"
+msgstr "Франкфурт-на-Майне"
+
+# android: DeskClock C266
+#: src/cities-data.h
+msgctxt "city"
+msgid "Hanoi"
+msgstr "Ханой"
+
+# android: DeskClock C267
+#: src/cities-data.h
+msgctxt "city"
+msgid "Ankara"
+msgstr "Анкара"
+
+# android: DeskClock C268
+#: src/cities-data.h
+msgctxt "city"
+msgid "Bangalore"
+msgstr "Бангалор"
+
+# android: DeskClock C269
+#: src/cities-data.h
+msgctxt "city"
+msgid "Brasília"
+msgstr "Бразилиа"
+
+# android: DeskClock C270
+#: src/cities-data.h
+msgctxt "city"
+msgid "Cape Town"
+msgstr "Кейптаун"
+
+# android: DeskClock C271
+#: src/cities-data.h
+msgctxt "city"
+msgid "Islamabad"
+msgstr "Исламабад"
+
+# android: DeskClock C272
+#: src/cities-data.h
+msgctxt "city"
+msgid "Rio de Janeiro"
+msgstr "Рио-де-Жанейро"
+
+# android: DeskClock C273
+#: src/cities-data.h
+msgctxt "city"
+msgid "Ann Arbor"
+msgstr "Анн-Арбор"
+
+# android: DeskClock C274
+#: src/cities-data.h
+msgctxt "city"
+msgid "Boulder"
+msgstr "Боулдер"
+
+# android: DeskClock C275
+#: src/cities-data.h
+msgctxt "city"
+msgid "Cambridge"
+msgstr "Кембридж"
+
+# android: DeskClock C276
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kirkland"
+msgstr "Киркленд"
+
+# android: DeskClock C277
+#: src/cities-data.h
+msgctxt "city"
+msgid "Madison"
+msgstr "Мэдисон"
+
+# android: DeskClock C278 (adapted)
+#: src/cities-data.h
+msgctxt "city"
+msgid "Guangzhou"
+msgstr "Гуанчжоу"
+
+# android: DeskClock C279
+#: src/cities-data.h
+msgctxt "city"
+msgid "Hyderabad"
+msgstr "Хайдарабад"
+
+# android: DeskClock C280
+#: src/cities-data.h
+msgctxt "city"
+msgid "Reston"
+msgstr "Рестон"
+
+# android: DeskClock C281
+#: src/cities-data.h
+msgctxt "city"
+msgid "Belo Horizonte"
+msgstr "Белу-Оризонти"
+
+# android: DeskClock C282
+#: src/cities-data.h
+msgctxt "city"
+msgid "Santiago"
+msgstr "Сантьяго"
+
+# android: DeskClock C283
+#: src/cities-data.h
+msgctxt "city"
+msgid "Monrovia"
+msgstr "Монровия"
+
+# android: DeskClock C284
+#: src/cities-data.h
+msgctxt "city"
+msgid "Colombo"
+msgstr "Коломбо"
+
+# android: DeskClock C285
+#: src/cities-data.h
+msgctxt "city"
+msgid "Chihuahua"
+msgstr "Чиуауа"
+
+# android: DeskClock C286
+#: src/cities-data.h
+msgctxt "city"
+msgid "Salvador"
+msgstr "Сальвадор"
+
+# android: DeskClock C287
+#: src/cities-data.h
+msgctxt "city"
+msgid "Gurgaon"
+msgstr "Гургаон"
+
+# android: DeskClock C288
+#: src/cities-data.h
+msgctxt "city"
+msgid "Manchester"
+msgstr "Манчестер"
+
+# android: DeskClock C290
+#: src/cities-data.h
+msgctxt "city"
+msgid "St. Petersburg"
+msgstr "Санкт-Петербург"
+
+# android: DeskClock C291
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kraków"
+msgstr "Краков"
+
+# android: DeskClock C292
+#: src/cities-data.h
+msgctxt "city"
+msgid "Wroclaw"
+msgstr "Вроцлав"
+
+# android: DeskClock C293
+#: src/cities-data.h
+msgctxt "city"
+msgid "Hamburg"
+msgstr "Гамбург"
+
+# android: DeskClock C294
+#: src/cities-data.h
+msgctxt "city"
+msgid "Oulu"
+msgstr "Оулу"
+
+# android: DeskClock C295
+#: src/cities-data.h
+msgctxt "city"
+msgid "Haifa"
+msgstr "Хайфа"
+
+# android: DeskClock C296
+#: src/cities-data.h
+msgctxt "city"
+msgid "San Juan"
+msgstr "Сан-Хуан"
+
+# android: DeskClock C297
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tegucigalpa"
+msgstr "Тегусигальпа"
+
+# android: DeskClock C298
+#: src/cities-data.h
+msgctxt "city"
+msgid "Paramaribo"
+msgstr "Парамарибо"
+
+# android: DeskClock C299
+#: src/cities-data.h
+msgctxt "city"
+msgid "Quito"
+msgstr "Кито"
+
+# android: DeskClock C300
+#: src/cities-data.h
+msgctxt "city"
+msgid "Ljubljana"
+msgstr "Любляна"
+
+# android: DeskClock C301
+#: src/cities-data.h
+msgctxt "city"
+msgid "Ashgabat"
+msgstr "Ашхабад"
+
+# android: DeskClock C302
+#: src/cities-data.h
+msgctxt "city"
+msgid "Asmara"
+msgstr "Асмэра"
+
+# android: DeskClock C303
+#: src/cities-data.h
+msgctxt "city"
+msgid "Bandar Seri Begawan"
+msgstr "Бандар-Сери-Бегаван"
+
+# android: DeskClock C304
+#: src/cities-data.h
+msgctxt "city"
+msgid "Bangui"
+msgstr "Банги"
+
+# android: DeskClock C305
+#: src/cities-data.h
+msgctxt "city"
+msgid "Banjul"
+msgstr "Банжул"
+
+# android: DeskClock C306
+#: src/cities-data.h
+msgctxt "city"
+msgid "Bishkek"
+msgstr "Бишкек"
+
+# android: DeskClock C307
+#: src/cities-data.h
+msgctxt "city"
+msgid "Bissau"
+msgstr "Бисау"
+
+# android: DeskClock C308
+#: src/cities-data.h
+msgctxt "city"
+msgid "Bujumbura"
+msgstr "Бужумбура"
+
+# android: DeskClock C309
+#: src/cities-data.h
+msgctxt "city"
+msgid "Dili"
+msgstr "Дили"
+
+# android: DeskClock C310
+#: src/cities-data.h
+msgctxt "city"
+msgid "Dushanbe"
+msgstr "Душанбе"
+
+# android: DeskClock C311
+#: src/cities-data.h
+msgctxt "city"
+msgid "Funafuti"
+msgstr "Фунафути"
+
+# android: DeskClock C312
+#: src/cities-data.h
+msgctxt "city"
+msgid "Honiara"
+msgstr "Хониара"
+
+# android: DeskClock C313
+#: src/cities-data.h
+msgctxt "city"
+msgid "Juba"
+msgstr "Джуба"
+
+# android: DeskClock C314
+#: src/cities-data.h
+msgctxt "city"
+msgid "Kingstown"
+msgstr "Кингстаун"
+
+# android: DeskClock C315
+#: src/cities-data.h
+msgctxt "city"
+msgid "Libreville"
+msgstr "Либревиль"
+
+# android: DeskClock C316
+#: src/cities-data.h
+msgctxt "city"
+msgid "Lomé"
+msgstr "Ломе"
+
+# android: DeskClock C317
+#: src/cities-data.h
+msgctxt "city"
+msgid "Luanda"
+msgstr "Луанда"
+
+# android: DeskClock C318
+#: src/cities-data.h
+msgctxt "city"
+msgid "Lusaka"
+msgstr "Лусака"
+
+# android: DeskClock C319
+#: src/cities-data.h
+msgctxt "city"
+msgid "Majuro"
+msgstr "Маджуро"
+
+# android: DeskClock C320
+#: src/cities-data.h
+msgctxt "city"
+msgid "Malabo"
+msgstr "Малабо"
+
+# android: DeskClock C321
+#: src/cities-data.h
+msgctxt "city"
+msgid "Maputo"
+msgstr "Мапуту"
+
+# android: DeskClock C322
+#: src/cities-data.h
+msgctxt "city"
+msgid "Mbabane"
+msgstr "Мбабане"
+
+# android: DeskClock C323
+#: src/cities-data.h
+msgctxt "city"
+msgid "Moroni"
+msgstr "Морони"
+
+# android: DeskClock C324
+#: src/cities-data.h
+msgctxt "city"
+msgid "N'Djamena"
+msgstr "Нджамена"
+
+# android: DeskClock C325
+#: src/cities-data.h
+msgctxt "city"
+msgid "Ngerulmud"
+msgstr "Нгерулмуд"
+
+# android: DeskClock C326
+#: src/cities-data.h
+msgctxt "city"
+msgid "Niamey"
+msgstr "Ниамей"
+
+# android: DeskClock C327
+#: src/cities-data.h
+msgctxt "city"
+msgid "Nicosia"
+msgstr "Никосия"
+
+# android: DeskClock C328
+#: src/cities-data.h
+msgctxt "city"
+msgid "Nouakchott"
+msgstr "Нуакшот"
+
+# android: DeskClock C329
+#: src/cities-data.h
+msgctxt "city"
+msgid "Nuku'alofa"
+msgstr "Нукуалофа"
+
+# android: DeskClock C330
+#: src/cities-data.h
+msgctxt "city"
+msgid "Ouagadougou"
+msgstr "Уагадугу"
+
+# android: DeskClock C331
+#: src/cities-data.h
+msgctxt "city"
+msgid "Palikir"
+msgstr "Паликир"
+
+# android: DeskClock C332
+#: src/cities-data.h
+msgctxt "city"
+msgid "Philipsburg"
+msgstr "Филипсбург"
+
+# android: DeskClock C333
+#: src/cities-data.h
+msgctxt "city"
+msgid "Podgorica"
+msgstr "Подгорица"
+
+# android: DeskClock C334
+#: src/cities-data.h
+msgctxt "city"
+msgid "Port Moresby"
+msgstr "Порт-Морсби"
+
+# android: DeskClock C335
+#: src/cities-data.h
+msgctxt "city"
+msgid "Port Vila"
+msgstr "Порт-Вила"
+
+# android: DeskClock C336
+#: src/cities-data.h
+msgctxt "city"
+msgid "Porto-Novo"
+msgstr "Порто-Ново"
+
+# android: DeskClock C337
+#: src/cities-data.h
+msgctxt "city"
+msgid "Priština"
+msgstr "Приштина"
+
+# android: DeskClock C338
+#: src/cities-data.h
+msgctxt "city"
+msgid "Roseau"
+msgstr "Розо"
+
+# android: DeskClock C339
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tashkent"
+msgstr "Ташкент"
+
+# android: DeskClock C340
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tbilisi"
+msgstr "Тбилиси"
+
+# android: DeskClock C341
+#: src/cities-data.h
+msgctxt "city"
+msgid "Thimphu"
+msgstr "Тхимпху"
+
+# android: DeskClock C342
+#: src/cities-data.h
+msgctxt "city"
+msgid "Tirana"
+msgstr "Тирана"
+
+# android: DeskClock C343
+#: src/cities-data.h
+msgctxt "city"
+msgid "Vaduz"
+msgstr "Вадуц"
+
+# android: DeskClock C344
+#: src/cities-data.h
+msgctxt "city"
+msgid "Vientiane"
+msgstr "Вьентьян"
+
+# android: DeskClock C345
+#: src/cities-data.h
+msgctxt "city"
+msgid "Windhoek"
+msgstr "Виндхук"
+
+# android: DeskClock C346
+#: src/cities-data.h
+msgctxt "city"
+msgid "Yaoundé"
+msgstr "Яунде"
+
+# android: DeskClock C347
+#: src/cities-data.h
+msgctxt "city"
+msgid "Yaren District"
+msgstr "Ярен"
+
+# android: DeskClock C348
+#: src/cities-data.h
+msgctxt "city"
+msgid "Yerevan"
+msgstr "Ереван"
+
+# android: DeskClock timezone_labels[0]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Marshall Islands"
+msgstr "Маршалловы Острова"
+
+# android: DeskClock timezone_labels[1]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Midway Island"
+msgstr "Остров Мидуэй"
+
+# android: DeskClock timezone_labels[2]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Hawaii"
+msgstr "Гавайи"
+
+# android: DeskClock timezone_labels[3]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Alaska"
+msgstr "Аляска"
+
+# android: DeskClock timezone_labels[4]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Pacific Time"
+msgstr "Тихоокеанское время"
+
+# android: DeskClock C93
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Tijuana"
+msgstr "Тихуана"
+
+# android: DeskClock timezone_labels[6]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Arizona"
+msgstr "Аризона"
+
+# android: DeskClock C285
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Chihuahua"
+msgstr "Чиуауа"
+
+# android: DeskClock timezone_labels[8]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Mountain Time"
+msgstr "Горное время (США)"
+
+# android: DeskClock timezone_labels[9]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Central America"
+msgstr "Центральноамер. время"
+
+# android: DeskClock timezone_labels[10]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Central Time"
+msgstr "Центральное время"
+
+# android: DeskClock C73
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Mexico City"
+msgstr "Мехико"
+
+# android: DeskClock C157
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Saskatchewan"
+msgstr "Саскачеван"
+
+# android: DeskClock timezone_labels[13]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Bogota"
+msgstr "Богота"
+
+# android: DeskClock timezone_labels[14]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Eastern Time"
+msgstr "Восточное время"
+
+# android: DeskClock timezone_labels[15]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Venezuela"
+msgstr "Венесуэла"
+
+# android: DeskClock timezone_labels[16]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Atlantic Time (Barbados)"
+msgstr "Атлант. время (Барбадос)"
+
+# android: DeskClock timezone_labels[17]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Atlantic Time (Canada)"
+msgstr "Атлант. время (Канада)"
+
+# android: DeskClock timezone_labels[18]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Manaus"
+msgstr "Манаус"
+
+# android: DeskClock C282
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Santiago"
+msgstr "Сантьяго"
+
+# android: DeskClock C156
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Newfoundland"
+msgstr "Ньюфаундленд"
+
+# android: DeskClock timezone_labels[21]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Brasilia"
+msgstr "Бразилиа"
+
+# android: DeskClock C36
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Buenos Aires"
+msgstr "Буэнос-Айрес"
+
+# android: DeskClock timezone_labels[23]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Greenland"
+msgstr "Гренландия"
+
+# android: DeskClock C75
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Montevideo"
+msgstr "Монтевидео"
+
+# android: DeskClock timezone_labels[25]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Mid-Atlantic"
+msgstr "Центральноатлант. время"
+
+# android: DeskClock timezone_labels[26]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Azores"
+msgstr "Азорские острова"
+
+# android: DeskClock timezone_labels[27]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Cape Verde Islands"
+msgstr "Кабо-Верде"
+
+# android: DeskClock C8
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Casablanca"
+msgstr "Касабланка"
+
+# android: DeskClock timezone_labels[29]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "London, Dublin"
+msgstr "Лондон, Дублин"
+
+# android: DeskClock timezone_labels[30]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Amsterdam, Berlin"
+msgstr "Амстердам, Берлин"
+
+# android: DeskClock C163
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Belgrade"
+msgstr "Белград"
+
+# android: DeskClock C166
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Brussels"
+msgstr "Брюссель"
+
+# android: DeskClock C191
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Sarajevo"
+msgstr "Сараево"
+
+# android: DeskClock C345
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Windhoek"
+msgstr "Виндхук"
+
+# android: DeskClock timezone_labels[35]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "W. Africa Time"
+msgstr "Западноафриканское время"
+
+# android: DeskClock timezone_labels[36]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Amman, Jordan"
+msgstr "Амман"
+
+# android: DeskClock timezone_labels[37]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Athens, Istanbul"
+msgstr "Афины, Стамбул"
+
+# android: DeskClock timezone_labels[38]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Beirut, Lebanon"
+msgstr "Бейрут, Ливан"
+
+# android: DeskClock C7
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Cairo"
+msgstr "Каир"
+
+# android: DeskClock C173
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Helsinki"
+msgstr "Хельсинки"
+
+# android: DeskClock C118
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Jerusalem"
+msgstr "Иерусалим"
+
+# android: DeskClock C182
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Minsk"
+msgstr "Минск"
+
+# android: DeskClock C15
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Harare"
+msgstr "Хараре"
+
+# android: DeskClock C103
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Baghdad"
+msgstr "Багдад"
+
+# android: DeskClock C184
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Moscow"
+msgstr "Москва"
+
+# android: DeskClock C123
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Kuwait"
+msgstr "Кувейт"
+
+# android: DeskClock C24
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Nairobi"
+msgstr "Найроби"
+
+# android: DeskClock C137
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Tehran"
+msgstr "Тегеран"
+
+# android: DeskClock C105
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Baku"
+msgstr "Баку"
+
+# android: DeskClock C340
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Tbilisi"
+msgstr "Тбилиси"
+
+# android: DeskClock C348
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Yerevan"
+msgstr "Ереван"
+
+# android: DeskClock C111
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Dubai"
+msgstr "Дубай"
+
+# android: DeskClock C119
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Kabul"
+msgstr "Кабул"
+
+# android: DeskClock timezone_labels[54]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Islamabad, Karachi"
+msgstr "Исламабад, Карачи"
+
+# android: DeskClock timezone_labels[55]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Ural'sk"
+msgstr "Уральск"
+
+# android: DeskClock timezone_labels[56]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Yekaterinburg"
+msgstr "Екатеринбург"
+
+# android: DeskClock C108
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Kolkata"
+msgstr "Калькутта"
+
+# android: DeskClock timezone_labels[58]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Sri Lanka"
+msgstr "Шри-Ланка"
+
+# android: DeskClock C121
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Kathmandu"
+msgstr "Катманду"
+
+# android: DeskClock timezone_labels[60]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Astana"
+msgstr "Астана"
+
+# android: DeskClock timezone_labels[61]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Yangon"
+msgstr "Янгон"
+
+# android: DeskClock timezone_labels[62]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Krasnoyarsk"
+msgstr "Красноярск"
+
+# android: DeskClock C106
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Bangkok"
+msgstr "Бангкок"
+
+# android: DeskClock timezone_labels[64]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Beijing"
+msgstr "Пекин"
+
+# android: DeskClock timezone_labels[65]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Hong Kong"
+msgstr "Гонконг"
+
+# android: DeskClock timezone_labels[66]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Irkutsk"
+msgstr "Иркутск"
+
+# android: DeskClock C122
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Kuala Lumpur"
+msgstr "Куала-Лумпур"
+
+# android: DeskClock C152
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Perth"
+msgstr "Перт"
+
+# android: DeskClock timezone_labels[69]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Taipei"
+msgstr "Тайбэй"
+
+# android: DeskClock C133
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Seoul"
+msgstr "Сеул"
+
+# android: DeskClock timezone_labels[71]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Tokyo, Osaka"
+msgstr "Токио, Осака"
+
+# android: DeskClock timezone_labels[72]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Yakutsk"
+msgstr "Якутск"
+
+# android: DeskClock C146
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Adelaide"
+msgstr "Аделаида"
+
+# android: DeskClock C149
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Darwin"
+msgstr "Дарвин"
+
+# android: DeskClock C147
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Brisbane"
+msgstr "Брисбен"
+
+# android: DeskClock timezone_labels[76]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Hobart"
+msgstr "Хобарт"
+
+# android: DeskClock timezone_labels[77]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Sydney, Canberra"
+msgstr "Сидней, Канберра"
+
+# android: DeskClock timezone_labels[78]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Vladivostok"
+msgstr "Владивосток"
+
+# android: DeskClock C208
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Guam"
+msgstr "Гуам"
+
+# android: DeskClock timezone_labels[80]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Magadan"
+msgstr "Магадан"
+
+# android: DeskClock C206
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Auckland"
+msgstr "Окленд"
+
+# android: DeskClock C207
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Fiji"
+msgstr "Фиджи"
+
+# android: DeskClock timezone_labels[83]
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Tonga"
+msgstr "Тонга"
+
+# android: DeskClock C117
+#: src/cities-data.h
+msgctxt "time zone"
+msgid "Jakarta"
+msgstr "Джакарта"
+
+# android: DeskClock menu_item_sort_by_gmt_offset
+#. the item names the order it switches to
+#: src/city-picker.c
+msgid "Sort by time"
+msgstr "Сортировать по времени"
+
+# android: DeskClock menu_item_sort_by_name (several translations)
+#: src/city-picker.c
+msgid "Sort by name"
+msgstr "Сортировать по названию"
+
+# android: DeskClock settings (several translations, short)
+#: src/city-picker.c src/clock-window.c src/settings-page.c
+msgid "Settings"
+msgstr "Настройки"
+
+# android: Framework search_go (several translations, short)
+#: src/city-picker.c
+msgid "Search"
+msgstr "Поиск"
+
+# android: Framework action_menu_overflow_description (several translations, short)
+#. the overflow button: narrower than the search, a little in from the edge
+#: src/city-picker.c src/clock-window.c src/ringtone-picker.c
+msgid "More options"
+msgstr "Ещё"
+
+# android: Framework search_hint (short)
+#: src/city-picker.c
+msgid "Search…"
+msgstr "Поиск…"
+
+# android: Framework searchview_description_clear (short)
+#: src/city-picker.c
+msgid "Clear query"
+msgstr "Удалить запрос"
+
+# android: DeskClock selected_cities_label
+#: src/city-picker.c
+msgid "Selected Cities"
+msgstr "Выбранные города"
+
+# android: Framework input_method_nav_back_button_desc (short)
+#: src/clock-bar.c
+msgid "Back"
+msgstr "Назад"
+
+# android: Framework action_bar_up_description (short)
+#: src/clock-bar.c
+msgid "Navigate up"
+msgstr "Перейти вверх"
+
+# android: DeskClock alarm_set[0]
+#: src/clock-format.c
+msgid "Alarm set for less than 1 minute from now."
+msgstr "Будильник зазвонит менее чем через минуту."
+
+# android: Framework duration_days_relative_future
+#: src/clock-format.c
+#, c-format
+msgid "%d day"
+msgid_plural "%d days"
+msgstr[0] "%d день"
+msgstr[1] "%d дня"
+msgstr[2] "%d дней"
+
+# android: Framework duration_hours_relative_future
+#: src/clock-format.c src/clock-page.c src/timer-setup.c
+#, c-format
+msgid "%d hour"
+msgid_plural "%d hours"
+msgstr[0] "%d час"
+msgstr[1] "%d часа"
+msgstr[2] "%d часов"
+
+# android: Framework duration_minutes_relative_future
+#: src/clock-format.c src/clock-page.c src/settings-page.c src/timer-setup.c
+#, c-format
+msgid "%d minute"
+msgid_plural "%d minutes"
+msgstr[0] "%d минута"
+msgstr[1] "%d минуты"
+msgstr[2] "%d минут"
+
+# android: DeskClock alarm_set[1]
+#: src/clock-format.c
+#, c-format
+msgid "Alarm set for %s from now."
+msgstr "Будильник зазвонит через %s"
+
+# android: DeskClock alarm_set[3]
+#: src/clock-format.c
+#, c-format
+msgid "Alarm set for %s and %s from now."
+msgstr "Будильник зазвонит через %s и %s"
+
+# android: DeskClock alarm_set[7]
+#: src/clock-format.c
+#, c-format
+msgid "Alarm set for %s, %s, and %s from now."
+msgstr "Будильник зазвонит через %s, %s и %s"
+
+# android: DeskClock silent_ringtone_title
+#: src/clock-format.c src/ringtone-picker.c
+msgid "Silent"
+msgstr "Без звука"
+
+# android: DeskClock default_alarm_ringtone_title (several translations)
+#: src/clock-format.c src/ringtone-picker.c
+msgid "Default alarm sound"
+msgstr "Звуковой сигнал по умолчанию"
+
+# android: Framework ringtone_default_with_actual
+#: src/clock-format.c
+#, c-format
+msgid "Default (%s)"
+msgstr "По умолчанию (%s)"
+
+# android: DeskClock default_timer_ringtone_title
+#: src/clock-format.c src/ringtone-picker.c
+msgid "Timer Expired"
+msgstr "Время истекло"
+
+#: src/clock-page.c
+#, c-format
+msgid "%d hr"
+msgid_plural "%d hr"
+msgstr[0] "%d ч"
+msgstr[1] "%d ч"
+msgstr[2] "%d ч"
+
+#: src/clock-page.c src/ringing-window.c
+#, c-format
+msgid "%d min"
+msgid_plural "%d min"
+msgstr[0] "%d мин"
+msgstr[1] "%d мин"
+msgstr[2] "%d мин"
+
+# android: DeskClock world_hours_minutes_ahead
+#: src/clock-page.c
+#, c-format
+msgid "%s %s ahead"
+msgstr "На %s %s позже"
+
+# android: DeskClock world_hours_minutes_behind
+#: src/clock-page.c
+#, c-format
+msgid "%s %s behind"
+msgstr "На %s %s раньше"
+
+# android: DeskClock world_time_ahead
+#: src/clock-page.c
+#, c-format
+msgid "%s ahead"
+msgstr "На %s позже"
+
+# android: DeskClock world_time_behind
+#: src/clock-page.c
+#, c-format
+msgid "%s behind"
+msgstr "На %s раньше"
+
+# android: DeskClock world_hours_tomorrow
+#: src/clock-page.c
+#, c-format
+msgid "Tomorrow, %s"
+msgstr "Завтра, %s"
+
+# android: DeskClock world_hours_yesterday
+#: src/clock-page.c
+#, c-format
+msgid "Yesterday, %s"
+msgstr "Вчера, %s"
+
+#: src/clock-page.c
+msgid "Home"
+msgstr "Дом"
+
+# android: DeskClock button_cities
+#: src/clock-page.c
+msgid "Cities"
+msgstr "Города"
+
+# android: DeskClock menu_timer
+#: src/clock-window.c src/expired-window.c src/timer-service.c
+msgid "Timer"
+msgstr "Таймер"
+
+# android: DeskClock menu_stopwatch
+#. low urgency: in the list, no heads-up (alarm-notifications.c)
+#: src/clock-window.c src/stopwatch-service.c
+msgid "Stopwatch"
+msgstr "Секундомер"
+
+#: src/expired-window.c
+msgid "A timer is ringing"
+msgstr "Сработал таймер"
+
+# android: DeskClock description_direction_left
+#: src/ringing-window.c
+msgid "Swipe left to snooze"
+msgstr "Пролистните влево, чтобы отложить сигнал"
+
+# android: DeskClock description_direction_right
+#: src/ringing-window.c
+msgid "Swipe right to dismiss"
+msgstr "Пролистните вправо, чтобы отключить сигнал"
+
+# android: DeskClock alarm_alert_snoozed_text (several translations, short)
+#: src/ringing-window.c
+msgid "Snoozed"
+msgstr "Отложено"
+
+# android: DeskClock alarm_alert_off_text
+#: src/ringing-window.c
+msgid "Alarm off"
+msgstr "Выключено"
+
+#. KEEP_SCREEN_ON
+#: src/ringing-window.c
+msgid "An alarm is ringing"
+msgstr "Звонит будильник"
+
+# android: DeskClock confirm_remove_custom_ringtone
+#: src/ringtone-picker.c
+msgid "Alarms and timers using this sound will play the default sound instead."
+msgstr ""
+"Будильники и таймеры, для которых выбран этот сигнал, будут воспроизводить "
+"звук, настроенный по умолчанию."
+
+# android: DeskClock remove_sound (several translations, short)
+#: src/ringtone-picker.c
+msgid "Remove"
+msgstr "Удалить"
+
+# android: Framework mime_type_audio (several translations, short)
+#: src/ringtone-picker.c
+msgid "Audio"
+msgstr "Аудио"
+
+# android: DeskClock add_new_sound
+#: src/ringtone-picker.c
+msgid "Add new"
+msgstr "Добавить"
+
+# android: DeskClock your_sounds
+#: src/ringtone-picker.c
+msgid "Your sounds"
+msgstr "Ваши звуковые сигналы"
+
+# android: DeskClock device_sounds
+#: src/ringtone-picker.c
+msgid "Device sounds"
+msgstr "Звуковые сигналы устройства"
+
+# android: DeskClock alarm_sound
+#. "Alarm sound" or "Timer sound", in Settings' bar
+#: src/ringtone-picker.c
+msgid "Alarm sound"
+msgstr "Сигнал будильника"
+
+# android: DeskClock timer_sound
+#: src/ringtone-picker.c src/settings-page.c
+msgid "Timer sound"
+msgstr "Сигнал таймера"
+
+# android: DeskClock shortcut_start_screensaver_short
+#: src/screensaver.c src/settings-page.c
+msgid "Screen saver"
+msgstr "Заставка"
+
+# android: DeskClock alarm_volume_title
+#: src/settings-page.c
+msgid "Alarm volume"
+msgstr "Громкость будильника"
+
+# android: Settings category_name_brightness (other app, short)
+#: src/settings-page.c
+msgid "Brightness"
+msgstr "Яркость"
+
+# android: SystemUI quick_settings_flashlight_tile_level_percentage (other app)
+#: src/settings-page.c
+#, c-format
+msgid "%d%%"
+msgstr "%d %%"
+
+# android: DeskClock clock_style
+#: src/settings-page.c
+msgid "Style"
+msgstr "Стиль"
+
+# android: DeskClock clock_style_entries[0] (several translations, short)
+#: src/settings-page.c
+msgid "Analog"
+msgstr "Стрелки"
+
+# android: DeskClock clock_style_entries[1] (several translations, short)
+#: src/settings-page.c
+msgid "Digital"
+msgstr "Цифры"
+
+# android: DeskClock display_clock_seconds_pref
+#: src/settings-page.c
+msgid "Display time with seconds"
+msgstr "Показывать секунды"
+
+# android: DeskClock automatic_home_clock
+#: src/settings-page.c
+msgid "Automatic home clock"
+msgstr "Показывать время дома"
+
+# android: DeskClock automatic_home_clock_summary
+#: src/settings-page.c
+msgid ""
+"While traveling in an area where the time is different, add a clock for home"
+msgstr ""
+"Показывать на отдельных часах, сколько времени дома, когда я нахожусь в "
+"другом часовом поясе"
+
+# android: DeskClock home_time_zone (several translations)
+#: src/settings-page.c
+msgid "Home time zone"
+msgstr "Мой часовой пояс"
+
+# android: DeskClock open_date_settings
+#: src/settings-page.c
+msgid "Change date & time"
+msgstr "Изменить дату и время"
+
+# android: Settings color_contrast_preview (other app, several translations, short)
+#: src/settings-page.c
+msgid "Preview"
+msgstr "Предпросмотр"
+
+#: src/settings-page.c
+msgid "Starts the screen saver immediately"
+msgstr "Сразу запускает заставку"
+
+#: src/settings-page.c
+msgid "Opens Clock's screen saver settings"
+msgstr "Открывает настройки заставки приложения «Часы»"
+
+# android: Settings zen_mode_alarms (other app, several translations, short)
+#. (no "Select/enable screen saver": see the top)
+#: src/settings-page.c
+msgid "Alarms"
+msgstr "Будильники"
+
+# android: DeskClock auto_silence_title
+#: src/settings-page.c
+msgid "Silence after"
+msgstr "Автовыключение"
+
+# android: DeskClock auto_silence_entries[6] (several translations, short)
+#: src/settings-page.c
+msgid "Never"
+msgstr "Никогда"
+
+# android: DeskClock snooze_duration_title
+#: src/settings-page.c
+msgid "Snooze length"
+msgstr "Интервал повтора сигнала"
+
+# android: DeskClock crescendo_duration_title
+#: src/settings-page.c
+msgid "Gradually increase volume"
+msgstr "Постепенно увеличивать громкость"
+
+#: src/settings-page.c src/timer-setup.c
+#, c-format
+msgid "%d second"
+msgid_plural "%d seconds"
+msgstr[0] "%d секунда"
+msgstr[1] "%d секунды"
+msgstr[2] "%d секунд"
+
+# android: Framework wifi_calling_off_summary (several translations, short)
+#: src/settings-page.c
+msgid "Off"
+msgstr "Отключено"
+
+# android: DeskClock volume_button_setting_title
+#: src/settings-page.c
+msgid "Volume buttons"
+msgstr "Кнопки громкости"
+
+# android: DeskClock volume_button_setting_entries[2]
+#: src/settings-page.c
+msgid "Control volume"
+msgstr "Изменить громкость"
+
+# android: DeskClock week_start_title
+#. (no "Device flip action" or "Device shake action": see the top)
+#: src/settings-page.c
+msgid "Start week on"
+msgstr "Начало недели"
+
+# android: DeskClock week_start_entries[0] (several translations, short)
+#: src/settings-page.c
+msgid "Saturday"
+msgstr "суббота"
+
+# android: DeskClock week_start_entries[1] (several translations, short)
+#: src/settings-page.c
+msgid "Sunday"
+msgstr "воскресенье"
+
+# android: DeskClock week_start_entries[2] (several translations, short)
+#: src/settings-page.c
+msgid "Monday"
+msgstr "понедельник"
+
+# android: DeskClock timer_settings
+#: src/settings-page.c
+msgid "Timers"
+msgstr "Таймеры"
+
+# android: DeskClock timer_vibrate_title
+#: src/settings-page.c
+msgid "Timer vibrate"
+msgstr "Вибросигнал таймера"
+
+# android: Settings pointer_stroke_style_name_white (other app, short)
+#: src/settings-page.c
+msgid "White"
+msgstr "Белый"
+
+# android: Settings color_red (other app, short)
+#: src/settings-page.c
+msgid "Red"
+msgstr "Красный"
+
+# android: Settings color_picker[2] (other app, short)
+#: src/settings-page.c
+msgid "Green"
+msgstr "Зеленый"
+
+# android: Settings color_picker[1] (other app, short)
+#: src/settings-page.c
+msgid "Blue"
+msgstr "Синий"
+
+# android: Settings color_title (other app, short)
+#: src/settings-page.c
+msgid "Color"
+msgstr "Цвет"
+
+#: src/settings-page.c
+msgid "Bold clock text"
+msgstr "Жирный шрифт часов"
+
+#: src/settings-page.c
+msgid "Show AM/PM indicator"
+msgstr "Показывать AM/PM"
+
+# android: DeskClock night_mode_title
+#: src/settings-page.c
+msgid "Night mode"
+msgstr "Ночной режим"
+
+# android: SettingsLib bt_hci_snoop_log_entries[2] (other app, short)
+#: src/settings-page.c
+msgid "Enabled"
+msgstr "Включено"
+
+# android: DeskClock night_mode_summary
+#: src/settings-page.c
+msgid "Very dim display (for dark rooms)"
+msgstr "Тусклый дисплей (для темных помещений)"
+
+#: src/settings-page.c
+msgid "Follow DND state"
+msgstr "Следовать режиму «Не беспокоить»"
+
+#: src/settings-page.c
+msgid "Night mode follows Do Not Disturb state"
+msgstr "Ночной режим включается вместе с режимом «Не беспокоить»"
+
+# android: DeskClock screensaver_settings
+#. the screen saver's page has a title of its own
+#: src/settings-page.c
+msgid "Screen saver settings"
+msgstr "Настройки заставки"
+
+#: src/stopwatch-page.c
+#, c-format
+msgid "# %d"
+msgstr "№ %d"
+
+#: src/stopwatch-page.c
+#, c-format
+msgid "# %02d"
+msgstr "№ %02d"
+
+#: src/stopwatch-page.c
+msgid "The stopwatch is running"
+msgstr "Секундомер запущен"
+
+# android: DeskClock sw_share_main
+#: src/stopwatch-page.c
+#, c-format
+msgid "My time is %s"
+msgstr "Мое время: %s"
+
+#: src/stopwatch-page.c
+msgid "Lap times:"
+msgstr "Время кругов:"
+
+#: src/stopwatch-page.c
+msgid "Copied to clipboard"
+msgstr "Скопировано в буфер обмена"
+
+# android: DeskClock sw_pause_button (several translations, short)
+#: src/stopwatch-page.c src/stopwatch-service.c src/timer-card.c
+#: src/timer-service.c
+msgid "Pause"
+msgstr "Приостановить"
+
+# android: DeskClock sw_start_button (several translations, short)
+#: src/stopwatch-page.c src/timer-card.c src/timer-page.c
+msgid "Start"
+msgstr "Старт"
+
+# android: DeskClock sw_reset_button
+#: src/stopwatch-page.c src/stopwatch-service.c src/timer-card.c
+#: src/timer-service.c
+msgid "Reset"
+msgstr "Сбросить"
+
+# android: Framework whichSendApplication (several translations, short)
+#: src/stopwatch-page.c
+msgid "Share"
+msgstr "Поделиться"
+
+# android: DeskClock sw_lap_button
+#: src/stopwatch-page.c src/stopwatch-service.c
+msgid "Lap"
+msgstr "Круг"
+
+# android: DeskClock sw_resume_button (several translations, short)
+#: src/stopwatch-service.c src/timer-service.c
+msgid "Resume"
+msgstr "Продолжить"
+
+# android: DeskClock sw_notification_lap_number
+#: src/stopwatch-service.c
+#, c-format
+msgid "Lap %u"
+msgstr "Круг %u"
+
+# android: DeskClock swn_paused (several translations, short)
+#: src/stopwatch-service.c
+msgid "Paused"
+msgstr "Приостановлено"
+
+# android: Framework lockscreen_transport_stop_description (several translations, short)
+#: src/timer-card.c src/timer-service.c
+msgid "Stop"
+msgstr "Остановить"
+
+# android: DeskClock timer_add_minute
+#. "+ 1:00" in the tertiary colour, and play/pause in primary under it, as wide as it
+#: src/timer-card.c
+msgid "+ 1:00"
+msgstr "+ 1:00"
+
+# android: DeskClock timer_plus_one
+#: src/timer-card.c
+msgid "Add 1 Minute"
+msgstr "Добавить 1 минуту"
+
+# android: DeskClock timer_add_timer
+#: src/timer-page.c
+msgid "Add Timer"
+msgstr "Добавить таймер"
+
+# android: DeskClock timer_plus_1_min
+#: src/timer-service.c
+msgid "Add 1 min"
+msgstr "Добавить 1 мин."
+
+# android: DeskClock timer_reset_all
+#: src/timer-service.c
+msgid "Reset all timers"
+msgstr "Сбросить все"
+
+#. only with two or more; the plural forms are for the languages with several
+#: src/timer-service.c
+#, c-format
+msgid "%u timer"
+msgid_plural "%u timers"
+msgstr[0] "%u таймер"
+msgstr[1] "%u таймера"
+msgstr[2] "%u таймеров"
+
+#: src/timer-service.c
+#, c-format
+msgid "%u timer paused"
+msgid_plural "%u timers paused"
+msgstr[0] "%u таймер приостановлен"
+msgstr[1] "%u таймера приостановлены"
+msgstr[2] "%u таймеров приостановлено"
+
+# android: DeskClock timer_paused
+#: src/timer-service.c
+msgid "Timer paused"
+msgstr "Таймер приостановлен"
+
+# android: DeskClock timer_stop_all
+#: src/timer-service.c
+msgid "Stop all timers"
+msgstr "Остановить все таймеры"
+
+#: src/timer-service.c
+#, c-format
+msgid "%u timer expired"
+msgid_plural "%u timers expired"
+msgstr[0] "%u таймер истек"
+msgstr[1] "%u таймера истекли"
+msgstr[2] "%u таймеров истекло"
+
+# android: DeskClock timer_times_up
+#: src/timer-service.c
+msgid "Time's up"
+msgstr "Время вышло"
+
+#: src/timer-service.c
+#, c-format
+msgid "%u timer missed"
+msgid_plural "%u timers missed"
+msgstr[0] "%u пропущенный таймер"
+msgstr[1] "%u пропущенных таймера"
+msgstr[2] "%u пропущенных таймеров"
+
+# android: DeskClock missed_named_timer_notification_label
+#: src/timer-service.c
+#, c-format
+msgid "Missed timer: %s"
+msgstr "Пропущенный таймер: %s"
+
+# android: DeskClock missed_timer_notification_label
+#: src/timer-service.c
+msgid "Missed timer"
+msgstr "Пропущенный таймер"
+
+# android: DeskClock hours_label
+#: src/timer-setup.c
+msgid "h"
+msgstr "ч."
+
+# android: DeskClock minutes_label (several translations, short)
+#: src/timer-setup.c
+msgid "m"
+msgstr "м."
+
+# android: DeskClock seconds_label (several translations, short)
+#: src/timer-setup.c
+msgid "s"
+msgstr "с."
+
+#: src/timer-setup.c
+#, c-format
+msgid "Delete %d"
+msgstr "Удалить %d"

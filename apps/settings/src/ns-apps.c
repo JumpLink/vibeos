@@ -81,14 +81,14 @@ app_notify_page (GtkWidget *row, gpointer app)
   NsPage *page = ns_page_new (g_app_info_get_display_name (app), &c);
   g_object_set_data_full (G_OBJECT (page), "ns-notify", s, g_object_unref);
   GtkWidget *g = ns_group (c, NULL);
-  ns_row_switch (g, "Allow notifications", NULL, s, "enable");
+  ns_row_switch (g, _("Allow notifications"), NULL, s, "enable");
   g = ns_group (c, NULL);
   GtkWidget *rows[4] = { NULL };
   guint n = 0;
   if (ns_has_key (s, "show-banners"))
-    rows[n++] = ns_row_switch (g, "Pop-up", "Show a banner at the top of the screen", s, "show-banners");
+    rows[n++] = ns_row_switch (g, _("Pop-up"), _("Show a banner at the top of the screen"), s, "show-banners");
   if (ns_has_key (s, "show-in-lock-screen"))
-    rows[n++] = ns_row_switch (g, "Show on the lock screen", "The app's icon below the clock", s,
+    rows[n++] = ns_row_switch (g, _("Show on the lock screen"), _("The app's icon below the clock"), s,
                                "show-in-lock-screen");
   /* No "Sound" switch (enable-sound-alerts): GNOME Shell honours it, but only for a notification that names a
    * sound, and no app here sends one (Sound and vibration says more). */
@@ -100,7 +100,7 @@ app_notify_page (GtkWidget *row, gpointer app)
 static void
 allowed_changed (GSettings *s, const char *key, GtkWidget *row)
 {
-  ns_row_set_subtitle (row, g_settings_get_boolean (s, "enable") ? "Allowed" : "Off");
+  ns_row_set_subtitle (row, g_settings_get_boolean (s, "enable") ? _("Allowed") : _("Off"));
 }
 
 /* ---- Emergency alerts: cellbroadcastd notifies of the alert levels its "levels" flags name ---- */
@@ -131,15 +131,15 @@ static void
 alerts_page (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Emergency alerts", &c);
+  NsPage *page = ns_page_new (_("Emergency alerts"), &c);
   GSettings *cbd = ns_page_settings (page, "org.freedesktop.cbd");
-  GtkWidget *g = ns_group (c, "Alerts from the mobile network");
-  ns_row_flag (g, "Extreme threats", "To life and safety", cbd, "levels", "extreme");
-  ns_row_flag (g, "Severe threats", "To life and safety", cbd, "levels", "severe");
-  ns_row_flag (g, "Public safety", "What to do in a risky situation", cbd, "levels", "public-safety");
-  ns_row_flag (g, "Amber alerts", "Child abduction emergencies", cbd, "levels", "amber");
-  ns_row_flag (g, "Test alerts", "Periodic tests of the alert system", cbd, "levels", "test");
-  ns_note (c, "Presidential alerts are always shown. Alerts need a SIM and a modem that receives them.");
+  GtkWidget *g = ns_group (c, _("Alerts from the mobile network"));
+  ns_row_flag (g, _("Extreme threats"), _("To life and safety"), cbd, "levels", "extreme");
+  ns_row_flag (g, _("Severe threats"), _("To life and safety"), cbd, "levels", "severe");
+  ns_row_flag (g, _("Public safety"), _("What to do in a risky situation"), cbd, "levels", "public-safety");
+  ns_row_flag (g, _("Amber alerts"), _("Child abduction emergencies"), cbd, "levels", "amber");
+  ns_row_flag (g, _("Test alerts"), _("Periodic tests of the alert system"), cbd, "levels", "test");
+  ns_note (c, _("Presidential alerts are always shown. Alerts need a SIM and a modem that receives them."));
   ns_push (page);
 }
 
@@ -149,7 +149,7 @@ alerts_row (GtkWidget *g)
 {
   if (!ns_settings_exists ("org.freedesktop.cbd"))
     return;
-  GtkWidget *r = ns_row (g, NULL, "Emergency alerts", "Cell broadcast warnings");
+  GtkWidget *r = ns_row (g, NULL, _("Emergency alerts"), _("Cell broadcast warnings"));
   ns_row_on_activate (r, alerts_page, NULL);
   gtk_widget_set_visible (r, FALSE);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
@@ -178,16 +178,17 @@ void
 ns_page_notifications (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Notifications", &c);
+  NsPage *page = ns_page_new (_("Notifications"), &c);
   GSettings *n = ns_page_settings (page, "org.gnome.desktop.notifications");
   /* Android 17's groups: the apps' own settings on a page of their own, then what the lock screen shows */
-  GtkWidget *g = ns_group (c, "Manage");
-  GtkWidget *r = ns_row (g, NULL, "App notifications", "Control notifications from individual apps");
+  GtkWidget *g = ns_group (c, _("Manage"));
+  GtkWidget *r = ns_row (g, NULL, _("App notifications"), _("Control notifications from individual apps"));
   ns_row_on_activate (r, app_notifications_page, NULL);
-  g = ns_group (c, "Privacy");
-  ns_row_switch (g, "Notifications on lock screen", "Their apps' icons below the clock", n, "show-in-lock-screen");
+  g = ns_group (c, _("Privacy"));
+  ns_row_switch (g, _("Notifications on lock screen"), _("Their apps' icons below the clock"), n,
+                 "show-in-lock-screen");
   g = ns_group (c, NULL);
-  r = ns_row_switch (g, "Do not disturb", "No pop-ups: notifications wait in the list", NULL, NULL);
+  r = ns_row_switch (g, _("Do not disturb"), _("No pop-ups: notifications wait in the list"), NULL, NULL);
   g_settings_bind (n, "show-banners", ns_row_get_switch (r), "active", G_SETTINGS_BIND_INVERT_BOOLEAN);
   /* No "Wake the screen" (Phosh's wakeup-screen-* keys): vibeos leaves the screen off for a notification.
    * Besides the power key and a double tap, only a full-screen app (an incoming call, a ringing alarm: service.js
@@ -209,7 +210,7 @@ static void
 app_notifications_page (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("App notifications", &c);
+  NsPage *page = ns_page_new (_("App notifications"), &c);
   GSettings *n = ns_page_settings (page, "org.gnome.desktop.notifications");
   GtkWidget *g = ns_group (c, NULL);
   g_auto (GStrv) kids = g_settings_get_strv (n, "application-children");
@@ -293,7 +294,7 @@ version_row (GtkWidget *g, GAppInfo *app)
   g_autofree char *file = package_file (app);
   if (!file || !g_str_has_prefix (file, "/usr/"))
     return;
-  GtkWidget *r = ns_row_info (g, "Version", NULL);
+  GtkWidget *r = ns_row_info (g, _("Version"), NULL);
   g_autoptr (GSubprocess) p = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_SILENCE,
                                                 NULL, "sh", "-c",
                                                 "p=$(dpkg-query -S \"$1\" 2>/dev/null | head -n1 | cut -d: -f1) && "
@@ -341,7 +342,7 @@ uninstall_end (Uninstall *u, const char *result, const char *message)
   } else {
     /* "cancelled": the sheet or the password was declined, nothing to report */
     gtk_button_set_label (GTK_BUTTON (u->button),
-                          !g_strcmp0 (result, "cancelled") || !message || !*message ? "Uninstall" : message);
+                          !g_strcmp0 (result, "cancelled") || !message || !*message ? _("Uninstall") : message);
     gtk_widget_set_sensitive (u->button, TRUE);
   }
   uninstall_free (u);
@@ -369,8 +370,8 @@ uninstall_started (GObject *src, GAsyncResult *res, gpointer data)
   g_autoptr (GVariant) r = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, &err);
   if (!r) {
     gboolean missing = g_error_matches (err, G_DBUS_ERROR, G_DBUS_ERROR_SERVICE_UNKNOWN);
-    uninstall_end (u, "failed", missing ? "App Installer is not installed: it uninstalls apps"
-                                        : "Could not uninstall, try again");
+    uninstall_end (u, "failed", missing ? _("App Installer is not installed: it uninstalls apps")
+                                        : _("Could not uninstall, try again"));
     return;
   }
   g_variant_get (r, "(u)", &u->job);
@@ -416,7 +417,7 @@ uninstall_tapped (GtkButton *b, Uninstall *proto)
   u->button = g_object_ref (proto->button);
   u->pkg = g_strdup (proto->pkg);
   u->bus = bus;
-  gtk_button_set_label (b, "Uninstalling…");
+  gtk_button_set_label (b, _("Uninstalling…"));
   gtk_widget_set_sensitive (GTK_WIDGET (b), FALSE);
 #ifdef GDK_WINDOWING_WAYLAND
   GtkNative *native = gtk_widget_get_native (GTK_WIDGET (b));
@@ -460,7 +461,7 @@ uninstall_button (GtkWidget *c, GAppInfo *app)
   g_autofree char *file = package_file (app);
   if (!sandboxed || !file || !g_str_has_prefix (file, "/usr/share/"))
     return;
-  GtkWidget *b = ns_button_new ("Uninstall", FALSE);
+  GtkWidget *b = ns_button_new (_("Uninstall"), FALSE);
   gtk_widget_add_css_class (b, "ns-wide");
   gtk_widget_set_visible (b, FALSE);
   gtk_box_append (GTK_BOX (c), b);
@@ -523,7 +524,8 @@ storage_show (Storage *st)
   guint64 total = st->app + st->data + st->cache;
   if (st->row) {
     g_autofree char *size = g_format_size (total);
-    g_autofree char *used = g_strdup_printf ("%s used", size);
+    /* TRANSLATORS: %s is a size ("12 MB") */
+    g_autofree char *used = g_strdup_printf (_("%s used"), size);
     ns_row_set_subtitle (st->row, used);
   }
   guint64 values[4] = { st->app, st->data, st->cache, total };
@@ -533,7 +535,7 @@ storage_show (Storage *st)
       ns_row_set_subtitle (st->rows[i], v);
     }
   if (st->clear) {
-    gtk_button_set_label (GTK_BUTTON (st->clear), "Clear cache");
+    gtk_button_set_label (GTK_BUTTON (st->clear), _("Clear cache"));
     gtk_widget_set_sensitive (st->clear, st->cache > 0);
   }
 }
@@ -617,7 +619,7 @@ clear_cache (GtkButton *b, GObject *owner)
   Storage *st = g_object_get_data (owner, "ns-storage");
   if (!st || !st->pkg)
     return;
-  gtk_button_set_label (b, "Clearing…");
+  gtk_button_set_label (b, _("Clearing…"));
   gtk_widget_set_sensitive (GTK_WIDGET (b), FALSE);
   g_autoptr (GSubprocess) p = g_subprocess_new (G_SUBPROCESS_FLAGS_STDOUT_SILENCE | G_SUBPROCESS_FLAGS_STDERR_SILENCE,
                                                 NULL, "vibeos-sandbox", "clear-cache", st->pkg, NULL);
@@ -633,14 +635,14 @@ storage_page (GtkWidget *row, gpointer data)
   GObject *owner = data;
   Storage *st = g_object_get_data (owner, "ns-storage");
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Storage and cache", &c);
+  NsPage *page = ns_page_new (_("Storage and cache"), &c);
   /* the storage page keeps the app's page (and the Storage) while it is open */
   g_object_set_data_full (G_OBJECT (page), "ns-storage-owner", g_object_ref (owner), g_object_unref);
-  GtkWidget *g = ns_group (c, "Space used");
-  static const char *const titles[] = { "App size", "User data", "Cache", "Total" };
+  GtkWidget *g = ns_group (c, _("Space used"));
+  static const char *const titles[] = { N_("App size"), N_("User data"), N_("Cache"), N_("Total") };
   for (guint i = 0; i < G_N_ELEMENTS (titles); i++)
-    track (&st->rows[i], ns_row_info (g, titles[i], "Calculating…"));
-  GtkWidget *b = ns_button_new ("Clear cache", FALSE);
+    track (&st->rows[i], ns_row_info (g, _(titles[i]), _("Calculating…")));
+  GtkWidget *b = ns_button_new (_("Clear cache"), FALSE);
   gtk_widget_add_css_class (b, "ns-wide");
   gtk_widget_set_sensitive (b, FALSE);
   g_signal_connect_object (b, "clicked", G_CALLBACK (clear_cache), owner, 0);
@@ -662,7 +664,7 @@ storage_row (GtkWidget *g, GAppInfo *app, GtkWidget *owner)
   st->file = g_steal_pointer (&file);
   st->sandboxed = sandboxed != NULL;
   g_object_set_data_full (G_OBJECT (owner), "ns-storage", st, (GDestroyNotify) storage_free);
-  track (&st->row, ns_row (g, "drive-harddisk-symbolic", "Storage and cache", "Calculating…"));
+  track (&st->row, ns_row (g, "drive-harddisk-symbolic", _("Storage and cache"), _("Calculating…")));
   /* only a sandboxed app has data and a cache of its own to show and clear */
   if (st->sandboxed)
     ns_row_on_activate (st->row, storage_page, owner);
@@ -705,13 +707,13 @@ app_page (GAppInfo *app)
   gtk_box_append (GTK_BOX (c), head);
 
   GtkWidget *g = ns_group (c, NULL);
-  ns_row_button (g, "Open", FALSE, open_app, app);
+  ns_row_button (g, _("Open"), FALSE, open_app, app);
 
   g = ns_group (c, NULL);
   GSettings *ns = app_settings (NOTIFY_APP, "/org/gnome/desktop/notifications/application/", app);
   if (ns) {
     g_object_set_data_full (G_OBJECT (page), "ns-notify", ns, g_object_unref);
-    GtkWidget *r = ns_row (g, "preferences-system-notifications-symbolic", "Notifications", NULL);
+    GtkWidget *r = ns_row (g, "preferences-system-notifications-symbolic", _("Notifications"), NULL);
     allowed_changed (ns, NULL, r);
     g_signal_connect_object (ns, "changed::enable", G_CALLBACK (allowed_changed), r, 0);
     ns_row_on_activate (r, app_notify_page, app);
@@ -725,7 +727,7 @@ app_page (GAppInfo *app)
 
   g = ns_group (c, NULL);
   version_row (g, app);
-  ns_row_info (g, "App ID", g_app_info_get_id (app));
+  ns_row_info (g, _("App ID"), g_app_info_get_id (app));
   uninstall_button (c, app);
   ns_push (page);
 }
@@ -932,14 +934,14 @@ seen_ago (gint64 seen)
   gint64 s = MAX (g_get_real_time () / G_USEC_PER_SEC - seen, 0);
   if (s < 3600) {
     int m = (int) (s / 60);
-    return g_strdup_printf (m == 1 ? "%d minute ago" : "%d minutes ago", m);
+    return g_strdup_printf (g_dngettext (NULL, "%d minute ago", "%d minutes ago", m), m);
   }
   if (s < 86400) {
     int h = (int) (s / 3600);
-    return g_strdup_printf (h == 1 ? "%d hour ago" : "%d hours ago", h);
+    return g_strdup_printf (g_dngettext (NULL, "%d hour ago", "%d hours ago", h), h);
   }
   int d = (int) (s / 86400);
-  return g_strdup_printf (d == 1 ? "%d day ago" : "%d days ago", d);
+  return g_strdup_printf (g_dngettext (NULL, "%d day ago", "%d days ago", d), d);
 }
 
 /* up to `max` apps, newest first, that a launcher shows; Settings itself is left out, as Android's is */
@@ -979,26 +981,26 @@ void
 ns_page_apps (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Apps", &c);
+  NsPage *page = ns_page_new (_("Apps"), &c);
   IconBake *bake = icon_bake_new ();
   g_autoptr (GPtrArray) recent = recent_apps (3);
   guint n;
   GList *all = shown_apps (&n);
   g_list_free_full (all, g_object_unref);
 
-  GtkWidget *g = ns_group (c, recent->len ? "Recently opened apps" : NULL);
+  GtkWidget *g = ns_group (c, recent->len ? _("Recently opened apps") : NULL);
   for (guint i = 0; i < recent->len; i++) {
     Seen *s = recent->pdata[i];
     g_autoptr (GDesktopAppInfo) app = g_desktop_app_info_new (s->id);
     g_autofree char *ago = seen_ago (s->seen);
     app_row (g, G_APP_INFO (app), ago, bake);
   }
-  g_autofree char *see = g_strdup_printf ("See all %u apps", n);
+  g_autofree char *see = g_strdup_printf (g_dngettext (NULL, "See %u app", "See all %u apps", n), n);
   GtkWidget *r = ns_row (g, "go-next-symbolic", see, NULL);
   ns_row_on_activate (r, ns_page_all_apps, NULL);
 
-  g = ns_group (c, "General");
-  r = ns_row (g, NULL, "Default apps", "Browser, email, music, photos");
+  g = ns_group (c, _("General"));
+  r = ns_row (g, NULL, _("Default apps"), _("Browser, email, music, photos"));
   ns_row_on_activate (r, default_apps_tapped, NULL);
   icon_bake_start (bake);
   ns_page_on_back (page, apps_back);
@@ -1032,7 +1034,7 @@ static void
 ns_page_all_apps (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("All apps", &c);
+  NsPage *page = ns_page_new (_("All apps"), &c);
   GtkWidget *g = ns_group (c, NULL);
   IconBake *bake = icon_bake_new ();
   guint n;
@@ -1069,8 +1071,8 @@ static const char *const photos[] = { "image/jpeg", "image/png", "image/gif", "i
                                       "image/tiff", NULL };
 
 static const Kind kinds[] = {
-  { "Browser", web }, { "Email", mail }, { "Calendar", cal }, { "Music", music }, { "Video", video },
-  { "Photos", photos },
+  { N_("Browser"), web }, { N_("Email"), mail }, { N_("Calendar"), cal }, { N_("Music"), music },
+  { N_("Video"), video }, { N_("Photos"), photos },
 };
 
 /* The app picked becomes the default for the kind's types it opens, as GNOME Settings does it (its
@@ -1104,7 +1106,7 @@ void
 ns_page_default_apps (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Default apps", &c);
+  NsPage *page = ns_page_new (_("Default apps"), &c);
   GtkWidget *g = ns_group (c, NULL);
   for (guint k = 0; k < G_N_ELEMENTS (kinds); k++) {
     g_autoptr (GAppInfo) def = default_for_kind (&kinds[k]);
@@ -1131,12 +1133,12 @@ ns_page_default_apps (GtkWidget *row, gpointer data)
     g_ptr_array_add (labels, NULL);
     GtkWidget *r;
     if (apps->len) {
-      r = ns_row_pick (g, kinds[k].title, (const char *const *) labels->pdata, sel, default_picked,
-                       (gpointer) &kinds[k]);
+      r = ns_row_pick_names (g, _(kinds[k].title), (const char *const *) labels->pdata, sel, default_picked,
+                             (gpointer) &kinds[k]);
       if (sel == G_MAXUINT)
-        ns_row_set_subtitle (r, "None chosen");
+        ns_row_set_subtitle (r, _("None chosen"));
     } else {
-      r = ns_row_info (g, kinds[k].title, "No app installed");
+      r = ns_row_info (g, _(kinds[k].title), _("No app installed"));
     }
     g_object_set_data_full (G_OBJECT (r), "ns-apps", apps, (GDestroyNotify) g_ptr_array_unref);
   }

@@ -14,6 +14,7 @@
 #include "legacy-ids.h"
 #include "vibeos.h"
 #include "parallax.h"
+#include "vibeos-locale.h"
 
 /* depth: how far the home is pushed back, 0 not at all; it zooms the wallpaper out and blurs what is behind */
 #define DRAWER_DEPTH       0.33f      /* the drawer fully open */
@@ -42,6 +43,7 @@ static struct {
   guint       wallpaper_id;       /* a reload, once the keys that changed together are all in */
   GAppInfoMonitor *apps_monitor;  /* apps installed and removed */
   guint       apps_id;            /* the app list's read, once they settle and no tile is held */
+  guint       locale_id;          /* the texts again in a new language, once no tile is held */
   GfxTex     *home_target, *bg_target;
 
   int         touch;              /* the finger being followed, or -1 */
@@ -86,6 +88,13 @@ static void
 wake (void *data)
 {
   wl_schedule (N.wl);
+}
+
+/* the home clock in 12 or 24 hours */
+static void
+clock_format_changed (GSettings *settings, const char *key, gpointer data)
+{
+  home_clock_tick ();
 }
 
 static gboolean
@@ -300,6 +309,33 @@ apps_changed (GAppInfoMonitor *monitor, gpointer data)
   A.apps_id = g_timeout_add (APPS_SETTLE_MS, apps_sync, NULL);
 }
 
+/* Settings changed the session's language or formats (vibeos_locale_watch: this program's environment and locale
+ * are the new ones already): what the launcher keeps laid out is made again in them, the apps' names read again
+ * from their entries, the clock's date with them. Not while a tile is held, as for an app installed. */
+static gboolean
+locale_apply (gpointer data)
+{
+  if (A.touch >= 0 || N.press.tile || N.launch_t0 || popup_showing () || drag_holding () || drag_busy ())
+    return G_SOURCE_CONTINUE;
+  A.locale_id = 0;
+  A.down_tile = NULL;
+  tiles_sync ();
+  tiles_language_changed ();
+  drawer_language_changed ();
+  drag_language_changed ();
+  home_layout ();
+  drawer_layout ();
+  wl_schedule (N.wl);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+locale_changed (gpointer data)
+{
+  if (!A.locale_id)
+    A.locale_id = g_timeout_add (APPS_SETTLE_MS, locale_apply, NULL);
+}
+
 /* Settings' Home screen changed how icons look: drawn again once the changes settle (a pack and a shape picked one
  * after the other make one pass, not two) */
 static guint icons_id;
@@ -412,6 +448,7 @@ init_gpu (void)
   wallpaper_load ();
   g_signal_connect (A.bg, "changed", G_CALLBACK (wallpaper_changed), NULL);
   g_signal_connect (A.iface, "changed::color-scheme", G_CALLBACK (wallpaper_changed), NULL);
+  g_signal_connect (A.iface, "changed::clock-format", G_CALLBACK (clock_format_changed), NULL);
   int cols, rows;
   layout_forget_old ();
   layout_read (&cols, &rows);
@@ -428,6 +465,7 @@ init_gpu (void)
     g_signal_connect (N.settings, icon_keys[i], G_CALLBACK (icon_settings_changed), NULL);
   A.apps_monitor = g_app_info_monitor_get ();
   g_signal_connect (A.apps_monitor, "changed", G_CALLBACK (apps_changed), NULL);
+  vibeos_locale_watch (locale_changed, NULL, NULL);
   home_layout ();
   drawer_layout ();
   nav_init ();
@@ -913,6 +951,9 @@ int
 main (int argc, char **argv)
 {
   setlocale (LC_ALL, "");
+  bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+  textdomain (GETTEXT_PACKAGE);
   migrate_ids ();
   static const WlCallbacks cb = { on_resize, on_frame,  on_touch, on_key,   on_close,
                                   on_shown,  on_suspended, on_text, on_erase, on_submit };

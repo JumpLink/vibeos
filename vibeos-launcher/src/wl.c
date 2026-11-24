@@ -1,6 +1,7 @@
 /* The Wayland side (see wl.h). */
 #include "wl.h"
 
+#include <glib/gi18n.h>
 #include <linux/input-event-codes.h>
 #include <math.h>
 #include <string.h>
@@ -831,7 +832,7 @@ wl_open (const char *app_id, const WlCallbacks *cb, gpointer data)
   wl->toplevel = xdg_surface_get_toplevel (wl->xdg_surface);
   xdg_toplevel_add_listener (wl->toplevel, &toplevel_listener, wl);
   xdg_toplevel_set_app_id (wl->toplevel, app_id);
-  xdg_toplevel_set_title (wl->toplevel, "Home");
+  xdg_toplevel_set_title (wl->toplevel, _("Home"));
   if (!g_getenv ("VIBEOS_WINDOWED"))
     xdg_toplevel_set_fullscreen (wl->toplevel, NULL);
   wl_surface_commit (wl->surface);

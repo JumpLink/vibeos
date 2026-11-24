@@ -128,7 +128,7 @@ on_deleted (AlarmCard *card, ClockAlarm *alarm, AlarmPage *self)
   if (self->expanded == alarm->id)
     self->expanded = 0;
   alarms_client_delete (self->client, alarm->id);
-  vibeos_snackbar_show (self->snackbar, _("Alarm deleted"), _("undo"), undo_delete, deleted, VIBEOS_SNACKBAR_LONG);
+  vibeos_snackbar_show (self->snackbar, _("Alarm deleted"), _("Undo"), undo_delete, deleted, VIBEOS_SNACKBAR_LONG);
 }
 
 /* --- the empty state */

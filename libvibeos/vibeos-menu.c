@@ -2,6 +2,8 @@
  * no room below. The card's clip grows away from the anchor (down below it, up above it) while it fades in. */
 #include "vibeos-menu.h"
 
+#include <glib/gi18n-lib.h>
+
 #include "vibeos-anim.h"
 #include "vibeos-pressable.h"
 #include "vibeos-style.h"
@@ -254,7 +256,7 @@ void
 vibeos_menu_append_about (VibeosMenu *self, const VibeosAboutInfo *info)
 {
   g_object_set_data (G_OBJECT (self), "vibeos-menu-about", (gpointer) info);
-  vibeos_menu_append (self, "About", on_about, self);
+  vibeos_menu_append (self, _("About"), on_about, self);
 }
 
 static void

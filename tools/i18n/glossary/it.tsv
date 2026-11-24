@@ -1,0 +1,126 @@
+Settings	Impostazioni	app and screen name
+Notifications	Notifiche	
+Do Not Disturb	Non disturbare	
+Wi-Fi	Wi-Fi	
+Bluetooth	Bluetooth	
+Airplane mode	Modalità aereo	
+Lock screen	Schermata di blocco	
+Home screen	Schermata Home	
+Home	Home	the home screen, a button
+Wallpaper	Sfondo	
+Alarm	Sveglia	
+Timer	Timer	
+Stopwatch	Cronometro	
+Reminder	Promemoria	
+Event	Evento	
+Calendar	Calendario	
+Contact	Contatto	
+Contacts	Contatti	
+Conversation	Conversazione	
+Message	Messaggio	
+Messages	Messaggi	
+Call	Chiama	verb, a button; the noun is « chiamata »
+Download	Scarica	verb; the noun is « download »
+Install	Installa	
+Uninstall	Disinstalla	
+Update	Aggiorna	verb; the noun is « aggiornamento »
+Share	Condividi	
+Delete	Elimina	
+Remove	Rimuovi	
+Cancel	Annulla	
+OK	OK	
+Done	Fine	
+Save	Salva	
+Back	Indietro	
+Close	Chiudi	
+Search	Cerca	a field's hint: « Cerca… »
+Menu	Menu	
+More options	Altre opzioni	
+About	Informazioni	
+About %s	Informazioni su %s	
+Credits	Riconoscimenti	
+Legal	Note legali	
+Website	Sito web	
+Report an Issue	Segnala un problema	
+Open	Apri	
+Edit	Modifica	
+Add	Aggiungi	
+Retry	Riprova	
+Undo	Annulla	
+Copy	Copia	
+Paste	Incolla	
+Rename	Rinomina	
+Select all	Seleziona tutto	
+Clear	Cancella	
+Next	Avanti	
+Previous	Precedente	
+Allow	Consenti	
+Deny	Rifiuta	
+Turn on	Attiva	
+Turn off	Disattiva	
+On	On	
+Off	Off	
+App	App	invariable: « l'app », « le app »
+App info	Informazioni app	
+Storage	Spazio di archiviazione	« Memoria » where space is short
+Battery	Batteria	
+Display	Display	
+Sound	Suono	
+Location	Posizione	
+Camera	Fotocamera	
+Files	File	
+Mute	Silenzia	
+Unmute	Riattiva audio	
+Block	Blocca	
+Unblock	Sblocca	
+Archive	Archivia	
+Favorites	Preferiti	
+Pin	Fissa	to pin an item; the code is « PIN »
+Unpin	Sblocca	as Android: « Sblocca » for an item pinned on top
+PIN	PIN	
+Pattern	Sequenza	
+Password	Password	
+Mobile data	Dati mobili	
+Hotspot	Hotspot	
+Ringtone	Suoneria	
+Vibrate	Vibrazione	
+Snooze	Posticipa	
+Dismiss	Ignora	an alarm's dismiss is « Interrompi »
+Accounts	Account	
+Privacy	Privacy	
+Security	Sicurezza	
+Language	Lingua	
+Keyboard	Tastiera	
+Brightness	Luminosità	
+Default	Predefinito	
+Custom	Personalizzato	
+None	Nessuno	
+Restart	Riavvia	
+Power off	Spegni	
+Today	Oggi	
+Tomorrow	Domani	
+Yesterday	Ieri	
+Help	Guida	
+Send	Invia	
+Reply	Rispondi	
+Details	Dettagli	
+Name	Nome	
+Size	Dimensioni	
+Date	Data	
+Sort by	Ordina per	
+Browser	Browser	app name
+Calculator	Calcolatrice	app name
+Compass	Bussola	app name
+Messaging	Messaggi	app name
+Weather	Meteo	app name
+Navi	Navi	app name, not translated
+App Installer	Installer app	app name
+Software	Software	app name (the store app), not translated
+Mine	Le mie app	Software's tab of the apps on the device
+store	store	the app store; « lo store »
+review	recensione	an app review
+rate	valutare	rate an app
+Recycle Bin	Cestino	
+Package	Pacchetto	a software package (.deb)
+software sources	sorgenti software	
+Speed camera	Autovelox	

@@ -40,7 +40,7 @@ static void
 update (AnalogClock *self)
 {
   g_autoptr(GDateTime) now = self->tz ? g_date_time_new_now (self->tz) : g_date_time_new_now_local ();
-  g_autofree char *label = g_date_time_format (now, "%H:%M");
+  g_autofree char *label = vibeos_format_time (now);
   int ms = 1000 - g_date_time_get_microsecond (now) / 1000;
 
   self->hour = g_date_time_get_hour (now) % 12;

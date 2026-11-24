@@ -3,3 +3,4 @@ usr/share/applications/vibeos.Installer.desktop
 usr/share/dbus-1/interfaces/vibeos.Installer1.xml
 usr/share/dbus-1/services/vibeos.Installer.service
 usr/share/icons/hicolor/scalable/apps/vibeos.Installer.svg
+usr/share/locale/*/LC_MESSAGES/vibeos-installer.mo

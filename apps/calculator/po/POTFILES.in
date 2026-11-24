@@ -1,0 +1,7 @@
+# the files with translatable strings
+data/vibeos.Calculator.desktop.in
+src/calc-display.c
+src/calc-history.c
+src/calc-licenses.c
+src/calc-window.c
+src/evaluator.c

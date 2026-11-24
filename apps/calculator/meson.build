@@ -15,6 +15,7 @@ engine = static_library('engine', 'src/calc-failure.c', 'src/creal.c', 'src/boun
 
 # the app
 gnome = import('gnome')
+i18n = import('i18n')
 gtk = dependency('gtk4', version: '>= 4.14')
 bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
@@ -28,10 +29,14 @@ executable('vibeos-calculator', 'src/calc-main.c', 'src/calc-window.c', 'src/cal
 
 configure_file(input: 'data/vibeos.Calculator.service.in', output: 'vibeos.Calculator.service',
                configuration: configuration_data({'bindir': bindir}), install_dir: datadir / 'dbus-1/services')
-install_data('data/vibeos.Calculator.desktop', install_dir: datadir / 'applications')
+i18n.merge_file(input: 'data/vibeos.Calculator.desktop.in', output: 'vibeos.Calculator.desktop', type: 'desktop',
+                po_dir: 'po', install: true, install_dir: datadir / 'applications')
 install_data('data/vibeos.Calculator.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 install_data('data/vibeos.Calculator.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
+
+# the translations, and their checks
+subdir('po')
 
 foreach name : ['creal', 'engine', 'evaluator']
   test(name, executable('test-' + name, 'tests/test-' + name + '.c', include_directories: 'src',

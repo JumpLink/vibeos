@@ -15,6 +15,7 @@
 #include "timer-service.h"
 
 #include <errno.h>
+#include <glib/gi18n.h>
 #include <glib/gstdio.h>
 #include <glib-unix.h>
 #include <locale.h>
@@ -221,6 +222,9 @@ main (int argc, char **argv)
   g_autoptr(GError) error = NULL;
 
   setlocale (LC_ALL, "");
+  bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+  textdomain (GETTEXT_PACKAGE);
   self->loop = g_main_loop_new (NULL, FALSE);
   self->session = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &error);
   if (!self->session)

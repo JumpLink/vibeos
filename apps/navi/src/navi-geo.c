@@ -6,6 +6,7 @@
 #include <locale.h>
 #include <math.h>
 #include <string.h>
+#include <vibeos-locale.h>
 
 #define EARTH_R 6371008.8
 #define RAD (G_PI / 180.0)
@@ -309,5 +310,6 @@ navi_format_eta (double seconds_from_now)
 {
   g_autoptr (GDateTime) now = g_date_time_new_now_local ();
   g_autoptr (GDateTime) t = g_date_time_add_seconds (now, seconds_from_now);
-  return g_date_time_format (t, clock_24h ? "%H:%M" : "%-l:%M %p");
+  /* in the user's language: "14:05", "2:05 PM" */
+  return vibeos_format_date (t, clock_24h ? "Hm" : "hm");
 }

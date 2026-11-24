@@ -1,4 +1,6 @@
 usr/bin/vibeos-video
 usr/share/applications/vibeos.Video.desktop
+usr/share/dbus-1/services/vibeos.Video.service
 usr/share/icons/hicolor/scalable/apps/vibeos.Video.svg
+usr/share/locale/*/LC_MESSAGES/vibeos-video.mo
 etc/xdg/mimeapps.list

@@ -14,7 +14,10 @@
  *
  *   vibeos_about_present (button, &info);
  *
- * The texts are Pango markup; a link in one opens in the browser. Nothing in `info` has to outlive the call. */
+ * The texts are Pango markup; a link in one opens in the browser. Nothing in `info` has to outlive the call.
+ *
+ * The app's name and its sections are translated here, in the app's own translations (the domain textdomain() set),
+ * so they can be static and marked with N_(): { N_("Open-Meteo"), N_("Forecasts by ...") }, .name = N_("Weather"). */
 #pragma once
 
 #include <gtk/gtk.h>

@@ -23,22 +23,22 @@ static const struct {
   const char *name, *title, *icon;
   gboolean    can_ask;
 } perms[] = {
-  { "location", "Location", "find-location-symbolic", TRUE },
-  { "camera", "Camera", "camera-photo-symbolic", TRUE },
-  { "microphone", "Microphone", "audio-input-microphone-symbolic", FALSE },
-  { "contacts", "Contacts", "avatar-default-symbolic", FALSE },
-  { "calendar", "Calendar", "x-office-calendar-symbolic", FALSE },
-  { "phone", "Phone", "call-start-symbolic", FALSE },
-  { "sms", "SMS", "mail-unread-symbolic", FALSE },
-  { "files", "Files and media", "folder-symbolic", FALSE },
-  { "network", "Network", "network-wireless-symbolic", FALSE },
-  { "background", "Run in the background", "preferences-system-time-symbolic", TRUE },
+  { "location", N_("Location"), "find-location-symbolic", TRUE },
+  { "camera", N_("Camera"), "camera-photo-symbolic", TRUE },
+  { "microphone", N_("Microphone"), "audio-input-microphone-symbolic", FALSE },
+  { "contacts", N_("Contacts"), "avatar-default-symbolic", FALSE },
+  { "calendar", N_("Calendar"), "x-office-calendar-symbolic", FALSE },
+  { "phone", N_("Phone"), "call-start-symbolic", FALSE },
+  { "sms", N_("SMS"), "mail-unread-symbolic", FALSE },
+  { "files", N_("Files and media"), "folder-symbolic", FALSE },
+  { "network", N_("Network"), "network-wireless-symbolic", FALSE },
+  { "background", N_("Run in the background"), "preferences-system-time-symbolic", TRUE },
 };
 #define N_PERMS G_N_ELEMENTS (perms)
 
 /* the App permissions page's groups, by grant */
 enum { GROUP_ALLOWED, GROUP_ASK, GROUP_DENIED, N_GROUPS };
-static const char *const group_titles[N_GROUPS] = { "Allowed", "Ask every time", "Not allowed" };
+static const char *const group_titles[N_GROUPS] = { N_("Allowed"), N_("Ask every time"), N_("Not allowed") };
 
 static int
 group_of (int grant)
@@ -47,9 +47,9 @@ group_of (int grant)
 }
 
 /* a permission's choices, in Android's order, and the grant each one writes */
-static const char *const choices_ask[] = { "Allow", "Ask every time", "Don't allow", NULL };
+static const char *const choices_ask[] = { N_("Allow"), N_("Ask every time"), N_("Don't allow"), NULL };
 static const int grants_ask[] = { GRANT_ALLOW, GRANT_ASK, GRANT_DENY };
-static const char *const choices_yes_no[] = { "Allow", "Don't allow", NULL };
+static const char *const choices_yes_no[] = { N_("Allow"), N_("Don't allow"), NULL };
 static const int grants_yes_no[] = { GRANT_ALLOW, GRANT_DENY };
 /* the group a row is in says its choice: the rows have no line under their title */
 static const char *const no_summaries[] = { "", "", "", NULL };
@@ -117,13 +117,21 @@ show_summary (Perms *p)
       continue;
     asks = TRUE;
     if (p->grant[i] == GRANT_ALLOW)
-      g_ptr_array_add (names, (gpointer) perms[i].title);
+      g_ptr_array_add (names, (gpointer) _(perms[i].title));
   }
-  g_autoptr (GString) s = g_string_new (NULL);
-  for (guint i = 0; i < names->len; i++)
-    g_string_append_printf (s, "%s%s", i == 0 ? "" : i + 1 == names->len ? " and " : ", ",
-                            (const char *) names->pdata[i]);
-  ns_row_set_subtitle (p->summary, s->len ? s->str : asks ? "No permissions allowed" : "No permissions requested");
+  /* the list from its end: the last name, the last two joined by "and", each one before them by a comma */
+  g_autofree char *list = NULL;
+  for (guint i = names->len; i-- > 0;) {
+    const char *name = names->pdata[i];
+    char *longer = !list ? g_strdup (name)
+                   /* TRANSLATORS: the last two of a list of permissions ("Camera and Microphone") */
+                   : i + 2 == names->len ? g_strdup_printf (_("%s and %s"), name, list)
+                   /* TRANSLATORS: a permission, then the rest of the list ("Location, Camera and Microphone") */
+                                         : g_strdup_printf (_("%s, %s"), name, list);
+    g_free (list);
+    list = longer;
+  }
+  ns_row_set_subtitle (p->summary, list ? list : asks ? _("No permissions allowed") : _("No permissions requested"));
 }
 
 /* a row of the App permissions page: the app's page (which keeps the Perms) and the permission */
@@ -165,7 +173,7 @@ fill_list (GObject *owner)
     PermRow *pr = g_new0 (PermRow, 1);
     pr->owner = g_object_ref (owner);
     pr->perm = i;
-    GtkWidget *r = ns_row_pick (p->groups[g], perms[i].title, choices, selected, picked, pr);
+    GtkWidget *r = ns_row_pick (p->groups[g], _(perms[i].title), choices, selected, picked, pr);
     g_object_set_data_full (G_OBJECT (r), "ns-perm-row", pr, (GDestroyNotify) perm_row_free);
     vibeos_list_row_set_icon (VIBEOS_LIST_ROW (r), perms[i].icon);
     ns_row_pick_set_summaries (r, no_summaries);
@@ -262,16 +270,16 @@ list_page (GtkWidget *row, gpointer data)
   GObject *owner = data;
   Perms *p = g_object_get_data (owner, "ns-perms");
   GtkWidget *c;
-  NsPage *page = ns_page_new ("App permissions", &c);
+  NsPage *page = ns_page_new (_("App permissions"), &c);
   /* the page keeps the app's page (and the Perms) while it is open */
   g_object_set_data_full (G_OBJECT (page), "ns-perms-owner", g_object_ref (owner), g_object_unref);
   for (guint g = 0; g < N_GROUPS; g++) {
-    track (&p->groups[g], ns_group (c, group_titles[g]));
+    track (&p->groups[g], ns_group (c, _(group_titles[g])));
     ns_group_set_visible (p->groups[g], FALSE);
   }
-  track (&p->none, ns_note (c, "This app asks for no permissions."));
+  track (&p->none, ns_note (c, _("This app asks for no permissions.")));
   gtk_widget_set_visible (p->none, FALSE);
-  ns_footnote (c, "Taking a permission away stops the app. What an app does not ask for, it never gets.");
+  ns_footnote (c, _("Taking a permission away stops the app. What an app does not ask for, it never gets."));
   fill_list (owner);
   ns_push (page);
   load (owner);
@@ -284,13 +292,13 @@ ns_app_permissions_row (GtkWidget *group, GAppInfo *app, GtkWidget *owner)
     ? g_desktop_app_info_get_string (G_DESKTOP_APP_INFO (app), "X-VibeOS-Sandbox") : NULL;
   if (!app_id || !*app_id) {
     /* not in a sandbox: nothing here keeps it from anything the user's account may do */
-    ns_row (group, "security-low-symbolic", "Permissions", "Not sandboxed: full access");
+    ns_row (group, "security-low-symbolic", _("Permissions"), _("Not sandboxed: full access"));
     return;
   }
   Perms *p = g_new0 (Perms, 1);
   p->app_id = g_steal_pointer (&app_id);
   g_object_set_data_full (G_OBJECT (owner), "ns-perms", p, (GDestroyNotify) perms_free);
-  track (&p->summary, ns_row (group, "security-high-symbolic", "Permissions", NULL));
+  track (&p->summary, ns_row (group, "security-high-symbolic", _("Permissions"), NULL));
   ns_row_on_activate (p->summary, list_page, owner);
   load (G_OBJECT (owner));
 }

@@ -1,0 +1,145 @@
+# Russian translations of vibeos-video.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-video\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 16:55+0100\n"
+"PO-Revision-Date: 2026-11-24 16:54+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Russian\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#. the name the sound settings list it under
+#: data/vibeos.Video.desktop.in main.c
+msgid "Video Player"
+msgstr "Видеоплеер"
+
+#: data/vibeos.Video.desktop.in
+msgid "Play videos"
+msgstr "Воспроизведение видео"
+
+#: main.c
+msgid "Playing a video"
+msgstr "Воспроизводится видео"
+
+#: main.c
+msgid "Can’t play this video"
+msgstr "Не удаётся воспроизвести это видео"
+
+#: main.c
+msgid "Exit full screen"
+msgstr "Выйти из полноэкранного режима"
+
+#: main.c
+msgid "Full screen"
+msgstr "Во весь экран"
+
+#. TRANSLATORS: keep the links' markup as it is
+#: main.c
+msgid ""
+"Videos are played by <a href=\"https://mpv.io/\">mpv</a> (libmpv), under the "
+"GNU GPL 2.0 or later."
+msgstr ""
+"Видео воспроизводит <a href=\"https://mpv.io/\">mpv</a> (libmpv) под "
+"лицензией GNU GPL 2.0 или более поздней."
+
+#. TRANSLATORS: keep the links' markup as it is
+#: main.c
+msgid ""
+"<a href=\"https://ffmpeg.org/\">FFmpeg</a> reads and decodes them, under the "
+"GNU LGPL 2.1 or later (the GPL 2.0 or later as Debian builds it)."
+msgstr ""
+"<a href=\"https://ffmpeg.org/\">FFmpeg</a> читает и декодирует их под "
+"лицензией GNU LGPL 2.1 или более поздней (GPL 2.0 или более поздней в сборке "
+"Debian)."
+
+#: main.c
+msgid "Timed text"
+msgstr "Синхронизированный текст"
+
+#. TRANSLATORS: a track with neither a title nor a language; %u is its number
+#: main.c
+#, c-format
+msgid "Track %u"
+msgstr "Дорожка %u"
+
+#: main.c
+msgid "Mono"
+msgstr "Моно"
+
+#: main.c
+msgid "Stereo"
+msgstr "Стерео"
+
+#. TRANSLATORS: a subtitle track read from a file of its own, next to the video
+#: main.c
+msgid "From a file"
+msgstr "Из файла"
+
+#: main.c
+msgctxt "no track"
+msgid "Off"
+msgstr "Нет"
+
+#: main.c
+msgid "Audio track"
+msgstr "Звуковая дорожка"
+
+#: main.c
+msgid "Subtitles"
+msgstr "Субтитры"
+
+#: main.c
+msgid "Black bar at the camera"
+msgstr "Чёрная полоса у камеры"
+
+#: main.c
+msgid "Keep full screen clear of the camera hole instead of playing under it"
+msgstr "В полноэкранном режиме не показывать видео под вырезом камеры"
+
+#: main.c
+msgid "Settings"
+msgstr "Настройки"
+
+#: main.c
+msgid "Back"
+msgstr "Назад"
+
+#: main.c
+msgid "More options"
+msgstr "Ещё"
+
+#: main.c
+msgid "Back 10 seconds"
+msgstr "Назад на 10 секунд"
+
+#: main.c
+msgid "Play or pause"
+msgstr "Воспроизвести или приостановить"
+
+#: main.c
+msgid "On 10 seconds"
+msgstr "Вперёд на 10 секунд"
+
+#: main.c
+msgid "Open a video from Files"
+msgstr "Откройте видео из приложения «Файлы»"
+
+#: main.c
+msgid "Opening…"
+msgstr "Открытие…"
+
+#: main.c
+msgid "Can’t reach this video"
+msgstr "Нет доступа к этому видео"
+
+#: main.c
+msgid "The player could not start"
+msgstr "Не удалось запустить плеер"

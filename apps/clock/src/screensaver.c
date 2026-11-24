@@ -55,7 +55,7 @@ time_markup (SaverView *self, GDateTime *now)
     return g_strdup_printf ("%02d:%02d", hour, minute);
   if (g_settings_get_boolean (self->settings, "screensaver-show-ampm"))
     ampm = g_strdup_printf ("\u200A<span size='40%%' weight='%d'>%s</span>",
-                            bold ? 900 : 700, hour < 12 ? "AM" : "PM");
+                            bold ? 900 : 700, clock_day_period (hour));
   return g_strdup_printf ("<span weight='%d'>%d:%02d%s</span>", bold ? 900 : 400, hour % 12 ? hour % 12 : 12,
                           minute, ampm ? ampm : "");
 }
@@ -66,7 +66,7 @@ show_time (SaverView *self)
 {
   g_autoptr(GDateTime) now = g_date_time_new_now_local ();
   g_autofree char *time = time_markup (self, now);
-  g_autofree char *date = g_date_time_format (now, "%a, %b %-d");
+  g_autofree char *date = vibeos_format_date (now, "EEEMMMd");
   g_autofree char *upper = g_utf8_strup (date, -1);
   gint64 next = alarms_client_get_next_alarm (alarms_client_get ());
 

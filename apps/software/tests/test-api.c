@@ -785,6 +785,12 @@ test_json_helpers (void)
   size = sw_format_size (5600000);
   /* a no-break space keeps the number and its unit on one line */
   g_assert_cmpstr (size, ==, "5.6\u00a0MB");
+  /* in the user's language and its region's order: British English here */
+  g_setenv ("LANG", "en_GB.UTF-8", TRUE);
+  g_unsetenv ("LANGUAGE");
+  g_unsetenv ("LC_ALL");
+  g_unsetenv ("LC_MESSAGES");
+  g_unsetenv ("LC_TIME");
   date = sw_format_date ("2025-03-14T09:30:00Z");
   g_assert_cmpstr (date, ==, "14 Mar 2025");
   g_assert_null (sw_format_date ("yesterday"));

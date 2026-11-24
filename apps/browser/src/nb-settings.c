@@ -141,7 +141,7 @@ on_engine_picked (int index, gpointer data)
 static void
 on_engine (GtkWidget *row, Settings *s)
 {
-  nb_list_dialog_present (s->t->win, "Search engine", nb_engine_names, engine_index (), on_engine_picked, s);
+  nb_list_dialog_present (s->t->win, _("Search engine"), nb_engine_names, engine_index (), on_engine_picked, s);
 }
 
 static void
@@ -149,13 +149,13 @@ on_provider_picked (int index, gpointer data)
 {
   Settings *s = data;
   nb_store_set_string (nb->store, "suggestionProvider", nb_suggest_ids[index]);
-  gtk_label_set_text (GTK_LABEL (s->provider_summary), nb_suggest_names[index]);
+  gtk_label_set_text (GTK_LABEL (s->provider_summary), _(nb_suggest_names[index]));
 }
 
 static void
 on_provider (GtkWidget *row, Settings *s)
 {
-  nb_list_dialog_present (s->t->win, "Suggestions provider", nb_suggest_names, provider_index (), on_provider_picked,
+  nb_list_dialog_present (s->t->win, _("Suggestions provider"), nb_suggest_names, provider_index (), on_provider_picked,
                           s);
 }
 
@@ -164,7 +164,7 @@ on_provider (GtkWidget *row, Settings *s)
 static void
 sync_home_summary (Settings *s)
 {
-  gtk_label_set_text (GTK_LABEL (s->home_summary), nb_home_autoload () ? nb_home_page () : "Disabled");
+  gtk_label_set_text (GTK_LABEL (s->home_summary), nb_home_autoload () ? nb_home_page () : _("Disabled"));
 }
 
 typedef struct {
@@ -199,11 +199,11 @@ static void
 on_home (GtkWidget *row, Settings *s)
 {
   HomeEdit *h = g_new0 (HomeEdit, 1);
-  NbDialog *d = nb_dialog_new ("Select home page");
+  NbDialog *d = nb_dialog_new (_("Select home page"));
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
 
   h->s = s;
-  nb_dialog_set_message (d, "Write the home page URL");
+  nb_dialog_set_message (d, _("Write the home page URL"));
   /* the checkbox "Enabled", then the outlined URL field (hint "Home page"), enabled only while the box is
    * checked */
   gtk_widget_add_css_class (box, "nb-home-edit");
@@ -212,23 +212,23 @@ on_home (GtkWidget *row, Settings *s)
   h->mark = nb_mark_new (NB_MARK_CHECK);
   nb_mark_set_active (NB_MARK (h->mark), nb_home_autoload ());
   gtk_box_append (GTK_BOX (check), h->mark);
-  GtkWidget *label = nb_label ("Enabled", 14, "nb-check-text", FALSE);
+  GtkWidget *label = nb_label (_("Enabled"), 14, "nb-check-text", FALSE);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (check), label);
   GtkWidget *check_row = vibeos_pressable_new (check);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (check_row), GTK_ACCESSIBLE_PROPERTY_LABEL, "Enabled", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (check_row), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Enabled"), -1);
   g_signal_connect (check_row, "clicked", G_CALLBACK (on_home_check), h);
   gtk_box_append (GTK_BOX (box), check_row);
-  h->field = nb_field_new ("Home page", FALSE);
+  h->field = nb_field_new (_("Home page"), FALSE);
   GtkEntry *entry = nb_field_get_entry (h->field);
   gtk_editable_set_text (GTK_EDITABLE (entry), nb_home_page ());
   gtk_entry_set_input_purpose (entry, GTK_INPUT_PURPOSE_URL);
   gtk_widget_set_sensitive (h->field, nb_home_autoload ());
   gtk_box_append (GTK_BOX (box), h->field);
   nb_dialog_set_content (d, box);
-  nb_dialog_add_button (d, "Reset", NB_RESPONSE_NEUTRAL);
-  nb_dialog_add_button (d, "Cancel", NB_RESPONSE_CANCEL);
-  nb_dialog_add_button (d, "OK", NB_RESPONSE_OK);
+  nb_dialog_add_button (d, _("Reset"), NB_RESPONSE_NEUTRAL);
+  nb_dialog_add_button (d, _("Cancel"), NB_RESPONSE_CANCEL);
+  nb_dialog_add_button (d, _("OK"), NB_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (d), "nb-data", h, (GDestroyNotify) g_free);
 g_signal_connect (d, "response", G_CALLBACK (on_home_response), h);
   nb_dialog_present (d, s->t->win);
@@ -241,7 +241,7 @@ on_clear_cookies (GtkWidget *row, Settings *s)
 {
   /* every cookie goes, then a long toast */
   nb_clear_cookies ();
-  nb_toast_show (s->t->win, "Cleared all the cookies");
+  nb_toast_show (s->t->win, _("Cleared all the cookies"));
 }
 
 /* ---- the collapsing bar ---- */
@@ -295,7 +295,7 @@ nb_settings_page_new (NbTab *t)
   s->header = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (s->header, "nb-settings-header");
   gtk_widget_set_size_request (s->header, -1, BAR_EXPANDED);
-  s->big_title = nb_label ("Settings", 36, "nb-settings-big-title", TRUE);
+  s->big_title = nb_label (_("Settings"), 36, "nb-settings-big-title", TRUE);
   gtk_widget_set_vexpand (s->big_title, TRUE);
   gtk_widget_set_valign (s->big_title, GTK_ALIGN_END);
   gtk_widget_set_margin_start (s->big_title, TITLE_START);
@@ -308,35 +308,36 @@ nb_settings_page_new (NbTab *t)
 
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (list, "nb-pref-list");
-  row = pref_row ("Search engine", NULL, NULL, &s->engine_summary);
+  row = pref_row (_("Search engine"), NULL, NULL, &s->engine_summary);
   int e = engine_index ();
   gtk_label_set_text (GTK_LABEL (s->engine_summary), e >= 0 ? nb_engine_names[e] : "");
   g_signal_connect (row, "clicked", G_CALLBACK (on_engine), s);
   gtk_box_append (GTK_BOX (list), row);
-  row = pref_row ("Suggestions provider", NULL, NULL, &s->provider_summary);
+  row = pref_row (_("Suggestions provider"), NULL, NULL, &s->provider_summary);
   int p = provider_index ();
-  gtk_label_set_text (GTK_LABEL (s->provider_summary), p >= 0 ? nb_suggest_names[p] : "");
+  gtk_label_set_text (GTK_LABEL (s->provider_summary), p >= 0 ? _(nb_suggest_names[p]) : "");
   g_signal_connect (row, "clicked", G_CALLBACK (on_provider), s);
   gtk_box_append (GTK_BOX (list), row);
-  row = pref_row ("Home page", NULL, NULL, &s->home_summary);
+  row = pref_row (_("Home page"), NULL, NULL, &s->home_summary);
   sync_home_summary (s);
   g_signal_connect (row, "clicked", G_CALLBACK (on_home), s);
   gtk_box_append (GTK_BOX (list), row);
-  gtk_box_append (GTK_BOX (list), switch_row ("Reach mode", "Relocate interface elements for easier one-hand usage",
+  gtk_box_append (GTK_BOX (list), switch_row (_("Reach mode"),
+                                              _("Relocate interface elements for easier one-hand usage"),
                                               &reach_mode));
-  gtk_box_append (GTK_BOX (list), switch_row ("Fullscreen shortcuts", "Force shortcuts to open in fullscreen mode",
-                                              &fullscreen_shortcuts));
-  gtk_box_append (GTK_BOX (list), category ("Privacy & security"));
-  gtk_box_append (GTK_BOX (list), switch_row ("Dynamic popups",
-                                              "Allow JavaScript to open popups without user interaction",
+  gtk_box_append (GTK_BOX (list), switch_row (_("Fullscreen shortcuts"),
+                                              _("Force shortcuts to open in fullscreen mode"), &fullscreen_shortcuts));
+  gtk_box_append (GTK_BOX (list), category (_("Privacy & security")));
+  gtk_box_append (GTK_BOX (list), switch_row (_("Dynamic popups"),
+                                              _("Allow JavaScript to open popups without user interaction"),
                                               &dynamic_popups));
-  gtk_box_append (GTK_BOX (list), switch_row ("JavaScript", "Enable JavaScript", &javascript));
-  gtk_box_append (GTK_BOX (list), switch_row ("Location", "Allow websites to request access to your location",
+  gtk_box_append (GTK_BOX (list), switch_row ("JavaScript", _("Enable JavaScript"), &javascript));
+  gtk_box_append (GTK_BOX (list), switch_row (_("Location"), _("Allow websites to request access to your location"),
                                               &location));
-  gtk_box_append (GTK_BOX (list), switch_row ("Do Not Track", "Send a Do Not Track request to websites you visit",
+  gtk_box_append (GTK_BOX (list), switch_row (_("Do Not Track"), _("Send a Do Not Track request to websites you visit"),
                                               &do_not_track));
-  gtk_box_append (GTK_BOX (list), switch_row ("Cookies", "Allow websites to save and load cookies", &cookies));
-  row = pref_row ("Clear cookies", NULL, NULL, NULL);
+  gtk_box_append (GTK_BOX (list), switch_row (_("Cookies"), _("Allow websites to save and load cookies"), &cookies));
+  row = pref_row (_("Clear cookies"), NULL, NULL, NULL);
   g_signal_connect (row, "clicked", G_CALLBACK (on_clear_cookies), s);
   gtk_box_append (GTK_BOX (list), row);
   gtk_box_append (GTK_BOX (content), list);
@@ -349,7 +350,7 @@ nb_settings_page_new (NbTab *t)
   g_signal_connect (adj, "value-changed", G_CALLBACK (on_scrolled), s);
 
   /* the pinned toolbar: the up arrow, and the collapsed title */
-  s->bar = nb_toolbar_new ("Settings", 20, G_CALLBACK (on_up), s, NULL);
+  s->bar = nb_toolbar_new (_("Settings"), 20, G_CALLBACK (on_up), s, NULL);
   gtk_widget_add_css_class (s->bar, "nb-settings-bar");
   gtk_widget_set_valign (s->bar, GTK_ALIGN_START);
   s->small_title = nb_toolbar_get_title (s->bar);

@@ -1,0 +1,6 @@
+# the files with translatable strings
+src/apps.c
+src/drag.c
+src/drawer.c
+src/popup.c
+src/wl.c

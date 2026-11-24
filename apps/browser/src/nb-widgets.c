@@ -1,6 +1,7 @@
 /* nb-widgets: see nb-widgets.h. Sizes are GTK px. */
 #include "nb-widgets.h"
 
+#include <glib/gi18n.h>
 #include <math.h>
 #include <vibeos.h>
 #include <spongy-gtk.h>
@@ -318,7 +319,8 @@ nb_list_dialog_present (GtkWidget *parent, const char *title, const char *const 
   for (int i = 0; items[i]; i++) {
     GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
     GtkWidget *mark = nb_mark_new (NB_MARK_RADIO);
-    GtkWidget *text = nb_label (items[i], 16, "nb-list-text", TRUE);
+    /* the choices are static and marked for translation: the search engines and suggestions providers */
+    GtkWidget *text = nb_label (_(items[i]), 16, "nb-list-text", TRUE);
     gtk_widget_add_css_class (box, "nb-list-row");
     nb_mark_set_active (NB_MARK (mark), i == selected);
     gtk_widget_set_valign (mark, GTK_ALIGN_CENTER);
@@ -337,7 +339,7 @@ nb_list_dialog_present (GtkWidget *parent, const char *title, const char *const 
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), rows);
   gtk_widget_set_vexpand (scroll, TRUE);
   nb_dialog_set_content (d, scroll);
-  nb_dialog_add_button (d, "Cancel", NB_RESPONSE_CANCEL);
+  nb_dialog_add_button (d, _("Cancel"), NB_RESPONSE_CANCEL);
   nb_dialog_present (d, parent);
   return d;
 }
@@ -848,7 +850,8 @@ nb_mark_new (NbMarkKind kind)
 
   self->kind = kind;
   gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL,
-                                  kind == NB_MARK_RADIO ? "radio" : "check", -1);
+                                  /* TRANSLATORS: a screen reader's name for a radio mark and a check mark */
+                                  kind == NB_MARK_RADIO ? _("radio") : _("check"), -1);
   return GTK_WIDGET (self);
 }
 
@@ -950,7 +953,7 @@ nb_toolbar_new (const char *title, double title_size, GCallback up, gpointer dat
   gtk_widget_set_size_request (up_button, 56, 56);
   gtk_widget_set_valign (up_button, GTK_ALIGN_CENTER);
   /* the shell's back gesture clicks the showing button named "Back" */
-  gtk_accessible_update_property (GTK_ACCESSIBLE (up_button), GTK_ACCESSIBLE_PROPERTY_LABEL, "Back", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (up_button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Back"), -1);
   g_signal_connect_swapped (up_button, "clicked", up, data);
   gtk_box_append (GTK_BOX (bar), up_button);
   label = nb_label (title, title_size > 0 ? title_size : 22, "nb-toolbar-title", TRUE);

@@ -1,0 +1,102 @@
+# Italian translations of vibeos-compass.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-compass\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Italian\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: data/vibeos.Compass.desktop.in main.c
+msgid "Compass"
+msgstr "Bussola"
+
+#: data/vibeos.Compass.desktop.in
+msgid "Which way you are facing"
+msgstr "La direzione verso cui sei rivolto"
+
+#. GClueAccuracyLevel: exact (the dial prints tenths of a second)
+#. the dial's radius on an upright phone, which the ticks and pointer are drawn for
+#. TRANSLATORS: the compass points, as the dial and the heading ("245°SW") show them
+#: main.c
+msgctxt "direction"
+msgid "N"
+msgstr "N"
+
+#: main.c
+msgctxt "direction"
+msgid "NE"
+msgstr "NE"
+
+#: main.c
+msgctxt "direction"
+msgid "E"
+msgstr "E"
+
+#: main.c
+msgctxt "direction"
+msgid "SE"
+msgstr "SE"
+
+#: main.c
+msgctxt "direction"
+msgid "S"
+msgstr "S"
+
+#: main.c
+msgctxt "direction"
+msgid "SW"
+msgstr "SO"
+
+#: main.c
+msgctxt "direction"
+msgid "W"
+msgstr "O"
+
+#: main.c
+msgctxt "direction"
+msgid "NW"
+msgstr "NO"
+
+#: main.c
+msgid "The sensor service is not running, so the compass cannot be read."
+msgstr "Il servizio dei sensori non è in esecuzione, quindi non è possibile leggere la bussola."
+
+#: main.c
+msgid "The compass cannot be read right now."
+msgstr "Al momento non è possibile leggere la bussola."
+
+#: main.c
+msgid ""
+"Hold the device flat, away from metal. Move it in a figure 8 to calibrate."
+msgstr "Tieni il dispositivo in piano, lontano dal metallo. Muovilo descrivendo un 8 per calibrarlo."
+
+#: main.c
+msgid "This device has no compass."
+msgstr "Questo dispositivo non ha una bussola."
+
+#: main.c
+msgid "Location unavailable"
+msgstr "Posizione non disponibile"
+
+# android: Framework permgrouplab_location (several translations, short)
+#: main.c
+msgid "Location"
+msgstr "Posizione"
+
+#: main.c
+msgid "Locating…"
+msgstr "Localizzazione…"
+
+# android: Framework action_menu_overflow_description (several translations, short)
+#: main.c
+msgid "More options"
+msgstr "Altre opzioni"

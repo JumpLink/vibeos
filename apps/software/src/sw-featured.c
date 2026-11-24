@@ -18,6 +18,7 @@
 #include "sw-widgets.h"
 #include "sw-window.h"
 
+#include <glib/gi18n.h>
 #include <spongy-gtk.h>
 
 #define COLUMN_W 296
@@ -66,7 +67,7 @@ static GtkWidget *
 section_header (JsonObject *section)
 {
   gboolean more = sw_json_bool (section, "has_more", FALSE);
-  GtkWidget *header = sw_section_header_new (sw_json_string (section, "title"), NULL, more ? "See all" : NULL,
+  GtkWidget *header = sw_section_header_new (sw_json_string (section, "title"), NULL, more ? _("See all") : NULL,
                                              G_CALLBACK (on_see_all), NULL);
   /* the title is the header's first child */
   GtkWidget *title = gtk_widget_get_first_child (header);
@@ -256,8 +257,8 @@ categories_row (Home *home, JsonArray *list)
       n++;
   if (!n)
     return NULL;
-  summary = g_strdup_printf (n == 1 ? "%u category" : "%u categories", n);
-  row = vibeos_list_row_new ("Categories", summary);
+  summary = g_strdup_printf (g_dngettext (NULL, "%u category", "%u categories", n), n);
+  row = vibeos_list_row_new (_("Categories"), summary);
   vibeos_list_row_set_icon_circle (VIBEOS_LIST_ROW (row), "sw-fa-shapes-symbolic", &fill, &glyph);
   vibeos_list_row_set_chevron (VIBEOS_LIST_ROW (row));
   g_signal_connect (row, "clicked", G_CALLBACK (on_categories), home);
@@ -301,8 +302,8 @@ show (Home *home, JsonObject *data)
     }
   if (!gtk_widget_get_first_child (home->column))
     {
-      sw_status_empty (SW_STATUS (home->status), "sw-apps-symbolic", "Nothing here yet. Come back later.", "Retry",
-                       (SwRetryFunc) load, home);
+      sw_status_empty (SW_STATUS (home->status), "sw-apps-symbolic", _("Nothing here yet. Come back later."),
+                       _("Retry"), (SwRetryFunc) load, home);
       return;
     }
   sw_status_show (SW_STATUS (home->status));
@@ -396,14 +397,14 @@ sw_home_new (SwHomeKind kind)
 {
   Home *home = g_new0 (Home, 1);
   GtkWidget *bar;
-  static const char *const hints[] = { "Search apps and games", "Search apps", "Search games" };
+  static const char *const hints[] = { N_("Search apps and games"), N_("Search apps"), N_("Search games") };
 
   home->kind = kind;
   home->home = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (home->home, "sw-home");
   g_object_set_data_full (G_OBJECT (home->home), "sw-home", home, home_free);
 
-  bar = vibeos_search_bar_new (hints[kind]);
+  bar = vibeos_search_bar_new (_(hints[kind]));
   gtk_widget_add_css_class (bar, "sw-search-bar");
   g_signal_connect (bar, "activated", G_CALLBACK (on_search), home);
   gtk_box_append (GTK_BOX (home->home), bar);
@@ -417,7 +418,7 @@ sw_home_new (SwHomeKind kind)
   gtk_stack_add_named (GTK_STACK (home->pages), home->status, "recommended");
   if (kind != SW_HOME_FEATURED)
     {
-      home->tabs = sw_tabs_new ("Recommended", "Popular", NULL);
+      home->tabs = sw_tabs_new (_("Recommended"), _("Popular"), NULL);
       g_signal_connect (home->tabs, "changed", G_CALLBACK (on_subtab), home);
       gtk_box_append (GTK_BOX (home->home), home->tabs);
       g_object_set_data (G_OBJECT (home->home), "sw-tabs", home->tabs);

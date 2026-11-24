@@ -191,6 +191,19 @@ bar_back (VibeosTopBar *bar, gpointer data)
     gtk_window_close (GTK_WINDOW (root));
 }
 
+/* the vertical adjustment of a scroller ns_scroller_new made */
+static GtkAdjustment *
+scroller_adjustment (GtkWidget *sc)
+{
+#ifdef HAVE_SPONGY
+  return spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (sc));
+#else
+  return gtk_scrolled_window_get_vadjustment (GTK_SCROLLED_WINDOW (sc));
+#endif
+}
+
+/* A page that scrolls has Android Settings' collapsing title: large at the top of the content, then, scrolled under
+ * the bar, the bar's own. One that does not (a PIN's keypad) keeps the small title. */
 static NsPage *
 page_with (const char *title, GtkWidget *child, gboolean scroll)
 {
@@ -201,7 +214,15 @@ page_with (const char *title, GtkWidget *child, gboolean scroll)
   vibeos_top_bar_set_back (VIBEOS_TOP_BAR (bar), TRUE);
   g_signal_connect (bar, "back", G_CALLBACK (bar_back), NULL);
   gtk_box_append (GTK_BOX (page), bar);
-  GtkWidget *sc = scroll ? ns_scroller_new (child) : child;
+  GtkWidget *sc = child;
+  if (scroll) {
+    GtkWidget *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+    gtk_box_append (GTK_BOX (content), vibeos_top_bar_get_large_title (VIBEOS_TOP_BAR (bar)));
+    gtk_box_append (GTK_BOX (content), child);
+    sc = ns_scroller_new (content);
+    vibeos_top_bar_set_large (VIBEOS_TOP_BAR (bar), TRUE);
+    vibeos_top_bar_set_scroll (VIBEOS_TOP_BAR (bar), scroller_adjustment (sc));
+  }
   gtk_widget_set_vexpand (sc, TRUE);
   gtk_box_append (GTK_BOX (page), sc);
   g_object_set_data (G_OBJECT (page), "ns-is-page", GINT_TO_POINTER (1));
@@ -394,7 +415,7 @@ static void
 ns_spinner_init (NsSpinner *self)
 {
   gtk_widget_set_valign (GTK_WIDGET (self), GTK_ALIGN_CENTER);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL, "Loading", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Loading"), -1);
 }
 
 GtkWidget *
@@ -536,8 +557,8 @@ ns_row_spin (GtkWidget *group, const char *title, GSettings *s, const char *key,
   GtkWidget *h = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   sp->minus = vibeos_icon_button_new ("list-remove-symbolic");
   sp->plus = vibeos_icon_button_new ("list-add-symbolic");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (sp->minus), GTK_ACCESSIBLE_PROPERTY_LABEL, "Less", -1);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (sp->plus), GTK_ACCESSIBLE_PROPERTY_LABEL, "More", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (sp->minus), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Less"), -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (sp->plus), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More"), -1);
   sp->value = gtk_label_new ("");
   gtk_label_set_width_chars (GTK_LABEL (sp->value), 2);
   gtk_widget_add_css_class (sp->value, "vibeos-list-row-title");
@@ -595,8 +616,17 @@ typedef struct {
   GSettings          *s;
   char               *key;
   const char *const  *values, *const *labels;
+  gboolean            translate;       /* the labels are N_() strings */
   GtkWidget          *row;
 } Choice;
+
+/* the label shown for the choice @i; an empty label stays empty, since gettext's translation of "" is the catalog's
+ * header */
+static const char *
+choice_shown (Choice *c, guint i)
+{
+  return c->translate && *c->labels[i] ? _(c->labels[i]) : c->labels[i];
+}
 
 static const char *
 choice_label (Choice *c)
@@ -604,7 +634,7 @@ choice_label (Choice *c)
   g_autofree char *v = g_settings_get_string (c->s, c->key);
   for (guint i = 0; c->values[i]; i++)
     if (!g_strcmp0 (c->values[i], v))
-      return c->labels[i];
+      return choice_shown (c, i);
   return "";
 }
 
@@ -629,7 +659,7 @@ choice_open (GtkWidget *row, gpointer data)
   GtkWidget *g = ns_group (content, NULL);
   g_autofree char *v = g_settings_get_string (c->s, c->key);
   for (guint i = 0; c->values[i]; i++) {
-    GtkWidget *r = mark_row (g, c->labels[i], !g_strcmp0 (v, c->values[i]));
+    GtkWidget *r = mark_row (g, choice_shown (c, i), !g_strcmp0 (v, c->values[i]));
     g_object_set_data (G_OBJECT (r), "ns-choice", c);
     ns_row_on_activate (r, choice_picked, (gpointer) c->values[i]);
   }
@@ -653,15 +683,16 @@ choice_changed (GSettings *s, const char *key, GtkWidget *row)
     ns_row_set_subtitle (row, choice_label (c));
 }
 
-GtkWidget *
-ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *key,
-               const char *const *values, const char *const *labels)
+static GtkWidget *
+choice_new (GtkWidget *group, const char *title, GSettings *s, const char *key, const char *const *values,
+            const char *const *labels, gboolean translate)
 {
   Choice *c = g_new0 (Choice, 1);
   c->s = s;
   c->key = g_strdup (key);
   c->values = values;
   c->labels = labels;
+  c->translate = translate;
   c->row = ns_row (group, NULL, title, NULL);
   g_object_set_data_full (G_OBJECT (c->row), "ns-title", g_strdup (title), g_free);
   ns_row_set_subtitle (c->row, choice_label (c));
@@ -670,6 +701,20 @@ ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *ke
   g_autofree char *signal = g_strconcat ("changed::", key, NULL);
   g_signal_connect_object (s, signal, G_CALLBACK (choice_changed), c->row, 0);
   return c->row;
+}
+
+GtkWidget *
+ns_row_choice (GtkWidget *group, const char *title, GSettings *s, const char *key,
+               const char *const *values, const char *const *labels)
+{
+  return choice_new (group, title, s, key, values, labels, TRUE);
+}
+
+GtkWidget *
+ns_row_choice_names (GtkWidget *group, const char *title, GSettings *s, const char *key,
+                     const char *const *values, const char *const *labels)
+{
+  return choice_new (group, title, s, key, values, labels, FALSE);
 }
 
 GtkWidget *
@@ -820,8 +865,10 @@ ns_row_steps (GtkWidget *group, const char *title, guint n, guint selected, GtkW
   GtkWidget *h = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 4);
   GtkWidget *minus = vibeos_icon_button_new ("list-remove-symbolic");
   GtkWidget *plus = vibeos_icon_button_new ("list-add-symbolic");
-  g_autofree char *less = g_strdup_printf ("%s smaller", title);
-  g_autofree char *more = g_strdup_printf ("%s larger", title);
+  /* TRANSLATORS: the − and + buttons' names for a screen reader; %s is the setting ("Font size") */
+  g_autofree char *less = g_strdup_printf (_("%s smaller"), title);
+  /* TRANSLATORS: %s is the setting ("Font size") */
+  g_autofree char *more = g_strdup_printf (_("%s larger"), title);
   gtk_accessible_update_property (GTK_ACCESSIBLE (minus), GTK_ACCESSIBLE_PROPERTY_LABEL, less, -1);
   gtk_accessible_update_property (GTK_ACCESSIBLE (plus), GTK_ACCESSIBLE_PROPERTY_LABEL, more, -1);
   GtkWidget *sc = gtk_scale_new_with_range (GTK_ORIENTATION_HORIZONTAL, 0, MAX (n, 2) - 1, 1);
@@ -924,6 +971,20 @@ ns_row_flag (GtkWidget *group, const char *title, const char *subtitle, GSetting
 
 /* ---- a choice by position ---- */
 
+/* a copy of `labels`, translated when they are a static list of N_() strings (NC_() ones in @context); an empty label
+ * stays empty, since gettext's translation of "" is the catalog's header */
+static char **
+labels_copy (const char *const *labels, gboolean translate, const char *context)
+{
+  GStrvBuilder *b = g_strv_builder_new ();
+  for (guint i = 0; labels && labels[i]; i++)
+    g_strv_builder_add (b, !translate || !*labels[i] ? labels[i]
+                           : context ? g_dpgettext2 (NULL, context, labels[i]) : _(labels[i]));
+  char **out = g_strv_builder_end (b);
+  g_strv_builder_unref (b);
+  return out;
+}
+
 typedef struct {
   char     **labels;
   char     **summaries;         /* or NULL: the labels */
@@ -969,12 +1030,12 @@ pick_free (Pick *p)
   g_free (p);
 }
 
-GtkWidget *
-ns_row_pick (GtkWidget *group, const char *title, const char *const *labels, guint selected, NsPicked picked,
-             gpointer data)
+static GtkWidget *
+pick_new (GtkWidget *group, const char *title, const char *const *labels, gboolean translate, const char *context,
+          guint selected, NsPicked picked, gpointer data)
 {
   Pick *p = g_new0 (Pick, 1);
-  p->labels = g_strdupv ((char **) labels);
+  p->labels = labels_copy (labels, translate, context);
   p->picked = picked;
   p->data = data;
   p->row = ns_row (group, NULL, title, NULL);
@@ -984,6 +1045,27 @@ ns_row_pick (GtkWidget *group, const char *title, const char *const *labels, gui
   ns_row_on_activate (p->row, pick_open, p);
   g_object_set_data_full (G_OBJECT (p->row), "ns-own", p, (GDestroyNotify) pick_free);
   return p->row;
+}
+
+GtkWidget *
+ns_row_pick (GtkWidget *group, const char *title, const char *const *labels, guint selected, NsPicked picked,
+             gpointer data)
+{
+  return pick_new (group, title, labels, TRUE, NULL, selected, picked, data);
+}
+
+GtkWidget *
+ns_row_pick_in (GtkWidget *group, const char *title, const char *context, const char *const *labels, guint selected,
+                NsPicked picked, gpointer data)
+{
+  return pick_new (group, title, labels, TRUE, context, selected, picked, data);
+}
+
+GtkWidget *
+ns_row_pick_names (GtkWidget *group, const char *title, const char *const *labels, guint selected, NsPicked picked,
+                   gpointer data)
+{
+  return pick_new (group, title, labels, FALSE, NULL, selected, picked, data);
 }
 
 void
@@ -1002,7 +1084,7 @@ ns_row_pick_set_summaries (GtkWidget *row, const char *const *summaries)
   Pick *p = g_object_get_data (G_OBJECT (row), "ns-pick");
 
   g_strfreev (p->summaries);
-  p->summaries = g_strdupv ((char **) summaries);
+  p->summaries = labels_copy (summaries, TRUE, NULL);
   ns_row_pick_select (row, p->selected);
 }
 
@@ -1033,7 +1115,7 @@ static void
 entry_show (GSettings *s, const char *key, Entry *e)
 {
   g_autofree char *t = entry_text (e);
-  ns_row_set_subtitle (e->row, *t ? t : "Not set");
+  ns_row_set_subtitle (e->row, *t ? t : _("Not set"));
 }
 
 static void
@@ -1053,7 +1135,7 @@ entry_open (GtkWidget *row, gpointer data)
 {
   Entry *e = data;
   g_autofree char *t = entry_text (e);
-  ns_ask (row, g_object_get_data (G_OBJECT (row), "ns-title"), NULL, t, FALSE, "Save", entry_done, e);
+  ns_ask (row, g_object_get_data (G_OBJECT (row), "ns-title"), NULL, t, FALSE, _("Save"), entry_done, e);
 }
 
 static void
@@ -1092,7 +1174,7 @@ typedef struct {
 static void
 value_show (Value *v)
 {
-  ns_row_set_subtitle (v->row, !v->value || !*v->value ? "Not set" : v->secret ? "••••••••" : v->value);
+  ns_row_set_subtitle (v->row, !v->value || !*v->value ? _("Not set") : v->secret ? "••••••••" : v->value);
 }
 
 static void
@@ -1112,7 +1194,7 @@ static void
 value_open (GtkWidget *row, gpointer data)
 {
   Value *v = data;
-  ns_ask (row, v->title, NULL, v->value, v->secret, "Save", value_done, v);
+  ns_ask (row, v->title, NULL, v->value, v->secret, _("Save"), value_done, v);
 }
 
 static void
@@ -1291,7 +1373,7 @@ alert (GtkWidget *parent, const char *heading, const char *body, const char *ok,
     vibeos_dialog_set_message (d, body);
   if (a->entry)
     vibeos_dialog_set_content (d, a->entry);
-  vibeos_dialog_add_button (d, "Cancel", VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (d, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
   vibeos_dialog_add_button (d, ok, VIBEOS_RESPONSE_OK);
   g_signal_connect_data (d, "response", G_CALLBACK (ask_response), a, (GClosureNotify) (void (*) (void)) ask_free, 0);
   if (ld && vibeos_list_detail_is_split (ld) && parent

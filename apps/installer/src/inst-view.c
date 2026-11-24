@@ -118,7 +118,13 @@ name_list (GPtrArray *names, guint most)
       g_string_append (text, g_ptr_array_index (names, i));
     }
   if (shown < names->len)
-    g_string_append_printf (text, _(" and %u more"), names->len - shown);
+    {
+      guint more = names->len - shown;
+      g_autofree char *list = g_string_free (text, FALSE);
+
+      /* TRANSLATORS: %s is a list of names ("libfoo, libbar"), %u how many more there are */
+      return g_strdup_printf (g_dngettext (NULL, "%s and %u more", "%s and %u more", more), list, more);
+    }
   return g_string_free (text, FALSE);
 }
 
@@ -423,26 +429,24 @@ facts (InstView *self)
   else if (!sheet || plan->change == INST_CHANGE_NEW)
     {
       g_autofree char *installed = plan->installed_size ? inst_format_size (plan->installed_size) : NULL;
-      g_autofree char *download = NULL, *text = NULL;
+      gboolean is_file = kind == INST_JOB_FILE && plan->file_size;
+      g_autofree char *file = is_file ? inst_format_size (plan->file_size) : NULL;
+      g_autofree char *download = !is_file && plan->download_size ? inst_format_size (plan->download_size) : NULL;
+      g_autofree char *text = NULL;
 
-      if (kind == INST_JOB_FILE && plan->file_size)
-        {
-          g_autofree char *size = inst_format_size (plan->file_size);
-
-          download = g_strdup_printf (_("%s file"), size);
-        }
-      else if (plan->download_size)
-        {
-          g_autofree char *size = inst_format_size (plan->download_size);
-
-          download = g_strdup_printf (_("%s download"), size);
-        }
-      if (download && installed)
-        text = g_strdup_printf (_("%s · %s installed"), download, installed);
+      /* each a whole sentence: the package file's size or what it downloads, the space it takes once installed */
+      if (file && installed)
+        /* TRANSLATORS: a package file's size, then the space it takes once installed: "4 MB file · 12 MB installed" */
+        text = g_strdup_printf (_("%s file · %s installed"), file, installed);
+      else if (download && installed)
+        /* TRANSLATORS: what installing downloads, then the space it takes: "4 MB download · 12 MB installed" */
+        text = g_strdup_printf (_("%s download · %s installed"), download, installed);
       else if (installed)
         text = g_strdup_printf (_("%s installed"), installed);
-      else
-        text = g_steal_pointer (&download);
+      else if (file)
+        text = g_strdup_printf (_("%s file"), file);
+      else if (download)
+        text = g_strdup_printf (_("%s download"), download);
       if (text)
         {
           fact (list, _("Size"), text);
@@ -765,6 +769,14 @@ inst_view_init (InstView *self)
                                   GTK_ORIENTATION_VERTICAL);
 }
 
+GtkAdjustment *
+inst_view_put_title (InstView *self, GtkWidget *title)
+{
+  g_return_val_if_fail (self->mode == INST_VIEW_PAGE, NULL);
+  gtk_box_prepend (GTK_BOX (gtk_widget_get_parent (self->content)), title);
+  return spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (self->scroll));
+}
+
 GtkWidget *
 inst_view_new (InstJob *job, InstViewMode mode)
 {
@@ -779,8 +791,12 @@ inst_view_new (InstJob *job, InstViewMode mode)
   gtk_widget_add_css_class (self->actions, "inst-actions");
   if (mode == INST_VIEW_PAGE)
     {
+      GtkWidget *column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+
+      /* the content in a column of its own, which a page's large title can go at the top of (inst_view_put_title) */
+      gtk_box_append (GTK_BOX (column), self->content);
       self->scroll = spongy_scroll_view_new ();
-      spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroll), self->content);
+      spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroll), column);
       gtk_widget_set_vexpand (self->scroll, TRUE);
       gtk_widget_set_parent (self->scroll, GTK_WIDGET (self));
       /* the bar under the content, full width, with the buttons at its end */

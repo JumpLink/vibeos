@@ -2,6 +2,7 @@
 #include "city-picker.h"
 #include "cities.h"
 #include "clock-bar.h"
+#include "clock-format.h"
 #include "clock-popup-menu.h"
 
 #include <glib/gi18n.h>
@@ -67,7 +68,7 @@ show_time (Row *row)
   if (vibeos_clock_uses_24h ())
     text = g_strdup_printf ("%02d:%02d", hour, minute);
   else
-    text = g_strdup_printf ("%d:%02d %s", hour % 12 ? hour % 12 : 12, minute, hour < 12 ? "AM" : "PM");
+    text = g_strdup_printf ("%d:%02d %s", hour % 12 ? hour % 12 : 12, minute, clock_day_period (hour));
   gtk_label_set_text (GTK_LABEL (row->time), text);
 }
 
@@ -110,7 +111,7 @@ make_row (CityPicker *self, City *city)
 {
   Row *row = g_new0 (Row, 1);
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *name = gtk_label_new (city->data->name);
+  GtkWidget *name = gtk_label_new (city->name);
   GtkWidget *tick = gtk_image_new_from_icon_name ("clock-check-symbolic");
 
   row->city = city;
@@ -165,7 +166,7 @@ make_row (CityPicker *self, City *city)
   row->widget = g_object_ref_sink (vibeos_pressable_new (box));
   gtk_widget_set_size_request (row->widget, -1, ROW_HEIGHT);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row->widget), VIBEOS_RIPPLE_BOUNDED, 0);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (row->widget), GTK_ACCESSIBLE_PROPERTY_LABEL, city->data->name,
+  gtk_accessible_update_property (GTK_ACCESSIBLE (row->widget), GTK_ACCESSIBLE_PROPERTY_LABEL, city->name,
                                   -1);
   g_object_set_data (G_OBJECT (row->widget), "city-row", row);
   g_signal_connect (row->widget, "clicked", G_CALLBACK (on_row), self);
@@ -203,7 +204,7 @@ show_index (Row *row, CitySort sort, gboolean shown)
       return;
     }
   if (sort == CITY_SORT_NAME)
-    text = g_strdup (row->city->data->index);
+    text = g_strdup (row->city->index);
   else
     text = clock_zone_gmt_label (row->city->tz, g_get_real_time () / G_USEC_PER_SEC);
   gtk_label_set_text (GTK_LABEL (row->index), text);

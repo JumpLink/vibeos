@@ -7,3 +7,4 @@ usr/share/dbus-1/services/vibeos.Clock.service
 usr/share/dbus-1/services/vibeos.Clock.Alarms.service
 usr/share/glib-2.0/schemas/vibeos.Clock.gschema.xml
 usr/share/icons/hicolor/scalable/apps/vibeos.Clock.svg
+usr/share/locale/*/LC_MESSAGES/vibeos-clock.mo

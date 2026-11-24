@@ -5,6 +5,7 @@
 
 #include <appstream.h>
 #include <gio/gdesktopappinfo.h>
+#include <glib/gi18n.h>
 #include <string.h>
 
 void
@@ -33,9 +34,9 @@ demo_info (const char *package)
     return NULL;
   info = g_new0 (InstAppInfo, 1);
   info->name = g_strdup (name);
-  info->summary = g_strdup ("A sample app for trying App Installer");
-  info->description = g_strdup ("This package is not real: App Installer's demo shows it to try its screens.\n\n"
-                                "Nothing is installed or removed while the demo runs.");
+  info->summary = g_strdup (_("A sample app for trying App Installer"));
+  info->description = g_strdup (_("This package is not real: App Installer's demo shows it to try its screens.\n\n"
+                                  "Nothing is installed or removed while the demo runs."));
   info->homepage = g_strdup ("https://vibeos.top");
   if (icon)
     info->icon = g_themed_icon_new (icon);

@@ -9,6 +9,7 @@
 #include <math.h>
 
 #include "vibeos.h"
+#include "vibeos-locale.h"
 
 #define PAGING_SLOP_DP        16          /* 2 × the touch slop */
 #define TOUCH_SLOP_DP         8
@@ -159,8 +160,8 @@ void
 home_clock_tick (void)
 {
   g_autoptr (GDateTime) now = g_date_time_new_now_local ();
-  g_autofree char *time = g_date_time_format (now, "%H:%M");
-  g_autofree char *date = g_date_time_format (now, "%a, %b %-d");
+  g_autofree char *time = vibeos_format_clock (now);
+  g_autofree char *date = vibeos_format_date (now, "EEEMMMd");
   text_layout_free (H.time);
   text_layout_free (H.date);
   H.time = text_layout (H.time_font, time, 0, 1, TEXT_CENTER);

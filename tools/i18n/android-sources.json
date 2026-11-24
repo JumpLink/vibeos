@@ -1,0 +1,129 @@
+{
+  "languages": [
+    "de",
+    "es",
+    "fr",
+    "it",
+    "nl",
+    "ru"
+  ],
+  "sources": [
+    {
+      "name": "Settings",
+      "repo": "LineageOS/android_packages_apps_Settings",
+      "branch": "lineage-24.0",
+      "commit": "880d6688528d0534075501a1bcc31750765ca2a8"
+    },
+    {
+      "name": "Dialer",
+      "repo": "LineageOS/android_packages_apps_Dialer",
+      "branch": "lineage-24.0",
+      "commit": "0936b4ffb99d19c71df605038daa0e7107a883f3"
+    },
+    {
+      "name": "Messaging",
+      "repo": "LineageOS/android_packages_apps_Messaging",
+      "branch": "lineage-24.0",
+      "commit": "fdd09215cc9fde3d3d380c92797a9ab6895cc29f"
+    },
+    {
+      "name": "Contacts",
+      "repo": "LineageOS/android_packages_apps_Contacts",
+      "branch": "lineage-24.0",
+      "commit": "117939bb307da6953448ee26d08f65a2526862c9"
+    },
+    {
+      "name": "DeskClock",
+      "repo": "LineageOS/android_packages_apps_DeskClock",
+      "branch": "lineage-24.0",
+      "commit": "dc237b5b6dde798688be22f3b7f69906b751a37b"
+    },
+    {
+      "name": "Etar",
+      "repo": "LineageOS/android_packages_apps_Etar",
+      "branch": "lineage-24.0",
+      "commit": "8173ec802ed046d1670ec03962e686e393a85335"
+    },
+    {
+      "name": "Aperture",
+      "repo": "LineageOS/android_packages_apps_Aperture",
+      "branch": "lineage-24.0",
+      "commit": "ffb5dc66806182415dae582adee639f4398a313c"
+    },
+    {
+      "name": "Jelly",
+      "repo": "LineageOS/android_packages_apps_Jelly",
+      "branch": "lineage-24.0",
+      "commit": "64db9046de744f2abf65c9f4f02702dc42e25355"
+    },
+    {
+      "name": "ExactCalculator",
+      "repo": "LineageOS/android_packages_apps_ExactCalculator",
+      "branch": "lineage-24.0",
+      "commit": "f76cfbe2428de5744c0e0c4b74fb77708fb15b95"
+    },
+    {
+      "name": "LatinIME",
+      "repo": "LineageOS/android_packages_inputmethods_LatinIME",
+      "branch": "lineage-24.0",
+      "commit": "270a585939a3b5e817fcaeefc383c6b2a550234d"
+    },
+    {
+      "name": "Launcher3",
+      "repo": "LineageOS/android_packages_apps_Launcher3",
+      "branch": "lineage-24.0",
+      "commit": "3e0e4f1955992788768547ae2c4115537bc957a6"
+    },
+    {
+      "name": "DocumentsUI",
+      "repo": "LineageOS/android_packages_apps_DocumentsUI",
+      "branch": "lineage-24.0",
+      "commit": "b7e7415db70ceb7d51e539dab36cb59e716698ca"
+    },
+    {
+      "name": "Framework",
+      "repo": "LineageOS/android_frameworks_base",
+      "branch": "lineage-24.0",
+      "commit": "d0a4045e5cac94152a46414201e21127eb1a5295",
+      "res": [
+        "core/res/res"
+      ]
+    },
+    {
+      "name": "SystemUI",
+      "repo": "LineageOS/android_frameworks_base",
+      "branch": "lineage-24.0",
+      "commit": "d0a4045e5cac94152a46414201e21127eb1a5295",
+      "res": [
+        "packages/SystemUI/res"
+      ]
+    },
+    {
+      "name": "Keyguard",
+      "repo": "LineageOS/android_frameworks_base",
+      "branch": "lineage-24.0",
+      "commit": "d0a4045e5cac94152a46414201e21127eb1a5295",
+      "res": [
+        "packages/SystemUI/res-keyguard"
+      ]
+    },
+    {
+      "name": "SettingsLib",
+      "repo": "LineageOS/android_frameworks_base",
+      "branch": "lineage-24.0",
+      "commit": "d0a4045e5cac94152a46414201e21127eb1a5295",
+      "res": [
+        "packages/SettingsLib/res"
+      ]
+    },
+    {
+      "name": "PackageInstaller",
+      "repo": "LineageOS/android_frameworks_base",
+      "branch": "lineage-24.0",
+      "commit": "d0a4045e5cac94152a46414201e21127eb1a5295",
+      "res": [
+        "packages/PackageInstaller/res"
+      ]
+    }
+  ]
+}

@@ -59,8 +59,8 @@ calc_history_date_string (gint64 time_ms, gint64 now_ms)
     return g_strdup_printf (g_dngettext (NULL, "In %d day", "In %d days", -days), -days);
   }
   if (g_date_time_get_year (time) != g_date_time_get_year (now))
-    return g_date_time_format (time, "%b %-d, %Y");
-  return g_date_time_format (time, "%b %-d");
+    return vibeos_format_date (time, "yMMMd");
+  return vibeos_format_date (time, "MMMd");
 }
 
 /* ------------------------------------------------------------------------------------------------------------ */

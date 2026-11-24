@@ -180,7 +180,8 @@ first_chars (const char *text, glong chars)
 static void
 update_notification (Service *self, gboolean alert)
 {
-  static const char *actions[] = { "default", "Open", NULL };
+  /* the notification's button: its action, then its label */
+  const char *actions[] = { "default", _("Open"), NULL };
   g_autoptr(GPtrArray) unseen = sms_store_list_unseen (self->store);
   g_autoptr(GArray) conversations = g_array_new (FALSE, FALSE, sizeof (gint64));
   g_autoptr(GString) body = g_string_new (NULL);
@@ -232,7 +233,8 @@ update_notification (Service *self, gboolean alert)
     }
   else
     {
-      title = g_strdup_printf (ngettext ("New message", "%d new messages", unseen->len), unseen->len);
+      /* messages in two or more conversations */
+      title = g_strdup_printf (ngettext ("%d new message", "%d new messages", unseen->len), unseen->len);
       for (guint i = 0; i < conversations->len; i++)
         {
           gint64 id = g_array_index (conversations, gint64, i);
@@ -259,7 +261,8 @@ update_notification (Service *self, gboolean alert)
 static void
 update_failures (Service *self, gboolean alert)
 {
-  static const char *actions[] = { "default", "Open", NULL };
+  /* the notification's button: its action, then its label */
+  const char *actions[] = { "default", _("Open"), NULL };
   guint messages = g_hash_table_size (self->failed);
   g_autoptr(GHashTable) conversations = g_hash_table_new (g_int64_hash, g_int64_equal);
   g_autofree char *title = NULL, *body = NULL;
@@ -290,12 +293,20 @@ update_failures (Service *self, gboolean alert)
           body = one ? conversation_name (self, one) : g_strdup ("");
         }
       else
-        body = g_strdup_printf (_("%d messages in one conversation"), messages);
+        /* TRANSLATORS: %d is the number of messages not sent (two or more), all in one conversation; Android's
+         * notification_send_failures */
+        body = g_strdup_printf (g_dngettext (NULL, "%d message in one conversation", "%d messages in one conversation",
+                                             messages), messages);
     }
   else
     {
+      guint n = g_hash_table_size (conversations);
+      /* TRANSLATORS: the messages not sent, as "%s" in the next string: "5 messages" */
+      g_autofree char *count = g_strdup_printf (g_dngettext (NULL, "%d message", "%d messages", messages), messages);
+
       title = g_strdup (_("Some messages not sent in Messaging"));
-      body = g_strdup_printf (_("%d messages in %d conversations"), messages, g_hash_table_size (conversations));
+      /* TRANSLATORS: %s is the messages not sent ("5 messages"), %u the conversations they are in (two or more) */
+      body = g_strdup_printf (g_dngettext (NULL, "%s in %u conversation", "%s in %u conversations", n), count, n);
     }
   self->failure_notification = notifier_notify (self->notifier, self->failure_notification, title, body, actions,
                                                 NOTIFIER_URGENCY_NORMAL,

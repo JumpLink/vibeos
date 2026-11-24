@@ -7,6 +7,7 @@
 #include "sw-updates.h"
 #include "sw-window.h"
 
+#include <glib/gi18n.h>
 #include <math.h>
 #include <spongy-gtk.h>
 #include <string.h>
@@ -395,7 +396,7 @@ sw_status_error (SwStatus *self, const SwApiError *error, SwRetryFunc retry, gpo
   gboolean offline = error && error->kind == SW_API_ERROR_NETWORK;
 
   show_message (self, offline ? "sw-cloud-off-symbolic" : "sw-warning-symbolic",
-                offline ? "No connection" : "Something went wrong", text, "Retry", retry, data);
+                offline ? _("No connection") : _("Something went wrong"), text, _("Retry"), retry, data);
 }
 
 void
@@ -472,11 +473,11 @@ sw_app_state_action (SwAppState state)
   switch (state)
     {
     case SW_APP_INSTALLED:
-      return "Open";
+      return _("Open");
     case SW_APP_UPDATABLE:
-      return "Update";
+      return _("Update");
     default:
-      return "Install";
+      return _("Install");
     }
 }
 
@@ -492,7 +493,8 @@ on_launch_found (GAppInfo *info, gpointer data)
 
   if (!info || !sw_installer_launch (info, launch->from))
     {
-      g_autofree char *text = g_strdup_printf ("%s has no window of its own to open.", launch->name);
+      /* TRANSLATORS: %s is the app's name */
+      g_autofree char *text = g_strdup_printf (_("%s has no window of its own to open."), launch->name);
 
       sw_window_toast (launch->from, text);
     }
@@ -595,7 +597,7 @@ sw_install_button_new (JsonObject *app)
   gtk_widget_set_valign (ib->stack, GTK_ALIGN_CENTER);
   gtk_widget_set_halign (ib->stack, GTK_ALIGN_END);
   gtk_widget_add_css_class (ib->stack, "sw-install");
-  ib->button = sw_button_new ("Install", SW_BUTTON_TONAL);
+  ib->button = sw_button_new (_("Install"), SW_BUTTON_TONAL);
   gtk_widget_add_css_class (ib->button, "small");
   /* the action is read whole at any font size: the app's name beside it gives way instead */
   gtk_label_set_ellipsize (GTK_LABEL (vibeos_pressable_get_child (VIBEOS_PRESSABLE (ib->button))),
@@ -1006,7 +1008,7 @@ sw_stars_new (double rating, int size, int gap, gboolean tappable)
 
       g_signal_connect (click, "pressed", G_CALLBACK (on_stars_pressed), self);
       gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
-      gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL, "Your rating", -1);
+      gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Your rating"), -1);
       /* a press here is the stars', not a row's around them */
       g_object_set_data (G_OBJECT (self), "vibeos-tappable", GINT_TO_POINTER (1));
     }
@@ -1388,7 +1390,7 @@ on_eye_clicked (GtkWidget *eye, GtkWidget *text)
   gtk_text_set_visibility (GTK_TEXT (text), shown);
   gtk_image_set_from_icon_name (GTK_IMAGE (image), shown ? "sw-visibility-off-symbolic" : "sw-visibility-symbolic");
   gtk_accessible_update_property (GTK_ACCESSIBLE (eye), GTK_ACCESSIBLE_PROPERTY_LABEL,
-                                  shown ? "Hide the password" : "Show the password", -1);
+                                  shown ? _("Hide the password") : _("Show the password"), -1);
 }
 
 static void
@@ -1445,7 +1447,7 @@ sw_field_new (const char *label, SwFieldKind kind)
   gtk_box_append (GTK_BOX (pill), text);
   if (kind == SW_FIELD_PASSWORD || kind == SW_FIELD_NEW_PASSWORD)
     {
-      GtkWidget *eye = sw_icon_button_new ("sw-visibility-symbolic", "Show the password");
+      GtkWidget *eye = sw_icon_button_new ("sw-visibility-symbolic", _("Show the password"));
 
       gtk_widget_add_css_class (eye, "sw-field-eye");
       g_signal_connect (eye, "clicked", G_CALLBACK (on_eye_clicked), text);
@@ -1697,7 +1699,7 @@ sw_code_field_new (int length)
   gtk_text_set_input_purpose (GTK_TEXT (self->text), GTK_INPUT_PURPOSE_DIGITS);
   gtk_text_set_input_hints (GTK_TEXT (self->text), GTK_INPUT_HINT_NO_SPELLCHECK);
   gtk_widget_set_opacity (self->text, 0);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->text), GTK_ACCESSIBLE_PROPERTY_LABEL, "The code", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->text), GTK_ACCESSIBLE_PROPERTY_LABEL, _("The code"), -1);
   gtk_overlay_add_overlay (GTK_OVERLAY (self->overlay), self->text);
   g_signal_connect (self->text, "changed", G_CALLBACK (on_code_changed), self);
   g_signal_connect (focus, "enter", G_CALLBACK (on_code_focus), self);

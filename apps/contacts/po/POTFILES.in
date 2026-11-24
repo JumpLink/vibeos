@@ -1,0 +1,18 @@
+# the files with translatable strings
+data/vibeos.Contacts.desktop.in
+src/ct-contact.c
+src/ct-dialogs.c
+src/ct-editor.c
+src/ct-highlights.c
+src/ct-list.c
+src/ct-main.c
+src/ct-organize.c
+src/ct-people.c
+src/ct-picker.c
+src/ct-quick.c
+src/ct-settings.c
+src/ct-store.c
+src/ct-ui.c
+src/ct-window.c
+# the Dialer source files the app is built with
+../dialer/src/phone-number.c

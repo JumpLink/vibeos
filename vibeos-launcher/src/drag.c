@@ -651,11 +651,20 @@ bar_label (void)
 {
   if (!G.font) {
     G.font = text_font_axes ("VibeOS Roboto", 600, dp (BAR_TEXT_SP), "opsz=16");
-    G.remove = text_layout (G.font, "Remove", 0, 1, TEXT_LEFT);
-    G.cancel = text_layout (G.font, "Cancel", 0, 1, TEXT_LEFT);
     G.glyph = svg_texture (REMOVE_SVG, (int) lroundf (dp (BAR_ICON_DP)));
   }
+  if (!G.remove) {
+    G.remove = text_layout (G.font, _("Remove"), 0, 1, TEXT_LEFT);
+    G.cancel = text_layout (G.font, _("Cancel"), 0, 1, TEXT_LEFT);
+  }
   return G.from_drawer ? G.cancel : G.remove;
+}
+
+void
+drag_language_changed (void)
+{
+  g_clear_pointer (&G.remove, text_layout_free);
+  g_clear_pointer (&G.cancel, text_layout_free);
 }
 
 static void

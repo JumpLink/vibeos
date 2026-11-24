@@ -219,6 +219,20 @@ tile_compare (gconstpointer a, gconstpointer b)
   return app_compare ((*(Tile *const *) a)->info, (*(Tile *const *) b)->info);
 }
 
+/* The session's language changed, and with it the apps' names (tiles_sync has read their entries again): every
+ * label laid out again, since a name the launcher translates itself ("Android Settings") reads the same in the old
+ * entry and the new one, and the drawer in the new language's alphabetical order. */
+void
+tiles_language_changed (void)
+{
+  GHashTableIter it;
+  gpointer key, value;
+  g_hash_table_iter_init (&it, N.tiles);
+  while (g_hash_table_iter_next (&it, &key, &value))
+    tile_label (value);
+  g_ptr_array_sort (N.sorted, tile_compare);
+}
+
 static char *
 icon_string (GAppInfo *info)
 {

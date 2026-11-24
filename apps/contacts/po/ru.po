@@ -1,0 +1,1219 @@
+# Russian translations of vibeos-contacts.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-contacts\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 14:32+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Russian\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+# android: Contacts applicationLabel
+#. --- About Contacts: VibeOS's About sheet, as every VibeOS app has it
+#: data/vibeos.Contacts.desktop.in src/ct-people.c src/ct-settings.c
+#: src/ct-window.c
+msgid "Contacts"
+msgstr "Контакты"
+
+#: data/vibeos.Contacts.desktop.in
+msgid "Keep the people you know in one list"
+msgstr "Все ваши знакомые в одном списке"
+
+#: data/vibeos.Contacts.desktop.in
+msgid "Contacts;People;Address;Book;vCard;Friends;"
+msgstr "Контакты;Люди;Адрес;Адресная книга;vCard;Друзья;"
+
+# android: Framework phoneTypes[1] (several translations, short)
+#. the Device account's spinner
+#: src/ct-contact.c
+msgid "Mobile"
+msgstr "Мобильный"
+
+# android: Framework phoneTypes[2] (several translations, short)
+#: src/ct-contact.c
+msgid "Work"
+msgstr "Рабочий"
+
+# android: Framework phoneTypes[0] (several translations, short)
+#: src/ct-contact.c
+msgid "Home"
+msgstr "Домашний"
+
+# android: Framework phoneTypeMain (short)
+#: src/ct-contact.c
+msgid "Main"
+msgstr "Основной"
+
+# android: Framework phoneTypes[3] (short)
+#: src/ct-contact.c
+msgid "Work Fax"
+msgstr "Рабочий факс"
+
+# android: Framework phoneTypes[4] (short)
+#: src/ct-contact.c
+msgid "Home Fax"
+msgstr "Домашний факс"
+
+# android: Framework phoneTypes[5] (short)
+#: src/ct-contact.c
+msgid "Pager"
+msgstr "Пейджер"
+
+# android: Framework phoneTypes[6] (several translations, short)
+#: src/ct-contact.c
+msgid "Other"
+msgstr "Другой"
+
+# android: Framework phoneTypes[7] (several translations, short)
+#: src/ct-contact.c
+msgid "Custom"
+msgstr "Новый тип"
+
+# android: Framework phoneTypeCallback (short)
+#. the rest of the Device account's list: shown on the card, kept when the row is not edited
+#: src/ct-contact.c
+msgid "Callback"
+msgstr "Обр. вызов"
+
+# android: Framework phoneTypeCar (several translations, short)
+#: src/ct-contact.c
+msgid "Car"
+msgstr "В авто"
+
+# android: Framework phoneTypeCompanyMain (short)
+#: src/ct-contact.c
+msgid "Company Main"
+msgstr "Телефон офиса"
+
+# android: Framework phoneTypeIsdn (short)
+#: src/ct-contact.c
+msgid "ISDN"
+msgstr "ISDN"
+
+# android: Framework phoneTypeOtherFax (short)
+#: src/ct-contact.c
+msgid "Other Fax"
+msgstr "Доп. факс"
+
+# android: Framework phoneTypeRadio (short)
+#: src/ct-contact.c
+msgid "Radio"
+msgstr "Радиотелефон"
+
+# android: Framework phoneTypeTelex (short)
+#: src/ct-contact.c
+msgid "Telex"
+msgstr "Телекс"
+
+# android: Framework phoneTypeTtyTdd (short)
+#: src/ct-contact.c
+msgid "TTY TDD"
+msgstr "Телетайп"
+
+# android: Framework phoneTypeWorkMobile (short)
+#: src/ct-contact.c
+msgid "Work Mobile"
+msgstr "Рабочий моб."
+
+# android: Framework phoneTypeWorkPager (short)
+#: src/ct-contact.c
+msgid "Work Pager"
+msgstr "Раб. пейджер"
+
+# android: Framework phoneTypeAssistant (several translations, short)
+#: src/ct-contact.c
+msgid "Assistant"
+msgstr "Секретарь"
+
+# android: Framework phoneTypeMms (short)
+#: src/ct-contact.c
+msgid "MMS"
+msgstr "MMS"
+
+# android: Framework eventTypeBirthday (short)
+#: src/ct-contact.c
+msgid "Birthday"
+msgstr "День рождения"
+
+# android: Framework eventTypeAnniversary (short)
+#: src/ct-contact.c
+msgid "Anniversary"
+msgstr "Годовщина"
+
+# android: Framework relationTypeBrother (short)
+#: src/ct-contact.c
+msgid "Brother"
+msgstr "Брат"
+
+# android: Framework relationTypeChild (short)
+#: src/ct-contact.c
+msgid "Child"
+msgstr "Ребенок"
+
+# android: Framework relationTypeDomesticPartner (short)
+#: src/ct-contact.c
+msgid "Domestic Partner"
+msgstr "В гражданском браке"
+
+# android: Framework relationTypeFather (short)
+#: src/ct-contact.c
+msgid "Father"
+msgstr "Отец"
+
+# android: Framework relationTypeFriend (short)
+#: src/ct-contact.c
+msgid "Friend"
+msgstr "Друг"
+
+# android: Framework relationTypeManager (short)
+#: src/ct-contact.c
+msgid "Manager"
+msgstr "Руководитель"
+
+# android: Framework relationTypeMother (short)
+#: src/ct-contact.c
+msgid "Mother"
+msgstr "Мать"
+
+# android: Framework relationTypeParent (short)
+#: src/ct-contact.c
+msgid "Parent"
+msgstr "Родитель"
+
+# android: Framework relationTypePartner (short)
+#: src/ct-contact.c
+msgid "Partner"
+msgstr "Партнер"
+
+# android: Framework relationTypeReferredBy (short)
+#: src/ct-contact.c
+msgid "Referred by"
+msgstr "Рекомендован"
+
+# android: Framework relationTypeRelative (short)
+#: src/ct-contact.c
+msgid "Relative"
+msgstr "Родственник"
+
+# android: Framework relationTypeSister (short)
+#: src/ct-contact.c
+msgid "Sister"
+msgstr "Сестра"
+
+# android: Framework relationTypeSpouse (short)
+#: src/ct-contact.c
+msgid "Spouse"
+msgstr "Супруг(а)"
+
+# android: Framework imProtocols[0] (short)
+#: src/ct-contact.c
+msgid "AIM"
+msgstr "AIM"
+
+# android: Framework imProtocols[1] (short)
+#: src/ct-contact.c
+msgid "Windows Live"
+msgstr "Windows Live"
+
+# android: Framework imProtocols[2] (short)
+#: src/ct-contact.c
+msgid "Yahoo"
+msgstr "Yahoo"
+
+# android: Framework imProtocols[3] (short)
+#: src/ct-contact.c
+msgid "Skype"
+msgstr "Skype"
+
+# android: Framework imProtocols[4] (short)
+#: src/ct-contact.c
+msgid "QQ"
+msgstr "QQ"
+
+# android: Framework imProtocolGoogleTalk (short)
+#: src/ct-contact.c
+msgid "Hangouts"
+msgstr "Hangouts"
+
+# android: Framework imProtocols[6] (short)
+#: src/ct-contact.c
+msgid "ICQ"
+msgstr "ICQ"
+
+# android: Framework imProtocols[7] (short)
+#: src/ct-contact.c
+msgid "Jabber"
+msgstr "Jabber"
+
+# android: Framework imProtocolNetMeeting (short)
+#: src/ct-contact.c
+msgid "NetMeeting"
+msgstr "NetMeeting"
+
+#: src/ct-contact.c
+msgid "Gadu-Gadu"
+msgstr "Gadu-Gadu"
+
+#: src/ct-contact.c
+msgid "GroupWise"
+msgstr "GroupWise"
+
+#: src/ct-contact.c
+msgid "Matrix"
+msgstr "Matrix"
+
+# android: Contacts cancel_button_content_description (several translations, short)
+#. the toolbar: ✕ "Cancel", the title, SAVE flush with the end
+#: src/ct-dialogs.c src/ct-editor.c
+msgid "Cancel"
+msgstr "Отмена"
+
+# android: Framework httpErrorOk (several translations, short)
+#: src/ct-dialogs.c src/ct-main.c src/ct-people.c src/ct-settings.c
+msgid "OK"
+msgstr "ОК"
+
+#. Translators: the order of the date picker's wheels: M month, D day, Y year (German: DMY)
+#: src/ct-dialogs.c
+msgid "MDY"
+msgstr "DMY"
+
+# android: Contacts date_year_toggle
+#: src/ct-dialogs.c
+msgid "Include year"
+msgstr "Указать год"
+
+# android: Contacts date_time_set (several translations, short)
+#: src/ct-dialogs.c
+msgid "Set"
+msgstr "Установить"
+
+#: src/ct-editor.c
+msgid "Name"
+msgstr "Имя"
+
+# android: Contacts header_nickname_entry
+#: src/ct-editor.c src/ct-quick.c
+msgid "Nickname"
+msgstr "Псевдоним"
+
+# android: Contacts ghostData_company
+#: src/ct-editor.c
+msgid "Company"
+msgstr "Компания"
+
+# android: Contacts ghostData_department
+#: src/ct-editor.c
+msgid "Department"
+msgstr "Отдел"
+
+# android: Contacts ghostData_title (several translations, short)
+#: src/ct-editor.c
+msgid "Title"
+msgstr "Должность"
+
+# android: Contacts header_phone_entry (several translations, short)
+#: src/ct-editor.c
+msgid "Phone"
+msgstr "Телефон"
+
+# android: Contacts email (several translations, short)
+#: src/ct-editor.c
+msgid "Email"
+msgstr "Эл. почта"
+
+# android: Contacts postalLabelsGroup
+#: src/ct-editor.c
+msgid "Address"
+msgstr "Адрес"
+
+# android: Contacts header_website_entry
+#: src/ct-editor.c src/ct-quick.c
+msgid "Website"
+msgstr "Веб-сайт"
+
+#: src/ct-editor.c src/ct-quick.c
+msgid "Event"
+msgstr "Событие"
+
+# android: Contacts relationLabelsGroup
+#: src/ct-editor.c
+msgid "Relationship"
+msgstr "Отношения"
+
+# android: Contacts label_notes
+#: src/ct-editor.c
+msgid "Notes"
+msgstr "Примечания"
+
+# android: Contacts menu_title_groups (several translations, short)
+#: src/ct-editor.c src/ct-organize.c src/ct-people.c
+msgid "Labels"
+msgstr "Ярлыки"
+
+# android: Contacts event_edit_field_hint_text
+#: src/ct-editor.c
+msgid "Date"
+msgstr "Дата"
+
+# android: Contacts customLabelPickerTitle
+#: src/ct-editor.c
+msgid "Custom label name"
+msgstr "Название"
+
+# android: Contacts group_name_dialog_hint
+#: src/ct-editor.c src/ct-people.c
+msgid "Label name"
+msgstr "Название ярлыка"
+
+# android: Contacts description_minus_button
+#: src/ct-editor.c
+msgid "delete"
+msgstr "удалить"
+
+#: src/ct-editor.c
+#, c-format
+msgid "Delete %1$s %2$s"
+msgstr "Удалить: %1$s %2$s"
+
+#: src/ct-editor.c
+#, c-format
+msgid "Delete %s"
+msgstr "Удалить: %s"
+
+# android: Contacts name_prefix
+#: src/ct-editor.c
+msgid "Name prefix"
+msgstr "Форма обращения"
+
+# android: Contacts name_given (several translations, short)
+#: src/ct-editor.c src/ct-settings.c
+msgid "First name"
+msgstr "Имя"
+
+# android: Contacts name_middle
+#: src/ct-editor.c
+msgid "Middle name"
+msgstr "Отчество"
+
+# android: Contacts name_family (several translations, short)
+#: src/ct-editor.c src/ct-settings.c
+msgid "Last name"
+msgstr "Фамилия"
+
+# android: Contacts name_suffix
+#: src/ct-editor.c
+msgid "Name suffix"
+msgstr "Звание/титул"
+
+# android: Contacts collapse_name_fields_description
+#: src/ct-editor.c
+msgid "Collapse name fields"
+msgstr "Скрыть дополнительные поля"
+
+# android: Contacts expand_name_fields_description
+#. the chevron, beside the first field (gravity top)
+#: src/ct-editor.c
+msgid "Show more name fields"
+msgstr "Показать дополнительные поля"
+
+# android: Contacts name_phonetic_family
+#: src/ct-editor.c
+msgid "Phonetic last name"
+msgstr "Транскрипция фамилии"
+
+# android: Contacts name_phonetic_middle
+#: src/ct-editor.c
+msgid "Phonetic middle name"
+msgstr "Транскрипция отчества"
+
+# android: Contacts name_phonetic_given
+#: src/ct-editor.c
+msgid "Phonetic first name"
+msgstr "Транскрипция имени"
+
+#: src/ct-editor.c
+msgid "Label"
+msgstr "Ярлык"
+
+# android: Contacts groupExistsErrorMessage
+#: src/ct-editor.c src/ct-people.c
+msgid "That label already exists"
+msgstr "Такой ярлык уже существует"
+
+# android: Contacts menu_new_group_action_bar (several translations, short)
+#: src/ct-editor.c src/ct-people.c
+msgid "Create label"
+msgstr "Создать ярлык"
+
+# android: Contacts create_group_item_label
+#: src/ct-editor.c
+msgid "Create new…"
+msgstr "Создать…"
+
+# android: Contacts editor_change_photo_content_description
+#: src/ct-editor.c
+msgid "Change contact photo"
+msgstr "Сменить фото контакта"
+
+# android: Contacts editor_add_photo_content_description
+#: src/ct-editor.c
+msgid "Add contact photo"
+msgstr "Добавить фото контакта"
+
+# android: Contacts contactPhotoSavedErrorToast
+#: src/ct-editor.c
+msgid "Couldn't save contact photo changes"
+msgstr "Не удалось сохранить изменения"
+
+# android: Settings storage_images (other app, short)
+#: src/ct-editor.c
+msgid "Images"
+msgstr "Изображения"
+
+# android: Contacts pick_photo
+#: src/ct-editor.c
+msgid "Choose photo"
+msgstr "Выбрать фото"
+
+# android: Contacts removePhoto
+#: src/ct-editor.c
+msgid "Remove photo"
+msgstr "Удалить фото"
+
+# android: Contacts pick_new_photo
+#: src/ct-editor.c
+msgid "Select new photo"
+msgstr "Выбрать другое фото"
+
+# android: Contacts menu_change_photo
+#: src/ct-editor.c
+msgid "Change photo"
+msgstr "Сменить фото"
+
+# android: Contacts local_profile_title
+#: src/ct-editor.c
+msgid "My local profile"
+msgstr "Мой профиль"
+
+# android: Contacts account_phone
+#. the phone's own book is the Device account
+#: src/ct-editor.c src/ct-store.c
+msgid "Device"
+msgstr "Устройство"
+
+# android: Contacts editor_account_selector_title
+#: src/ct-editor.c
+msgid "Saving to"
+msgstr "Сохранение в аккаунте"
+
+# android: Contacts toast_text_copied
+#: src/ct-editor.c src/ct-quick.c
+msgid "Text copied"
+msgstr "Текст скопирован"
+
+# android: Contacts editor_uneditable_section_title
+#: src/ct-editor.c
+msgid "Can’t update this info"
+msgstr "Эти данные невозможно обновить"
+
+# android: Contacts contactSavedErrorToast
+#: src/ct-editor.c
+msgid "Couldn't save contact changes"
+msgstr "Не удалось сохранить изменения"
+
+# android: Contacts contactSavedNamedToast
+#. "%s saved", or "Contact saved" without a name
+#: src/ct-editor.c
+#, c-format
+msgid "%s saved"
+msgstr "%s: контакт сохранен."
+
+# android: Contacts contactSavedToast
+#: src/ct-editor.c
+msgid "Contact saved"
+msgstr "Контакт сохранен."
+
+# android: Contacts cancel_confirmation_dialog_message
+#: src/ct-editor.c
+msgid "Discard changes?"
+msgstr "Не сохранять изменения?"
+
+#: src/ct-editor.c
+msgid "Discard"
+msgstr "Не сохранять"
+
+# android: Contacts editor_failed_to_load
+#: src/ct-editor.c src/ct-main.c
+msgid "Failed to open editor."
+msgstr "Не удалось открыть редактор"
+
+# android: Contacts header_entry_contact_list_adapter_header_title
+#: src/ct-editor.c src/ct-picker.c
+msgid "Create new contact"
+msgstr "Создать контакт"
+
+# android: Contacts contact_editor_title_existing_contact
+#: src/ct-editor.c
+msgid "Edit contact"
+msgstr "Изменить контакт"
+
+# android: Contacts menu_save
+#: src/ct-editor.c src/ct-settings.c
+msgid "Save"
+msgstr "Сохранить"
+
+#. "More fields", in line with the fields
+#: src/ct-editor.c
+msgid "More fields"
+msgstr "Другие поля"
+
+#: src/ct-highlights.c src/ct-people.c src/ct-quick.c src/ct-settings.c
+msgid "(No name)"
+msgstr "(Без имени)"
+
+#: src/ct-highlights.c
+msgid "Add favorites"
+msgstr "Добавить в избранное"
+
+#: src/ct-highlights.c
+msgid "Clear recents"
+msgstr "Очистить недавние"
+
+#: src/ct-highlights.c
+msgid "Birthday today"
+msgstr "День рождения сегодня"
+
+#: src/ct-highlights.c
+msgid "Birthday tomorrow"
+msgstr "День рождения завтра"
+
+#: src/ct-highlights.c
+#, c-format
+msgid "Birthday on %s"
+msgstr "День рождения %s"
+
+# android: Contacts menu_add_contacts (several translations, short)
+#: src/ct-highlights.c src/ct-picker.c
+msgid "Add"
+msgstr "Добавить"
+
+# android: Dialer description_dialpad_overflow (several translations, short)
+#: src/ct-highlights.c src/ct-people.c src/ct-picker.c src/ct-quick.c
+msgid "More options"
+msgstr "Ещё"
+
+# android: Contacts contactsFavoritesLabel (several translations, short)
+#: src/ct-highlights.c src/ct-list.c
+msgid "Favorites"
+msgstr "Избранное"
+
+#: src/ct-highlights.c
+msgid "Add favorites to see them here"
+msgstr "Добавьте контакты в избранное, чтобы видеть их здесь"
+
+#: src/ct-highlights.c
+msgid "For you"
+msgstr "Для вас"
+
+# android: Settings navbar_recent_button (other app, several translations, short)
+#: src/ct-highlights.c
+msgid "Recents"
+msgstr "Недавние"
+
+# android: Contacts import_from_vcf_file_confirmation_message
+#: src/ct-main.c
+msgid "Import contacts from vCard?"
+msgstr "Импортировать контакты из vCard?"
+
+# android: Contacts contactPickerActivityTitle
+#: src/ct-main.c
+msgid "Choose a contact"
+msgstr "Выберите контакт"
+
+#. the address books, each with how many contacts it has; a tap shows only those
+#. the address books, each with how many it has; a tap shows only its people
+#: src/ct-organize.c src/ct-people.c
+msgid "Address books"
+msgstr "Адресные книги"
+
+#. what can be done with them
+#: src/ct-organize.c
+msgid "Manage contacts"
+msgstr "Управление контактами"
+
+#: src/ct-organize.c
+msgid "Import from file"
+msgstr "Импорт из файла"
+
+#: src/ct-organize.c
+msgid "Add contacts from a .vcf file"
+msgstr "Добавить контакты из файла .vcf"
+
+#: src/ct-organize.c
+msgid "Export to file"
+msgstr "Экспорт в файл"
+
+#: src/ct-organize.c
+msgid "Save your contacts as a .vcf file"
+msgstr "Сохранить контакты в файл .vcf"
+
+#: src/ct-organize.c
+#, c-format
+msgid "%u label"
+msgid_plural "%u labels"
+msgstr[0] "%u ярлык"
+msgstr[1] "%u ярлыка"
+msgstr[2] "%u ярлыков"
+
+# android: Settings zen_mode_from_contacts_settings (other app, short)
+#: src/ct-organize.c src/ct-people.c
+msgid "Contacts settings"
+msgstr "Настройки контактов"
+
+#: src/ct-people.c
+msgid "Create contact"
+msgstr "Создать контакт"
+
+# android: Contacts emptyGroup
+#: src/ct-people.c
+msgid "No contacts with this label"
+msgstr "Нет контактов с таким ярлыком"
+
+# android: Contacts menu_addContactsToGroup
+#: src/ct-people.c
+msgid "Add contacts"
+msgstr "Добавить контакты"
+
+#: src/ct-people.c
+msgid "No contacts here"
+msgstr "Здесь нет контактов"
+
+#: src/ct-people.c
+msgid "No contacts yet"
+msgstr "Контактов пока нет"
+
+# android: Contacts menu_editGroup
+#: src/ct-people.c
+msgid "Remove contacts"
+msgstr "Удалить контакты"
+
+# android: Contacts separatorJoinAggregateAll
+#: src/ct-people.c src/ct-settings.c
+msgid "All contacts"
+msgstr "Все контакты"
+
+# android: Contacts set_up_profile
+#: src/ct-people.c src/ct-settings.c
+msgid "Set up your profile"
+msgstr "Настройте профиль"
+
+#: src/ct-people.c
+msgid "Your info"
+msgstr "Ваши данные"
+
+# android: Contacts contacts_unavailable_import_contacts
+#: src/ct-people.c src/ct-settings.c
+msgid "Import"
+msgstr "Импортировать"
+
+#: src/ct-people.c
+msgid "From a .vcf file"
+msgstr "Из файла .vcf"
+
+# android: Contacts menu_export
+#: src/ct-people.c src/ct-settings.c
+msgid "Export"
+msgstr "Экспортировать"
+
+#: src/ct-people.c
+msgid "To a .vcf file"
+msgstr "В файл .vcf"
+
+#: src/ct-people.c src/ct-quick.c
+msgid "About"
+msgstr "О приложении"
+
+#: src/ct-people.c
+msgid "Contacts to show"
+msgstr "Показывать контакты"
+
+# android: Contacts title_share_via
+#: src/ct-people.c src/ct-quick.c
+msgid "Share contact via"
+msgid_plural "Share contacts via"
+msgstr[0] "Выберите способ отправки"
+msgstr[1] "Выберите способ отправки"
+msgstr[2] "Выберите способ отправки"
+
+# android: Contacts menu_share (several translations, short)
+#: src/ct-people.c src/ct-quick.c
+msgid "Share"
+msgstr "Поделиться"
+
+# android: Contacts searchHint (several translations, short)
+#: src/ct-people.c src/ct-picker.c
+msgid "Search contacts"
+msgstr "Поиск в контактах"
+
+#: src/ct-people.c
+msgid "Account and settings"
+msgstr "Аккаунт и настройки"
+
+#: src/ct-people.c
+msgid "View labels"
+msgstr "Показать ярлыки"
+
+#: src/ct-people.c
+msgid "Show list filters"
+msgstr "Показать фильтры списка"
+
+#: src/ct-people.c
+msgid "Phone contacts"
+msgstr "Контакты с телефоном"
+
+#: src/ct-people.c
+msgid "Email contacts"
+msgstr "Контакты с эл. почтой"
+
+# android: SystemUI clear_all_notifications_text (other app, short)
+#: src/ct-people.c
+msgid "Clear all"
+msgstr "Очистить все"
+
+#: src/ct-people.c
+msgid "Recent contacts"
+msgstr "Недавние контакты"
+
+#: src/ct-people.c
+msgid "No contacts found"
+msgstr "Контакты не найдены"
+
+# android: Contacts contacts_deleted_toast
+#: src/ct-people.c
+msgid "Contact deleted"
+msgstr "Контакт удален"
+
+#: src/ct-people.c
+#, c-format
+msgid "%u contact deleted"
+msgid_plural "%u contacts deleted"
+msgstr[0] "%u контакт удален"
+msgstr[1] "%u контакта удалено"
+msgstr[2] "%u контактов удалено"
+
+# android: Contacts batch_delete_confirmation
+#: src/ct-people.c
+msgid "Delete selected contacts?"
+msgstr "Удалить выбранные контакты?"
+
+# android: Contacts menu_deleteContact (several translations, short)
+#: src/ct-people.c src/ct-quick.c
+msgid "Delete"
+msgstr "Удалить"
+
+# android: Contacts groupMembersAddedToast
+#: src/ct-people.c
+msgid "Added to label"
+msgstr "Добавлено"
+
+# android: Contacts groupMemberPickerActivityTitle
+#: src/ct-people.c
+msgid "Select"
+msgstr "Выбрать"
+
+# android: Contacts groupSomeContactsNoEmailsToast
+#: src/ct-people.c
+msgid "Some contacts do not have emails."
+msgstr "У некоторых контактов не указаны адреса эл. почты"
+
+# android: Contacts groupSomeContactsNoPhonesToast
+#: src/ct-people.c
+msgid "Some contacts do not have phone numbers."
+msgstr "У некоторых контактов не указаны номера телефонов"
+
+# android: Contacts missing_app
+#: src/ct-people.c src/ct-quick.c
+msgid "No app was found to handle this action."
+msgstr "Действие не поддерживается ни в одном приложении."
+
+# android: Contacts groupUpdatedToast
+#: src/ct-people.c
+msgid "Label updated"
+msgstr "Ярлык обновлен"
+
+# android: Contacts groupDeletedToast
+#: src/ct-people.c
+msgid "Label deleted"
+msgstr "Ярлык удален"
+
+# android: Contacts undo
+#: src/ct-people.c
+msgid "Undo"
+msgstr "Отменить"
+
+#: src/ct-people.c
+#, c-format
+msgid "Delete the label \"%s\"? (Contacts themselves will not be deleted.)"
+msgstr "Удалить ярлык «%s»? Сами контакты не будут удалены."
+
+# android: Contacts groupMembersRemovedToast
+#: src/ct-people.c
+msgid "Removed from label"
+msgstr "Ярлык снят"
+
+# android: Contacts menu_renameGroup (several translations, short)
+#: src/ct-people.c
+msgid "Rename label"
+msgstr "Переименовать ярлык"
+
+# android: Contacts menu_sendEmailOption
+#: src/ct-people.c
+msgid "Send email"
+msgstr "Отправить письмо"
+
+# android: Dialer post_call_send_message (several translations, short)
+#: src/ct-people.c
+msgid "Send message"
+msgstr "Отправить сообщение"
+
+# android: Contacts menu_deleteGroup
+#: src/ct-people.c
+msgid "Delete label"
+msgstr "Удалить ярлык"
+
+# android: Contacts menu_removeFromGroup
+#: src/ct-people.c
+msgid "Remove from label"
+msgstr "Снять ярлык"
+
+# android: Contacts groupCreatedToast
+#: src/ct-people.c
+msgid "Label created"
+msgstr "Ярлык создан"
+
+# android: Contacts menu_selectForGroup (several translations, short)
+#: src/ct-picker.c
+msgid "Select contacts"
+msgstr "Выбрать контакты"
+
+# android: Contacts back_arrow_content_description
+#: src/ct-picker.c src/ct-settings.c
+msgid "Back"
+msgstr "Назад"
+
+# android: Contacts action_menu_back_from_search
+#: src/ct-picker.c
+msgid "stop searching"
+msgstr "прекратить поиск"
+
+# android: Contacts description_clear_search (several translations, short)
+#: src/ct-picker.c
+msgid "Clear search"
+msgstr "Очистить поиск"
+
+# android: Contacts action_menu_back_from_edit_select
+#: src/ct-picker.c
+msgid "close"
+msgstr "закрыть"
+
+# android: Contacts listFoundAllContactsZero
+#. nobody left to offer: the list's own "No contacts"
+#: src/ct-picker.c
+msgid "No contacts"
+msgstr "Нет контактов"
+
+# android: Contacts copy_text (several translations)
+#: src/ct-quick.c
+msgid "Copy to clipboard"
+msgstr "Копировать в буфер обмена"
+
+# android: Contacts clear_default
+#: src/ct-quick.c
+msgid "Clear default"
+msgstr "Удалить настройки по умолчанию"
+
+# android: Contacts set_default (several translations, short)
+#: src/ct-quick.c
+msgid "Set default"
+msgstr "Установить по умолчанию"
+
+# android: Contacts sms_custom (several translations)
+#: src/ct-quick.c
+#, c-format
+msgid "Text %s"
+msgstr "Отправить SMS (%s)"
+
+# android: Contacts quickcontact_add_phone_number
+#: src/ct-quick.c
+msgid "Add phone number"
+msgstr "Добавить номер телефона"
+
+# android: Contacts quickcontact_add_email
+#: src/ct-quick.c
+msgid "Add email"
+msgstr "Добавить адрес электронной почты"
+
+# android: Contacts header_organization_entry
+#: src/ct-quick.c
+msgid "Organization"
+msgstr "Организация"
+
+# android: Contacts header_relation_entry
+#: src/ct-quick.c
+msgid "Relation"
+msgstr "Отношение"
+
+# android: Contacts header_im_entry
+#: src/ct-quick.c
+msgid "IM"
+msgstr "Чат"
+
+# android: Contacts header_note_entry
+#: src/ct-quick.c
+msgid "Note"
+msgstr "Заметка"
+
+#: src/ct-quick.c
+msgid "Remove from favorites"
+msgstr "Удалить из избранного"
+
+# android: Contacts menu_addStar (several translations)
+#: src/ct-quick.c
+msgid "Add to favorites"
+msgstr "Добавить в избранное"
+
+# android: Contacts contacts_deleted_one_named_toast (several translations)
+#: src/ct-quick.c
+#, c-format
+msgid "%s deleted"
+msgstr "%s: контакт удален."
+
+# android: Contacts single_delete_confirmation
+#: src/ct-quick.c
+msgid "Delete this contact?"
+msgstr "Удалить контакт?"
+
+# android: Contacts menu_editContact
+#: src/ct-quick.c
+msgid "Edit"
+msgstr "Изменить"
+
+# android: Contacts invalidContactMessage
+#: src/ct-quick.c
+msgid "The contact doesn't exist."
+msgstr "Нет такого контакта."
+
+# android: Contacts listCustomView
+#: src/ct-settings.c
+msgid "Customized view"
+msgstr "Пользовательский режим просмотра"
+
+# android: Contacts display_options_view_given_name_first
+#: src/ct-settings.c
+msgid "First name first"
+msgstr "Сначала имя"
+
+# android: Contacts display_options_view_family_name_first
+#: src/ct-settings.c
+msgid "Last name first"
+msgstr "Сначала фамилия"
+
+# android: Contacts editor_options_always_show_phonetic_names
+#: src/ct-settings.c
+msgid "Always show"
+msgstr "Всегда показывать"
+
+# android: Contacts editor_options_hide_phonetic_names_if_empty
+#: src/ct-settings.c
+msgid "Hide if empty"
+msgstr "Скрывать пустое поле"
+
+# android: Contacts default_editor_account
+#: src/ct-settings.c
+msgid "Default account for new contacts"
+msgstr "Аккаунт для новых контактов"
+
+# android: Contacts display_options_sort_list_by (several translations, short)
+#: src/ct-settings.c
+msgid "Sort by"
+msgstr "Сортировка"
+
+# android: Contacts display_options_view_names_as
+#: src/ct-settings.c
+msgid "Name format"
+msgstr "Формат имени и фамилии"
+
+# android: Contacts name_phonetic
+#: src/ct-settings.c
+msgid "Phonetic name"
+msgstr "Транскрипция имени"
+
+#: src/ct-settings.c
+msgid "vCard"
+msgstr "vCard"
+
+# android: Contacts dialog_new_contact_account
+#: src/ct-settings.c
+msgid "Save imported contacts to:"
+msgstr "Сохранить контакты:"
+
+# android: Contacts import_from_vcf_file
+#: src/ct-settings.c
+msgid ".vcf file"
+msgstr "VCF-файл"
+
+#: src/ct-settings.c
+msgid "Import contacts from"
+msgstr "Импорт контактов из"
+
+# android: Contacts dialog_export
+#: src/ct-settings.c
+msgid "Export contacts"
+msgstr "Экспорт контактов"
+
+# android: Contacts export_to_vcf_file
+#: src/ct-settings.c
+msgid "Export to .vcf file"
+msgstr "Экспортировать в VCF-файл"
+
+# android: Contacts activity_title_settings (several translations, short)
+#: src/ct-settings.c
+msgid "Settings"
+msgstr "Настройки"
+
+# android: Contacts settings_my_info_title
+#: src/ct-settings.c
+msgid "My info"
+msgstr "Мои данные"
+
+# android: Contacts menu_title_filters
+#: src/ct-settings.c
+msgid "Accounts"
+msgstr "Аккаунты"
+
+# android: Contacts menu_contacts_filter
+#: src/ct-settings.c
+msgid "Contacts to display"
+msgstr "Фильтр контактов"
+
+# android: Contacts setting_about
+#: src/ct-settings.c
+msgid "About Contacts"
+msgstr "О приложении «Контакты»"
+
+# android: Contacts leave_customize_confirmation_dialog_message
+#: src/ct-settings.c
+msgid "Discard customizations?"
+msgstr "Не сохранять изменения?"
+
+# android: Contacts custom_list_filter
+#: src/ct-settings.c
+msgid "Customize view"
+msgstr "Настроить фильтр"
+
+# android: Settings customize_button_title (other app, several translations, short)
+#: src/ct-settings.c
+msgid "Customize"
+msgstr "Настроить"
+
+# android: Contacts vcard_import_failed
+#. nothing in the file is a vCard
+#: src/ct-settings.c
+msgid "Couldn't import vCard."
+msgstr "Не удалось импортировать данные vCard."
+
+# android: Contacts importing_vcard_finished_title
+#: src/ct-settings.c
+#, c-format
+msgid "Finished importing vCard %s"
+msgstr "Импорт файла vCard %s завершен"
+
+# android: Contacts reading_vcard_failed_title
+#: src/ct-settings.c
+msgid "Couldn't read vCard data"
+msgstr "Ошибка чтения vCard-файла"
+
+# android: Contacts vcard_import_will_start_message
+#. a long toast
+#: src/ct-settings.c
+#, c-format
+msgid "%s will be imported shortly."
+msgstr "Импорт скоро начнется (%s)"
+
+# android: Contacts exporting_contact_failed_title
+#: src/ct-settings.c
+msgid "Couldn't export"
+msgstr "Сбой экспорта"
+
+# android: Contacts exporting_vcard_finished_title (quotes added)
+#: src/ct-settings.c
+#, c-format
+msgid "Finished exporting %s."
+msgstr "Экспорт файла «%s» завершен."
+
+# android: Contacts no_contact_to_share
+#: src/ct-settings.c
+msgid "There are no contacts to share."
+msgstr "Видимых контактов нет"
+
+#: src/ct-store.c
+msgid "The address book is not available"
+msgstr "Адресная книга недоступна"
+
+#: src/ct-ui.c
+#, c-format
+msgid "%u contact · %s"
+msgid_plural "%u contacts · %s"
+msgstr[0] "%u контакт · %s"
+msgstr[1] "%u контакта · %s"
+msgstr[2] "%u контактов · %s"
+
+# android: Contacts contacts_count
+#: src/ct-ui.c
+#, c-format
+msgid "%u contact"
+msgid_plural "%u contacts"
+msgstr[0] "%u контакт"
+msgstr[1] "%u контакта"
+msgstr[2] "%u контактов"
+
+#: src/ct-window.c
+msgid "Message"
+msgstr "Сообщение"
+
+# android: SystemUI notification_section_header_highlights (other app, short)
+#: src/ct-window.c
+msgid "Highlights"
+msgstr "Главное"
+
+#: src/ct-window.c
+msgid "Organize"
+msgstr "Управление"
+
+#: src/ct-window.c
+msgid "Pick a contact to see it here"
+msgstr "Выберите контакт, чтобы увидеть его здесь"
+
+# android: Dialer private_num_non_verizon (short)
+#: ../dialer/src/phone-number.c
+msgid "Private number"
+msgstr "Номер скрыт"
+
+# android: Dialer unknown (several translations, short)
+#: ../dialer/src/phone-number.c
+msgid "Unknown"
+msgstr "Неизвестно"
+
+# android: Dialer payphone (short)
+#: ../dialer/src/phone-number.c
+msgid "Payphone"
+msgstr "Телефон-автомат"

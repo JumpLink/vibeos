@@ -30,6 +30,7 @@
 #include "sw-updates.h"
 #include "sw-window.h"
 
+#include <glib/gi18n.h>
 #include <locale.h>
 #include <string.h>
 #include <vibeos.h>
@@ -167,6 +168,9 @@ main (int argc, char **argv)
   int status;
 
   setlocale (LC_ALL, "");
+  bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+  textdomain (GETTEXT_PACKAGE);
   /* the check without a window: no display, no GTK */
   for (int i = 1; i < argc; i++)
     if (!strcmp (argv[i], "--check-updates"))

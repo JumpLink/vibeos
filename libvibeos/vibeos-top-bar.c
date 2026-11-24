@@ -1,5 +1,8 @@
 /* VibeosTopBar: see vibeos-top-bar.h. */
 #include "vibeos-top-bar.h"
+
+#include <glib/gi18n-lib.h>
+#include "vibeos-fit-label.h"
 #include "vibeos-layout.h"
 #include "vibeos-pressable.h"
 #include "vibeos-style.h"
@@ -15,12 +18,11 @@
 #define TITLE_X        24     /* the title without a back button */
 #define BUTTON         48     /* an icon button's touch target */
 #define END_PAD        4
-#define LARGE_EXTRA    88     /* the expanded large bar's band under the bar */
-#define LARGE_BOTTOM   24     /* from the large title's line to the band's bottom */
 
 struct _VibeosTopBar {
   GtkWidget      parent;
-  GtkWidget     *back, *close, *title, *large_title, *actions, *selection_actions;
+  GtkWidget     *back, *close, *title, *actions, *selection_actions;
+  GtkWidget     *large_title;     /* a VibeosFitLabel, put in the content by the app (a reference of the bar's own) */
   VibeosLayout  *layout;          /* the window's, while it is in one: a tablet's back button is larger */
   GtkAdjustment *scroll;
   GdkRGBA        fill;
@@ -44,22 +46,24 @@ back_size (VibeosTopBar *self)
   return self->layout && vibeos_layout_is_tablet (self->layout) ? TABLET_BACK : BACK;
 }
 
-/* 0 expanded .. 1 collapsed */
+static GtkLabel *
+large_label (VibeosTopBar *self)
+{
+  return GTK_LABEL (vibeos_fit_label_get_label (VIBEOS_FIT_LABEL (self->large_title)));
+}
+
+/* 0 expanded .. 1 collapsed: how much of the large title has scrolled under the bar. A large title the app has not
+ * put anywhere is no title: the bar is a small one */
 static double
 collapsed (VibeosTopBar *self)
 {
-  if (!self->large)
-    return 1;
-  if (!self->scroll)
-    return 0;
-  return CLAMP (gtk_adjustment_get_value (self->scroll) / LARGE_EXTRA, 0, 1);
-}
+  int height = gtk_widget_get_height (self->large_title);
 
-/* how tall it is drawn now */
-static double
-shown_height (VibeosTopBar *self)
-{
-  return bar_height (self) + (self->large ? LARGE_EXTRA * (1 - collapsed (self)) : 0);
+  if (!self->large || !gtk_widget_get_parent (self->large_title))
+    return 1;
+  if (!self->scroll || height <= 0)
+    return 0;
+  return CLAMP (gtk_adjustment_get_value (self->scroll) / height, 0, 1);
 }
 
 static double
@@ -94,7 +98,7 @@ vibeos_top_bar_measure (GtkWidget *widget, GtkOrientation orientation, int for_s
   VibeosTopBar *self = VIBEOS_TOP_BAR (widget);
 
   if (orientation == GTK_ORIENTATION_VERTICAL)
-    *min = *nat = bar_height (self) + (self->large ? LARGE_EXTRA : 0);
+    *min = *nat = bar_height (self);
   else
     *min = *nat = (int) title_x (self) + BUTTON;
 }
@@ -121,35 +125,22 @@ vibeos_top_bar_size_allocate (GtkWidget *widget, int width, int height, int base
   natural (self->title, &h, &h);
   gtk_widget_measure (self->title, GTK_ORIENTATION_VERTICAL, w, &h, &h, NULL, NULL);
   put (self->title, x, (bar - h) / 2.0, w, h);
-
-  if (self->large)
-    {
-      int large_w = MAX (width - TITLE_X - END_PAD, 0);
-      double scrolled = self->scroll ? gtk_adjustment_get_value (self->scroll) : 0;
-
-      gtk_widget_measure (self->large_title, GTK_ORIENTATION_VERTICAL, large_w, &h, &h, NULL, NULL);
-      /* it moves up with the content */
-      put (self->large_title, TITLE_X, bar + LARGE_EXTRA - LARGE_BOTTOM - h - MIN (scrolled, LARGE_EXTRA), large_w, h);
-    }
-  else
-    put (self->large_title, TITLE_X, bar, 0, 0);
 }
 
 static void
 vibeos_top_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   VibeosTopBar *self = VIBEOS_TOP_BAR (widget);
-  double shown = shown_height (self), c = collapsed (self);
-  graphene_rect_t area = GRAPHENE_RECT_INIT (0, 0, gtk_widget_get_width (widget), shown);
+  double c = collapsed (self);
+  graphene_rect_t area = GRAPHENE_RECT_INIT (0, 0, gtk_widget_get_width (widget), gtk_widget_get_height (widget));
 
-  gtk_snapshot_push_clip (snapshot, &area);
   if (self->fill.alpha > 0)
     gtk_snapshot_append_color (snapshot, &self->fill, &area);
   if (self->selecting)
     gtk_widget_snapshot_child (widget, self->close, snapshot);
   else if (self->has_back)
     gtk_widget_snapshot_child (widget, self->back, snapshot);
-  /* a large bar shows its small title only once the large one is mostly gone */
+  /* a large bar shows its small title only once the large one has mostly scrolled under it */
   if (!self->large || self->selecting || c >= 1)
     gtk_widget_snapshot_child (widget, self->title, snapshot);
   else if (c > 0.5)
@@ -158,24 +149,15 @@ vibeos_top_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       gtk_widget_snapshot_child (widget, self->title, snapshot);
       gtk_snapshot_pop (snapshot);
     }
-  if (self->large && !self->selecting && c < 1)
-    {
-      gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (0, bar_height (self), area.size.width,
-                                                             MAX (shown - bar_height (self), 0)));
-      gtk_snapshot_push_opacity (snapshot, 1 - c);
-      gtk_widget_snapshot_child (widget, self->large_title, snapshot);
-      gtk_snapshot_pop (snapshot);
-      gtk_snapshot_pop (snapshot);
-    }
   gtk_widget_snapshot_child (widget, self->selecting ? self->selection_actions : self->actions, snapshot);
-  gtk_snapshot_pop (snapshot);
 }
 
-/* touches go through where the collapsed band no longer is */
-static gboolean
-vibeos_top_bar_contains (GtkWidget *widget, double x, double y)
+/* the large title fades as it goes under the bar, and the small one comes in */
+static void
+sync_collapsed (VibeosTopBar *self)
 {
-  return x >= 0 && x < gtk_widget_get_width (widget) && y >= 0 && y < shown_height (VIBEOS_TOP_BAR (widget));
+  gtk_widget_set_opacity (self->large_title, self->large ? 1 - collapsed (self) : 1);
+  gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
 /* ---- the parts ------------------------------------------------------------------------------------------------- */
@@ -187,7 +169,7 @@ sync_parts (VibeosTopBar *self)
   gtk_widget_set_child_visible (self->close, self->selecting);
   gtk_widget_set_child_visible (self->actions, !self->selecting);
   gtk_widget_set_child_visible (self->selection_actions, self->selecting);
-  gtk_widget_set_child_visible (self->large_title, self->large && !self->selecting);
+  gtk_widget_set_visible (self->large_title, self->large);
   if (self->selecting)
     gtk_widget_add_css_class (GTK_WIDGET (self), "selection");
   else
@@ -210,7 +192,7 @@ on_close_clicked (VibeosPressable *button, VibeosTopBar *self)
 static void
 on_scrolled (GtkAdjustment *adjustment, VibeosTopBar *self)
 {
-  gtk_widget_queue_allocate (GTK_WIDGET (self));
+  sync_collapsed (self);
 }
 
 static void
@@ -223,7 +205,7 @@ void
 vibeos_top_bar_set_title (VibeosTopBar *self, const char *title)
 {
   gtk_label_set_text (GTK_LABEL (self->title), title ? title : "");
-  gtk_label_set_text (GTK_LABEL (self->large_title), title ? title : "");
+  gtk_label_set_text (large_label (self), title ? title : "");
 }
 
 void
@@ -279,6 +261,7 @@ vibeos_top_bar_set_large (VibeosTopBar *self, gboolean large)
 {
   self->large = !!large;
   sync_parts (self);
+  sync_collapsed (self);
 }
 
 void
@@ -294,20 +277,20 @@ vibeos_top_bar_set_scroll (VibeosTopBar *self, GtkAdjustment *vadjustment)
       self->scroll = g_object_ref (vadjustment);
       g_signal_connect (vadjustment, "value-changed", G_CALLBACK (on_scrolled), self);
     }
-  gtk_widget_queue_allocate (GTK_WIDGET (self));
+  sync_collapsed (self);
 }
 
-int
-vibeos_top_bar_get_large_extra (VibeosTopBar *self)
+GtkWidget *
+vibeos_top_bar_get_large_title (VibeosTopBar *self)
 {
-  return LARGE_EXTRA;
+  return self->large_title;
 }
 
 void
 vibeos_top_bar_set_selection (VibeosTopBar *self, const char *title)
 {
   self->selecting = title != NULL;
-  gtk_label_set_text (GTK_LABEL (self->title), title ? title : gtk_label_get_text (GTK_LABEL (self->large_title)));
+  gtk_label_set_text (GTK_LABEL (self->title), title ? title : gtk_label_get_text (large_label (self)));
   sync_parts (self);
 }
 
@@ -349,7 +332,7 @@ vibeos_top_bar_dispose (GObject *object)
   g_clear_pointer (&self->back, gtk_widget_unparent);
   g_clear_pointer (&self->close, gtk_widget_unparent);
   g_clear_pointer (&self->title, gtk_widget_unparent);
-  g_clear_pointer (&self->large_title, gtk_widget_unparent);
+  g_clear_object (&self->large_title);
   g_clear_pointer (&self->actions, gtk_widget_unparent);
   g_clear_pointer (&self->selection_actions, gtk_widget_unparent);
   G_OBJECT_CLASS (vibeos_top_bar_parent_class)->dispose (object);
@@ -364,7 +347,6 @@ vibeos_top_bar_class_init (VibeosTopBarClass *klass)
   widget_class->measure = vibeos_top_bar_measure;
   widget_class->size_allocate = vibeos_top_bar_size_allocate;
   widget_class->snapshot = vibeos_top_bar_snapshot;
-  widget_class->contains = vibeos_top_bar_contains;
   widget_class->root = vibeos_top_bar_root;
   widget_class->unroot = vibeos_top_bar_unroot;
   gtk_widget_class_set_css_name (widget_class, "vibeos-top-bar");
@@ -379,7 +361,7 @@ static void
 vibeos_top_bar_init (VibeosTopBar *self)
 {
   GtkWidget *widget = GTK_WIDGET (self);
-  GtkWidget *arrow = gtk_image_new_from_icon_name ("go-previous-symbolic");
+  GtkWidget *arrow = gtk_image_new_from_icon_name ("go-previous-symbolic"), *label;
 
   gtk_widget_add_css_class (widget, "vibeos-top-bar");
 
@@ -387,12 +369,12 @@ vibeos_top_bar_init (VibeosTopBar *self)
   self->back = vibeos_pressable_new (arrow);
   gtk_widget_add_css_class (self->back, "vibeos-top-bar-back");
   vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (self->back), VIBEOS_SURFACE_CONTAINER_HIGHEST, FALSE);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_LABEL, "Back", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Back"), -1);
   g_signal_connect (self->back, "clicked", G_CALLBACK (on_back_clicked), self);
   gtk_widget_set_parent (self->back, widget);
 
   self->close = vibeos_icon_button_new ("window-close-symbolic");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->close), GTK_ACCESSIBLE_PROPERTY_LABEL, "Close", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->close), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Close"), -1);
   g_signal_connect (self->close, "clicked", G_CALLBACK (on_close_clicked), self);
   gtk_widget_set_parent (self->close, widget);
 
@@ -403,11 +385,14 @@ vibeos_top_bar_init (VibeosTopBar *self)
   gtk_widget_add_css_class (self->title, "vibeos-top-bar-title");
   gtk_widget_set_parent (self->title, widget);
 
-  self->large_title = gtk_label_new (NULL);
-  gtk_label_set_xalign (GTK_LABEL (self->large_title), 0);
-  gtk_label_set_wrap (GTK_LABEL (self->large_title), TRUE);
+  /* up to three lines, at the bottom of its band, smaller rather than with a word broken */
+  label = gtk_label_new (NULL);
+  gtk_label_set_xalign (GTK_LABEL (label), 0);
+  gtk_label_set_lines (GTK_LABEL (label), 3);
+  gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
+  gtk_widget_set_valign (label, GTK_ALIGN_END);
+  self->large_title = g_object_ref_sink (vibeos_fit_label_new (label));
   gtk_widget_add_css_class (self->large_title, "vibeos-top-bar-large-title");
-  gtk_widget_set_parent (self->large_title, widget);
 
   self->actions = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_set_parent (self->actions, widget);

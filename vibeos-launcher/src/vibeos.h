@@ -4,6 +4,7 @@
 #pragma once
 
 #include <gio/gdesktopappinfo.h>
+#include <glib/gi18n.h>
 #include <stdbool.h>
 
 #include "gfx.h"
@@ -151,6 +152,7 @@ void   tiles_load        (int cols, int rows);         /* the apps, their labels
 bool   tiles_sync        (void);                       /* the apps again: installed, removed, changed */
 void   tiles_reload_icons (void);                      /* every icon again, for new icon settings */
 void   tiles_relabel     (void);                       /* every label again, for another grid */
+void   tiles_language_changed (void);                  /* every label again, in a new language, sorted again */
 int    tiles_icon_px     (void);                       /* the size the icons are drawn at */
 Tile  *tiles_get         (const char *id);
 GHashTable *tiles_apps   (void);                       /* id -> GAppInfo, as model_reconcile takes them */
@@ -222,6 +224,7 @@ void   nav_shown         (guint64 frame);                /* that frame is on scr
 
 /* drawer.c */
 void   drawer_layout     (void);
+void   drawer_language_changed (void);                   /* the search's texts again, in a new language */
 float  drawer_progress   (void);                         /* f: 0 home, 1 all apps */
 bool   drawer_frame      (void);
 void   drawer_draw       (void);
@@ -282,6 +285,7 @@ void   drag_move         (float x, float y);
 void   drag_up           (float x, float y);
 void   drag_cancel       (bool now);                     /* now: no 500 ms before the workspace comes back */
 bool   drag_busy         (void);                         /* landing or the workspace coming back: touches wait */
+void   drag_language_changed (void);                     /* the drop bar's words again, in a new language */
 void   drag_hurry        (void);
 bool   drag_frame        (void);
 float  drag_spring       (void);                         /* 0 normal .. 1 zoomed out for the drop, eased */

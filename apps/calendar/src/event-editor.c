@@ -794,13 +794,15 @@ title_bar (Editor *editor)
   GtkWidget *overlay = gtk_overlay_new ();
   GtkWidget *back = vibeos_icon_button_new ("cal-back-symbolic");
 
-  /* "✕ CANCEL" and "✓ DONE" in two equal halves of the toolbar, the divider between */
+  /* "✕ CANCEL" and "✓ DONE" in two equal halves of the toolbar, the divider between; in capitals, as Android's
+   * (textAllCaps) */
+  g_autofree char *cancel = g_utf8_strup (_("Cancel"), -1), *done = g_utf8_strup (_("Done"), -1);
   gtk_center_box_set_start_widget (GTK_CENTER_BOX (bar),
-                                   action_button ("cal-cancel-symbolic", _("CANCEL"), G_CALLBACK (on_cancel), editor));
+                                   action_button ("cal-cancel-symbolic", cancel, G_CALLBACK (on_cancel), editor));
   gtk_widget_add_css_class (divider, "cal-edit-action-divider");
   gtk_center_box_set_center_widget (GTK_CENTER_BOX (bar), divider);
   gtk_center_box_set_end_widget (GTK_CENTER_BOX (bar),
-                                 action_button ("cal-done-symbolic", _("DONE"), G_CALLBACK (on_done), editor));
+                                 action_button ("cal-done-symbolic", done, G_CALLBACK (on_done), editor));
   gtk_widget_add_css_class (bar, "cal-edit-bar");
   gtk_overlay_set_child (GTK_OVERLAY (overlay), bar);
   /* An invisible "Back" for the shell's back gesture, which presses the button of that name in the top band (it does

@@ -3,3 +3,4 @@ usr/share/applications/vibeos.Files.desktop
 usr/share/dbus-1/services/vibeos.Files.service
 usr/share/glib-2.0/schemas/vibeos.Files.gschema.xml
 usr/share/icons/hicolor/scalable/apps/vibeos.Files.svg
+usr/share/locale/*/LC_MESSAGES/vibeos-files.mo

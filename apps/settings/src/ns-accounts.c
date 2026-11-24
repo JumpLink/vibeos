@@ -505,7 +505,7 @@ form_error (Form *f, const GError *error, int stage)
   gboolean ssl = g_error_matches (error, GOA_ERROR, GOA_ERROR_SSL);
   if (stage >= 0 && stage < 2)
     f->had_ssl[stage] = ssl;
-  gtk_button_set_label (GTK_BUTTON (f->go), ssl ? "Ignore" : f->go_label);
+  gtk_button_set_label (GTK_BUTTON (f->go), ssl ? _("Ignore") : f->go_label);
   /* the field lost the focus while it was insensitive: typing goes on where it was */
   if (f->focus_slot >= 0 && f->field[f->focus_slot])
     gtk_widget_grab_focus (f->field[f->focus_slot]);
@@ -718,13 +718,13 @@ form_finish (Form *f, FormStep submit, FormReady ready)
   gtk_box_append (GTK_BOX (f->status), f->spinner);
   gtk_box_append (GTK_BOX (f->status), f->message);
   gtk_widget_set_visible (f->status, FALSE);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (f->status), GTK_ACCESSIBLE_PROPERTY_LABEL, "Status", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (f->status), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Status"), -1);
   gtk_box_append (GTK_BOX (f->content), f->status);
 
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
   gtk_widget_add_css_class (bar, "ns-form-buttons");
   gtk_widget_set_halign (bar, GTK_ALIGN_END);
-  f->cancel = ns_button_new ("Cancel", FALSE);
+  f->cancel = ns_button_new (_("Cancel"), FALSE);
   f->go = ns_button_new (f->go_label, TRUE);
   g_signal_connect (f->cancel, "clicked", G_CALLBACK (form_cancel), f);
   g_signal_connect (f->go, "clicked", G_CALLBACK (form_go), f);
@@ -820,7 +820,7 @@ static void
 form_ensure (Form *f, const char *path)
 {
   g_autoptr (GDBusConnection) bus = session_bus ();
-  form_busy (f, "Signing in…");
+  form_busy (f, _("Signing in…"));
   g_dbus_connection_call (bus, GOA_BUS, path, GOA_ACCOUNT_IFACE, "EnsureCredentials", NULL, G_VARIANT_TYPE ("(i)"),
                           G_DBUS_CALL_FLAGS_NONE, -1, f->cancellable, ensured, form_ref (f));
 }
@@ -875,7 +875,7 @@ form_add (Form *f, const char *identity, const char *presentation, GVariant *cre
   Adding *a = g_new0 (Adding, 1);
   a->f = form_ref (f);
   a->then = then;
-  form_busy (f, f->path ? "Saving…" : "Adding the account…");
+  form_busy (f, f->path ? _("Saving…") : _("Adding the account…"));
   g_dbus_connection_call (bus, GOA_BUS, GOA_MANAGER_PATH, "org.gnome.OnlineAccounts.Manager", "AddAccount",
                           g_variant_new ("(sss@a{sv}@a{ss})", f->type, identity, presentation, credentials, details),
                           G_VARIANT_TYPE ("(o)"), G_DBUS_CALL_FLAGS_NONE, -1, NULL, added, a);
@@ -977,7 +977,7 @@ webdav_submit (Form *f)
       const char *uri = detail (f->details, keys[i][0]);
       if (!*uri)
         continue;
-      form_busy (f, "Checking the server…");
+      form_busy (f, _("Checking the server…"));
       ns_dav_check (keys[i][1], uri, f->identity, password, accept, f->cancellable, dav_rechecked, form_ref (f));
       return;
     }
@@ -990,7 +990,7 @@ webdav_submit (Form *f)
   g_autofree char *server = NULL;
   g_autofree char *uri = ns_goa_normalize_url (form_text (f, F_SERVER), NULL, &server);
   if (!uri) {
-    g_autofree char *text = g_strdup_printf ("Invalid URI: %s", form_text (f, F_SERVER));
+    g_autofree char *text = g_strdup_printf (_("Invalid URI: %s"), form_text (f, F_SERVER));
     form_error_text (f, text);
     return;
   }
@@ -1000,7 +1000,7 @@ webdav_submit (Form *f)
     return;
   /* the address GOA uses, shown as it does */
   form_set_text (f, F_SERVER, uri);
-  form_busy (f, "Looking for the server's calendars, contacts and files…");
+  form_busy (f, _("Looking for the server's calendars, contacts and files…"));
   ns_dav_add_check (uri, user, password, form_text (f, F_FILES), form_text (f, F_CALDAV), form_text (f, F_CARDDAV),
                     f->accept_ssl[0], f->cancellable, webdav_checked, form_ref (f));
 }
@@ -1009,7 +1009,7 @@ webdav_submit (Form *f)
 static void
 refresh_head (Form *f, GtkWidget *g)
 {
-  ns_row_info (g, "Account", f->presentation);
+  ns_row_info (g, _("Account"), f->presentation);
 }
 
 static void
@@ -1017,24 +1017,24 @@ webdav_page (GoaProvider *p, Form *refresh)
 {
   Form *f = refresh;
   if (!f) {
-    f = form_new (p, NULL, "Calendars, contacts and files from a WebDAV server", "Sign in");
+    f = form_new (p, NULL, _("Calendars, contacts and files from a WebDAV server"), _("Sign in"));
     GtkWidget *g = ns_group (f->content, NULL);
-    form_field (f, g, F_SERVER, "Server address", NULL, FALSE, GTK_INPUT_PURPOSE_URL);
-    ns_note (f->content, "For example example.com or 192.168.0.82");
+    form_field (f, g, F_SERVER, _("Server address"), NULL, FALSE, GTK_INPUT_PURPOSE_URL);
+    ns_note (f->content, _("For example example.com or 192.0.2.82"));
     g = ns_group (f->content, NULL);
-    form_field (f, g, F_USER, "User name", NULL, FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
-    form_field (f, g, F_PASSWORD, "Password", NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
+    form_field (f, g, F_USER, _("User name"), NULL, FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
+    form_field (f, g, F_PASSWORD, _("Password"), NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
     /* GOA offers its own addresses only for WebDAV itself, not for the providers built on it */
     if (g_str_equal (f->type, "webdav")) {
-      g = ns_group (f->content, "Server addresses (optional)");
-      form_field (f, g, F_FILES, "Files", NULL, FALSE, GTK_INPUT_PURPOSE_URL);
-      form_field (f, g, F_CALDAV, "Calendar (CalDAV)", NULL, FALSE, GTK_INPUT_PURPOSE_URL);
-      form_field (f, g, F_CARDDAV, "Contacts (CardDAV)", NULL, FALSE, GTK_INPUT_PURPOSE_URL);
+      g = ns_group (f->content, _("Server addresses (optional)"));
+      form_field (f, g, F_FILES, _("Files"), NULL, FALSE, GTK_INPUT_PURPOSE_URL);
+      form_field (f, g, F_CALDAV, _("Calendar (CalDAV)"), NULL, FALSE, GTK_INPUT_PURPOSE_URL);
+      form_field (f, g, F_CARDDAV, _("Contacts (CardDAV)"), NULL, FALSE, GTK_INPUT_PURPOSE_URL);
     }
   } else {
     GtkWidget *g = ns_group (f->content, NULL);
     refresh_head (f, g);
-    form_field (f, g, F_PASSWORD, "Password", NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
+    form_field (f, g, F_PASSWORD, _("Password"), NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
   }
   form_finish (f, webdav_submit, webdav_ready);
 }
@@ -1055,7 +1055,8 @@ nextcloud_got (Form *f, const char *server, const char *login, const char *app_p
   if (f->path) {
     /* the same account signed in again, or nothing */
     if (g_strcmp0 (f->identity, login) != 0) {
-      g_autofree char *text = g_strdup_printf ("Was asked to log in as %s, but logged in as %s", f->identity, login);
+      /* TRANSLATORS: the user name asked for, then the one the server signed in */
+      g_autofree char *text = g_strdup_printf (_("Was asked to log in as %s, but logged in as %s"), f->identity, login);
       form_error_text (f, text);
       return;
     }
@@ -1071,7 +1072,7 @@ nextcloud_got (Form *f, const char *server, const char *login, const char *app_p
   g_autofree char *webdav = ns_goa_normalize_url (base, "remote.php/webdav", NULL);
   g_autofree char *dav = ns_goa_normalize_url (base, "remote.php/dav", NULL);
   if (!webdav || !dav) {
-    g_autofree char *text = g_strdup_printf ("Invalid URI: %s", server);
+    g_autofree char *text = g_strdup_printf (_("Invalid URI: %s"), server);
     form_error_text (f, text);
     return;
   }
@@ -1129,7 +1130,7 @@ nextcloud_launched (GObject *src, GAsyncResult *res, gpointer data)
   if (!ok) {
     form_error (f, err, -1);
   } else {
-    form_busy (f, "Sign in on the page that opened in the browser, then come back here.");
+    form_busy (f, _("Sign in on the page that opened in the browser, then come back here."));
     f->poll_id = g_timeout_add_seconds_once (NEXTCLOUD_POLL_SECONDS, nextcloud_poll, f);
   }
   form_unref (f);
@@ -1149,7 +1150,7 @@ nextcloud_started (GObject *src, GAsyncResult *res, gpointer data)
   if (!ok) {
     form_error (f, err, 0);
   } else {
-    form_busy (f, "Opening the sign-in page in the browser…");
+    form_busy (f, _("Opening the sign-in page in the browser…"));
     g_app_info_launch_default_for_uri_async (login, NULL, f->cancellable, nextcloud_launched, form_ref (f));
   }
   form_unref (f);
@@ -1171,13 +1172,13 @@ nextcloud_submit (Form *f)
     uri = ns_goa_normalize_url (server, NULL, NULL);
   }
   if (!uri) {
-    g_autofree char *text = g_strdup_printf ("Invalid URI: %s", server);
+    g_autofree char *text = g_strdup_printf (_("Invalid URI: %s"), server);
     form_error_text (f, text);
     return;
   }
   if (!f->path)
     form_set_text (f, F_SERVER, uri);
-  form_busy (f, "Connecting to the server…");
+  form_busy (f, _("Connecting to the server…"));
   ns_nextcloud_start (uri, f->accept_ssl[0] || detail_true (f->details, "AcceptSslErrors"), f->cancellable,
                       nextcloud_started, form_ref (f));
 }
@@ -1196,15 +1197,15 @@ nextcloud_page (GoaProvider *p, Form *refresh)
 {
   Form *f = refresh;
   if (!f) {
-    f = form_new (p, NULL, "Your Nextcloud server's files, calendars and contacts. You sign in in the browser.",
-                  "Sign in");
+    f = form_new (p, NULL, _("Your Nextcloud server's files, calendars and contacts. You sign in in the browser."),
+                  _("Sign in"));
     GtkWidget *g = ns_group (f->content, NULL);
-    form_field (f, g, F_SERVER, "Server address", NULL, FALSE, GTK_INPUT_PURPOSE_URL);
-    ns_note (f->content, "For example example.com or 192.168.0.82");
+    form_field (f, g, F_SERVER, _("Server address"), NULL, FALSE, GTK_INPUT_PURPOSE_URL);
+    ns_note (f->content, _("For example example.com or 192.0.2.82"));
   } else {
     GtkWidget *g = ns_group (f->content, NULL);
     refresh_head (f, g);
-    ns_note (f->content, "The server's sign-in page opens in the browser.");
+    ns_note (f->content, _("The server's sign-in page opens in the browser."));
   }
   form_finish (f, nextcloud_submit, nextcloud_ready);
 }
@@ -1212,7 +1213,7 @@ nextcloud_page (GoaProvider *p, Form *refresh)
 /* ---- IMAP and SMTP (goaimapsmtpprovider.c) ---- */
 
 /* GoaTlsType - 1, as GOA's dialog lists them */
-static const char *const tls_labels[] = { "STARTTLS after connecting", "SSL on a dedicated port", NULL };
+static const char *const tls_labels[] = { N_("STARTTLS after connecting"), N_("SSL on a dedicated port"), NULL };
 
 static NsTls
 tls_of (guint pos)
@@ -1254,9 +1255,9 @@ imap_found (GObject *src, GAsyncResult *res, gpointer data)
   f->smtp_tls = found && found->smtp_host && found->smtp_tls == NS_TLS_STARTTLS ? 0 : 1;
   ns_row_pick_select (f->smtp_pick, f->smtp_tls);
   if (found && (found->imap_host || found->smtp_host))
-    gtk_label_set_text (GTK_LABEL (f->detect), "The servers below were found for this address.");
+    gtk_label_set_text (GTK_LABEL (f->detect), _("The servers below were found for this address."));
   else
-    gtk_label_set_text (GTK_LABEL (f->detect), "The servers for this address could not be found: enter them below.");
+    gtk_label_set_text (GTK_LABEL (f->detect), _("The servers for this address could not be found: enter them below."));
   form_update_go (f);
   form_unref (f);
 }
@@ -1269,7 +1270,7 @@ imap_detect (gpointer data)
   if (!ns_goa_parse_email (form_text (f, F_EMAIL), NULL, NULL))
     return;
   f->detecting = g_cancellable_new ();
-  gtk_label_set_text (GTK_LABEL (f->detect), "Looking up the servers for this address…");
+  gtk_label_set_text (GTK_LABEL (f->detect), _("Looking up the servers for this address…"));
   ns_mail_autoconfig (form_text (f, F_EMAIL), f->detecting, imap_found, form_ref (f));
 }
 
@@ -1285,7 +1286,7 @@ imap_email_changed (GtkEditable *e, Form *f)
   }
   g_clear_handle_id (&f->detect_id, g_source_remove);
   gtk_label_set_text (GTK_LABEL (f->detect),
-                      "The servers are looked up from your provider when possible.");
+                      _("The servers are looked up from your provider when possible."));
   if (ns_goa_parse_email (form_text (f, F_EMAIL), NULL, NULL))
     f->detect_id = g_timeout_add_once (400, imap_detect, f);
 }
@@ -1407,7 +1408,7 @@ imap_checked (GObject *src, GAsyncResult *res, gpointer data)
   NsTls tls = f->path ? (detail_true (f->details, "SmtpUseTls") ? NS_TLS_STARTTLS : NS_TLS_SSL) : tls_of (f->smtp_tls);
   const char *user = f->path ? detail (f->details, "SmtpUserName") : form_text (f, F_SMTP_USER);
   gboolean accept = f->accept_ssl[1] || (f->path && detail_true (f->details, "SmtpAcceptSslErrors"));
-  form_busy (f, "Checking the outgoing mail server…");
+  form_busy (f, _("Checking the outgoing mail server…"));
   ns_mail_check (TRUE, smtp, tls, accept, user, form_text (f, F_SMTP_PASSWORD), domain, f->cancellable, smtp_checked,
                  form_ref (f));
   form_unref (f);
@@ -1427,7 +1428,7 @@ imap_submit (Form *f)
   gboolean accept = f->accept_ssl[0] || (f->path && detail_true (f->details, "ImapAcceptSslErrors"));
   if (f->path)
     f->smtp_auth.use_auth = detail_true (f->details, "SmtpUseAuth");
-  form_busy (f, "Checking the incoming mail server…");
+  form_busy (f, _("Checking the incoming mail server…"));
   ns_mail_check (FALSE, host, tls, accept, user, form_text (f, F_IMAP_PASSWORD), NULL, f->cancellable, imap_checked,
                  form_ref (f));
 }
@@ -1439,44 +1440,44 @@ imap_page (GoaProvider *p, Form *refresh)
   if (refresh) {
     GtkWidget *g = ns_group (f->content, NULL);
     refresh_head (f, g);
-    g = ns_group (f->content, "Incoming mail (IMAP)");
-    ns_row_info (g, "Server", detail (f->details, "ImapHost"));
-    form_field (f, g, F_IMAP_PASSWORD, "Password", NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
+    g = ns_group (f->content, _("Incoming mail (IMAP)"));
+    ns_row_info (g, _("Server"), detail (f->details, "ImapHost"));
+    form_field (f, g, F_IMAP_PASSWORD, _("Password"), NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
     if (*detail (f->details, "SmtpHost") && detail_true (f->details, "SmtpUseAuth")) {
-      g = ns_group (f->content, "Outgoing mail (SMTP)");
-      ns_row_info (g, "Server", detail (f->details, "SmtpHost"));
-      form_field (f, g, F_SMTP_PASSWORD, "Password", NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
+      g = ns_group (f->content, _("Outgoing mail (SMTP)"));
+      ns_row_info (g, _("Server"), detail (f->details, "SmtpHost"));
+      form_field (f, g, F_SMTP_PASSWORD, _("Password"), NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
     }
     form_finish (f, imap_submit, imap_ready);
     return;
   }
 
-  f = form_new (p, NULL, "Mail from any provider, by IMAP and SMTP", "Sign in");
+  f = form_new (p, NULL, _("Mail from any provider, by IMAP and SMTP"), _("Sign in"));
   const char *real = g_get_real_name ();
   GtkWidget *g = ns_group (f->content, NULL);
-  form_field (f, g, F_NAME, "Name", g_strcmp0 (real, "Unknown") ? real : NULL, FALSE, GTK_INPUT_PURPOSE_NAME);
-  form_field (f, g, F_EMAIL, "Email address", NULL, FALSE, GTK_INPUT_PURPOSE_EMAIL);
-  form_field (f, g, F_PASSWORD, "Password", NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
-  f->detect = ns_note (f->content, "The servers are looked up from your provider when possible.");
+  form_field (f, g, F_NAME, _("Name"), g_strcmp0 (real, "Unknown") ? real : NULL, FALSE, GTK_INPUT_PURPOSE_NAME);
+  form_field (f, g, F_EMAIL, _("Email address"), NULL, FALSE, GTK_INPUT_PURPOSE_EMAIL);
+  form_field (f, g, F_PASSWORD, _("Password"), NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
+  f->detect = ns_note (f->content, _("The servers are looked up from your provider when possible."));
   g_signal_connect (f->field[F_EMAIL], "changed", G_CALLBACK (imap_email_changed), f);
   g_signal_connect (f->field[F_PASSWORD], "changed", G_CALLBACK (imap_password_changed), f);
 
   f->imap_tls = f->smtp_tls = 1;
-  g = ns_group (f->content, "Incoming mail (IMAP)");
-  form_field (f, g, F_IMAP_HOST, "Server", NULL, FALSE, GTK_INPUT_PURPOSE_URL);
-  f->imap_pick = ns_row_pick (g, "Encryption", tls_labels, f->imap_tls, imap_picked, f);
+  g = ns_group (f->content, _("Incoming mail (IMAP)"));
+  form_field (f, g, F_IMAP_HOST, _("Server"), NULL, FALSE, GTK_INPUT_PURPOSE_URL);
+  f->imap_pick = ns_row_pick (g, _("Encryption"), tls_labels, f->imap_tls, imap_picked, f);
   g_ptr_array_add (f->inputs, f->imap_pick);
-  form_field (f, g, F_IMAP_USER, "User name", NULL, FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
-  form_field (f, g, F_IMAP_PASSWORD, "Password", NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
-  ns_note (f->content, "For example imap.example.com");
+  form_field (f, g, F_IMAP_USER, _("User name"), NULL, FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
+  form_field (f, g, F_IMAP_PASSWORD, _("Password"), NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
+  ns_note (f->content, _("For example imap.example.com"));
 
-  g = ns_group (f->content, "Outgoing mail (SMTP)");
-  form_field (f, g, F_SMTP_HOST, "Server", NULL, FALSE, GTK_INPUT_PURPOSE_URL);
-  f->smtp_pick = ns_row_pick (g, "Encryption", tls_labels, f->smtp_tls, imap_picked, f);
+  g = ns_group (f->content, _("Outgoing mail (SMTP)"));
+  form_field (f, g, F_SMTP_HOST, _("Server"), NULL, FALSE, GTK_INPUT_PURPOSE_URL);
+  f->smtp_pick = ns_row_pick (g, _("Encryption"), tls_labels, f->smtp_tls, imap_picked, f);
   g_ptr_array_add (f->inputs, f->smtp_pick);
-  form_field (f, g, F_SMTP_USER, "User name", NULL, FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
-  form_field (f, g, F_SMTP_PASSWORD, "Password", NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
-  ns_note (f->content, "For example smtp.example.com. Leave it empty for an account that only reads mail.");
+  form_field (f, g, F_SMTP_USER, _("User name"), NULL, FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
+  form_field (f, g, F_SMTP_PASSWORD, _("Password"), NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
+  ns_note (f->content, _("For example smtp.example.com. Leave it empty for an account that only reads mail."));
   form_finish (f, imap_submit, imap_ready);
 }
 
@@ -1529,7 +1530,7 @@ exchange_submit (Form *f)
     if (form_check_duplicate (f, f->type, user, email))
       return;
   }
-  form_busy (f, "Looking for the Exchange server…");
+  form_busy (f, _("Looking for the Exchange server…"));
   ns_ews_autodiscover (email, form_text (f, F_PASSWORD), user, server, accept, f->cancellable, exchange_checked,
                        form_ref (f));
 }
@@ -1561,17 +1562,17 @@ exchange_page (GoaProvider *p, Form *refresh)
   if (refresh) {
     GtkWidget *g = ns_group (f->content, NULL);
     refresh_head (f, g);
-    form_field (f, g, F_PASSWORD, "Password", NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
+    form_field (f, g, F_PASSWORD, _("Password"), NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
   } else {
-    f = form_new (p, NULL, "Calendars, contacts and mail from a Microsoft Exchange server", "Sign in");
+    f = form_new (p, NULL, _("Calendars, contacts and mail from a Microsoft Exchange server"), _("Sign in"));
     GtkWidget *g = ns_group (f->content, NULL);
-    form_field (f, g, F_EMAIL, "Email address", NULL, FALSE, GTK_INPUT_PURPOSE_EMAIL);
-    form_field (f, g, F_PASSWORD, "Password", NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
-    ns_note (f->content, "The account's details are found from the email address when possible.");
-    g = ns_group (f->content, "Account details");
-    form_field (f, g, F_USER, "User name", NULL, FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
-    form_field (f, g, F_DOMAIN, "Domain", NULL, FALSE, GTK_INPUT_PURPOSE_URL);
-    ns_note (f->content, "For example example.com");
+    form_field (f, g, F_EMAIL, _("Email address"), NULL, FALSE, GTK_INPUT_PURPOSE_EMAIL);
+    form_field (f, g, F_PASSWORD, _("Password"), NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
+    ns_note (f->content, _("The account's details are found from the email address when possible."));
+    g = ns_group (f->content, _("Account details"));
+    form_field (f, g, F_USER, _("User name"), NULL, FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
+    form_field (f, g, F_DOMAIN, _("Domain"), NULL, FALSE, GTK_INPUT_PURPOSE_URL);
+    ns_note (f->content, _("For example example.com"));
     g_signal_connect (f->field[F_EMAIL], "changed", G_CALLBACK (exchange_email_changed), f);
   }
   form_finish (f, exchange_submit, exchange_ready);
@@ -1607,7 +1608,7 @@ kerberos_error (Form *f, GError *err)
   g_autofree char *remote = g_dbus_error_get_remote_error (err);
   if (g_strcmp0 (remote, "org.gnome.Identity.Manager.Error.CreatingIdentity") == 0 ||
       g_strcmp0 (remote, "org.gnome.Identity.Error.AuthenticationFailed") == 0) {
-    g_autoptr (GError) e = g_error_new_literal (GOA_ERROR, GOA_ERROR_NOT_AUTHORIZED, "Authentication failed");
+    g_autoptr (GError) e = g_error_new_literal (GOA_ERROR, GOA_ERROR_NOT_AUTHORIZED, _("Authentication failed"));
     form_error (f, e, -1);
     return;
   }
@@ -1676,7 +1677,8 @@ kerberos_keys_exchanged (GObject *src, GAsyncResult *res, gpointer data)
   if (!v) {
     kerberos_failed (f, err);
   } else if (!gcr_secret_exchange_receive (exchange, key)) {
-    g_autoptr (GError) e = g_error_new_literal (GOA_ERROR, GOA_ERROR_FAILED, "Identity service returned invalid key");
+    g_autoptr (GError) e = g_error_new_literal (GOA_ERROR, GOA_ERROR_FAILED,
+                                                _("Identity service returned invalid key"));
     kerberos_failed (f, e);
   } else {
     /* the password goes to the identity service encrypted with the key it agreed */
@@ -1705,7 +1707,7 @@ kerberos_sign_in (Form *f)
   k->f = form_ref (f);
   k->exchange = gcr_secret_exchange_new (NULL);
   g_autofree char *mine = gcr_secret_exchange_begin (k->exchange);
-  form_busy (f, "Signing in…");
+  form_busy (f, _("Signing in…"));
   g_dbus_connection_call (bus, IDENTITY_BUS, IDENTITY_MANAGER_PATH, IDENTITY_MANAGER_IFACE, "ExchangeSecretKeys",
                           g_variant_new ("(ss)", f->principal, mine), G_VARIANT_TYPE ("(s)"), G_DBUS_CALL_FLAGS_NONE,
                           -1, f->cancellable, kerberos_keys_exchanged, k);
@@ -1733,7 +1735,7 @@ kerberos_submit (Form *f)
   g_free (f->principal);
   f->principal = kerberos_principal (f, &realm);
   if (!f->principal) {
-    form_error_text (f, "The principal is a user name and a realm: user@EXAMPLE.COM");
+    form_error_text (f, _("The principal is a user name and a realm: user@EXAMPLE.COM"));
     return;
   }
   form_set_text (f, F_PRINCIPAL, f->principal);
@@ -1770,17 +1772,17 @@ kerberos_page (GoaProvider *p, Form *refresh)
     g_set_str (&f->principal, f->identity);
     GtkWidget *g = ns_group (f->content, NULL);
     refresh_head (f, g);
-    form_field (f, g, F_PASSWORD, "Password", NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
+    form_field (f, g, F_PASSWORD, _("Password"), NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
   } else {
-    f = form_new (p, NULL, "Web and network resources of your organization, by Kerberos", "Sign in");
+    f = form_new (p, NULL, _("Web and network resources of your organization, by Kerberos"), _("Sign in"));
     f->fedora = g_str_equal (f->type, "fedora");
     GtkWidget *g = ns_group (f->content, NULL);
-    form_field (f, g, F_PRINCIPAL, f->fedora ? "User name" : "Principal", NULL, FALSE, GTK_INPUT_PURPOSE_EMAIL);
-    form_field (f, g, F_PASSWORD, "Password", NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
-    ns_note (f->content, f->fedora ? "Your Fedora account's user name" : "For example user@EXAMPLE.COM");
+    form_field (f, g, F_PRINCIPAL, f->fedora ? _("User name") : _("Principal"), NULL, FALSE, GTK_INPUT_PURPOSE_EMAIL);
+    form_field (f, g, F_PASSWORD, _("Password"), NULL, TRUE, GTK_INPUT_PURPOSE_PASSWORD);
+    ns_note (f->content, f->fedora ? _("Your Fedora account's user name") : _("For example user@EXAMPLE.COM"));
   }
   GtkWidget *g = ns_group (f->content, NULL);
-  f->remember = ns_row_switch (g, "Remember the password", "Signs in again on its own when the ticket runs out",
+  f->remember = ns_row_switch (g, _("Remember the password"), _("Signs in again on its own when the ticket runs out"),
                                NULL, NULL);
   g_ptr_array_add (f->inputs, f->remember);
   form_finish (f, kerberos_submit, kerberos_ready);
@@ -1901,7 +1903,7 @@ oauth_start (gpointer data)
   if (f->path) {
     g_autoptr (GoaObject) obj = lookup_account (f->path);
     if (!obj) {
-      form_error_text (f, "The account is gone.");
+      form_error_text (f, _("The account is gone."));
       return;
     }
     goa_provider_refresh_account (f->provider, goa, obj, f->go, f->cancellable, oauth_refreshed, form_ref (f));
@@ -1921,7 +1923,7 @@ oauth_start (gpointer data)
   }
   if (!dialog) {
     /* not GOA's dialog as this page knows it: its own window stays, and the sign-in is done there */
-    form_busy (f, "Continue in the window that opened.");
+    form_busy (f, _("Continue in the window that opened."));
     return;
   }
   f->dialog = dialog;
@@ -1934,21 +1936,21 @@ oauth_start (gpointer data)
     find_rows (dialog, ADW_TYPE_ENTRY_ROW, entries);
     if (switches->len < 1 || entries->len < 2) {
       oauth_dismiss_dialog (f);
-      form_error_text (f, "This version of GNOME Online Accounts asks for an organization's details differently.");
+      form_error_text (f, _("This version of GNOME Online Accounts asks for an organization's details differently."));
       return;
     }
     adw_switch_row_set_active (g_ptr_array_index (switches, 0), TRUE);
     gtk_editable_set_text (g_ptr_array_index (entries, 0), form_text (f, F_CLIENT_ID));
     gtk_editable_set_text (g_ptr_array_index (entries, 1), form_text (f, F_TENANT));
   }
-  form_busy (f, "Sign in on the page that opened in the browser, then come back here.");
+  form_busy (f, _("Sign in on the page that opened in the browser, then come back here."));
   g_object_set (dialog, "state", GOA_DIALOG_BUSY, NULL);
 }
 
 static void
 oauth_submit (Form *f)
 {
-  form_busy (f, "Opening the sign-in page in the browser…");
+  form_busy (f, _("Opening the sign-in page in the browser…"));
   with_goa (f->page, oauth_start, f);
 }
 
@@ -1973,19 +1975,20 @@ oauth_page (GoaProvider *p, Form *refresh)
   if (refresh) {
     GtkWidget *g = ns_group (f->content, NULL);
     refresh_head (f, g);
-    ns_note (f->content, "The sign-in page opens in the browser.");
+    ns_note (f->content, _("The sign-in page opens in the browser."));
   } else {
     g_autofree char *name = goa_provider_get_provider_name (p, NULL);
-    intro = g_strdup_printf ("You sign in to %s in the browser, on its own page.", name);
-    f = form_new (p, NULL, intro, "Sign in");
+    /* TRANSLATORS: %s is the provider ("Google") */
+    intro = g_strdup_printf (_("You sign in to %s in the browser, on its own page."), name);
+    f = form_new (p, NULL, intro, _("Sign in"));
     if (g_str_equal (f->type, "ms_graph")) {
       GtkWidget *g = ns_group (f->content, NULL);
-      f->org = ns_row_switch (g, "Use an organization account",
-                              "Sign in with details from an organization or developer account", NULL, NULL);
+      f->org = ns_row_switch (g, _("Use an organization account"),
+                              _("Sign in with details from an organization or developer account"), NULL, NULL);
       g_ptr_array_add (f->inputs, f->org);
-      f->org_group = ns_group (f->content, "Details from your organization");
-      form_field (f, f->org_group, F_CLIENT_ID, "Client ID (optional)", NULL, FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
-      form_field (f, f->org_group, F_TENANT, "Tenant ID", NULL, FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
+      f->org_group = ns_group (f->content, _("Details from your organization"));
+      form_field (f, f->org_group, F_CLIENT_ID, _("Client ID (optional)"), NULL, FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
+      form_field (f, f->org_group, F_TENANT, _("Tenant ID"), NULL, FALSE, GTK_INPUT_PURPOSE_FREE_FORM);
       ns_group_set_visible (f->org_group, FALSE);
       g_signal_connect (ns_row_get_switch (f->org), "notify::active", G_CALLBACK (oauth_org_toggled), f);
     }
@@ -2064,7 +2067,7 @@ providers_got (GObject *src, GAsyncResult *res, gpointer group)
   GList *all = NULL;
   g_autoptr (GError) err = NULL;
   if (!goa_provider_get_all_finish (&all, res, &err))
-    ns_row (group, NULL, "No providers", err->message);
+    ns_row (group, NULL, _("No providers"), err->message);
   for (GList *l = all; l; l = l->next) {
     GoaProvider *p = l->data;
     g_autofree char *name = goa_provider_get_provider_name (p, NULL);
@@ -2081,7 +2084,7 @@ static void
 add_account (GtkWidget *row, gpointer data)
 {
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Add account", &c);
+  NsPage *page = ns_page_new (_("Add account"), &c);
   GtkWidget *g = ns_group (c, NULL);
   goa_provider_get_all (providers_got, g_object_ref (g));
   ns_push (page);
@@ -2097,9 +2100,9 @@ static const struct {
   GoaProviderFeatures feature;
   const char         *prop, *label;
 } features[] = {
-  { GOA_PROVIDER_FEATURE_CALENDAR, "CalendarDisabled", "Calendar" },
-  { GOA_PROVIDER_FEATURE_CONTACTS, "ContactsDisabled", "Contacts" },
-  { GOA_PROVIDER_FEATURE_FILES, "FilesDisabled", "Files" },
+  { GOA_PROVIDER_FEATURE_CALENDAR, "CalendarDisabled", N_("Calendar") },
+  { GOA_PROVIDER_FEATURE_CONTACTS, "ContactsDisabled", N_("Contacts") },
+  { GOA_PROVIDER_FEATURE_FILES, "FilesDisabled", N_("Files") },
 };
 
 typedef struct {
@@ -2166,10 +2169,11 @@ acct_removed (gboolean yes, gpointer row)
 static void
 acct_remove (GtkWidget *row, gpointer data)
 {
-  g_autofree char *leave = g_strdup_printf ("The %s stops using it and forgets its sign-in. The account itself stays "
-                                            "with its provider.",
-                                            ns_device_noun ());
-  ns_confirm (row, "Remove this account?", leave, "Remove", TRUE, acct_removed, row);
+  const char *leave = ns_device_text (_("The phone stops using it and forgets its sign-in. The account itself stays "
+                                        "with its provider."),
+                                      _("The tablet stops using it and forgets its sign-in. The account itself stays "
+                                        "with its provider."));
+  ns_confirm (row, _("Remove this account?"), leave, _("Remove"), TRUE, acct_removed, row);
 }
 
 /* signing in again with GOA's own dialog: a provider no page here knows */
@@ -2201,7 +2205,7 @@ sign_in_again_go (gpointer row)
     goa_provider_refresh_account (p, goa, obj, row, NULL, goa_refreshed, g_object_ref (row));
     return;
   }
-  Form *f = form_new (p, "Sign in again", NULL, "Sign in");
+  Form *f = form_new (p, _("Sign in again"), NULL, _("Sign in"));
   f->path = g_strdup (path);
   f->id = g_strdup (goa_account_get_id (acc));
   f->identity = g_strdup (goa_account_get_identity (acc));
@@ -2222,7 +2226,7 @@ info (GtkWidget **group, GtkWidget *body, GString *shape, const char *title, con
   if (!value || !*value)
     return;
   if (!*group)
-    *group = ns_group (body, "Servers");
+    *group = ns_group (body, _("Servers"));
   ns_row_info (*group, title, value);
   g_string_append_printf (shape, "%s=%s;", title, value);
 }
@@ -2247,13 +2251,13 @@ acct_fill (Acct *a)
   }
   /* the servers, from the features' interfaces: there only while the feature is on */
   static const char *const servers[][3] = {
-    { "org.gnome.OnlineAccounts.Mail", "EmailAddress", "Email address" },
-    { "org.gnome.OnlineAccounts.Mail", "ImapHost", "Incoming mail (IMAP)" },
-    { "org.gnome.OnlineAccounts.Mail", "SmtpHost", "Outgoing mail (SMTP)" },
-    { "org.gnome.OnlineAccounts.Exchange", "Host", "Exchange server" },
-    { "org.gnome.OnlineAccounts.Calendar", "Uri", "Calendars" },
-    { "org.gnome.OnlineAccounts.Contacts", "Uri", "Contacts" },
-    { "org.gnome.OnlineAccounts.Files", "Uri", "Files" },
+    { "org.gnome.OnlineAccounts.Mail", "EmailAddress", N_("Email address") },
+    { "org.gnome.OnlineAccounts.Mail", "ImapHost", N_("Incoming mail (IMAP)") },
+    { "org.gnome.OnlineAccounts.Mail", "SmtpHost", N_("Outgoing mail (SMTP)") },
+    { "org.gnome.OnlineAccounts.Exchange", "Host", N_("Exchange server") },
+    { "org.gnome.OnlineAccounts.Calendar", "Uri", N_("Calendars") },
+    { "org.gnome.OnlineAccounts.Contacts", "Uri", N_("Contacts") },
+    { "org.gnome.OnlineAccounts.Files", "Uri", N_("Files") },
   };
   for (guint i = 0; i < G_N_ELEMENTS (servers); i++)
     g_string_append_printf (shape, "%s;", prop_str (ifaces, servers[i][0], servers[i][1]));
@@ -2288,8 +2292,8 @@ acct_fill (Acct *a)
 
   if (attention) {
     GtkWidget *g = ns_group (a->body, NULL);
-    GtkWidget *r = ns_row (g, "dialog-warning-symbolic", "Sign in again",
-                           "The account could not sign in. Its calendars, contacts and files wait until it does.");
+    GtkWidget *r = ns_row (g, "dialog-warning-symbolic", _("Sign in again"),
+                           _("The account could not sign in. Its calendars, contacts and files wait until it does."));
     g_object_set_data_full (G_OBJECT (r), "ns-path", g_strdup (a->path), g_free);
     ns_row_on_activate (r, sign_in_again, NULL);
   }
@@ -2300,8 +2304,8 @@ acct_fill (Acct *a)
     if (!(have & features[i].feature) || !prop_bool (ifaces, GOA_ACCOUNT_IFACE, features[i].prop, &off))
       continue;
     if (!g)
-      g = ns_group (a->body, "Use for");
-    GtkWidget *r = ns_row_switch (g, features[i].label, NULL, NULL, NULL);
+      g = ns_group (a->body, _("Use for"));
+    GtkWidget *r = ns_row_switch (g, _(features[i].label), NULL, NULL, NULL);
     GtkWidget *sw = ns_row_get_switch (r);
     ns_switch_quiet (sw, !off);
     g_object_set_data_full (G_OBJECT (sw), "ns-path", g_strdup (a->path), g_free);
@@ -2312,14 +2316,14 @@ acct_fill (Acct *a)
 
   g = NULL;
   for (guint i = 0; i < G_N_ELEMENTS (servers); i++)
-    info (&g, a->body, shape, servers[i][2], prop_str (ifaces, servers[i][0], servers[i][1]));
+    info (&g, a->body, shape, _(servers[i][2]), prop_str (ifaces, servers[i][0], servers[i][1]));
 
   g = ns_group (a->body, NULL);
   if (!attention) {
-    GtkWidget *r = ns_row_button (g, "Sign in again", FALSE, sign_in_again, NULL);
+    GtkWidget *r = ns_row_button (g, _("Sign in again"), FALSE, sign_in_again, NULL);
     g_object_set_data_full (G_OBJECT (r), "ns-path", g_strdup (a->path), g_free);
   }
-  GtkWidget *r = ns_row_button (g, "Remove account", TRUE, acct_remove, NULL);
+  GtkWidget *r = ns_row_button (g, _("Remove account"), TRUE, acct_remove, NULL);
   g_object_set_data_full (G_OBJECT (r), "ns-path", g_strdup (a->path), g_free);
 }
 
@@ -2393,7 +2397,7 @@ account_page (GtkWidget *row, gpointer data)
   a->switches = g_ptr_array_new ();
   a->ifaces = ifaces ? g_variant_ref (ifaces) : NULL;
   GtkWidget *c;
-  a->page = ns_page_new (provider ? provider : "Account", &c);
+  a->page = ns_page_new (provider ? provider : _("Account"), &c);
   a->body = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_box_append (GTK_BOX (c), a->body);
   g_object_set_data (G_OBJECT (a->body), "ns-acct", a);
@@ -2428,7 +2432,7 @@ accounts_got (GObject *src, GAsyncResult *res, gpointer group)
         g_variant_unref (ifaces);
         continue;
       }
-      GtkWidget *r = ns_row (group, NULL, provider, attention ? "Needs you to sign in again" : who);
+      GtkWidget *r = ns_row (group, NULL, provider, attention ? _("Needs you to sign in again") : who);
       g_autoptr (GoaProvider) p = type ? goa_provider_get_for_provider_type (type) : NULL;
       vibeos_list_row_set_start_widget (VIBEOS_LIST_ROW (r), provider_icon (p, 32));
       g_object_set_data_full (G_OBJECT (r), "ns-path", g_strdup (path), g_free);
@@ -2477,15 +2481,15 @@ ns_page_accounts (GtkWidget *row, gpointer data)
   /* GOA's error codes for goa-daemon's D-Bus errors */
   goa_error_quark ();
   GtkWidget *c;
-  NsPage *page = ns_page_new ("Accounts", &c);
-  GtkWidget *g = ns_group (c, "Online accounts");
+  NsPage *page = ns_page_new (_("Accounts"), &c);
+  GtkWidget *g = ns_group (c, _("Online accounts"));
   ns_group_set_visible (g, FALSE);
   g_object_set_data (G_OBJECT (page), "ns-accounts", g);
-  GtkWidget *none = ns_note (c, "No online accounts yet. Add one to get its calendars, contacts and files here.");
+  GtkWidget *none = ns_note (c, _("No online accounts yet. Add one to get its calendars, contacts and files here."));
   gtk_widget_set_visible (none, FALSE);
   g_object_set_data (G_OBJECT (g), "ns-none", none);
   GtkWidget *a = ns_group (c, NULL);
-  ns_row_button (a, "Add account", FALSE, add_account, NULL);
+  ns_row_button (a, _("Add account"), FALSE, add_account, NULL);
   ns_later_init (page, accounts_refresh);
   follow_goa (page);
   if (accounts_list)

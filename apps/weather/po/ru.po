@@ -1,0 +1,311 @@
+# Russian translations of vibeos-weather.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-weather\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Russian\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: data/vibeos.Weather.desktop.in src/main.c
+msgid "Weather"
+msgstr "Погода"
+
+#: data/vibeos.Weather.desktop.in
+msgid "The weather where you are"
+msgstr "Погода там, где вы находитесь"
+
+#: data/vibeos.Weather.desktop.in
+msgid "forecast;temperature;rain;"
+msgstr "прогноз;температура;дождь;погода;"
+
+#. TRANSLATORS: the sky, as the page names it under the temperature
+#: src/main.c
+msgctxt "sky"
+msgid "Clear"
+msgstr "Ясно"
+
+#: src/main.c
+msgid "Mostly clear"
+msgstr "Преимущественно ясно"
+
+#: src/main.c
+msgid "Partly cloudy"
+msgstr "Переменная облачность"
+
+#: src/main.c
+msgid "Cloudy"
+msgstr "Облачно"
+
+#: src/main.c
+msgid "Fog"
+msgstr "Туман"
+
+#: src/main.c
+msgid "Drizzle"
+msgstr "Морось"
+
+#: src/main.c
+msgid "Freezing drizzle"
+msgstr "Ледяная морось"
+
+#: src/main.c
+msgid "Rain"
+msgstr "Дождь"
+
+#: src/main.c
+msgid "Heavy rain"
+msgstr "Сильный дождь"
+
+#: src/main.c
+msgid "Freezing rain"
+msgstr "Ледяной дождь"
+
+#: src/main.c
+msgid "Snow"
+msgstr "Снег"
+
+#: src/main.c
+msgid "Snow grains"
+msgstr "Снежная крупа"
+
+#: src/main.c
+msgid "Showers"
+msgstr "Ливни"
+
+#: src/main.c
+msgid "Heavy showers"
+msgstr "Сильные ливни"
+
+#: src/main.c
+msgid "Snow showers"
+msgstr "Ливневый снег"
+
+#: src/main.c
+msgid "Thunderstorm"
+msgstr "Гроза"
+
+#: src/main.c
+msgid "Sunrise"
+msgstr "Восход"
+
+#: src/main.c
+msgid "Sunset"
+msgstr "Закат"
+
+#. TRANSLATORS: the UV index's levels
+#: src/main.c
+msgctxt "uv"
+msgid "Low"
+msgstr "Низкий"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Moderate"
+msgstr "Умеренный"
+
+#: src/main.c
+msgctxt "uv"
+msgid "High"
+msgstr "Высокий"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Very high"
+msgstr "Очень высокий"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Extreme"
+msgstr "Экстремальный"
+
+#. TRANSLATORS: today's highest and lowest temperatures, then what it feels like now
+#: src/main.c
+#, c-format
+msgid ""
+"↑%s / ↓%s\n"
+"Feels like %s"
+msgstr ""
+"↑%s / ↓%s\n"
+"Ощущается как %s"
+
+#. TRANSLATORS: today's sky ("Partly cloudy"), then its highest and lowest temperatures ("12°")
+#: src/main.c
+#, c-format
+msgid "%s. High %s, low %s."
+msgstr "%s. Максимум %s, минимум %s."
+
+#: src/main.c
+msgid "Today's temperature"
+msgstr "Температура сегодня"
+
+#: src/main.c
+msgid "About the same as yesterday"
+msgstr "Примерно как вчера"
+
+#: src/main.c
+msgid "Temperatures a little lower than yesterday"
+msgstr "Немного холоднее, чем вчера"
+
+#: src/main.c
+msgid "Much colder than yesterday"
+msgstr "Намного холоднее, чем вчера"
+
+#: src/main.c
+msgid "Temperatures a little higher than yesterday"
+msgstr "Немного теплее, чем вчера"
+
+#: src/main.c
+msgid "Much warmer than yesterday"
+msgstr "Намного теплее, чем вчера"
+
+# android: DocumentsUI search_last_modified_2_days (short)
+#: src/main.c
+msgid "Yesterday"
+msgstr "Вчера"
+
+# android: DocumentsUI search_last_modified_1_day (short)
+#: src/main.c
+msgid "Today"
+msgstr "Сегодня"
+
+#. TRANSLATORS: under the sunrise's time; %s is the sunset's
+#: src/main.c
+#, c-format
+msgid "Sunset %s"
+msgstr "Закат: %s"
+
+#. TRANSLATORS: the wind's speed in kilometres an hour
+#: src/main.c
+#, c-format
+msgid "%.0f km/h"
+msgstr "%.0f км/ч"
+
+#. TRANSLATORS: the air pressure in hectopascals
+#: src/main.c
+#, c-format
+msgid "%.0f hPa"
+msgstr "%.0f гПа"
+
+#: src/main.c
+msgid "UV index"
+msgstr "УФ-индекс"
+
+#: src/main.c
+msgid "Humidity"
+msgstr "Влажность"
+
+#: src/main.c
+msgid "Wind"
+msgstr "Ветер"
+
+#: src/main.c
+msgid "Pressure"
+msgstr "Давление"
+
+#: src/main.c
+msgid "No forecast: Open-Meteo did not answer. Tap reload to try again."
+msgstr ""
+"Нет прогноза: Open-Meteo не отвечает. Нажмите «Обновить», чтобы повторить "
+"попытку."
+
+#: src/main.c
+msgid ""
+"No location. Turn on Location in Settings, then tap reload, or set a city in "
+"the ⋮ menu."
+msgstr ""
+"Местоположение неизвестно. Включите геолокацию в настройках и нажмите "
+"«Обновить» или укажите город в меню ⋮."
+
+#: src/main.c
+#, c-format
+msgid "Getting the weather for %s…"
+msgstr "Загрузка погоды: %s…"
+
+#. TRANSLATORS: under "Use my location"; %s is the city chosen now
+#: src/main.c
+#, c-format
+msgid "Instead of %s"
+msgstr "Вместо: %s"
+
+#: src/main.c
+msgid "Use my location"
+msgstr "Мое местоположение"
+
+#: src/main.c
+msgid "No answer. Check the connection, then type again."
+msgstr "Нет ответа. Проверьте подключение и введите снова."
+
+#: src/main.c
+msgid "No cities found"
+msgstr "Города не найдены"
+
+#: src/main.c
+msgid "Set City"
+msgstr "Выбрать город"
+
+#: src/main.c
+msgid "City name"
+msgstr "Название города"
+
+# android: Settings proxy_clear_text (several translations, short)
+#: src/main.c
+msgid "Clear"
+msgstr "Очистить"
+
+#: src/main.c
+msgid ""
+"Weather forecasts by <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, "
+"under <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</"
+"a>.\n"
+"\n"
+"Set City finds cities with Open-Meteo's geocoding, on data from <a "
+"href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0."
+msgstr ""
+"Прогнозы погоды: <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, по "
+"лицензии <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</"
+"a>.\n"
+"\n"
+"Функция «Выбрать город» ищет города с помощью геокодирования Open-Meteo на "
+"основе данных <a href=\"https://www.geonames.org/\">GeoNames</a> по лицензии "
+"CC BY 4.0."
+
+#: src/main.c
+msgid ""
+"The place's name, where the phone is, from OpenStreetMap's <a href=\"https://"
+"nominatim.openstreetmap.org/\">Nominatim</a>. Data © <a href=\"https://"
+"www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the "
+"<a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database "
+"License</a> (ODbL)."
+msgstr ""
+"Название места, где находится телефон, — из <a href=\"https://"
+"nominatim.openstreetmap.org/\">Nominatim</a> OpenStreetMap. Данные © <a "
+"href=\"https://www.openstreetmap.org/copyright\">участники OpenStreetMap</"
+"a>, по лицензии <a href=\"https://opendatacommons.org/licenses/odbl/\">Open "
+"Database License</a> (ODbL)."
+
+#: src/main.c
+msgid "About"
+msgstr "О приложении"
+
+#: src/main.c
+msgid "Reload"
+msgstr "Обновить"
+
+# android: Framework action_menu_overflow_description (several translations, short)
+#: src/main.c
+msgid "More options"
+msgstr "Ещё"
+
+#: src/main.c
+msgid "Finding where you are…"
+msgstr "Определение местоположения…"

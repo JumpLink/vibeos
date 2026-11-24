@@ -16,6 +16,9 @@ deps = [
   dependency('json-glib-1.0'),
   dependency('xkbcommon'),
   dependency('threads'),
+  # the home clock's date in the user's language, and a new language followed (libvibeos's vibeos-locale.c, built in)
+  dependency('icu-i18n'),
+  dependency('icu-uc'),
   libm,
   spongy_dep,
   legacy_ids_dep,
@@ -44,10 +47,11 @@ endforeach
 executable('vibeos-launcher',
   'src/main.c', 'src/vk.c', 'src/gfx.c', 'src/gfx-vk.c', 'src/gfx-gl.c', 'src/wl.c', 'src/text.c', 'src/image.c',
   'src/parallax.c', 'src/apps.c', 'src/icons.c', 'src/model.c', 'src/tiles.c', 'src/home.c', 'src/drawer.c',
-  'src/nav.c', 'src/popup.c', 'src/drag.c', 'src/pieces.c',
+  'src/nav.c', 'src/popup.c', 'src/drag.c', 'src/pieces.c', '../libvibeos/vibeos-locale.c',
   proto_src,
-  include_directories: include_directories('src', 'shaders'),
-  c_args: '-DMIGRATE_IDS="@0@"'.format(migrate_ids_path),
+  include_directories: include_directories('src', 'shaders', '../libvibeos'),
+  c_args: ['-DMIGRATE_IDS="@0@"'.format(migrate_ids_path), '-DGETTEXT_PACKAGE="vibeos-launcher"',
+           '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir'))],
   dependencies: deps,
   install: true)
 
@@ -79,3 +83,6 @@ test('pieces', executable('test-pieces', 'tests/test-pieces.c', 'src/pieces.c',
 
 gnome = import('gnome')
 gnome.post_install(glib_compile_schemas: true)
+
+# the launcher's translations, and their checks
+subdir('po')

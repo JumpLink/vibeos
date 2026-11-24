@@ -2,6 +2,7 @@
 #include "sw-api.h"
 #include "sw-json.h"
 
+#include <glib/gi18n.h>
 #include <libsoup/soup.h>
 #include <string.h>
 
@@ -142,8 +143,10 @@ static char *
 generic_message (guint status)
 {
   if (status >= 500)
-    return g_strdup_printf ("The store is not working right now (error %u). Try again later.", status);
-  return g_strdup_printf ("The store answered with error %u.", status);
+    /* TRANSLATORS: %u is the HTTP status code */
+    return g_strdup_printf (_("The store is not working right now (error %u). Try again later."), status);
+  /* TRANSLATORS: %u is the HTTP status code */
+  return g_strdup_printf (_("The store answered with error %u."), status);
 }
 
 gboolean
@@ -168,7 +171,7 @@ sw_api_parse_response (guint status, const char *retry_after, GBytes *body, SwAp
       if (!root)
         {
           error_init (error, SW_API_ERROR_PARSE, status, "parse_error",
-                      "The store's answer could not be read. Try again later.");
+                      _("The store's answer could not be read. Try again later."));
           return FALSE;
         }
       result->root = json_node_ref (json_parser_get_root (parser));
@@ -209,11 +212,14 @@ sw_api_error_describe (const SwApiError *error)
     {
       int s = error->retry_after;
 
+      /* TRANSLATORS: the first %s is the store's message (a whole sentence), %d the minutes or seconds */
       if (s >= 120)
-        return g_strdup_printf ("%s Try again in %d minutes.", error->message, (s + 59) / 60);
-      return g_strdup_printf ("%s Try again in %d second%s.", error->message, s, s == 1 ? "" : "s");
+        return g_strdup_printf (g_dngettext (NULL, "%s Try again in %d minute.", "%s Try again in %d minutes.",
+                                             (s + 59) / 60), error->message, (s + 59) / 60);
+      return g_strdup_printf (g_dngettext (NULL, "%s Try again in %d second.", "%s Try again in %d seconds.", s),
+                              error->message, s);
     }
-  return g_strdup (error->message ? error->message : "Something went wrong.");
+  return g_strdup (error->message ? error->message : _("Something went wrong."));
 }
 
 const char *
@@ -385,7 +391,7 @@ on_sent (GObject *source, GAsyncResult *res, gpointer data)
     {
       g_debug ("%s %s: %s", req->method, req->url, gerror ? gerror->message : "no answer");
       error_init (&error, SW_API_ERROR_NETWORK, 0, "network",
-                  "Software cannot reach the store. Check the internet connection and try again.");
+                  _("Software cannot reach the store. Check the internet connection and try again."));
       deliver_error (req, &error);
       sw_api_error_clear (&error);
       request_free (req);
@@ -450,7 +456,7 @@ send_request (Request *req)
     {
       SwApiError error;
 
-      error_init (&error, SW_API_ERROR_NETWORK, 0, "network", "The store's address is not valid.");
+      error_init (&error, SW_API_ERROR_NETWORK, 0, "network", _("The store's address is not valid."));
       deliver_error (req, &error);
       sw_api_error_clear (&error);
       request_free (req);

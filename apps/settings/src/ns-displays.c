@@ -139,7 +139,8 @@ rate_label (NsMode *mode)
   double r = round (mode->refresh);
   g_autofree char *hz = fabs (mode->refresh - r) < 0.005 ? g_strdup_printf ("%.0f\u00a0Hz", r)
                                                           : g_strdup_printf ("%.2f\u00a0Hz", mode->refresh);
-  return mode->interlaced ? g_strdup_printf ("%s, interlaced", hz) : g_steal_pointer (&hz);
+  /* TRANSLATORS: %s is a refresh rate ("50 Hz") */
+  return mode->interlaced ? g_strdup_printf (_("%s, interlaced"), hz) : g_steal_pointer (&hz);
 }
 
 /* "Main display • 1920 × 1080 • 60 Hz", "Off" */
@@ -147,11 +148,11 @@ static char *
 summary (NsMonitors *m, NsMonitor *mon)
 {
   if (!mon->logical || !mon->mode)
-    return g_strdup ("Off");
+    return g_strdup (_("Off"));
   g_autofree char *size = g_strdup_printf ("%d\u00a0×\u00a0%d", mon->mode->width, mon->mode->height);
   g_autofree char *rate = rate_label (mon->mode);
-  const char *role = mon->logical->monitors->len > 1 ? "Mirrored"
-                   : mon->logical->primary && m->logical->len > 1 ? "Main display" : NULL;
+  const char *role = mon->logical->monitors->len > 1 ? _("Mirrored")
+                   : mon->logical->primary && m->logical->len > 1 ? _("Main display") : NULL;
   return role ? g_strdup_printf ("%s • %s • %s", role, size, rate) : g_strdup_printf ("%s • %s", size, rate);
 }
 
@@ -162,7 +163,8 @@ show_refusal (GtkWidget *where, const char *message)
 {
   if (!where || !gtk_widget_get_parent (where))
     return;
-  g_autofree char *text = g_strdup_printf ("Not changed: %s", message);
+  /* TRANSLATORS: %s is the display server's error message */
+  g_autofree char *text = g_strdup_printf (_("Not changed: %s"), message);
   if (GTK_IS_LABEL (where)) {
     gtk_label_set_text (GTK_LABEL (where), text);
     gtk_widget_set_visible (where, TRUE);
@@ -309,8 +311,8 @@ fill_sub (Sub *s)
    * turned on again from the external display, which may have nothing to touch or click with) */
   gboolean power = !mon->builtin || !mon->logical;
   if (power) {
-    GtkWidget *r = ns_row_switch (s->power, "Use this display",
-                                  mon->logical && ns_monitors_n_on (m) < 2 ? "The only display that is on" : NULL,
+    GtkWidget *r = ns_row_switch (s->power, _("Use this display"),
+                                  mon->logical && ns_monitors_n_on (m) < 2 ? _("The only display that is on") : NULL,
                                   NULL, NULL);
     GtkWidget *sw = ns_row_get_switch (r);
     ns_switch_quiet (sw, mon->logical != NULL);
@@ -330,7 +332,8 @@ fill_sub (Sub *s)
         sel = i;
     }
     g_ptr_array_add (labels, NULL);
-    GtkWidget *r = ns_row_pick (s->modes, "Resolution", (const char *const *) labels->pdata, sel, resolution_picked, s);
+    GtkWidget *r = ns_row_pick_names (s->modes, _("Resolution"), (const char *const *) labels->pdata, sel,
+                                      resolution_picked, s);
     g_object_set_data_full (G_OBJECT (r), "ns-sizes", g_array_ref (sizes), (GDestroyNotify) g_array_unref);
 
     g_autoptr (GPtrArray) rates = g_ptr_array_new_with_free_func (g_free);
@@ -347,7 +350,7 @@ fill_sub (Sub *s)
     }
     g_ptr_array_add (rates, NULL);
     g_ptr_array_add (ids, NULL);
-    r = ns_row_pick (s->modes, "Refresh rate", (const char *const *) rates->pdata, sel, rate_picked, s);
+    r = ns_row_pick_names (s->modes, _("Refresh rate"), (const char *const *) rates->pdata, sel, rate_picked, s);
     g_object_set_data_full (G_OBJECT (r), "ns-modes", g_ptr_array_steal (ids, NULL), (GDestroyNotify) g_strfreev);
   }
   ns_group_set_visible (s->modes, mon->logical != NULL);
@@ -470,14 +473,15 @@ fill_cards (Displays *d)
 
   gboolean mirror = ns_monitors_is_mirror (m);
   g_autoptr (GArray) sizes = ns_monitors_mirror_sizes (m);
-  choice_row (d->modes, "Join", "A screen of its own on each display", !mirror, join_picked, d);
+  choice_row (d->modes, _("Join"), _("A screen of its own on each display"), !mirror, join_picked, d);
   const char *why = NULL;
   g_autofree char *refused = NULL;
   if (!mirror && !sizes->len)
-    why = "Not available: the displays have no resolution in common";
+    why = _("Not available: the displays have no resolution in common");
   else if (!mirror && d->mirror_refused && d->mirror_checked == m->serial)
-    why = refused = g_strdup_printf ("Not available: %s", d->mirror_refused);
-  GtkWidget *r = choice_row (d->modes, "Mirror", why ? why : "The same screen on every display", mirror,
+    /* TRANSLATORS: %s is the display server's reason */
+    why = refused = g_strdup_printf (_("Not available: %s"), d->mirror_refused);
+  GtkWidget *r = choice_row (d->modes, _("Mirror"), why ? why : _("The same screen on every display"), mirror,
                              mirror_picked, d);
   gtk_widget_set_sensitive (r, !why);
 
@@ -501,7 +505,7 @@ fill_cards (Displays *d)
     }
     g_ptr_array_add (names, NULL);
     g_ptr_array_add (connectors, NULL);
-    r = ns_row_pick (d->main, "Main display", (const char *const *) names->pdata, sel, main_picked, d);
+    r = ns_row_pick_names (d->main, _("Main display"), (const char *const *) names->pdata, sel, main_picked, d);
     g_object_set_data_full (G_OBJECT (r), "ns-connectors", g_ptr_array_steal (connectors, NULL),
                             (GDestroyNotify) g_strfreev);
     ns_group_set_visible (d->main, TRUE);
@@ -560,8 +564,8 @@ fill_scale (Displays *d)
   if (!same) {
     if (d->scale_row)
       ns_group_remove (d->scale_group, d->scale_row);
-    d->scale_row = ns_row_pick (d->scale_group, "Screen scale", (const char *const *) labels->pdata, sel, scale_picked,
-                                d);
+    d->scale_row = ns_row_pick_names (d->scale_group, _("Screen scale"), (const char *const *) labels->pdata, sel,
+                                      scale_picked, d);
     g_object_set_data_full (G_OBJECT (d->scale_row), "ns-scales", g_array_ref (scales), (GDestroyNotify) g_array_unref);
   } else {
     ns_row_pick_select (d->scale_row, sel);
@@ -628,8 +632,8 @@ fill_size (Displays *d)
   /* not applied yet: the steps a phone or a tablet has, at the default one, following nothing */
   if (!d->size_enabled) {
     if (!d->size_row) {
-      gboolean tablet = g_str_equal (ns_device_noun (), "tablet");
-      d->size_row = ns_row_steps (d->size_group, "Display size", tablet ? 7 : 5, 3, &d->size_scale);
+      gboolean tablet = ns_is_tablet ();
+      d->size_row = ns_row_steps (d->size_group, _("Display size"), tablet ? 7 : 5, 3, &d->size_scale);
       gtk_widget_set_sensitive (d->size_row, FALSE);
     }
     return;
@@ -659,7 +663,7 @@ fill_size (Displays *d)
   if (!same) {
     if (d->size_row)
       ns_group_remove (d->size_group, d->size_row);
-    d->size_row = ns_row_steps (d->size_group, "Display size", stops->len, sel, &d->size_scale);
+    d->size_row = ns_row_steps (d->size_group, _("Display size"), stops->len, sel, &d->size_scale);
     g_signal_connect (d->size_scale, "value-changed", G_CALLBACK (size_moved), d);
     g_clear_pointer (&d->size_stops, g_array_unref);
     d->size_stops = g_array_ref (stops);
@@ -830,7 +834,7 @@ void
 ns_displays_cards (GtkWidget *page, GtkWidget *content)
 {
   Displays *d = displays_attach (page);
-  d->list = ns_group (content, "Displays");
+  d->list = ns_group (content, _("Displays"));
   d->modes = ns_group (content, NULL);
   d->main = ns_group (content, NULL);
   d->error = ns_note (content, "");

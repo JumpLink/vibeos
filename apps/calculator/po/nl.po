@@ -1,0 +1,203 @@
+# Dutch translations of vibeos-calculator.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-calculator\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Dutch\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# android: ExactCalculator app_name
+#: data/vibeos.Calculator.desktop.in src/calc-window.c
+msgid "Calculator"
+msgstr "Rekenmachine"
+
+#: data/vibeos.Calculator.desktop.in
+msgid "Exact arithmetic, with its history"
+msgstr "Exact rekenen, met geschiedenis"
+
+#: data/vibeos.Calculator.desktop.in
+msgid "Calculator;Math;Arithmetic;"
+msgstr "rekenmachine;calculator;wiskunde;rekenen;"
+
+# android: Framework action_menu_overflow_description (short)
+#: src/calc-display.c src/calc-history.c
+msgid "More options"
+msgstr "Meer opties"
+
+# android: DocumentsUI search_last_modified_1_day (other app, short)
+#: src/calc-history.c
+msgid "Today"
+msgstr "Vandaag"
+
+# android: DocumentsUI search_last_modified_2_days (other app, short)
+#: src/calc-history.c
+msgid "Yesterday"
+msgstr "Gisteren"
+
+# android: DeskClock alarm_tomorrow (other app, short)
+#: src/calc-history.c
+msgid "Tomorrow"
+msgstr "Morgen"
+
+# android: Framework duration_days_relative
+#: src/calc-history.c
+#, c-format
+msgid "%d day ago"
+msgid_plural "%d days ago"
+msgstr[0] "%d dag geleden"
+msgstr[1] "%d dagen geleden"
+
+#: src/calc-history.c
+#, c-format
+msgid "In %d day"
+msgid_plural "In %d days"
+msgstr[0] "Over %d dag"
+msgstr[1] "Over %d dagen"
+
+# android: ExactCalculator no_history
+#: src/calc-history.c
+msgid "No History"
+msgstr "Geen geschiedenis"
+
+# android: ExactCalculator menu_history
+#: src/calc-history.c src/calc-window.c
+msgid "History"
+msgstr "Geschiedenis"
+
+# android: Framework input_method_nav_back_button_desc (several translations, short)
+#. the shell's back gesture clicks a button named Back
+#: src/calc-history.c src/calc-licenses.c
+msgid "Back"
+msgstr "Terug"
+
+# android: ExactCalculator menu_licenses (several translations)
+#: src/calc-licenses.c src/calc-window.c
+msgid "Open source licenses"
+msgstr "Open-sourcelicenties"
+
+# android: ExactCalculator dismiss (several translations, short)
+#: src/calc-window.c
+msgid "Dismiss"
+msgstr "Sluiten"
+
+# android: ExactCalculator text_copied_toast
+#: src/calc-window.c
+msgid "Text copied"
+msgstr "Tekst gekopieerd"
+
+# android: Framework copy (short)
+#: src/calc-window.c
+msgid "Copy"
+msgstr "Kopiëren"
+
+# android: Framework paste (short)
+#: src/calc-window.c
+msgid "Paste"
+msgstr "Plakken"
+
+# android: ExactCalculator cancelled
+#: src/calc-window.c
+msgid "Computation cancelled."
+msgstr "Berekening geannuleerd."
+
+# android: ExactCalculator dialog_timeout
+#: src/calc-window.c
+msgid "Timeout"
+msgstr "Time-out"
+
+# android: ExactCalculator timeout
+#: src/calc-window.c
+msgid "Value may be infinite or undefined."
+msgstr "De waarde is mogelijk oneindig of niet gedefinieerd."
+
+# android: ExactCalculator ok_remove_timeout
+#: src/calc-window.c
+msgid "Use longer timeouts"
+msgstr "Langere time-outs gebruiken"
+
+# android: ExactCalculator dialog_clear
+#. the history's Clear: the message, no title
+#: src/calc-window.c
+msgid "Clear history and memory?"
+msgstr "Geschiedenis en geheugen wissen?"
+
+# android: ExactCalculator menu_clear_history
+#: src/calc-window.c
+msgid "Clear"
+msgstr "Wissen"
+
+# android: ExactCalculator exact
+#: src/calc-window.c
+msgid "(exact)"
+msgstr "(exact)"
+
+# android: ExactCalculator approximate
+#: src/calc-window.c
+msgid "(±1 in last digit)"
+msgstr "(±1 in laatste cijfer)"
+
+# android: ExactCalculator menu_leading
+#: src/calc-window.c
+msgid "Answer with leading digits"
+msgstr "Antwoord met voorloopcijfers"
+
+# android: ExactCalculator menu_fraction
+#: src/calc-window.c
+msgid "Answer as fraction"
+msgstr "Antwoord als breuk"
+
+#: src/calc-window.c
+msgid ""
+"The exact real arithmetic is Hans-J. Boehm's constructive reals "
+"(com.hp.creals, as Android's Calculator uses them): copyright 1999 Silicon "
+"Graphics, Inc., 2001-2004 Hewlett-Packard Development Company, L.P., under "
+"its own permissive licence (Open source licenses in the ⋮ menu)."
+msgstr ""
+"Het exacte rekenen met reële getallen is gebaseerd op de constructive reals "
+"van Hans-J. Boehm (com.hp.creals, zoals de Rekenmachine van Android ze "
+"gebruikt): copyright 1999 Silicon Graphics, Inc., 2001-2004 Hewlett-Packard "
+"Development Company, L.P., onder een eigen permissieve licentie (Open-"
+"sourcelicenties in het ⋮-menu)."
+
+#: src/calc-window.c
+msgid "About"
+msgstr "Over"
+
+# android: ExactCalculator desc_del
+#: src/calc-window.c
+msgid "delete"
+msgstr "verwijderen"
+
+# android: ExactCalculator error_syntax
+#: src/evaluator.c
+msgid "Bad expression"
+msgstr "Ongeldige invoer"
+
+# android: ExactCalculator error_zero_divide
+#: src/evaluator.c
+msgid "Can't divide by 0"
+msgstr "Kan niet delen door 0"
+
+# android: ExactCalculator error_overflow
+#: src/evaluator.c
+msgid "Infinite?"
+msgstr "Oneindig?"
+
+# android: ExactCalculator error_aborted
+#: src/evaluator.c
+msgid "Aborted"
+msgstr "Afgebroken"
+
+# android: ExactCalculator error_nan
+#: src/evaluator.c
+msgid "Not a number"
+msgstr "Geen getal"

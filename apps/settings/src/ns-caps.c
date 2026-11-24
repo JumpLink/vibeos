@@ -4,6 +4,7 @@
  * reports as KEY_APPSELECT, in the key bits the kernel gives each input device in sysfs. */
 #include "ns-caps.h"
 
+#include <glib/gi18n.h>
 #include <linux/input-event-codes.h>
 #include <stdlib.h>
 #include <vibeos.h>
@@ -194,8 +195,8 @@ ns_caps_on_changed (GCallback cb, gpointer object)
 
 /* ---- phone or tablet ---- */
 
-static gboolean
-is_tablet (void)
+gboolean
+ns_is_tablet (void)
 {
   GApplication *app = g_application_get_default ();
   GtkWindow *win = GTK_IS_APPLICATION (app) ? gtk_application_get_active_window (GTK_APPLICATION (app)) : NULL;
@@ -207,13 +208,13 @@ is_tablet (void)
 }
 
 const char *
-ns_device_noun (void)
+ns_device_text (const char *phone, const char *tablet)
 {
-  return is_tablet () ? "tablet" : "phone";
+  return ns_is_tablet () ? tablet : phone;
 }
 
 const char *
 ns_about_title (void)
 {
-  return is_tablet () ? "About tablet" : "About phone";
+  return ns_is_tablet () ? _("About tablet") : _("About phone");
 }

@@ -148,7 +148,7 @@ nb_tab_add_favorite (NbTab *t, const char *title, const char *url)
   g_autofree char *color = vibrant_color (nb_tab_favicon (t));
   /* without a colour of its own (no favicon) it is saved with none: its card is then in the theme's colours */
   nb_store_add_favorite (nb->store, url, title && *title ? title : url, color);
-  nb_tab_snackbar (t, "Added to favorites", NULL, NULL, NULL);
+  nb_tab_snackbar (t, _("Added to favorites"), NULL, NULL, NULL);
 }
 
 /* ---- desktop mode ---- */
@@ -276,12 +276,13 @@ on_permission (WebKitWebView *v, WebKitPermissionRequest *req, NbTab *t)
       return TRUE;
     }
     /* a site asks for the location */
-    d = nb_dialog_new ("Provide location?");
-    g_autofree char *msg = g_strdup_printf ("%s wants to use your geolocation.", origin);
+    d = nb_dialog_new (_("Provide location?"));
+    /* TRANSLATORS: %s is the site (its origin, "https://example.org") */
+    g_autofree char *msg = g_strdup_printf (_("%s wants to use your geolocation."), origin);
     nb_dialog_set_message (d, msg);
-    nb_dialog_add_button (d, "Deny for now", NB_RESPONSE_NEUTRAL);
-    nb_dialog_add_button (d, "Block", NB_RESPONSE_OTHER);
-    nb_dialog_add_button (d, "Allow", NB_RESPONSE_OK);
+    nb_dialog_add_button (d, _("Deny for now"), NB_RESPONSE_NEUTRAL);
+    nb_dialog_add_button (d, _("Block"), NB_RESPONSE_OTHER);
+    nb_dialog_add_button (d, _("Allow"), NB_RESPONSE_OK);
     Ask *ask = g_new0 (Ask, 1);
     ask->req = g_object_ref (req);
     ask->origin = g_strdup (origin);
@@ -293,21 +294,22 @@ g_signal_connect (d, "response", G_CALLBACK (on_location_response), ask);
   if (WEBKIT_IS_MEDIA_KEY_SYSTEM_PERMISSION_REQUEST (req)) {
     /* a site asks to play protected media */
     d = nb_dialog_new (origin);
-    nb_dialog_set_message (d, "Allow protected media?");
-    nb_dialog_add_button (d, "Deny", NB_RESPONSE_CANCEL);
-    nb_dialog_add_button (d, "Grant", NB_RESPONSE_OK);
+    nb_dialog_set_message (d, _("Allow protected media?"));
+    nb_dialog_add_button (d, _("Deny"), NB_RESPONSE_CANCEL);
+    nb_dialog_add_button (d, _("Grant"), NB_RESPONSE_OK);
   } else if (WEBKIT_IS_USER_MEDIA_PERMISSION_REQUEST (req)) {
     /* the camera or the microphone: asked in the app's dialog style */
     WebKitUserMediaPermissionRequest *m = WEBKIT_USER_MEDIA_PERMISSION_REQUEST (req);
     gboolean audio = webkit_user_media_permission_is_for_audio_device (m);
     gboolean video = webkit_user_media_permission_is_for_video_device (m);
-    g_autofree char *msg = g_strdup_printf ("%s wants to use your %s.", origin,
-                                            audio && video ? "camera and microphone" : video ? "camera"
-                                                                                             : "microphone");
+    /* TRANSLATORS: %s is the site (its origin, "https://example.org") */
+    g_autofree char *msg = g_strdup_printf (audio && video ? _("%s wants to use your camera and microphone.")
+                                            : video ? _("%s wants to use your camera.")
+                                            : _("%s wants to use your microphone."), origin);
     d = nb_dialog_new (NULL);
     nb_dialog_set_message (d, msg);
-    nb_dialog_add_button (d, "Block", NB_RESPONSE_CANCEL);
-    nb_dialog_add_button (d, "Allow", NB_RESPONSE_OK);
+    nb_dialog_add_button (d, _("Block"), NB_RESPONSE_CANCEL);
+    nb_dialog_add_button (d, _("Allow"), NB_RESPONSE_OK);
   } else {
     /* notifications, the clipboard …: none of them is offered to a page */
     webkit_permission_request_deny (req);
@@ -351,22 +353,24 @@ on_auth_response (NbDialog *d, int response, Auth *a)
 static gboolean
 on_authenticate (WebKitWebView *v, WebKitAuthenticationRequest *req, NbTab *t)
 {
-  NbDialog *d = nb_dialog_new ("Authentication Required");
+  NbDialog *d = nb_dialog_new (_("Authentication Required"));
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
-  g_autofree char *detail = g_strdup_printf ("%s requires a username and password.", webkit_web_view_get_uri (v));
+  /* TRANSLATORS: %s is the page's address */
+  g_autofree char *detail = g_strdup_printf (_("%s requires a username and password."),
+                                             webkit_web_view_get_uri (v));
   Auth *a = g_new0 (Auth, 1);
 
   gtk_widget_add_css_class (box, "nb-dialog-form");
   gtk_box_append (GTK_BOX (box), nb_label (detail, 14, "nb-dialog-text", FALSE));
   gtk_label_set_wrap (GTK_LABEL (gtk_widget_get_first_child (box)), TRUE);
   a->req = g_object_ref (req);
-  a->user = nb_field_new ("User Name:", FALSE);
-  a->pass = nb_field_new ("Password:", TRUE);
+  a->user = nb_field_new (_("User Name:"), FALSE);
+  a->pass = nb_field_new (_("Password:"), TRUE);
   gtk_box_append (GTK_BOX (box), a->user);
   gtk_box_append (GTK_BOX (box), a->pass);
   nb_dialog_set_content (d, box);
-  nb_dialog_add_button (d, "Cancel", NB_RESPONSE_CANCEL);
-  nb_dialog_add_button (d, "Log in", NB_RESPONSE_OK);
+  nb_dialog_add_button (d, _("Cancel"), NB_RESPONSE_CANCEL);
+  nb_dialog_add_button (d, _("Log in"), NB_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (d), "nb-data", a, (GDestroyNotify) auth_free);
 g_signal_connect (d, "response", G_CALLBACK (on_auth_response), a);
   nb_dialog_present (d, t->win);
@@ -416,15 +420,16 @@ void
 nb_tab_ask_download (NbTab *t, const char *url, const char *name)
 {
   g_autofree char *file = guess_name (url, name);
-  g_autofree char *msg = g_strdup_printf ("Do you want to download %s?", file);
-  NbDialog *d = nb_dialog_new ("Download file");
+  /* TRANSLATORS: %s is the file's name */
+  g_autofree char *msg = g_strdup_printf (_("Do you want to download %s?"), file);
+  NbDialog *d = nb_dialog_new (_("Download file"));
   DownloadAsk *a = g_new0 (DownloadAsk, 1);
 
   a->t = t;
   a->url = g_strdup (url);
   nb_dialog_set_message (d, msg);
-  nb_dialog_add_button (d, "Dismiss", NB_RESPONSE_CANCEL);
-  nb_dialog_add_button (d, "Download", NB_RESPONSE_OK);
+  nb_dialog_add_button (d, _("Dismiss"), NB_RESPONSE_CANCEL);
+  nb_dialog_add_button (d, _("Download"), NB_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (d), "nb-data", a, (GDestroyNotify) download_ask_free);
 g_signal_connect (d, "response", G_CALLBACK (on_download_response), a);
   nb_dialog_present (d, t->win);
@@ -448,10 +453,19 @@ dn_part (const char *dn, const char *key)
   return NULL;
 }
 
+/* a heading of the certificate sheet, in capitals as Jelly shows them (the strings are not: as Jelly's, they are
+ * capitalised in each language's own way) */
+static GtkWidget *
+cert_heading (const char *heading)
+{
+  g_autofree char *upper = g_utf8_strup (heading, -1);
+  return nb_label (upper, 14, "nb-cert-heading", FALSE);
+}
+
 static void
 cert_section (GtkWidget *box, const char *heading)
 {
-  GtkWidget *l = nb_label (heading, 14, "nb-cert-heading", FALSE);
+  GtkWidget *l = cert_heading (heading);
   gtk_widget_set_margin_top (l, 16);
   gtk_box_append (GTK_BOX (box), l);
 }
@@ -475,8 +489,9 @@ format_date (GDateTime *dt)
   if (!dt)
     return NULL;
   g_autoptr (GDateTime) local = g_date_time_to_local (dt);
-  /* "Nov 10, 2026, 4:41:00 AM" in English */
-  return g_date_time_format (local, "%b %-d, %Y, %-I:%M:%S %p");
+  /* the date and the time with its seconds, in the user's language and order ("Nov 10, 2026, 4:41:00 AM" in US
+   * English), the hours by the 12/24-hour setting */
+  return vibeos_format_date (local, "yMMMdjms");
 }
 
 void
@@ -488,46 +503,46 @@ nb_tab_show_certificate (NbTab *t)
   g_autoptr (GDateTime) from = NULL, until = NULL;
   g_object_get (t->cert, "subject-name", &subject, "issuer-name", &issuer, "not-valid-before", &from,
                 "not-valid-after", &until, NULL);
-  NbDialog *d = nb_dialog_new ("SSL Certificate Details");
+  NbDialog *d = nb_dialog_new (_("SSL Certificate Details"));
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (box, "nb-dialog-form");
 
-  const char *trust = "Connection is secure";
+  const char *trust = _("Connection is secure");
   if (t->tls_errors & G_TLS_CERTIFICATE_EXPIRED)
-    trust = "This certificate has expired.";
+    trust = _("This certificate has expired.");
   else if (t->tls_errors & G_TLS_CERTIFICATE_NOT_ACTIVATED)
-    trust = "This certificate isn't valid yet.";
+    trust = _("This certificate isn't valid yet.");
   else if (t->tls_errors & G_TLS_CERTIFICATE_BAD_IDENTITY)
-    trust = "The name of the site doesn't match the name on the certificate.";
+    trust = _("The name of the site doesn't match the name on the certificate.");
   else if (t->tls_errors & G_TLS_CERTIFICATE_UNKNOWN_CA)
-    trust = "This certificate isn't from a trusted authority.";
+    trust = _("This certificate isn't from a trusted authority.");
   else if (t->tls_errors)
-    trust = "This certificate is invalid.";
-  GtkWidget *l = nb_label ("TRUST", 14, "nb-cert-heading", FALSE);
+    trust = _("This certificate is invalid.");
+  GtkWidget *l = cert_heading (_("Trust"));
   gtk_widget_set_margin_top (l, 8);
   gtk_box_append (GTK_BOX (box), l);
   gtk_box_append (GTK_BOX (box), nb_label (trust, 14, "nb-cert-value", FALSE));
-  cert_section (box, "DOMAIN");
+  cert_section (box, _("Domain"));
   g_autoptr (GUri) u = g_uri_parse (nb_tab_uri (t), G_URI_FLAGS_NONE, NULL);
   gtk_box_append (GTK_BOX (box), nb_label (u && g_uri_get_host (u) ? g_uri_get_host (u) : "", 14, "nb-cert-value",
                                            FALSE));
-  struct { const char *heading, *dn; } who[] = { { "ISSUED TO", subject }, { "ISSUED BY", issuer } };
+  struct { const char *heading, *dn; } who[] = { { _("Issued to"), subject }, { _("Issued by"), issuer } };
   for (guint i = 0; i < G_N_ELEMENTS (who); i++) {
     cert_section (box, who[i].heading);
     g_autofree char *cn = dn_part (who[i].dn, "CN"), *o = dn_part (who[i].dn, "O"), *ou = dn_part (who[i].dn, "OU");
-    cert_value (box, "Common Name (CN)", cn);
-    cert_value (box, "Organization (O)", o);
-    cert_value (box, "Organizational Unit (UN)", ou);
+    cert_value (box, _("Common Name (CN)"), cn);
+    cert_value (box, _("Organization (O)"), o);
+    cert_value (box, _("Organizational Unit (OU)"), ou);
   }
-  cert_section (box, "VALIDITY PERIOD");
+  cert_section (box, _("Validity Period"));
   g_autofree char *on = format_date (from), *off = format_date (until);
-  cert_value (box, "Issued On", on);
-  cert_value (box, "Expires On", off);
+  cert_value (box, _("Issued On"), on);
+  cert_value (box, _("Expires On"), off);
   GtkWidget *scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), box);
   gtk_widget_set_vexpand (scroll, TRUE);
   nb_dialog_set_content (d, scroll);
-  nb_dialog_add_button (d, "Dismiss", NB_RESPONSE_CANCEL);
+  nb_dialog_add_button (d, _("Dismiss"), NB_RESPONSE_CANCEL);
   nb_dialog_present (d, t->win);
 }
 
@@ -630,7 +645,7 @@ on_uri_launched (GObject *src, GAsyncResult *res, gpointer data)
 {
   NbTab *t = data;
   if (!gtk_uri_launcher_launch_finish (GTK_URI_LAUNCHER (src), res, NULL) && !t->closing)
-    nb_tab_snackbar (t, "No app can handle this link", NULL, NULL, NULL);
+    nb_tab_snackbar (t, _("No app can handle this link"), NULL, NULL, NULL);
 }
 
 static gboolean
@@ -708,7 +723,7 @@ on_enter_fullscreen (WebKitWebView *v, NbTab *t)
   gtk_window_fullscreen (GTK_WINDOW (t->win));
   if (!fullscreen_cookie)
     fullscreen_cookie = gtk_application_inhibit (nb->gapp, GTK_WINDOW (t->win), GTK_APPLICATION_INHIBIT_IDLE,
-                                                 "Playing full screen");
+                                                 _("Playing full screen"));
   nb_tab_sync_back (t);
   return FALSE;
 }
@@ -845,7 +860,7 @@ sync_title (NbTab *t)
   if (t != nb->last_active)
     return;
   const char *title = nb_tab_title (t);
-  gtk_window_set_title (GTK_WINDOW (t->win), *title ? title : "Browser");
+  gtk_window_set_title (GTK_WINDOW (t->win), *title ? title : _("Browser"));
 }
 
 static gboolean
@@ -942,7 +957,7 @@ nb_tab_new (const char *url, gboolean incognito, gboolean desktop, const char *s
   gtk_widget_set_can_target (t->back_probe, FALSE);
   gtk_widget_set_halign (t->back_probe, GTK_ALIGN_START);
   gtk_widget_set_valign (t->back_probe, GTK_ALIGN_START);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (t->back_probe), GTK_ACCESSIBLE_PROPERTY_LABEL, "Back", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (t->back_probe), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Back"), -1);
   g_signal_connect_swapped (t->back_probe, "clicked", G_CALLBACK (step_back), t);
   gtk_overlay_add_overlay (GTK_OVERLAY (t->page), t->back_probe);
   gtk_widget_set_sensitive (t->back_probe, FALSE);

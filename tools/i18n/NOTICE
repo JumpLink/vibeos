@@ -1,0 +1,22 @@
+VibeOS's translations
+
+Many of the translations in VibeOS's po/LANG.po files are those of the Android Open Source Project and LineageOS:
+each one carries a translator comment "android: <app> <resource name>" naming the Android app and the string it is
+that app's translation of, from the lineage-24.0 sources at the commits android-sources.json pins. android-import.py
+took them, changing only what its comment says: the placeholders numbered as VibeOS's strings have them, and, where
+the comment says "adapted", a full stop, a colon, the first letter's case or the quotation marks as VibeOS's English
+has them.
+
+Copyright (C) The Android Open Source Project
+Copyright (C) The LineageOS Project
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use these files except in compliance with
+the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+The other translations are VibeOS's own, under its MIT License.

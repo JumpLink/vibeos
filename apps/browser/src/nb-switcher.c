@@ -139,7 +139,7 @@ card_title (NbTab *t)
   g_autoptr (GUri) u = *uri ? g_uri_parse (uri, G_URI_FLAGS_NONE, NULL) : NULL;
   if (u && g_uri_get_host (u))
     return g_strdup (g_uri_get_host (u));
-  return g_strdup (t->incognito ? "Incognito tab" : "New tab");
+  return g_strdup (t->incognito ? _("Incognito tab") : _("New tab"));
 }
 
 static GtkWidget *
@@ -183,7 +183,7 @@ card_new (NbTab *t, int width)
   gtk_widget_add_css_class (x, "nb-tab-card-close");
   gtk_widget_set_size_request (x, 32, 32);
   gtk_widget_set_valign (x, GTK_ALIGN_CENTER);
-  g_autofree char *close_name = g_strdup_printf ("Close %s", title);
+  g_autofree char *close_name = g_strdup_printf (_("Close %s"), title);
   gtk_accessible_update_property (GTK_ACCESSIBLE (x), GTK_ACCESSIBLE_PROPERTY_LABEL, close_name, -1);
   g_object_set_data (G_OBJECT (x), "nb-tab", t);
   g_signal_connect (x, "clicked", G_CALLBACK (on_card_close), NULL);
@@ -207,7 +207,8 @@ card_new (NbTab *t, int width)
   GtkWidget *press = vibeos_pressable_new (card);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (press), VIBEOS_RIPPLE_BOUNDED, 16);
   g_object_set_data (G_OBJECT (press), "nb-tab", t);
-  g_autofree char *name = g_strdup_printf ("%s%s", title, t == nb->last_active ? ", current tab" : "");
+  /* TRANSLATORS: a screen reader's name for the tab card of the tab that was shown; %s is the tab's title */
+  g_autofree char *name = t == nb->last_active ? g_strdup_printf (_("%s, current tab"), title) : g_strdup (title);
   gtk_accessible_update_property (GTK_ACCESSIBLE (press), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
   g_signal_connect (press, "clicked", G_CALLBACK (on_card), NULL);
   return press;
@@ -270,8 +271,8 @@ rebuild (void)
    * takes the row, as it always has) */
   for (int i = n; cols > 2 && i > 0 && i < cols; i++)
     gtk_grid_attach (GTK_GRID (nb->switcher_grid), gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), i, 0, 1, 1);
-  g_autofree char *title = n == 1 ? g_strdup ("1 tab") : g_strdup_printf ("%u tabs", n);
-  gtk_label_set_text (GTK_LABEL (nb->switcher_title), n ? title : "Tabs");
+  g_autofree char *title = g_strdup_printf (g_dngettext (NULL, "%u tab", "%u tabs", n), n);
+  gtk_label_set_text (GTK_LABEL (nb->switcher_title), n ? title : _("Tabs"));
   gtk_widget_set_visible (switcher_scroll, n > 0);
   gtk_widget_set_visible (nb->switcher_empty, n == 0);
 }
@@ -298,8 +299,8 @@ static GtkWidget *
 switcher_new (void)
 {
   GtkWidget *actions = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-  GtkWidget *incognito = nb_action_button ("jelly-new-private-tab-symbolic", "New incognito tab");
-  GtkWidget *add = nb_action_button ("jelly-new-tab-symbolic", "New tab");
+  GtkWidget *incognito = nb_action_button ("jelly-new-private-tab-symbolic", _("New incognito tab"));
+  GtkWidget *add = nb_action_button ("jelly-new-tab-symbolic", _("New tab"));
   gtk_widget_add_css_class (incognito, "nb-toolbar-action");
   gtk_widget_add_css_class (add, "nb-toolbar-action");
   gtk_widget_set_margin_end (add, 4);
@@ -311,7 +312,7 @@ switcher_new (void)
   GtkWidget *page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (page, "nb-page");
   gtk_widget_add_css_class (page, "nb-switcher");
-  GtkWidget *toolbar = nb_toolbar_new ("Tabs", 0, G_CALLBACK (on_up), NULL, actions);
+  GtkWidget *toolbar = nb_toolbar_new (_("Tabs"), 0, G_CALLBACK (on_up), NULL, actions);
   nb->switcher_title = nb_toolbar_get_title (toolbar);
   gtk_box_append (GTK_BOX (page), toolbar);
 
@@ -326,7 +327,7 @@ switcher_new (void)
   switcher_scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (switcher_scroll), nb->switcher_grid);
   gtk_overlay_set_child (GTK_OVERLAY (body), switcher_scroll);
-  nb->switcher_empty = nb_label ("No open tabs", 14, "nb-empty-text", FALSE);
+  nb->switcher_empty = nb_label (_("No open tabs"), 14, "nb-empty-text", FALSE);
   gtk_widget_set_valign (nb->switcher_empty, GTK_ALIGN_CENTER);
   gtk_widget_set_halign (nb->switcher_empty, GTK_ALIGN_CENTER);
   gtk_widget_set_can_target (nb->switcher_empty, FALSE);
@@ -353,7 +354,7 @@ nb_switcher_open (void)
   /* no focus while the stack switches (see nb_tab_present) */
   gtk_window_set_focus (GTK_WINDOW (nb->win), NULL);
   gtk_stack_set_visible_child_name (GTK_STACK (nb->root), "switcher");
-  gtk_window_set_title (GTK_WINDOW (nb->win), "Tabs");
+  gtk_window_set_title (GTK_WINDOW (nb->win), _("Tabs"));
   if (t)
     nb_tab_sync_back (t);
   g_idle_add (scroll_to_current, NULL);
@@ -443,7 +444,7 @@ nb_window_get (void)
   nb->quitting = FALSE;
   nb->win = vibeos_window_new (nb->gapp);
   gtk_widget_add_css_class (nb->win, "nb");
-  gtk_window_set_title (GTK_WINDOW (nb->win), "Browser");
+  gtk_window_set_title (GTK_WINDOW (nb->win), _("Browser"));
   nb->root = gtk_stack_new ();
   gtk_stack_set_transition_type (GTK_STACK (nb->root), GTK_STACK_TRANSITION_TYPE_CROSSFADE);
   gtk_stack_set_transition_duration (GTK_STACK (nb->root), 150);

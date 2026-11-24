@@ -1,0 +1,72 @@
+# Italian translations of vibeos-launcher.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-launcher\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Italian\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/apps.c
+msgid "Android Settings"
+msgstr "Impostazioni Android"
+
+# android: Launcher3 taskbar_drag_to_unpin_title
+#: src/drag.c src/popup.c
+msgid "Remove"
+msgstr "Rimuovi"
+
+# android: Launcher3 toast_split_select_app_cancel
+#: src/drag.c
+msgid "Cancel"
+msgstr "Annulla"
+
+# android: Launcher3 all_apps_search_bar_hint
+#: src/drawer.c
+msgid "Search apps"
+msgstr "Cerca nelle app"
+
+# android: Launcher3 all_apps_no_search_results
+#. TRANSLATORS: %s is what was typed into the search; quote it as the language does
+#: src/drawer.c
+#, c-format
+msgid "No apps found matching “%s”"
+msgstr "Nessuna app trovata corrispondente a «%s»"
+
+# android: Launcher3 app_info_drop_target_label
+#: src/popup.c
+msgid "App info"
+msgstr "Informazioni app"
+
+# android: Launcher3 add_to_home_screen
+#: src/popup.c
+msgid "Add to home screen"
+msgstr "Aggiungi alla schermata Home"
+
+# android: Launcher3 styles_wallpaper_button_text
+#: src/popup.c
+msgid "Wallpaper & style"
+msgstr "Sfondo e stile"
+
+# android: Launcher3 all_apps_list_label
+#: src/popup.c
+msgid "Apps list"
+msgstr "Lista di app"
+
+# android: Launcher3 settings_button_text
+#: src/popup.c
+msgid "Home settings"
+msgstr "Impostazioni Home"
+
+# android: Launcher3 taskbar_button_home (several translations, short)
+#: src/wl.c
+msgid "Home"
+msgstr "Home"

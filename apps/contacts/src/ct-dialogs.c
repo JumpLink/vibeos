@@ -447,13 +447,13 @@ wheel_new (int min, int max, int value, gboolean wrap, CtWheelFormat format, dou
   return GTK_WIDGET (self);
 }
 
-/* the month's short name */
+/* the month's short name, as it stands alone ("LLL": "Jan", in Russian "янв.") */
 static char *
 format_month (int month)
 {
   g_autoptr(GDateTime) date = g_date_time_new_local (2000, month, 1, 0, 0, 0);
 
-  return g_date_time_format (date, "%b");
+  return vibeos_format_date (date, "LLL");
 }
 
 static char *
@@ -497,8 +497,8 @@ date_update (DateDialog *dialog)
     day->value = day->max;
   gtk_widget_queue_draw (dialog->day);
   date = g_date_time_new_local (year, month, day->value, 0, 0, 0);
-  /* Translators: the date picker's title, the full date (strftime; %-d is the day without a leading zero) */
-  text = g_date_time_format (date, dialog->include_year ? _("%A, %B %-d, %Y") : _("%B %-d"));
+  /* the date picker's title, the full date: "Monday, March 4, 1990", or "March 4" */
+  text = vibeos_format_date (date, dialog->include_year ? "yMMMMEEEEd" : "MMMMd");
   gtk_label_set_label (GTK_LABEL (dialog->title), text);
 }
 
