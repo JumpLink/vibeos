@@ -1520,6 +1520,8 @@ shutter (CamView *self)
               if (!self->record_after_probe)
                 {
                   self->record_after_probe = TRUE;
+                  /* the measure takes seconds the first time; without a word the press looks ignored */
+                  toast (self, _("Preparing video…"));
                   cam_encoder_probe (G_CALLBACK (on_encoder), g_object_ref (self));
                 }
               return;
