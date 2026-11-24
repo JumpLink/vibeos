@@ -1180,7 +1180,7 @@ on_clear (VibeosPressable *button, Window *self)
 
   dialog = vibeos_dialog_new (self->talking ? _("Clear the conversation?") : _("Clear the text?"));
 
-  vibeos_dialog_set_message (dialog, self->talking ? _("All of the conversation is deleted, and Agent forgets it.")
+  vibeos_dialog_set_message (dialog, self->talking ? _("All of the conversation is deleted, and Vibe forgets it.")
                                                    : _("All of the text is deleted."));
   vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
   vibeos_dialog_add_button (dialog, _("Clear"), VIBEOS_RESPONSE_OK);
@@ -1285,7 +1285,7 @@ static const VibeosAboutSection agent_legal[] = {
   { NULL }
 };
 
-static const VibeosAboutInfo agent_about = { .name = "Agent", .icon_name = "vibeos.Agent", .legal = agent_legal };
+static const VibeosAboutInfo agent_about = { .name = "Vibe", .icon_name = "vibeos.Agent", .legal = agent_legal };
 
 /* --- Agent's Settings, a page over the conversation (dictate-settings.h) */
 
@@ -1741,10 +1741,10 @@ dictate_window_new (GtkApplication *app, gboolean agent)
   self->settings = g_settings_new ("vibeos.Dictate");
   self->path = g_build_filename (g_get_user_data_dir (), "vibeos-dictate", "document.txt", NULL);
   g_object_set_data_full (G_OBJECT (self->window), "dictate-window", self, window_free);
-  gtk_window_set_title (GTK_WINDOW (self->window), agent ? _("Agent") : _("Dictate"));
+  gtk_window_set_title (GTK_WINDOW (self->window), agent ? _("Vibe") : _("Dictate"));
 
   /* the app bar */
-  title = self->title = gtk_label_new (agent ? _("Agent") : _("Dictate"));
+  title = self->title = gtk_label_new (agent ? _("Vibe") : _("Dictate"));
   gtk_widget_add_css_class (bar, "vibeos-app-bar");
   gtk_widget_add_css_class (title, "vibeos-app-bar-title");
   gtk_label_set_xalign (GTK_LABEL (title), 0);
@@ -1882,7 +1882,7 @@ dictate_window_new (GtkApplication *app, gboolean agent)
     gtk_box_append (GTK_BOX (outer), self->pages);
     self->marker = g_object_new (GTK_TYPE_BOX, "accessible-role", GTK_ACCESSIBLE_ROLE_DIALOG, NULL);
     gtk_accessible_update_property (GTK_ACCESSIBLE (self->marker), GTK_ACCESSIBLE_PROPERTY_LABEL,
-                                    agent ? _("Agent") : _("Dictate"), -1);
+                                    agent ? _("Vibe") : _("Dictate"), -1);
     gtk_widget_set_can_target (self->marker, FALSE);
     gtk_widget_set_visible (self->marker, FALSE);
     gtk_box_append (GTK_BOX (outer), self->marker);

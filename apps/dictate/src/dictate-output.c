@@ -92,7 +92,7 @@ dictate_output_headphones (char **sink)
   if (test)
     return !strcmp (test, "headphones");
   loop = pa_mainloop_new ();
-  ask.context = pa_context_new (pa_mainloop_get_api (loop), "Agent");
+  ask.context = pa_context_new (pa_mainloop_get_api (loop), "Vibe");
   if (pa_context_connect (ask.context, NULL, PA_CONTEXT_NOAUTOSPAWN, NULL) < 0)
     ask.pending = -1;
   while (ask.pending >= 0 && g_get_monotonic_time () < deadline)
