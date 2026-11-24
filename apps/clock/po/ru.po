@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-clock\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-24 14:32+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Russian\n"
@@ -116,9 +116,8 @@ msgstr "Пропущенный будильник"
 msgid "Alarm deleted"
 msgstr "Будильник удален"
 
-# android: DeskClock alarm_undo
 #: src/alarm-page.c
-msgid "undo"
+msgid "Undo"
 msgstr "Отменить"
 
 #: src/alarm-page.c

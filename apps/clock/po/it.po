@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-clock\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-24 14:32+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -113,10 +113,9 @@ msgstr "Sveglia persa"
 msgid "Alarm deleted"
 msgstr "Sveglia eliminata"
 
-# android: DeskClock alarm_undo
 #: src/alarm-page.c
-msgid "undo"
-msgstr "annulla"
+msgid "Undo"
+msgstr "Annulla"
 
 #: src/alarm-page.c
 msgid "Missed alarm has been deleted"
@@ -2887,7 +2886,9 @@ msgstr "Una sveglia sta suonando"
 # android: DeskClock confirm_remove_custom_ringtone
 #: src/ringtone-picker.c
 msgid "Alarms and timers using this sound will play the default sound instead."
-msgstr "Le sveglie e i timer che utilizzano questo suono utilizzeranno quello predefinito."
+msgstr ""
+"Le sveglie e i timer che utilizzano questo suono utilizzeranno quello "
+"predefinito."
 
 # android: DeskClock remove_sound
 #: src/ringtone-picker.c
@@ -2973,8 +2974,10 @@ msgstr "Ora di casa automatica"
 
 # android: DeskClock automatic_home_clock_summary
 #: src/settings-page.c
-msgid "While traveling in an area where the time is different, add a clock for home"
-msgstr "Quando viaggi in una zona dove l'ora è diversa, aggiungi il tuo fuso orario"
+msgid ""
+"While traveling in an area where the time is different, add a clock for home"
+msgstr ""
+"Quando viaggi in una zona dove l'ora è diversa, aggiungi il tuo fuso orario"
 
 # android: DeskClock home_time_zone
 #: src/settings-page.c
