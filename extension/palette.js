@@ -57,6 +57,27 @@ export function mix(a, b, t) {
     return a.map((v, i) => v + (b[i] - v) * t);
 }
 
+// A tablet's shade: an opaque scrim under the quick settings, their pill tiles (a two-target tile's icon circle when
+// off, a tile that is unavailable) and the dark panel the notification cards sit in
+export const TabletShade = {
+    scrim: [17, 53, 58],
+    tile: [16, 35, 38],
+    tileTarget: [40, 65, 69],
+    unavailable: [20, 47, 50],
+    panel: Color.surface,
+    card: Color.surfaceContainer,
+};
+
+// A tablet's taskbar: the stashed handle, the pill's fill and outline, its dividers and the all-apps glyph
+export const TabletTaskbar = {
+    handleLight: [255, 255, 255, 0.92],     // the handle over a dark app
+    handleDark: [0, 0, 0, 0.6],             // over a light one
+    fill: [14, 21, 22],
+    outline: [51, 59, 60],
+    divider: [137, 148, 150],
+    glyph: [186, 201, 204],
+};
+
 // The shade panel (behind the scrim): three translucent layers flattened into one colour and alpha
 export const SHADE_PANEL = over([Color.accent1_800, 0.32],
     over([Color.neutral1_500_l4, 0.32], [[64, 64, 64], 0.40]));

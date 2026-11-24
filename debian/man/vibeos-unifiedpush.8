@@ -1,0 +1,37 @@
+.TH VIBEOS-UNIFIEDPUSH 8 "2026-11-22" "vibeos 0.1.0" "VibeOS"
+.SH NAME
+vibeos-unifiedpush \- bring apps their push messages (a UnifiedPush distributor)
+.SH SYNOPSIS
+.B /usr/libexec/vibeos-unifiedpush
+.SH DESCRIPTION
+Keeps one connection to the push server open for all the session's apps, and hands each message to its app over D-Bus, as Android's push service does. It owns org.unifiedpush.Distributor.vibeos on the session bus, runs from login (the systemd user unit vibeos-unifiedpush.service) and is D-Bus activatable. Apps register through org.unifiedpush.Distributor2 at /org/unifiedpush/Distributor, the UnifiedPush D-Bus spec 0.3.0, directly or through libvibeos's VibeosUnifiedPush; an app may register only for a bus name it owns. Each registration gets an endpoint, \fIserver\fR/up\fIxxxxxxxxxxxx\fR?up=1 (the topic: "up" and 12 random base64url characters), and the app's server sends Web Push messages to it (RFC 8030, encrypted by RFC 8291).
+.PP
+The push server is an ntfy server, https://push.vibeos.top by default. One stream (GET \fIserver\fR/\fItopics\fR/json?up=1&since=\fIid\fR) carries every registration's messages; after a restart or a lost connection it starts again from the last message dealt with, and the server replays what came meanwhile (it keeps messages 72 hours). A registration's endpoint is given to the app (NewEndpoint) once the server has subscribed its topic, and after every Register. The stream is opened again with a growing pause (1 s to 5 minutes), whenever the network changes, after a resume from suspend, and when it has sent nothing, not even a keepalive, for twice the keepalive interval and 15 s.
+.PP
+Messages go to an app one at a time, in the order they came, by org.unifiedpush.Connector2.Message at /org/unifiedpush/Connector on the app's bus name, which starts the app if it does not run (its D-Bus service file). Messages of 1 to 4096 bytes are delivered; others are dropped. A message is done when the app answers, or after 25 s without an answer. If the app runs but has no connector yet, the call is made again for about 16 s; if it cannot be started, after 5 and 30 s. An app that neither runs nor can be started gets nothing: if it had a D-Bus service file when it registered, it was uninstalled, and after a minute its registrations are removed (there is nobody to tell); one that never had a service file gets messages only while it runs, and keeps its registrations. While messages are handed over, and 2 s after, the system is held awake (a logind "sleep" inhibitor of the "block" kind).
+.PP
+The registrations, the stream's position and the server are kept in $XDG_STATE_HOME/vibeos-unifiedpush/state.json (a 0700 directory). The log never shows a whole topic or token: their first 4 characters at most.
+.SH D-BUS INTERFACE
+vibeos.UnifiedPush1 at /vibeos/UnifiedPush, for Settings and for the sleep hooks (see /usr/share/dbus-1/interfaces/vibeos.UnifiedPush1.xml):
+.TP
+.B State, Error
+"idle" (nothing registered), "offline", "connecting", "connected" or "waiting" (and why).
+.TP
+.B ServerUrl
+The push server (read-write; the GSettings key below). A new server gives every app a new endpoint.
+.TP
+.B StreamRemoteAddress, StreamRemotePort, StreamLocalAddress, StreamLocalPort
+The stream's TCP connection, for a Wake-on-WLAN pattern.
+.TP
+.B ListRegistrations, RemoveRegistration(s id)
+The registrations, without their tokens and topics; removing one tells its app (Unregistered).
+.TP
+.B Collect() \(-> u
+Fetches what the server has waiting and returns, with the number delivered, once all of it is handed over (at most 20 s): for a phone woken from suspend.
+.TP
+.B Reconnect()
+Opens the stream again.
+.SH SETTINGS
+GSettings schema vibeos.UnifiedPush: server-url (https://push.vibeos.top) and keepalive-interval (the server's, 45 s).
+.SH SEE ALSO
+gdbus(1), gsettings(1), systemd-inhibit(1), https://unifiedpush.org/developers/spec/dbus/

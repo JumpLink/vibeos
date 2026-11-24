@@ -477,14 +477,117 @@
   color: @vibeos_on_surface_variant;
 }
 
-/* --- the tablet's empty conversation pane */
+/* --- two panes, on a tablet (messaging-window.c): the list and the conversation are rounded panes on the
+ * window's surface, 16 dp from its sides and bottom and 16 dp apart, each under its own top bar on that surface (the
+ * list's title, search and account over the list; the person, Call and the menu over the conversation). What the
+ * list opens (search, the account menu and its places) opens in the list's pane; New chat and the details in the
+ * conversation's. */
 
-.msg-detail-empty {
+.msg-split > .vibeos-list-pane > * {
+  margin: 0 8dp 16dp 16dp;
+}
+
+.msg-split > .vibeos-detail-pane > *,
+.msg-split > .msg-detail-empty {
+  margin: 0 16dp 16dp 8dp;
+}
+
+/* the detail side paints nothing of its own: with no conversation open, the placeholder under it shows (the
+ * conversation draws its own background) */
+.msg-home .vibeos-detail-pane {
+  background: none;
+}
+
+.msg-split .msg-list-sheet {
+  border-radius: 28dp;
+}
+
+/* the rows clear of the pane's round sides, so that the one open beside the list shows as a card of its own; the
+ * title over them in line with their pictures */
+.msg-split #conversation_list {
+  margin-left: 8dp;
+  margin-right: 8dp;
+}
+
+.msg-split .msg-list-bar {
+  padding-left: 8dp;
+}
+
+/* the conversation's bar on the window's surface, its messages and the compose bar on a pane of their own */
+.msg-split .msg-conversation-page {
+  background: none;
+}
+
+.msg-split .msg-conversation-container {
+  border-radius: 28dp;
+}
+
+/* the messages a little further in from the pane's round sides than from a phone's straight ones */
+.msg-split #message_list {
+  margin-left: 8dp;
+  margin-right: 8dp;
+}
+
+/* New chat: its bar on the window's surface too, To: and the contacts on a pane */
+.msg-split .msg-picker-page {
+  background: none;
+}
+
+.msg-split .msg-picker-content {
+  background-color: @vibeos_original_surface;
+  border-radius: 28dp;
+  padding-top: 12dp;
+}
+
+/* search and Blocked contacts, in the list's pane: the field or the bar on the window's surface as the list's bar is,
+ * the filters, results and people on a pane as the list's rows are */
+.msg-split .msg-search-content {
+  background-color: @vibeos_surface;
+  border-radius: 28dp;
+  margin-top: 8dp;
+}
+
+.msg-split .msg-search-content .msg-search-result {
+  background: none;
+}
+
+.msg-split .msg-search-content .msg-tile {
+  background-color: @vibeos_surface_container_high;
+}
+
+.msg-split .msg-blocked-content {
+  background-color: @vibeos_surface;
+  border-radius: 28dp;
+}
+
+/* the details, over the conversation: on a pane, in the list's colours */
+.msg-split .msg-people-options {
+  background-color: @vibeos_surface;
+  border-radius: 28dp;
+}
+
+.msg-split .msg-no-reply {
+  background: none;
+}
+
+/* with nothing open: an empty pane where the conversation's would be, under where its bar would be, with a quiet
+ * picture and a line in its middle */
+.msg-split > .msg-detail-empty {
+  margin-top: 64dp;
+  background-color: @vibeos_original_surface;
+  border-radius: 28dp;
+}
+
+.msg-detail-empty-icon {
+  color: @vibeos_original_outline;
+}
+
+.msg-detail-empty-text {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 16sp;
   font-weight: 400;
-  color: @vibeos_on_surface_variant;
-  background-color: @vibeos_surface;
+  color: @vibeos_original_on_surface_variant;
+  margin: 16dp 24dp 0 24dp;
 }
 
 /* --- the pages still drawn as lists of their own: Blocked contacts, the details */

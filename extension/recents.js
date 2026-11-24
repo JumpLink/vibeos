@@ -10,7 +10,13 @@
 // From the home screen there is no running app: every card waits off screen to the left, the scrim follows the
 // launcher's hint, and on the pause the cards come in together (enterFromHome).
 //
-// Lengths are device px (1080 × 2280); actors are placed in stage units (÷ the monitor scale).
+// On a tablet the overview is a grid: two rows of cards, the newest at the top right, the older ones filling it
+// column by column to the left, Clear all past the oldest. The swipe up still runs the row above (the app shrinks,
+// the others come in beside it); letting go into recents forms the grid (toGrid), and from the home screen the grid
+// slides in at once. The grid scrolls freely, sideways.
+//
+// Lengths are device px (1080 × 2280; a tablet's reference px, 3 to the dp); actors are placed in stage units (÷ the
+// monitor scale).
 import Clutter from 'gi://Clutter';
 import GdkPixbuf from 'gi://GdkPixbuf';
 import Gio from 'gi://Gio';
@@ -33,10 +39,10 @@ import {openAppInfo} from './settings.js';
 import {
     ACCELERATE_2, ACCELERATE_DECELERATE, DECELERATE, DECELERATE_3, FAST_OUT_SLOW_IN, LINEAR, NAV_GESTURE_H,
     OVERSHOOT_1_2, SCREEN_H, SCREEN_W, SCROLL, Spring, TASK, TASK_CORNER_R, TASK_PIVOT, TASK_W, TOUCH_RESPONSE,
-    TaskView, animate, appGicon, clamp, clampToProgress, lerp, scaleRect, springCurve,
+    TaskView, animate, appGicon, clamp, clampToProgress, lerp, lerpRect, scaleRect, springCurve,
 } from './task.js';
 import {AndroidText} from './text.js';
-import {screenPixels} from './units.js';
+import {geometry, screenPixels, TABLET} from './units.js';
 
 Object.assign(ICONS, L3_ICONS);
 
@@ -44,8 +50,7 @@ Object.assign(ICONS, L3_ICONS);
 const SCROLL_TICK = TICK.map(([amplitude, ms]) => [amplitude * 2, ms]);
 const PITCH = 732;                      // a card's width and the gap to the next
 const TOUCH_SLOP = 24;
-const CARD_H = TASK[3] - TASK[1];
-const CARD_CENTER_Y = (TASK[1] + TASK[3]) / 2;
+let CARD_H, CARD_CENTER_Y;
 
 // the scrim over the launcher's blurred wallpaper, in the dark surface colour
 const SCRIM = Color.surface;
@@ -102,8 +107,44 @@ const PAGER_FLING = 1500, PAGER_MIN_FLING = 750, PAGER_MIN_SNAP_V = 4500;
 const PAGER_SIGNIFICANT = 0.4, PAGER_RETURN = 0.33;
 export const PAGER_SNAP_MS = 750;
 const FRICTION = 0.015, PHYS = 155670.6, DECEL = Math.log(0.78) / Math.log(0.9), INFLEXION = 0.35;
-const OVERSCROLL = 0.07 * SCREEN_W;
+let OVERSCROLL;
 const EDGE = [24.657 * 24.657, 0.98];
+
+// The tablet's grid as Android 17 lays it out on the Galaxy Tab S5e (dp, on its 1280 × 800 screen turned and its
+// 800 × 1280 upright): the cards' height (their shape the screen's), the top row's top, the newest column's right
+// edge; rows 36 dp apart, columns 44. Clear all, 88 × 48 dp, is 64 dp left of the oldest column, 64 dp in from the
+// screen's left edge when scrolled to, its middle 36 dp below the grid's.
+const GRID_LAND = {w: 1280, h: 800, cardH: 262, top: 71.5, right: 1088};
+const GRID_PORT = {w: 800, h: 1280, cardH: 430, top: 143.5, right: 680};
+const GRID_ROW_GAP = 36, GRID_COL_GAP = 44, GRID_CLEAR_LEFT = 64, GRID_CLEAR_GAP = 64, GRID_CLEAR_BELOW = 36;
+const GRID_REFLOW_MS = 180;             // the cards closing a gap; the clip took 150 to 200 ms
+let GRID = null;                        // in reference px, the screen as it is turned now; null on a phone
+
+// the lengths above that follow the screen (task.js's, read again when it changes)
+function layoutScreen() {
+    CARD_H = TASK[3] - TASK[1];
+    CARD_CENTER_Y = (TASK[1] + TASK[3]) / 2;
+    OVERSCROLL = 0.07 * SCREEN_W;
+    GRID = null;
+    if (!TABLET)
+        return;
+    const ref = SCREEN_W >= SCREEN_H ? GRID_LAND : GRID_PORT;
+    const sx = SCREEN_W / (ref.w * 3), sy = SCREEN_H / (ref.h * 3);
+    const cardH = ref.cardH * 3 * sy, cardW = cardH * SCREEN_W / SCREEN_H;
+    const top = ref.top * 3 * sy, rowGap = GRID_ROW_GAP * 3 * sy;
+    GRID = {
+        cardW, cardH, top,
+        right: ref.right * 3 * sx,
+        rowPitch: cardH + rowGap,
+        colPitch: cardW + GRID_COL_GAP * 3 * sx,
+        clearLeft: GRID_CLEAR_LEFT * 3 * sx,
+        clearGap: GRID_CLEAR_GAP * 3 * sx,
+        clearCY: top + cardH + rowGap / 2 + GRID_CLEAR_BELOW * 3 * sy,
+        pivot: [SCREEN_W / 2, top + cardH + rowGap / 2],
+    };
+}
+layoutScreen();
+geometry.connect('changed', layoutScreen);
 
 // swipe-up dismiss: the card trails the finger at 0.35 until DIS_DETACH_PX, then springs to 1:1; the others reflow
 // into the hole (DIS_REFLOW as measured on the reference phone, much softer than its source's stiffness 2800)
@@ -224,9 +265,14 @@ class Chip {
         this._arrow = new VectorIcon('ic_chevron_down', u(CHIP.arrow), Color.onSurface);
         this._arrow.set_pivot_point(0.5, 0.5);
         this.root.add_child(this._arrow);
-        this._maxW = TASK_W - 2 * CHIP.inset;
-        this._fit();
+        this.refit();
         parent.add_child(this.root);
+    }
+
+    // the widest the pill may be: its card's width less its insets (again when a tablet turns)
+    refit() {
+        this._maxW = (GRID ? GRID.cardW : TASK_W) - 2 * CHIP.inset;
+        this._fit();
     }
 
     setMemory(bytes) {
@@ -654,7 +700,11 @@ export class Recents {
             x: m.x, y: m.y, width: m.width, height: m.height});
         Main.layoutManager.uiGroup.insert_child_above(this.layer, global.window_group);
         overWindows(this.layer);
-        this._scrim = new Clutter.Actor({width: m.width, height: m.height, background_color: cogl(SCRIM), opacity: 0});
+        // (a tablet's grid has the phone's scrim too, dark and a little see-through: its own light grey background was
+        // too bright, owner 11-20)
+        this._scrimAlpha = SCRIM_ALPHA;
+        this._scrim = new Clutter.Actor({width: m.width, height: m.height, opacity: 0,
+            background_color: cogl(SCRIM)});
         this.layer.add_child(this._scrim);
 
         // the running task first, then the others, most recent first (from every workspace: the mobile shell gives
@@ -668,7 +718,7 @@ export class Recents {
             const path = app ? nav.icons.get(app.get_id())?.path : null;
             const view = new TaskView(win, this._scale, this.layer);
             const chip = new Chip(app, path || null, this._scale, this.layer);
-            const task = {id: ++taskIds, win, app, view, chip, dx: 0, dy: 0, alpha: 1, radius: null};
+            const task = {id: ++taskIds, win, app, view, chip, dx: 0, dy: 0, ry: 0, alpha: 1, radius: null};
             win.connectObject('unmanaged', () => this._lost(task), this);
             return task;
         });
@@ -697,6 +747,12 @@ export class Recents {
         }
 
         this._runningTask = running ? this._tasks[0] : null;
+        // a tablet's grid: on from the home screen, formed from the row as the swipe up lets go into recents (_grid
+        // its progress, the row's scroll kept meanwhile in _rowScroll)
+        this._gridMode = !!GRID && !running;
+        this._grid = this._gridMode ? 1 : 0;
+        this._rowScroll = 0;
+        this._launchP = 0;
         // where the running card is, following the swipe; from home, where card 0 rests
         this._frame = running ? [0, 0, SCREEN_W, SCREEN_H] : TASK.slice();
         this._frameR = running ? 0 : TASK_CORNER_R;
@@ -705,7 +761,7 @@ export class Recents {
         this._offset = 1;                           // how far the other cards are pushed aside: 1 = off screen
         this._content = 0;                          // the other cards' alpha
         this._stripScale = 1;                       // the whole row's scale about _stripPivot
-        this._stripPivot = TASK_PIVOT;
+        this._stripPivot = this._gridMode ? GRID.pivot : TASK_PIVOT;
         this._stripTy = 0;
         this._dragTx = 0;                           // from home: where the finger has the cards since the pause
         this._dragTy = 0;
@@ -729,6 +785,24 @@ export class Recents {
             if (win.get_window_type() === Meta.WindowType.NORMAL)
                 this._interrupted();
         }, this);
+        // a tablet turned meanwhile: the layer, the scrim and the grid as the screen is now
+        geometry.connectObject('changed', () => this._turned(), this);
+        this.layout();
+    }
+
+    _turned() {
+        const m = Main.layoutManager.primaryMonitor;
+        if (this._destroyed || !m)
+            return;
+        this.layer.set_position(m.x, m.y);
+        this.layer.set_size(m.width, m.height);
+        this._scrim.set_size(m.width, m.height);
+        for (const task of this._tasks) {
+            task.view.fit();
+            task.chip.refit();
+        }
+        if (this._gridMode)
+            this._scroll = clamp(this._scroll, 0, this._maxScroll());
         this.layout();
     }
 
@@ -812,21 +886,45 @@ export class Recents {
         return dampedScroll(this._pull);
     }
 
+    // the grid's columns
+    _columns() {
+        return Math.ceil(this._tasks.length / 2);
+    }
+
+    // Clear all's left edge in the grid, as scrolled now
+    _clearAllX() {
+        const oldest = GRID.right - GRID.cardW - (this._columns() - 1) * GRID.colPitch;
+        return oldest - GRID.clearGap - this._clearAll.width + this._scroll + this._over();
+    }
+
     _maxScroll() {
+        if (this._gridMode) {
+            const oldest = GRID.right - GRID.cardW - (this._columns() - 1) * GRID.colPitch;
+            return Math.max(0, GRID.clearLeft - (oldest - GRID.clearGap - this._clearAll.width));
+        }
         return PITCH * (this._tasks.length - 1) + this._clearAll.width;
     }
 
+    // (in the grid it fades over the gap beside the oldest column: in full when scrolled to, or when the grid cannot
+    // scroll that far)
     _clearAllAlpha() {
         if (!this._tasks.length)
             return 0;
-        return clamp(1 - (this._maxScroll() - this._scroll) / 48, 0, 1);
+        return clamp(1 - (this._maxScroll() - this._scroll) / (this._gridMode ? GRID.clearGap : 48), 0, 1);
     }
 
+    // the card nearest the middle; in the grid, the top one of the column nearest the newest's place
     _page() {
+        if (this._gridMode)
+            return clamp(Math.round(this._scroll / GRID.colPitch), 0, Math.max(0, this._columns() - 1)) * 2;
         return clamp(Math.round(this._scroll / PITCH), 0, this._tasks.length - 1);
     }
 
     _pageScrolls() {
+        if (this._gridMode) {
+            const max = this._maxScroll();
+            return [...Array.from({length: this._columns()}, (_c, k) => GRID.colPitch * k).filter(p => p < max), max];
+        }
         return [...this._tasks.map((_t, i) => PITCH * i), this._maxScroll()];
     }
 
@@ -856,19 +954,34 @@ export class Recents {
         vibrate(SCROLL_TICK);
     }
 
+    // a task's place in the grid: its column and row, the grid's scroll and stretch, its own offsets (a reflow's,
+    // a dismiss's)
+    _slot(i, task) {
+        const col = Math.floor(i / 2), row = i % 2;
+        const x = GRID.right - GRID.cardW - col * GRID.colPitch + this._scroll + this._over() + task.dx;
+        const y = GRID.top + row * GRID.rowPitch + task.dy + task.ry;
+        return [x, y, x + GRID.cardW, y + GRID.cardH];
+    }
+
     layout() {
         if (this._destroyed)
             return;
         const [l, t, , b] = this._frame;
         const s = (this._frame[2] - l) / TASK_W;
         const sc = this._stripScale, pivot = this._stripPivot;
-        const shift = this._scroll + this._over();
+        // the row's scroll: the cards' own while there is no grid, kept as it was while the grid forms
+        const shift = this._grid ? this._rowScroll : this._scroll + this._over();
         const left = i => l + (-PITCH * i + shift) * s;
+        // the grid's ease, and its cards off to the left with the row's (from home, all of them)
+        const g = this._grid < 1 ? FAST_OUT_SLOW_IN(this._grid) : 1;
         // the cards left of the running one go off screen together, by as much as takes the nearest one there (from
         // home, all of them)
         const first = this._fromHome ? 0 : 1;
-        const push = this._offset > 0 && this._tasks.length > first
-            ? -(left(first) + TASK_W * s) * this._offset : 0;
+        let push = 0;
+        if (this._offset > 0 && this._tasks.length > first) {
+            const near = this._gridMode ? this._slot(first, this._tasks[first])[2] : left(first) + TASK_W * s;
+            push = -near * this._offset;
+        }
         const place = rect => {
             const r = scaleRect(rect, sc, pivot);
             r[0] += this._dragTx;
@@ -878,26 +991,52 @@ export class Recents {
             return r;
         };
         this._tasks.forEach((task, i) => {
-            const x = left(i) + task.dx * s + (i >= first ? push : 0) + this._exitTx;
-            const y = t + task.dy * s;
-            const rect = place([x, y, x + TASK_W * s, y + (b - t)]);
+            const direct = this._gridDirect && i >= first;
+            const shove = (i >= first && !direct ? push : 0) + this._exitTx;
+            let rect, cs, r;
+            if (g < 1) {
+                const x = left(i) + (this._gridMode ? 0 : task.dx * s) + shove;
+                const y = t + (this._gridMode ? 0 : task.dy * s);
+                rect = [x, y, x + TASK_W * s, y + (b - t)];
+                cs = s;
+                r = task.radius ?? this._frameR;
+            }
+            if (g > 0) {
+                const slot = this._slot(i, task);
+                slot[0] += shove;
+                slot[2] += shove;
+                const tween = g < 1 && !direct;
+                rect = tween ? lerpRect(rect, slot, g) : slot;
+                cs = tween ? lerp(cs, 1, g) : 1;
+                r = tween ? lerp(r, task.radius ?? TASK_CORNER_R, g) : task.radius ?? TASK_CORNER_R;
+            }
+            rect = place(rect);
             const alpha = (i >= first ? this._content : 1) * task.alpha;
-            const r = (task.radius ?? this._frameR) * sc;
+            // (the grid's cards show their windows from the windows' tops, till a launch fills the screen again)
+            const skip = g > 0 ? g * (1 - this._launchP) * task.view.windowTop() : 0;
             if (!(i === 0 && this._runningTaken))
-                task.view.place(rect, r, alpha);
-            task.chip.place(rect, s * sc, this._chipAlpha * alpha);
+                task.view.place(rect, r * sc, alpha, false, skip);
+            task.chip.place(rect, cs * sc, this._chipAlpha * alpha);
         });
 
         // Clear all, past the oldest card: it stays put while the last card slides off it, fading in over the
-        // last 48 px
-        const max = this._maxScroll(), w = this._clearAll.width;
-        const ca = this._clearAllAlpha();
-        const cx = CLEAR_ALL_LEFT + (this._scroll - max) + Math.min(Math.max(max - this._scroll, 0), w) + this._over();
-        this._clearAll.place(place([cx + this._exitTx, CARD_CENTER_Y - BUTTON_H / 2, cx + w + this._exitTx,
-            CARD_CENTER_Y + BUTTON_H / 2]), ca * this._actionsAlpha * this._content);
-        // the actions hide with no tasks
-        this._screenshot.place(this._actions, this._tasks.length ? this._actionsAlpha * (1 - ca) : 0, !this._scrolling);
-        this._ram.place(this._ramTop, this._actionsAlpha);
+        // last 48 px (a tablet's sits beside the oldest column, the grid's middle a little above its own)
+        const w = this._clearAll.width, ca = this._clearAllAlpha();
+        if (this._gridMode) {
+            const cx = this._clearAllX() + this._exitTx;
+            this._clearAll.place(place([cx, GRID.clearCY - BUTTON_H / 2, cx + w, GRID.clearCY + BUTTON_H / 2]),
+                ca * this._actionsAlpha * this._content);
+        } else {
+            const max = this._maxScroll();
+            const cx = CLEAR_ALL_LEFT + (this._scroll - max) + Math.min(Math.max(max - this._scroll, 0), w) +
+                this._over();
+            this._clearAll.place(place([cx + this._exitTx, CARD_CENTER_Y - BUTTON_H / 2, cx + w + this._exitTx,
+                CARD_CENTER_Y + BUTTON_H / 2]), ca * this._actionsAlpha * this._content);
+        }
+        // the actions hide with no tasks; a tablet has none (and no memory map)
+        this._screenshot.place(this._actions, this._tasks.length && !GRID ? this._actionsAlpha * (1 - ca) : 0,
+            !this._scrolling);
+        this._ram.place(this._ramTop, GRID ? 0 : this._actionsAlpha);
         if (this._empty)
             this._empty.opacity = Math.round(255 * this._content);
         if (this._menu)
@@ -941,7 +1080,7 @@ export class Recents {
     enterFromHome(ms, done) {
         this._content = 1;
         this._chipAlpha = 1;
-        const scrim = this._scrim.opacity / 255 / SCRIM_ALPHA;
+        const scrim = this._scrim.opacity / 255 / this._scrimAlpha;
         this._tween('enter', ms, t => {
             const o = OVERSHOOT_1_2(t);
             this._offset = 1 - o;
@@ -972,7 +1111,7 @@ export class Recents {
 
     // the scrim, as a fraction of the overview's
     setScrim(f) {
-        this._scrim.opacity = Math.round(255 * SCRIM_ALPHA * f);
+        this._scrim.opacity = Math.round(255 * this._scrimAlpha * f);
     }
 
     // the running card is the window's now, flying home: recents no longer places it
@@ -981,15 +1120,26 @@ export class Recents {
         return this.running;
     }
 
-    // The settle is over: the overview takes the input. Its actions show at once, the chips fade in.
+    // The settle is over: the overview takes the input. Its actions show at once, the chips fade in. Once, and not
+    // after destroy(): a grab taken then would never be given back, and every shell key would stay filtered out.
     show() {
+        if (this.shown || this._destroyed)
+            return;
+        // the screen locked while it settled: home, under the lock screen, as the launcher goes home when the screen
+        // goes off. Shown, its grab would sit over the lock screen's, and touches and keys would go to it unseen.
+        if (this._nav.locked) {
+            this.goHome('home');
+            return;
+        }
         this.shown = true;
         this._frame = TASK.slice();
         this._frameR = TASK_CORNER_R;
         this._actionsAlpha = 1;
         if (this._chipAlpha < 1)
             this._tween('chips', CHIP_FADE_MS, t => (this._chipAlpha = LINEAR(t)));
-        this._grab = Main.pushModal(this.layer, {actionMode: Shell.ActionMode.NONE});
+        // POPUP, not NONE: the shell filters every key out under NONE, the power key's (Shell.ActionMode.ALL) and the
+        // volume keys' too, and on Android both work in recents; the recents key reaches _onKey (NORMAL only)
+        this._grab ??= Main.pushModal(this.layer, {actionMode: Shell.ActionMode.POPUP});
         this.layer.grab_key_focus();
         // the grab keeps touches from the stage: back watches them here
         this._nav.watchBack(this.layer);
@@ -1028,6 +1178,9 @@ export class Recents {
     }
 
     _onTouch(event) {
+        // a tablet's taskbar over the cards: the touches that land on it are its own
+        if (this._nav.taskbar?.takeTouch(event))
+            return Clutter.EVENT_STOP;
         if (this._busy || (this._reflowing && !this._touch))
             return Clutter.EVENT_STOP;
         // GJS wraps a sequence anew for every event: its slot is what stays the same
@@ -1228,6 +1381,14 @@ export class Recents {
         }
         const f = fling(v);
         const aim = this._scroll + Math.sign(v) * (Number.isFinite(f.distance) ? f.distance : 0);
+        if (this._gridMode) {
+            // the grid has no pages: the fling coasts where it would, short of the ends (sooner when they stop it)
+            const end = clamp(aim, 0, this._maxScroll()), whole = Math.abs(aim - this._scroll);
+            const ms = Number.isFinite(f.duration) ? f.duration : 0;
+            const part = whole > 0 ? Math.sqrt(Math.abs(end - this._scroll) / whole) : 0;
+            this._scrollTo(end, Math.max(SNAP_MIN_MS, ms * part), splinePosition);
+            return;
+        }
         const pages = this._pageScrolls();
         const end = pages.reduce((a, p) => Math.abs(p - aim) < Math.abs(a - aim) ? p : a, pages[0]);
         this._scrollTo(end, Math.max(SNAP_MIN_MS, Number.isFinite(f.duration) ? f.duration : 0), splinePosition);
@@ -1314,9 +1475,37 @@ export class Recents {
         return page;
     }
 
-    // scroll to a page in ms, on the pager's curve
+    // scroll to a page in ms, on the pager's curve (in the grid: its column to the newest's place, or as near as
+    // the end lets it)
     snapTo(page, ms) {
-        this._scrollTo(page * PITCH, ms, SCROLL);
+        if (this._gridMode)
+            this._scrollTo(clamp(Math.floor(page / 2) * GRID.colPitch, 0, this._maxScroll()), ms, SCROLL);
+        else
+            this._scrollTo(page * PITCH, ms, SCROLL);
+    }
+
+    // Letting go into recents on a tablet: the row forms the grid in ms, the running card flying to the top right,
+    // the grid scrolled to the column of the card the row had in the middle
+    toGrid(ms) {
+        if (!GRID || this._gridMode)
+            return;
+        const page = this._page();
+        this._stop('scroll');
+        this._stop('edge');
+        this._pull = 0;
+        this._rowScroll = this._scroll;
+        this._gridMode = true;
+        this._scroll = clamp(Math.floor(page / 2) * GRID.colPitch, 0, this._maxScroll());
+        this._overPage = this._nearestPage();
+        this._stripPivot = GRID.pivot;
+        // the other cards: when they were not beside the app (a swipe up), in their places at once, fading in as the
+        // grid forms, rather than coming in from the left over the app
+        const content = this._content;
+        this._gridDirect = content < 1;
+        this._tween('grid', ms, t => {
+            this._grid = t;
+            this._content = lerp(content, 1, t);
+        });
     }
 
     // done() once the strip is at rest: no scroll, no stretch
@@ -1424,21 +1613,29 @@ export class Recents {
         });
     }
 
+    // how far a card flies up to leave the screen: in the grid, past its row's bottom
+    _flyLength(task) {
+        if (!this._gridMode)
+            return DIS_LENGTH;
+        return GRID.top + (this._tasks.indexOf(task) % 2) * GRID.rowPitch + GRID.cardH + 48;
+    }
+
     // The card flies off the top on the dismiss spring, its app closes, and the cards beside it close the gap.
     // v0: px/s (negative)
     _dismiss(task, v0) {
-        const fly = new Spring(DIS_Y, task.dy, v0, -DIS_LENGTH);
+        const length = this._flyLength(task);
+        const fly = new Spring(DIS_Y, task.dy, v0, -length);
         let flowing = false;
         task.dismissed = true;
         this._reflowing = true;
         this._spring(`dy${task.id}`, fly, (x, v) => {
             task.dy = x;
             // past one card height
-            if (!flowing && x <= -CARD_H) {
+            if (!flowing && x <= -(this._gridMode ? GRID.cardH : CARD_H)) {
                 flowing = true;
                 this._reflow(task, Math.abs(v));
             }
-            if (x <= -DIS_LENGTH)
+            if (x <= -length)
                 fly.done = true;
         }, () => {
             task.alpha = 0;
@@ -1466,6 +1663,10 @@ export class Recents {
     // After a dismiss the older cards to the left slide right into the hole (or, when it was the oldest or
     // left of the current page, the newer ones slide left), the first on a spring, each next one chasing it
     _reflow(task, v0) {
+        if (this._gridMode) {
+            this._reflowGrid(task);
+            return;
+        }
         const i = this._tasks.indexOf(task), n = this._tasks.length, page = this._page();
         const newer = i === n - 1 || i > page;
         const dir = newer ? -1 : 1;
@@ -1493,6 +1694,29 @@ export class Recents {
         }, finish);
     }
 
+    // In the grid every older card moves one place on toward the newest (up its column, or from the next column's
+    // top to the bottom of this one), all in GRID_REFLOW_MS, each a little after the one before it
+    _reflowGrid(task) {
+        const i = this._tasks.indexOf(task);
+        const movers = this._tasks.slice(i + 1).map((t, k) => {
+            const j = i + 1 + k, from = this._slot(j, {dx: 0, dy: 0, ry: 0}), to = this._slot(j - 1, {dx: 0, dy: 0,
+                ry: 0});
+            return {task: t, ddx: to[0] - from[0], ddy: to[1] - from[1], delay: Math.min(k, 4) * 0.08};
+        });
+        const finish = () => this._removeTask(task, false);
+        if (!movers.length) {
+            finish();
+            return;
+        }
+        this._tween(`reflow${task.id}`, GRID_REFLOW_MS * 1.32, t => {
+            for (const m of movers) {
+                const p = FAST_OUT_SLOW_IN(clamp((t - m.delay) / (1 - 0.32), 0, 1));
+                m.task.dx = m.ddx * p;
+                m.task.ry = m.ddy * p;
+            }
+        }, finish);
+    }
+
     _removeTask(task, newerMoved) {
         const i = this._tasks.indexOf(task);
         if (i < 0)
@@ -1508,12 +1732,16 @@ export class Recents {
         task.chip.destroy();
         for (const t of this._tasks) {
             t.dx = 0;
+            t.ry = 0;
             if (!t.dismissed)
                 t.dy = 0;
         }
         if (newerMoved)
             this._scroll = Math.max(0, this._scroll - PITCH);
-        this._scroll = Math.min(this._scroll, this._maxScroll());
+        if (this._gridMode && this._scroll > this._maxScroll() && !this._busy)
+            this._scrollTo(this._maxScroll(), GRID_REFLOW_MS * 2, FAST_OUT_SLOW_IN);
+        else
+            this._scroll = Math.min(this._scroll, this._maxScroll());
         // the pages moved, not the strip: no tick
         this._overPage = this._nearestPage();
         if (!this._tasks.length && !this._busy)
@@ -1542,11 +1770,12 @@ export class Recents {
                 return;
             }
             left++;
-            const fly = new Spring(DIS_Y, task.dy, -DIS_V_MIN, -DIS_LENGTH);
+            const length = this._flyLength(task);
+            const fly = new Spring(DIS_Y, task.dy, -DIS_V_MIN, -length);
             task.dismissed = true;
             this._spring(`dy${task.id}`, fly, x => {
                 task.dy = x;
-                if (x <= -DIS_LENGTH)
+                if (x <= -length)
                     fly.done = true;
             }, () => {
                 task.alpha = 0;
@@ -1581,6 +1810,7 @@ export class Recents {
         const fade = clampToProgress(LINEAR, 0, 0.15);
         this._tween('launch', LAUNCH_MS, t => {
             const p = TOUCH_RESPONSE(t);
+            this._launchP = p;
             this._stripScale = lerp(1, full, p);
             task.radius = lerp(TASK_CORNER_R, 0, p) / this._stripScale;
             this._chipAlpha = chips * (1 - fade(t));
@@ -1592,10 +1822,28 @@ export class Recents {
         });
     }
 
+    // A tablet's taskbar's app: its card opens as a tap on the card would; an app with no card opens in front as
+    // recents goes
+    openApp(app) {
+        if (this._busy)
+            return;
+        const task = this._tasks.find(t => t.app === app);
+        if (task) {
+            this._launch(task);
+            return;
+        }
+        this._busy = true;
+        this._nav.launcherState('normal');
+        this._nav.statusBarOverApp(null);
+        this.destroy();
+        app.activate();
+    }
+
     // recents → home: the cards slide off to the left, the scrim and the actions fade, the launcher's workspace
     // grows back in behind (kind 'home': 0.92 → 1 in 250 ms; 'home-reveal', after a swipe up: the home screen's reveal)
     goHome(kind = 'home', closing = false) {
         this._busy = true;
+        this._nav.taskbar?.hide();
         this._stop('scroll');
         this._stop('enter');
         this._stop('drag');
@@ -1610,11 +1858,12 @@ export class Recents {
         this._nav.home.window?.activate(global.get_current_time());
         this._nav.statusBarOverApp(null);
 
-        const pages = this._page();
+        // (in the grid: columns scrolled, and away by as much as the newest column's place)
+        const pages = this._gridMode ? this._page() / 2 : this._page();
         const ms = Math.max(EXIT_MS, Math.min(EXIT_SCROLL_MAX_MS, pages * EXIT_SCROLL_PAGE_MS));
         const scroll = this._scroll;
         const current = this._tasks[pages]?.view.rect;
-        const away = -(current ? current[2] : TASK[2]);
+        const away = this._gridMode ? -GRID.right : -(current ? current[2] : TASK[2]);
         const scrim = this._scrim.opacity, actions = this._actionsAlpha;
         const slide = clampToProgress(FAST_OUT_SLOW_IN, 0, 0.75), fade = clampToProgress(LINEAR, 0, EXIT_MS / ms * 0.25);
         this._tween('exit', ms, t => {
@@ -1628,7 +1877,7 @@ export class Recents {
     // Swiping up from the bar: the cards shrink toward 0.75 and rise, resisting the finger; t = |dy|/H
     _homeSwipe(t) {
         this._homeT = t;
-        this._stripPivot = TASK_PIVOT;
+        this._stripPivot = this._gridMode ? GRID.pivot : TASK_PIVOT;
         this._stripScale = 1 - HOME_SWIPE_SCALE * DECELERATE(t);
         this._stripTy = HOME_SWIPE_TY * t;
     }
@@ -1693,8 +1942,8 @@ export class Recents {
         // the chip over the menu (bringToFront)
         this.layer.set_child_above_sibling(task.chip.root, menu.root);
         const card = task.view.rect.slice();
-        const m = this._menu = {task, menu, dim, card, s: (card[2] - card[0]) / TASK_W, p: 0, alpha: 0, rowsAlpha: 0,
-            dimP: 0, closing: false};
+        const m = this._menu = {task, menu, dim, card, s: this._gridMode ? 1 : (card[2] - card[0]) / TASK_W, p: 0,
+            alpha: 0, rowsAlpha: 0, dimP: 0, closing: false};
         this._tween('menu', MENU_OPEN_MS, t => {
             const q = EMPHASIZED.get(t);
             m.p = q;
@@ -1809,6 +2058,23 @@ export class Recents {
             flash.ease({opacity: 0, duration: 200, onComplete: () => flash.destroy()})});
     }
 
+    // something in it animating, on a clock that still ticks
+    get moving() {
+        return !this._destroyed && !!this._ticker && !this._ticker.stalled(1000000);
+    }
+
+    // a transition out (to an app, home, or all cleared) that no longer moves: its end never comes (navigation's watch)
+    get stuck() {
+        return this._busy && !this._destroyed && !this.moving;
+    }
+
+    // closed at once, the launcher at rest, as the transition would have left it
+    abandon() {
+        this._nav.launcherState('normal');
+        this._nav.statusBarOverApp(null);
+        this.destroy();
+    }
+
     destroy() {
         if (this._destroyed)
             return;
@@ -1822,6 +2088,7 @@ export class Recents {
             Main.popModal(this._grab);
         this._grab = null;
         global.display.disconnectObject(this);
+        geometry.disconnectObject(this);
         for (const task of this._tasks) {
             if (task.dismissed && !task.lost)
                 this._close(task);

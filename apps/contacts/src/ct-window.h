@@ -28,6 +28,8 @@ void       ct_window_pop           (GtkWidget *window, GtkWidget *page);
 /* the page on top, and the home page */
 GtkWidget *ct_window_top           (GtkWidget *window);
 GtkWidget *ct_window_home          (GtkWidget *window);
+/* where a search opens: beside the rail on a tablet (the rail stays), else over the whole window */
+GtkOverlay *ct_window_search_overlay (GtkWidget *window);
 /* the home page's tab: 0 Contacts, 1 Highlights, 2 Organize */
 void       ct_window_select_tab    (GtkWidget *window, int tab);
 

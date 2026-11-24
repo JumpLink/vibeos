@@ -88,6 +88,9 @@ struct _CalAgendaView {
   gboolean loaded;              /* the events of the window have come (go_to waits for them to place the list) */
   int anchor_day;
   char *anchor_uid;
+  char *selected_uid;           /* the event a tablet shows beside the list, on a band: its UID, ... */
+  char *selected_rid;           /* ... its occurrence */
+  gint64 selected_start;
   gint64 anchor_start;
   double anchor_offset;
 };
@@ -214,6 +217,13 @@ draw_event (GtkWidget *widget, GtkSnapshot *snapshot, int scale, const Row *row,
     }
 }
 
+static gboolean
+is_selected (CalAgendaView *view, const CalEvent *event)
+{
+  return view->selected_uid && event->start == view->selected_start && g_strcmp0 (event->uid, view->selected_uid) == 0
+         && g_strcmp0 (event->rid, view->selected_rid) == 0;
+}
+
 static void
 cal_agenda_list_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
@@ -236,7 +246,15 @@ cal_agenda_list_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       if (row->type == ROW_DAY)
         draw_day (widget, snapshot, scale, row, row->y, width);
       else
-        draw_event (widget, snapshot, scale, row, row->y, width);
+        {
+          if (is_selected (view, row->event))
+            {
+              GdkRGBA band = cal_argb (CAL_SECONDARY_CONTAINER);
+
+              cal_fill_rect (snapshot, scale, 0, row->y, width, row->height, &band);
+            }
+          draw_event (widget, snapshot, scale, row, row->y, width);
+        }
       if ((int) i == self->pressed && vibeos_ripple_is_active (&self->ripple))
         {
           graphene_rect_t bounds = GRAPHENE_RECT_INIT (0, (float) row->y, (float) width, (float) row->height);
@@ -570,6 +588,8 @@ cal_agenda_view_dispose (GObject *object)
   g_clear_pointer (&self->events, g_ptr_array_unref);
   g_clear_pointer (&self->rows, g_array_unref);
   g_clear_pointer (&self->anchor_uid, g_free);
+  g_clear_pointer (&self->selected_uid, g_free);
+  g_clear_pointer (&self->selected_rid, g_free);
   G_OBJECT_CLASS (cal_agenda_view_parent_class)->dispose (object);
 }
 
@@ -636,6 +656,20 @@ cal_agenda_view_get_range (CalAgendaView *self, int *first, int *last)
 {
   *first = self->first;
   *last = self->last;
+}
+
+void
+cal_agenda_view_set_selected (CalAgendaView *self, const CalEvent *event)
+{
+  g_clear_pointer (&self->selected_uid, g_free);
+  g_clear_pointer (&self->selected_rid, g_free);
+  if (event)
+    {
+      self->selected_uid = g_strdup (event->uid);
+      self->selected_rid = g_strdup (event->rid);
+      self->selected_start = event->start;
+    }
+  gtk_widget_queue_draw (GTK_WIDGET (self->list));
 }
 
 void

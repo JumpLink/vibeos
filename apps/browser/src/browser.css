@@ -1,5 +1,6 @@
-/* The Browser's look, LineageOS Jelly's. Sizes are GTK px, colours the roles libvibeos defines (@vibeos_*). Weights are
- * Bold text's heavier ones: regular 700, medium 800. Label sizes are set in code (nb_label), with font padding. */
+/* The Browser's look, LineageOS Jelly's, in the roles libvibeos defines (@vibeos_*), light or dark. Text sizes are sp
+ * and every other size dp (libvibeos converts them for Font size); weights are the usual ones, and Bold text draws
+ * each 300 heavier. Label sizes are set in code (nb_label, in sp), with font padding. */
 
 window.nb {
   background-color: @vibeos_surface;
@@ -15,23 +16,23 @@ window.nb {
 /* the app bar */
 .nb-bar {
   background-color: @vibeos_surface;
-  min-height: 64px;
+  min-height: 64dp;
 }
 
 /* the address card: a pill */
 .nb-url-card {
   background-color: @vibeos_surface_container_highest;
-  border-radius: 32px;
-  margin: 8px 4px 8px 16px;
-  min-height: 48px;
+  border-radius: 32dp;
+  margin: 8dp 4dp 8dp 16dp;
+  min-height: 48dp;
 }
 
 /* the find-in-page card */
 .nb-find-card {
   background-color: @vibeos_surface_container_highest;
-  border-radius: 32px;
-  margin: 8px 4px;
-  min-height: 48px;
+  border-radius: 32dp;
+  margin: 8dp 4dp;
+  min-height: 48dp;
 }
 
 .nb-card-icon {
@@ -57,17 +58,17 @@ entry.nb-find-entry {
   border-radius: 0;
   box-shadow: none;
   outline: none;
-  min-height: 48px;
+  min-height: 48dp;
   padding: 0;
   color: @vibeos_on_surface;
   caret-color: @vibeos_secondary;
-  font-size: 16px;
+  font-size: 16sp;
 }
 
 /* the colour as it is: GTK's theme draws a placeholder at 0.55 opacity */
 entry.nb-url-entry > text > placeholder,
 entry.nb-find-entry > text > placeholder {
-  color: #919b9c;
+  color: @vibeos_on_surface_variant;
   opacity: 1;
 }
 
@@ -88,8 +89,8 @@ entry.nb-field-entry selection {
 }
 
 .nb-suggest-row {
-  min-height: 60px;
-  padding: 0 16px;
+  min-height: 60dp;
+  padding: 0 16dp;
 }
 
 .nb-suggest-icon,
@@ -99,14 +100,14 @@ entry.nb-field-entry selection {
 
 .nb-suggest-url {
   color: @vibeos_on_surface_variant;
-  margin-left: 40px;
+  margin-left: 40dp;
 }
 
 /* the invisible "Back" the shell's gesture clicks: there, showing, never seen */
 .nb-back-probe {
   opacity: 0;
-  min-width: 48px;
-  min-height: 40px;
+  min-width: 48dp;
+  min-height: 40dp;
   padding: 0;
   border: none;
   background: none;
@@ -118,13 +119,13 @@ entry.nb-field-entry selection {
 /* the menu's two cards, slightly raised */
 .nb-menu-top,
 .nb-menu-card {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1dp 2dp alpha(@vibeos_shadow, 0.3), 0 1dp 3dp 1dp alpha(@vibeos_shadow, 0.15);
 }
 
 .nb-menu-top {
   background-color: @vibeos_surface_container_highest;
-  border-radius: 28px;
-  padding: 12px 16px;            /* the card's padding and the icons' margins */
+  border-radius: 28dp;
+  padding: 12dp 16dp;            /* the card's padding and the icons' margins */
 }
 
 .nb-menu-top-icon {
@@ -133,21 +134,21 @@ entry.nb-field-entry selection {
 
 .nb-menu-card {
   background-color: @vibeos_surface;
-  border-radius: 4px;
+  border-radius: 4dp;
 }
 
 .nb-menu-list {
-  padding: 8px 0;
+  padding: 8dp 0;
 }
 
 /* the padding makes each row a thumb's height */
 .nb-menu-item {
-  padding: 12px;
+  padding: 12dp;
 }
 
 /* the Desktop site row: the switch sets its height */
 .nb-menu-item.nb-menu-switch-item {
-  padding: 0 12px;
+  padding: 0 12dp;
 }
 
 .nb-menu-icon,
@@ -156,8 +157,8 @@ entry.nb-field-entry selection {
 }
 
 .nb-menu-divider {
-  min-height: 1px;
-  margin: 8px 0;
+  min-height: 1dp;
+  margin: 8dp 0;
   background-color: @vibeos_surface_container_highest;
 }
 
@@ -168,8 +169,8 @@ entry.nb-field-entry selection {
 }
 
 .nb-sheet-row {
-  min-height: 28px;
-  padding: 16px;
+  min-height: 28dp;
+  padding: 16dp;
   background-color: @vibeos_surface;
 }
 
@@ -179,47 +180,47 @@ entry.nb-field-entry selection {
 
 .nb-sheet-text {
   color: @vibeos_on_surface;
-  margin-left: 16px;
+  margin-left: 16dp;
 }
 
 .nb-sheet-title {
   color: @vibeos_on_surface;
-  padding: 16px 16px 8px 16px;
+  padding: 16dp 16dp 8dp 16dp;
 }
 
 /* the add-to-home sheet, as the launcher's add-item sheet: rounded at the top; the actions' padding is all there is
  * under the pills */
 .nb-pin-sheet {
   background-color: @vibeos_surface_container;
-  border-radius: 28px 28px 0 0;
-  padding: 24px 0 0 0;
+  border-radius: 28dp 28dp 0 0;
+  padding: 24dp 0 0 0;
 }
 
 .nb-pin-title {
   color: @vibeos_on_surface;
-  margin: 0 11px;
+  margin: 0 11dp;
 }
 
 .nb-pin-hint {
-  color: alpha(#bec8c9, 0.7);
-  margin: 8px 11px 0 11px;
+  color: alpha(@vibeos_on_surface_variant, 0.7);
+  margin: 8dp 11dp 0 11dp;
 }
 
 /* the preview: a card around the shortcut's cell */
 .nb-pin-card {
   background-color: @vibeos_surface_bright;
-  border-radius: 28px;
-  margin: 16px;
-  padding: 16px 11px 12px 11px;
+  border-radius: 28dp;
+  margin: 16dp;
+  padding: 16dp 11dp 12dp 11dp;
 }
 
 .nb-pin-favicon {
-  border-radius: 28px;
+  border-radius: 28dp;
 }
 
 .nb-pin-name {
   color: @vibeos_on_surface;
-  margin-top: 12px;
+  margin-top: 12dp;
 }
 
 .nb-pin-dims {
@@ -227,43 +228,43 @@ entry.nb-field-entry selection {
 }
 
 .nb-pin-buttons {
-  margin: 0 11px;
-  padding: 8px 0;
+  margin: 0 11dp;
+  padding: 8dp 0;
 }
 
 /* filled pills, never too narrow to hit: GTK's min-width leaves the padding out, so this min-width and the padding
  * add up to the minimum */
 .nb-pin-button {
-  background-color: #b8ebf3;
-  border-radius: 24px;
-  min-height: 48px;
-  min-width: 56px;
-  padding: 0 16px;
+  background-color: @vibeos_primary_container;
+  border-radius: 24dp;
+  min-height: 48dp;
+  min-width: 56dp;
+  padding: 0 16dp;
 }
 
 .nb-pin-button-text {
-  color: #2a3436;
-  font-weight: 800;
+  color: @vibeos_on_primary_container;
+  font-weight: 500;
 }
 
 /* ==== dialogs ==== */
 
 .nb-dialog {
   background-color: @vibeos_surface;
-  border-radius: 16px;
+  border-radius: 16dp;
 }
 
 .nb-dialog-title {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 24sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
-  margin: 18px 24px 0 24px;
+  margin: 18dp 24dp 0 24dp;
 }
 
 .nb-dialog-message {
-  font-size: 14px;
+  font-size: 14sp;
   color: @vibeos_on_surface_variant;
-  margin: 16px 24px 0 24px;
+  margin: 16dp 24dp 0 24dp;
 }
 
 .nb-dialog-text {
@@ -272,7 +273,7 @@ entry.nb-field-entry selection {
 
 /* the button bar: less room at the start, where the neutral button sits */
 .nb-dialog-buttons {
-  padding: 14px 24px 14px 12px;
+  padding: 14dp 24dp 14dp 12dp;
 }
 
 .nb-dialog .vibeos-text-button {
@@ -280,26 +281,26 @@ entry.nb-field-entry selection {
 }
 
 .nb-dialog-form {
-  padding: 16px 24px 0 24px;
+  padding: 16dp 24dp 0 24dp;
 }
 
 /* a single-choice list: a radio, then the text */
 .nb-list {
-  margin-top: 16px;
+  margin-top: 16dp;
 }
 
 .nb-list-row {
-  min-height: 48px;
-  padding: 0 24px 0 26px;
+  min-height: 48dp;
+  padding: 0 24dp 0 26dp;
 }
 
 .nb-list-text {
   color: @vibeos_on_surface_variant;
-  margin-left: 26px;
+  margin-left: 26dp;
 }
 
 .nb-cert-heading {
-  font-weight: 900;
+  font-weight: 600;
   color: @vibeos_on_surface;
 }
 
@@ -313,25 +314,25 @@ entry.nb-field-entry selection {
 
 /* the deleting dialog: a spinner beside the message */
 .nb-deleting {
-  padding: 20px;
+  padding: 20dp;
 }
 
 /* the outlined text field */
 .nb-field {
-  margin-top: 8px;
+  margin-top: 8dp;
 }
 
 .nb-field-box {
-  margin-top: 8px;
-  min-height: 56px;
-  padding: 0 16px;
-  border: 1px solid @vibeos_outline;
-  border-radius: 4px;
+  margin-top: 8dp;
+  min-height: 56dp;
+  padding: 0 16dp;
+  border: 1dp solid @vibeos_outline;
+  border-radius: 4dp;
 }
 
 .nb-field.focused .nb-field-box {
-  border: 2px solid @vibeos_primary;
-  padding: 0 15px;
+  border: 2dp solid @vibeos_primary;
+  padding: 0 15dp;
 }
 
 .nb-field.error .nb-field-box {
@@ -344,9 +345,9 @@ entry.nb-field-entry {
   border-radius: 0;
   box-shadow: none;
   outline: none;
-  min-height: 56px;
+  min-height: 56dp;
   padding: 0;
-  font-size: 16px;
+  font-size: 16sp;
   color: @vibeos_on_surface;
   caret-color: @vibeos_primary;
 }
@@ -359,8 +360,8 @@ entry.nb-field-entry > text > placeholder {
 .nb-field-label {
   color: @vibeos_on_surface_variant;
   background-color: @vibeos_surface;
-  margin-left: 12px;
-  padding: 0 4px;
+  margin-left: 12dp;
+  padding: 0 4dp;
 }
 
 .nb-field.focused .nb-field-label {
@@ -373,7 +374,7 @@ entry.nb-field-entry > text > placeholder {
 }
 
 .nb-field-error {
-  margin: 4px 16px 0 16px;
+  margin: 4dp 16dp 0 16dp;
 }
 
 .nb-field:disabled {
@@ -381,19 +382,19 @@ entry.nb-field-entry > text > placeholder {
 }
 
 .nb-fav-edit {
-  padding: 16px 24px 8px 24px;
+  padding: 16dp 24dp 8dp 24dp;
 }
 
 .nb-fav-edit-title {
-  margin-bottom: 8px;
+  margin-bottom: 8dp;
 }
 
 .nb-home-edit {
-  padding: 0 24px;
+  padding: 0 24dp;
 }
 
 .nb-check-row {
-  min-height: 48px;
+  min-height: 48dp;
 }
 
 .nb-check-text {
@@ -403,9 +404,9 @@ entry.nb-field-entry > text > placeholder {
 /* the toast, as Calculator's */
 .nb-toast {
   background-color: @vibeos_surface_container_high;
-  border-radius: 28px;
-  min-height: 48px;
-  padding: 0 16px;
+  border-radius: 28dp;
+  min-height: 48dp;
+  padding: 0 16dp;
 }
 
 .nb-toast-text {
@@ -418,7 +419,7 @@ window.nb .vibeos-snackbar {
 }
 
 window.nb .vibeos-snackbar-text {
-  color: #2a3436;
+  color: @vibeos_inverse_on_surface;
 }
 
 window.nb .vibeos-snackbar .vibeos-text-button {
@@ -433,7 +434,7 @@ window.nb .vibeos-snackbar .vibeos-text-button {
 
 /* the pages' toolbar: the up arrow, the title (its size set in code), the actions */
 .nb-toolbar {
-  min-height: 64px;
+  min-height: 64dp;
   background-color: @vibeos_surface;
 }
 
@@ -451,31 +452,31 @@ window.nb .vibeos-snackbar .vibeos-text-button {
 
 /* the toolbar's shadow once the list scrolls */
 .nb-toolbar-shadow {
-  min-height: 6px;
-  background-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0));
+  min-height: 6dp;
+  background-image: linear-gradient(to bottom, alpha(@vibeos_shadow, 0.35), alpha(@vibeos_shadow, 0));
 }
 
 .nb-empty-image {
   color: @vibeos_on_surface;
-  margin: 8px;
+  margin: 8dp;
 }
 
 .nb-fav-empty-image {
-  margin: 8px;
+  margin: 8dp;
 }
 
 .nb-empty-text {
   color: @vibeos_on_surface;
-  padding: 19px 64px 0 64px;
+  padding: 19dp 64dp 0 64dp;
 }
 
 /* History: a row's two lines centred in it */
 .nb-history-row {
-  padding: 0 16px;
+  padding: 0 16dp;
 }
 
 .nb-history-pressable {
-  min-height: 60px;
+  min-height: 60dp;
   background-color: @vibeos_surface;
 }
 
@@ -489,27 +490,35 @@ window.nb .vibeos-snackbar .vibeos-text-button {
 
 /* Favorites: a grid of cards */
 .nb-fav-grid {
-  padding: 0 12px;
+  padding: 0 12dp;
 }
 
 /* the card's inner padding is the title's margin: a pressable's fill covers its content box only */
 .nb-fav-card {
-  margin: 4px;
-  border-radius: 2px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15);
+  margin: 4dp;
+  border-radius: 2dp;
+  box-shadow: 0 1dp 2dp alpha(@vibeos_shadow, 0.3), 0 1dp 3dp 1dp alpha(@vibeos_shadow, 0.15);
 }
 
 .nb-fav-title {
-  margin: 8px;
-  padding: 12px 0;
+  margin: 8dp;
+  padding: 12dp 0;
 }
 
+/* a favourite's text on the site's own colour: black on a light one, white on a dark one (nb-pages.c), whatever the
+ * theme: the colour is the site's, not the theme's. Black is the darkest tone of the theme's palettes, which is black
+ * in every theme */
 .nb-fav-dark-text {
-  color: #000000;
+  color: @vibeos_shadow;
 }
 
 .nb-fav-light-text {
-  color: #ffffff;
+  color: @vibeos_white;
+}
+
+/* on a favourite without a colour of its own: the theme's primary container */
+.nb-fav-theme-text {
+  color: @vibeos_on_primary_container;
 }
 
 /* Downloads: each file's type on a black tile */
@@ -519,24 +528,24 @@ window.nb .vibeos-snackbar .vibeos-text-button {
 }
 
 .nb-download-list {
-  padding: 0 8px;
+  padding: 0 8dp;
 }
 
 .nb-download-row {
-  min-height: 56px;
-  padding: 0 16px;
+  min-height: 56dp;
+  padding: 0 16dp;
 }
 
 .nb-download-icon {
-  background-color: #000000;
-  border-radius: 8px;
-  min-width: 32px;
-  min-height: 32px;
+  background-color: @vibeos_surface_container_highest;
+  border-radius: 8dp;
+  min-width: 32dp;
+  min-height: 32dp;
 }
 
 /* the type's glyph, in one colour: a theme's full-colour fallback is not taken */
 .nb-download-glyph {
-  color: #737373;
+  color: @vibeos_on_surface_variant;
   -gtk-icon-style: symbolic;
 }
 
@@ -550,13 +559,13 @@ window.nb .vibeos-snackbar .vibeos-text-button {
 
 /* Desktop shortcuts: a checkbox, then the name */
 .nb-shortcut-row {
-  min-height: 72px;
-  padding: 0 15px;
+  min-height: 72dp;
+  padding: 0 15dp;
 }
 
 .nb-shortcut-name {
   color: @vibeos_on_surface;
-  margin: 0 15px 5px 15px;
+  margin: 0 15dp 5dp 15dp;
 }
 
 /* ==== Settings ==== */
@@ -579,12 +588,12 @@ window.nb .vibeos-snackbar .vibeos-text-button {
 }
 
 .nb-pref-list {
-  margin-left: 8px;
+  margin-left: 8dp;
 }
 
 .nb-pref-row {
-  padding: 16px;
-  min-height: 16px;
+  padding: 16dp;
+  min-height: 16dp;
 }
 
 .nb-pref-title {
@@ -598,12 +607,12 @@ window.nb .vibeos-snackbar .vibeos-text-button {
 /* a preference category's title, in the secondary colour */
 .nb-pref-category {
   color: @vibeos_secondary;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .nb-pref-category-row {
-  margin-top: 16px;
-  padding: 8px 16px;
+  margin-top: 16dp;
+  padding: 8dp 16dp;
 }
 
 /* ==== the tab count and the tab switcher (nb-switcher.c) ==== */
@@ -613,22 +622,22 @@ window.nb .vibeos-snackbar .vibeos-text-button {
  * square. No weight of its own: the address's comes from the window (libvibeos), heavier with Bold text,
  * which a weight set here (this sheet is not converted) would not follow. */
 nb-tab-count {
-  border: 2px solid currentColor;
-  border-radius: 5px;
-  min-width: 18px;
-  min-height: 18px;
-  font-size: 11px;
+  border: 2dp solid currentColor;
+  border-radius: 5dp;
+  min-width: 18dp;
+  min-height: 18dp;
+  font-size: 11sp;
 }
 
 .nb-switcher-grid {
-  padding: 12px;
+  padding: 12dp;
 }
 
 /* a card: the tab's line over its page; the tab shown is outlined */
 .nb-tab-card {
   background-color: @vibeos_surface_container_high;
-  border: 2px solid transparent;
-  border-radius: 16px;
+  border: 2dp solid transparent;
+  border-radius: 16dp;
 }
 
 .nb-tab-card.current {
@@ -636,8 +645,8 @@ nb-tab-count {
 }
 
 .nb-tab-card-head {
-  min-height: 36px;
-  padding: 2px 2px 2px 10px;
+  min-height: 36dp;
+  padding: 2dp 2dp 2dp 10dp;
 }
 
 .nb-tab-card-title {
@@ -650,7 +659,7 @@ nb-tab-count {
 }
 
 .nb-tab-card-thumb {
-  background-color: #ffffff;
+  background-color: @vibeos_white;
 }
 
 .nb-tab-card-blank {

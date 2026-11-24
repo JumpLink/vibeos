@@ -1,6 +1,7 @@
 /* The Contacts styles, over libvibeos's (vibeos.css). Every colour is a role of the theme (the @vibeos_ names), so
- * light and dark follow the system's scheme and colour. Sizes are GTK px; most of the geometry is set in C, so this
- * file is mainly colours, fonts and backgrounds. The weights are Bold text's: regular 700, medium 800, bold 900. */
+ * light and dark follow the system's scheme and colour. Text sizes are sp and every other size dp
+ * (libvibeos converts them for Font size); most of the geometry is set in C, so this file is mainly colours, fonts and
+ * backgrounds. Weights are the usual ones (regular 400, medium 500, bold 600), and Bold text draws each 300 heavier. */
 
 window.ct-window,
 ct-page,
@@ -18,23 +19,28 @@ ct-page.translucent {
 
 /* ---- the home page: the tabs and their navigation ---- */
 
-.ct-home .vibeos-nav-item {
+/* the bar is the home page's; the rail (a tablet) the window's, beside the pages */
+.ct-home .vibeos-nav-item,
+.ct-rail .vibeos-nav-item {
   color: @vibeos_on_surface_variant;
 }
 
-.ct-home .vibeos-nav-item.selected {
+.ct-home .vibeos-nav-item.selected,
+.ct-rail .vibeos-nav-item.selected {
   color: @vibeos_on_surface;
 }
 
-.ct-home image.vibeos-nav-item.selected {
+.ct-home image.vibeos-nav-item.selected,
+.ct-rail image.vibeos-nav-item.selected {
   color: @vibeos_on_secondary_container;
 }
 
-.ct-home .vibeos-nav-label.selected {
-  font-weight: 900;
+.ct-home .vibeos-nav-label.selected,
+.ct-rail .vibeos-nav-label.selected {
+  font-weight: 600;
 }
 
-.ct-home .vibeos-nav-rail {
+.vibeos-nav-rail.ct-rail {
   background-color: @vibeos_surface_container;
 }
 
@@ -53,9 +59,9 @@ ct-page.translucent {
 }
 
 .ct-detail-empty-text {
-  margin-top: 16px;
-  font-size: 16px;
-  font-weight: 700;
+  margin: 16dp 24dp 0 24dp;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
@@ -63,39 +69,39 @@ ct-page.translucent {
 
 /* the account picture sits 6 px in from the pill's end, closer than the search bar puts an end widget */
 .ct-pill-disc {
-  margin-right: -2px;
+  margin-right: -2dp;
 }
 
 .ct-list-filters {
-  min-height: 48px;
-  padding: 8px 16px 0 16px;
+  min-height: 48dp;
+  padding: 8dp 16dp 0 16dp;
 }
 
 .ct-account-button {
-  min-height: 40px;
+  min-height: 40dp;
 }
 
 .ct-account-box {
-  padding: 0 12px;
+  padding: 0 12dp;
   color: @vibeos_on_surface_variant;
 }
 
 .ct-account-text {
-  margin: 0 8px;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.1px;
+  margin: 0 8dp;
+  font-size: 14sp;
+  font-weight: 500;
+  letter-spacing: 0.1sp;
   color: @vibeos_on_surface_variant;
 }
 
 .ct-chips {
-  padding: 8px 16px;
+  padding: 8dp 16dp;
 }
 
 .ct-chip {
-  min-height: 30px;
-  border: 1px solid @vibeos_outline_variant;
-  border-radius: 8px;
+  min-height: 30dp;
+  border: 1dp solid @vibeos_outline_variant;
+  border-radius: 8dp;
 }
 
 .ct-chip.on {
@@ -104,18 +110,18 @@ ct-page.translucent {
 }
 
 .ct-chip-box {
-  padding: 0 15px 0 7px;
+  padding: 0 15dp 0 7dp;
 }
 
 .ct-chip-icon {
-  margin-right: 8px;
+  margin-right: 8dp;
   color: @vibeos_primary;
 }
 
 .ct-chip-text {
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.1px;
+  font-size: 14sp;
+  font-weight: 500;
+  letter-spacing: 0.1sp;
   color: @vibeos_on_surface_variant;
 }
 
@@ -125,58 +131,58 @@ ct-page.translucent {
 }
 
 .ct-info-card {
-  margin: 0 16px;
-  min-height: 72px;
-  border-radius: 20px;
+  margin: 0 16dp;
+  min-height: 72dp;
+  border-radius: 20dp;
   background-color: @vibeos_surface_bright;
 }
 
 .ct-info-box {
-  padding: 0 4px 0 16px;
+  padding: 0 4dp 0 16dp;
 }
 
 .ct-info-avatar {
-  margin-right: 12px;
+  margin-right: 12dp;
 }
 
 .ct-info-title {
-  min-height: 16px;
-  font-size: 14px;
-  font-weight: 700;
+  min-height: 16dp;
+  font-size: 14sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
 .ct-info-name {
-  min-height: 24px;
-  font-size: 16px;
-  font-weight: 700;
+  min-height: 24dp;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .ct-label-count {
-  padding: 0 16px 8px 16px;
-  font-size: 14px;
-  font-weight: 700;
+  padding: 0 16dp 8dp 16dp;
+  font-size: 14sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
 /* ---- the rows and the sections' headers ---- */
 
 .ct-row-name {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .ct-row-snippet {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 14sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
 .ct-list-header-text {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
@@ -187,17 +193,17 @@ ct-page.translucent {
 /* ---- empty states, the FAB ---- */
 
 .ct-empty-text {
-  margin: 0 32px 8px 32px;
-  font-size: 16px;
-  font-weight: 700;
+  margin: 0 32dp 8dp 32dp;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
 .ct-no-results,
 .ct-picker-empty {
-  margin-top: 24px;
-  font-size: 16px;
-  font-weight: 700;
+  margin-top: 24dp;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
@@ -209,26 +215,26 @@ ct-page.translucent {
 /* ---- the account sheet ---- */
 
 .ct-sheet {
-  padding: 8px 16px 8px 16px;
+  padding: 8dp 16dp 8dp 16dp;
 }
 
 .ct-sheet-header {
-  padding: 16px 8px;
+  padding: 16dp 8dp;
 }
 
 .ct-sheet-header ct-avatar {
-  margin-right: 16px;
+  margin-right: 16dp;
 }
 
 .ct-sheet-name {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 16sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .ct-sheet-summary {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 14sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
@@ -239,48 +245,48 @@ ct-page.translucent {
 }
 
 .ct-recents {
-  padding: 8px 8px 16px 8px;
+  padding: 8dp 8dp 16dp 8dp;
 }
 
 .ct-recents-title {
-  margin-left: 8px;
-  font-size: 14px;
-  font-weight: 800;
+  margin-left: 8dp;
+  font-size: 14sp;
+  font-weight: 500;
   color: @vibeos_on_surface_variant;
 }
 
 .ct-recent-cell {
-  padding: 8px 0;
+  padding: 8dp 0;
 }
 
 .ct-recent-name {
-  margin: 8px 4px 0 4px;
-  font-size: 12px;
-  font-weight: 700;
+  margin: 8dp 4dp 0 4dp;
+  font-size: 12sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 /* ---- Highlights ---- */
 
 .ct-highlights-header {
-  min-height: 48px;
-  padding: 0 0 0 16px;
+  min-height: 48dp;
+  padding: 0 0 0 16dp;
 }
 
 /* the first header keeps the same gap under the pill as the list's filter row */
 .ct-highlights-header.first {
-  margin-top: 8px;
+  margin-top: 8dp;
 }
 
 .ct-highlights-title {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 16sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 /* rows of cells as wide as the window over the count, each a picture over a name of up to two lines */
 .ct-favourites {
-  padding-bottom: 4px;
+  padding-bottom: 4dp;
 }
 
 .ct-favourites > flowboxchild {
@@ -288,40 +294,40 @@ ct-page.translucent {
 }
 
 .ct-favourite-box {
-  padding-bottom: 12px;
+  padding-bottom: 12dp;
 }
 
 .ct-favourite-avatar {
-  margin-top: 4px;
+  margin-top: 4dp;
 }
 
 .ct-favourite-name {
-  margin: 8px 8px 0 8px;
-  min-height: 33px;
-  font-size: 12px;
-  font-weight: 700;
+  margin: 8dp 8dp 0 8dp;
+  min-height: 33dp;
+  font-size: 12sp;
+  font-weight: 400;
   line-height: 1.17;
   color: @vibeos_on_surface;
 }
 
 .ct-no-favourites {
-  padding: 8px 16px 24px 16px;
-  font-size: 14px;
-  font-weight: 700;
+  padding: 8dp 16dp 24dp 16dp;
+  font-size: 14sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
 /* ---- pages with a toolbar: Settings, the picker, the editor ---- */
 
 .ct-toolbar {
-  min-height: 56px;
+  min-height: 56dp;
   background-color: @vibeos_surface_container;
 }
 
 .ct-toolbar-title {
-  margin-left: 16px;                   /* after the navigation button */
-  font-size: 20px;
-  font-weight: 700;
+  margin-left: 16dp;                   /* after the navigation button */
+  font-size: 20sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
@@ -339,21 +345,21 @@ ct-page.translucent {
 }
 
 .ct-text-button label {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
   color: @vibeos_primary;
 }
 
 .ct-text-button {
-  min-width: 64px;
-  min-height: 48px;
-  padding: 0 16px;
+  min-width: 64dp;
+  min-height: 48dp;
+  padding: 0 16dp;
 }
 
 .ct-editor-save,
 .ct-toolbar-text-action {
-  min-height: 54px;
-  padding: 0 16px;
+  min-height: 54dp;
+  padding: 0 16dp;
 }
 
 .ct-editor-save label,
@@ -364,14 +370,14 @@ ct-page.translucent {
 /* ---- the picker's search and selection ---- */
 
 .ct-search-bar {
-  min-height: 56px;
+  min-height: 56dp;
   background-color: @vibeos_surface_container_high;
 }
 
 .ct-search-entry {
-  margin: 0 8px;
-  font-size: 16px;
-  font-weight: 700;
+  margin: 0 8dp;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
   caret-color: @vibeos_primary;
   background: none;
@@ -383,20 +389,20 @@ ct-page.translucent {
 }
 
 .ct-selection-bar {
-  min-height: 56px;
+  min-height: 56dp;
   background-color: @vibeos_surface_container_high;
 }
 
 .ct-selection-count {
-  margin-left: 16px;
-  font-size: 20px;
-  font-weight: 700;
+  margin-left: 16dp;
+  font-size: 20sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .ct-selection-add label {
-  font-size: 14px;
-  font-weight: 900;
+  font-size: 14sp;
+  font-weight: 600;
   color: @vibeos_primary;
 }
 
@@ -408,34 +414,34 @@ ct-page.translucent {
 
 .ct-qc-cards {
   background-color: @vibeos_surface_container;
-  padding-top: 12px;
+  padding-top: 12dp;
 }
 
 .ct-qc-card {
-  margin: 0 8px 12px 8px;
-  border-radius: 28px;
+  margin: 0 8dp 12dp 8dp;
+  border-radius: 28dp;
   background-color: @vibeos_surface_bright;
 }
 
 .ct-qc-card-title {
-  padding: 16px 16px 0 20px;
-  font-size: 16px;
-  font-weight: 800;
+  padding: 16dp 16dp 0 20dp;
+  font-size: 16sp;
+  font-weight: 500;
   color: @vibeos_primary;
 }
 
 .ct-qc-entry-header {
-  padding-top: 5px;
-  margin-bottom: 2px;
-  font-size: 16px;
-  font-weight: 700;
+  padding-top: 5dp;
+  margin-bottom: 2dp;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .ct-qc-entry-sub,
 .ct-qc-entry-text {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 14sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
@@ -445,7 +451,7 @@ ct-page.translucent {
 }
 
 .ct-qc-separator {
-  min-height: 1px;
+  min-height: 1dp;
 }
 
 /* over the header's picture or colour */
@@ -456,8 +462,8 @@ ct-page.translucent {
 /* ---- the editor ---- */
 
 .ct-ed-text {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
   caret-color: @vibeos_primary;
   background: none;
@@ -471,8 +477,8 @@ ct-page.translucent {
 }
 
 .ct-ed-hint {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
 }
 
 /* a multi-line field: its first line where a one-line field's text is, room for the underline under its last */
@@ -482,61 +488,61 @@ textview.ct-ed-text > text {
 }
 
 textview.ct-ed-text {
-  padding-top: 16px;
-  padding-bottom: 7px;
+  padding-top: 16dp;
+  padding-bottom: 7dp;
 }
 
 .ct-ed-input > .ct-ed-hint {
-  margin-top: 16px;
+  margin-top: 16dp;
 }
 
 .ct-ed-field {
-  min-height: 54px;
+  min-height: 54dp;
 }
 
 /* the one-line text in the middle of the field, above the underline */
 text.ct-ed-text {
-  margin-top: 9px;
+  margin-top: 9dp;
 }
 
 /* the underline: thicker and in the accent colour while focused */
 .ct-ed-input {
-  margin-left: 4px;
-  margin-right: 4px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid @vibeos_outline;
+  margin-left: 4dp;
+  margin-right: 4dp;
+  margin-bottom: 8dp;
+  border-bottom: 1dp solid @vibeos_outline;
 }
 
 .ct-ed-input:focus-within {
-  border-bottom: 2px solid @vibeos_primary;
+  border-bottom: 2dp solid @vibeos_primary;
 }
 
 .ct-ed-row {
-  padding-bottom: 2px;
+  padding-bottom: 2dp;
 }
 
 .ct-ed-spinner {
-  margin-left: 4px;
-  padding-right: 12px;
+  margin-left: 4dp;
+  padding-right: 12dp;
 }
 
 .ct-ed-spinner > box {
-  margin-bottom: 8px;
-  border-bottom: 1px solid @vibeos_outline;
+  margin-bottom: 8dp;
+  border-bottom: 1dp solid @vibeos_outline;
   padding-left: 0;
 }
 
 .ct-ed-spinner.date {
-  margin-right: 16px;
+  margin-right: 16dp;
 }
 
 .ct-ed-spinner.labels {
-  margin-right: 54px;
+  margin-right: 54dp;
 }
 
 .ct-ed-spinner-text {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
@@ -551,205 +557,205 @@ text.ct-ed-text {
 }
 
 .ct-ed-account {
-  min-height: 46px;                     /* the row's minimum height less this bottom padding */
-  padding-bottom: 8px;
+  min-height: 46dp;                     /* the row's minimum height less this bottom padding */
+  padding-bottom: 8dp;
 }
 
 .ct-ed-account-icon {
-  margin: 14px 28px 0 16px;
+  margin: 14dp 28dp 0 16dp;
 }
 
 .ct-ed-account-lines {
-  margin-top: 3px;
-  margin-left: 4px;
+  margin-top: 3dp;
+  margin-left: 4dp;
 }
 
 .ct-ed-account-type {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .ct-ed-account-name {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 14sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
 .ct-ed-account-expander {
-  margin-right: 16px;
+  margin-right: 16dp;
 }
 
 .ct-ed-more {
-  min-height: 54px;
+  min-height: 54dp;
 }
 
 .ct-ed-more-text {
-  margin-left: 72px;
-  font-size: 16px;
-  font-weight: 700;
+  margin-left: 72dp;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_primary;
 }
 
 .ct-ed-legacy {
-  margin-top: 8px;
+  margin-top: 8dp;
 }
 
 .ct-ed-legacy-title {
-  margin-left: 16px;
-  margin-bottom: 24px;
-  font-size: 11px;
-  font-weight: 700;
+  margin-left: 16dp;
+  margin-bottom: 24dp;
+  font-size: 11sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
 .ct-ed-legacy-row {
-  padding-bottom: 9px;
+  padding-bottom: 9dp;
 }
 
 .ct-ed-legacy-icon {
-  margin: 0 28px 0 16px;
+  margin: 0 28dp 0 16dp;
 }
 
 .ct-ed-legacy-text {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
 /* ---- Settings, "Contacts to display", the picker ---- */
 
 .ct-pref-row {
-  min-height: 48px;
-  padding: 0 16px;
+  min-height: 48dp;
+  padding: 0 16dp;
 }
 
 .ct-pref-lines {
-  padding: 16px 0;
+  padding: 16dp 0;
 }
 
 .ct-pref-title {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .ct-pref-summary {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 14sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
 .ct-filter-row {
-  min-height: 48px;
-  padding: 0 16px 0 16px;
+  min-height: 48dp;
+  padding: 0 16dp 0 16dp;
 }
 
 .ct-filter-row.custom {
-  min-height: 56px;
+  min-height: 56dp;
 }
 
 .ct-filter-text {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .ct-filter-radio {
-  margin: 4px;
+  margin: 4dp;
 }
 
 .ct-filter-divider {
-  min-height: 1px;
+  min-height: 1dp;
   background-color: @vibeos_outline_variant;
 }
 
 .ct-picker-create {
-  min-height: 56px;
+  min-height: 56dp;
 }
 
 .ct-picker-create-icon {
-  margin: 0 23px 0 80px;               /* centred in the column of the contacts' pictures */
+  margin: 0 23dp 0 80dp;               /* centred in the column of the contacts' pictures */
 }
 
 .ct-picker-create-text {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 /* ---- popups, dialogs, toasts, the snackbar ---- */
 
 .ct-popup {
-  border-radius: 4px;
+  border-radius: 4dp;
   background-color: @vibeos_surface_container;
-  box-shadow: 0 8px 16px alpha(@vibeos_shadow, 0.3), 0 2px 6px alpha(@vibeos_shadow, 0.2);
+  box-shadow: 0 8dp 16dp alpha(@vibeos_shadow, 0.3), 0 2dp 6dp alpha(@vibeos_shadow, 0.2);
 }
 
 .ct-popup-item {
-  min-height: 48px;
-  padding: 0 16px;
+  min-height: 48dp;
+  padding: 0 16dp;
 }
 
 .ct-popup-item.spinner {
-  padding: 0 8px;
+  padding: 0 8dp;
 }
 
 .ct-popup-text {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .ct-dialog {
-  border-radius: 28px;
+  border-radius: 28dp;
   background-color: @vibeos_surface_container_high;
 }
 
 .ct-dialog-title {
-  padding: 18px 24px 0 24px;
-  font-size: 20px;
-  font-weight: 700;
+  padding: 18dp 24dp 0 24dp;
+  font-size: 20sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .ct-dialog-message {
-  padding: 8px 24px 0 24px;
-  font-size: 16px;
-  font-weight: 700;
+  padding: 8dp 24dp 0 24dp;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface_variant;
 }
 
 /* between a title and its list */
 .ct-dialog-list {
-  padding-top: 8px;
+  padding-top: 8dp;
 }
 
 .ct-dialog-message.no-title {
-  padding-top: 18px;                    /* in place of the title */
+  padding-top: 18dp;                    /* in place of the title */
 }
 
 /* a dialog's list item: the min-height and the paddings add up to the row's height */
 .ct-dialog-item {
-  min-height: 40px;
-  padding: 8px 24px;
+  min-height: 40dp;
+  padding: 8dp 24dp;
 }
 
 .ct-dialog-item-text {
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .ct-dialog-choice {
-  min-height: 48px;
-  padding: 0 24px 0 20px;
+  min-height: 48dp;
+  padding: 0 24dp 0 20dp;
 }
 
 .ct-dialog-choice-text {
-  margin-left: 20px;
-  font-size: 16px;
-  font-weight: 700;
+  margin-left: 20dp;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
@@ -762,30 +768,30 @@ text.ct-ed-text {
 }
 
 .ct-dialog-buttons {
-  padding: 4px 12px;
+  padding: 4dp 12dp;
 }
 
 .ct-dialog-button {
-  min-height: 54px;
+  min-height: 54dp;
 }
 
 .ct-dialog-field {
-  padding: 24px 24px 0 24px;
+  padding: 24dp 24dp 0 24dp;
 }
 
 .ct-dialog-entry {
-  min-height: 48px;
-  margin: 0 4px 4px 0;
-  font-size: 16px;
-  font-weight: 700;
+  min-height: 48dp;
+  margin: 0 4dp 4dp 0;
+  font-size: 16sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
   caret-color: @vibeos_primary;
   background: none;
-  border-bottom: 1px solid @vibeos_on_surface_variant;
+  border-bottom: 1dp solid @vibeos_on_surface_variant;
 }
 
 .ct-dialog-entry:focus-within {
-  border-bottom: 2px solid @vibeos_primary;
+  border-bottom: 2dp solid @vibeos_primary;
 }
 
 .ct-dialog-entry > placeholder {
@@ -794,34 +800,34 @@ text.ct-ed-text {
 }
 
 .ct-dialog-error {
-  font-size: 12px;
+  font-size: 12sp;
   color: @vibeos_error;
 }
 
 .ct-date-include {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 22sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 /* the toast: in the system's own colours, not the app's (as the Calendar's) */
 .ct-toast {
-  margin: 0 16px 48px 16px;             /* above the bottom */
-  padding: 0 16px;
-  min-height: 48px;
-  border-radius: 28px;
+  margin: 0 16dp 48dp 16dp;             /* above the bottom */
+  padding: 0 16dp;
+  min-height: 48dp;
+  border-radius: 28dp;
   background-color: @vibeos_surface_container_high;
-  box-shadow: 0 1px 3px alpha(@vibeos_shadow, 0.3);
+  box-shadow: 0 1dp 3dp alpha(@vibeos_shadow, 0.3);
 }
 
 .ct-toast-icon {
-  margin: 10px 10px 10px 0;
+  margin: 10dp 10dp 10dp 0;
 }
 
 .ct-toast-text {
-  padding: 12px 0;
-  font-size: 14px;
-  font-weight: 700;
+  padding: 12dp 0;
+  font-size: 14sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 

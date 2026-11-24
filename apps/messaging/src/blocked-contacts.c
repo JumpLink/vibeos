@@ -160,6 +160,9 @@ blocked_contacts_new (SmsClient *client, Contacts *contacts)
   self->list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), self->list);
   gtk_widget_set_vexpand (scroll, TRUE);
+  /* in the list's pane on a tablet the people are on a pane of their own, as the list's rows are (messaging.css) */
+  gtk_widget_add_css_class (scroll, "msg-blocked-content");
+  gtk_widget_set_overflow (scroll, GTK_OVERFLOW_HIDDEN);
   gtk_box_append (GTK_BOX (self->box), scroll);
 
   g_signal_connect_swapped (self->blocked, "changed", G_CALLBACK (reload), self);

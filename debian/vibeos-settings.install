@@ -3,3 +3,7 @@ usr/libexec/vibeos-keyring-rekey
 usr/share/applications/vibeos.Settings.desktop
 usr/share/dbus-1/services/vibeos.Settings.service
 usr/share/icons/hicolor/scalable/apps/vibeos.Settings.svg
+usr/bin/gnome-control-center
+usr/share/applications/gnome-*-panel.desktop
+usr/share/applications/org.gnome.Settings.desktop
+usr/share/dbus-1/services/org.gnome.Settings.service

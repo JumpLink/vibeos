@@ -39,8 +39,9 @@
 #define CLEAR_SIZE 40                   /* the clear button: its icon and padding */
 #define CLEAR_MARGIN_END 8
 #define DROPDOWN_MARGIN 8               /* the drop-down stops short of the window's bottom */
-#define GMT_COLOR "#888888"             /* the offset's grey, the same in every theme */
-#define DST_COLOR "#BFBFBF"             /* the sun's span */
+/* the offset's grey and the sun's span: the theme's, as a markup colour ("#RRGGBB") */
+#define GMT_COLOR markup_color (CAL_ON_SURFACE_VARIANT)
+#define DST_COLOR markup_color (CAL_OUTLINE)
 /* ☀ (U+2600) from the colour emoji font, a yellow sun that DST_COLOR's span cannot tint; VS16 asks Pango for the
  * emoji presentation (else a grey text glyph) */
 #define DST_SYMBOL "\u2600\ufe0f"
@@ -51,6 +52,18 @@
 #define MONTH_MS (30.44 * 24 * HOUR_MS)
 #define SINCE_MS 0.0                    /* same_rules compares the transitions from 1970 … */
 #define UNTIL_MS 2145916800000.0        /* … to 2038, the span zic writes out */
+
+/* a palette colour (0xAARRGGBB) as markup's "#RRGGBB", in a buffer that lasts until the next two calls */
+static const char *
+markup_color (guint32 argb)
+{
+  static char buffers[2][8];
+  static int next;
+  char *buffer = buffers[next++ % 2];
+
+  g_snprintf (buffer, sizeof buffers[0], "#%06X", argb & 0xffffff);
+  return buffer;
+}
 
 /* the search icon, in a 24 × 24 viewport */
 #define SEARCH_PATH "M15.5,14h-0.79l-0.28,-0.27C15.41,12.59 16,11.11 16,9.5 16,5.91 13.09,3 9.5,3S3,5.91 3,9.5 " \
@@ -267,12 +280,17 @@ gmt_display_name (const char *tzid, gint64 at, gboolean markup, gboolean gray_gm
     g_string_append (text, name ? name : id);
   g_string_append (text, "  ");
   if (markup && gray_gmt)
-    g_string_append (text, "<span foreground=\"" GMT_COLOR "\">");
+    g_string_append_printf (text, "<span foreground=\"%s\">", GMT_COLOR);
   append_gmt_offset (text, offset);
   if (markup && gray_gmt)
     g_string_append (text, "</span>");
   if (daylight)
-    g_string_append (text, markup ? " <span foreground=\"" DST_COLOR "\">" DST_SYMBOL "</span>" : " " DST_SYMBOL);
+    {
+      if (markup)
+        g_string_append_printf (text, " <span foreground=\"%s\">" DST_SYMBOL "</span>", DST_COLOR);
+      else
+        g_string_append (text, " " DST_SYMBOL);
+    }
   return g_string_free (text, FALSE);
 }
 
@@ -1090,7 +1108,7 @@ row_label (const char *css, double size, gboolean wrap, int lines)
       gtk_label_set_lines (GTK_LABEL (label), lines);
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
     }
-  vibeos_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding_sp (label, size);
   return label;
 }
 
@@ -1104,11 +1122,11 @@ row_offset_markup (Picker *picker, Zone *zone)
   g_autofree char *escaped = g_markup_escape_text (clock ? clock : "", -1);
   GString *text = g_string_new (escaped);
 
-  g_string_append (text, "  <span foreground=\"" GMT_COLOR "\">");
+  g_string_append_printf (text, "  <span foreground=\"%s\">", GMT_COLOR);
   append_gmt_offset (text, zone->offset);
   g_string_append (text, "</span>");
   if (zone->dst)
-    g_string_append (text, " <span foreground=\"" DST_COLOR "\">" DST_SYMBOL "</span>");
+    g_string_append_printf (text, " <span foreground=\"%s\">" DST_SYMBOL "</span>", DST_COLOR);
   return g_string_free (text, FALSE);
 }
 
@@ -1176,7 +1194,7 @@ add_empty_row (Picker *picker)
   gtk_widget_set_opacity (item, 0);
   gtk_overlay_set_child (GTK_OVERLAY (overlay), item);
   gtk_widget_add_css_class (label, "cal-tz-empty-text");
-  vibeos_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding_sp (label, 16);
   gtk_widget_set_halign (label, GTK_ALIGN_START);
   gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_top (label, 8);
@@ -1340,7 +1358,7 @@ show_dropdown (Picker *picker, GPtrArray *found)
       gtk_label_set_lines (GTK_LABEL (label), 2);
       gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
       gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
-      vibeos_label_set_font_padding (label, 18);
+      vibeos_label_set_font_padding_sp (label, 18);
       row = vibeos_pressable_new (label);
       gtk_widget_add_css_class (row, "cal-tz-suggestion");
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);

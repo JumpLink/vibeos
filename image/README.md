@@ -14,11 +14,11 @@ same session, with `adb sideload`.
 | `build-apt-device.sh` | a device folder's package split for the apt archive: `vibeos-device-DEVICE`, `vibeos-kernel-KVER` (the modules), `vibeos-kernel-DEVICE` |
 | `nura/` | `nura-to-vibeos`: a device zip for any phone [Nura](https://nura.eco) (postmarketOS) has a build for |
 | `zip/` | the installers that run in recovery: `system-install.sh`, `device-install.sh`, `vibeos-lib.sh` (shared), the updater-scripts |
-| `rootfs/` | what every system image starts with: `vibeos-growroot`, `vibeos-device-setup`, the SSH host-key and snakeoil-certificate units |
+| `rootfs/` | what every system image starts with: `vibeos-growroot`, `vibeos-device-setup`, the SSH host-key and snakeoil-certificate units, `vibeos-usb-net` (USB network 172.16.42.1 on the gadget port: developer images only, `VIBEOS_DEV=1`) |
 | `kit/` | the home screen (`home-layout.json`, `90-rom-home.gschema.override`), the GNOME apps removed, the shell drop-in |
 | `src/` | `s10e-part` (the zips' GPT tool, `vibeos-part` in the zip) and `s10e-logo` (the S10e's power-on logo): `make -C image/src` |
 | `get-update-binary.sh` | LineageOS's updater out of a LineageOS build zip (not in this repository: it is LineageOS's) |
-| `test/` | `zip-test.sh`: the zips run by LineageOS's real updater on fake disks; `setup-test.sh`: the first boot's device setup in a chroot; `compare-rootfs.sh`: two system images' packages, /etc and /opt side by side; `qemu-boot.sh`: a system image booted in qemu (virt) up to the session; `device-audit.sh`: what a device folder would publish of the build machine, kernels decompressed first |
+| `test/` | `usbnet-test.sh`: `vibeos-usb-net` against a fake configfs on the host; `zip-test.sh`: the zips run by LineageOS's real updater on fake disks; `setup-test.sh`: the first boot's device setup in a chroot; `compare-rootfs.sh`: two system images' packages, /etc and /opt side by side; `qemu-boot.sh`: a system image booted in qemu (virt) up to the session; `device-audit.sh`: what a device folder would publish of the build machine, kernels decompressed first |
 | `local.conf.example` | the settings every script reads from `image/local.conf` (git ignores it) |
 
 ## How an installation works

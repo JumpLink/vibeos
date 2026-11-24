@@ -3,28 +3,17 @@
 #pragma once
 
 #include <gtk/gtk.h>
+#include <vibeos.h>
 
 G_BEGIN_DECLS
 
-/* the app's colours (its dark theme) */
-#define FM_C_WINDOW          0xff121212
-#define FM_C_BAR             0xff1f1f1f
-#define FM_C_DIVIDER         0xff272727
-#define FM_C_NAME            0xffdbdbdb
-#define FM_C_SECONDARY       0xffa7a7a7
-#define FM_C_ACCENT          0xff80cbc4
-#define FM_C_CARD            0xff424242
-#define FM_C_SELECTED_ROW    0xff00796b
-#define FM_C_CAB             0xff002e3e
-#define FM_C_CAB_LINE        0xff33b5e5
-#define FM_C_RIPPLE          0x50ffffff
-#define FM_C_RIPPLE_CARD     0x33ffffff
-#define FM_C_CHECK_OFF       0xb3ffffff
-#define FM_C_STORAGE_USED    0xff3c87ee
-#define FM_C_STORAGE_REST    0xff474f58
+/* the colours the app draws itself: roles of the theme (the rest is in files.css) */
+#define FM_C_ACCENT          VIBEOS_PRIMARY             /* a check box or radio on, the progress bar */
+#define FM_C_CHECK_OFF       VIBEOS_ON_SURFACE_VARIANT
+#define FM_C_CHECK_MARK      VIBEOS_ON_PRIMARY          /* the tick in a check box that is on */
 
-/* an ARGB constant (0xAARRGGBB) as a GdkRGBA */
-GdkRGBA    fm_rgba (guint32 argb);
+/* a role's colour as the theme has it now: read it as you draw */
+GdkRGBA    fm_rgba (VibeosColor color);
 
 /* a label in one of the app's CSS text styles, font padding added; single line, ellipsized at the end
  * unless @wrap (word, then character) */
@@ -63,6 +52,9 @@ typedef enum {
 } FmPopupPlace;
 void       fm_popup_show    (GtkWidget *anchor, const char *const *labels, int n_labels, FmPopupPlace place,
                              double x, double y, FmPopupChosen chosen, gpointer data);
+/* the same with an icon before each label (@icons: n_labels icon names), as File Manager+'s selection menu has */
+void       fm_popup_show_icons (GtkWidget *anchor, const char *const *labels, const char *const *icons, int n_labels,
+                                FmPopupPlace place, double x, double y, FmPopupChosen chosen, gpointer data);
 /* closes the menu of @widget's window if one shows; TRUE when it did */
 gboolean   fm_popup_dismiss (GtkWidget *widget);
 

@@ -1,6 +1,7 @@
 /* App Installer's styles, over libvibeos's (vibeos.css). Every colour is a role of the theme (the @vibeos_ names), so
- * light and dark follow the system's scheme and colour. Sizes are GTK px. The weights are Bold text's, as the other
- * apps': regular 700, medium 800, bold 900. */
+ * light and dark follow the system's scheme and colour. Text sizes are sp and every other size dp (libvibeos
+ * converts them for Font size); weights are the usual ones (regular 400, medium 500, bold 600), and Bold text draws
+ * each 300 heavier. */
 
 window.inst-window,
 .inst-page {
@@ -10,32 +11,32 @@ window.inst-window,
 /* ---- the start page ---- */
 
 .inst-start {
-  padding: 0 32px 48px 32px;
+  padding: 0 32dp 48dp 32dp;
 }
 
 .inst-start-icon {
-  margin-bottom: 24px;
+  margin-bottom: 24dp;
 }
 
 .inst-start-title {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 24sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
-  margin-bottom: 12px;
+  margin-bottom: 12dp;
 }
 
 .inst-start-text {
-  font-size: 15px;
+  font-size: 15sp;
   color: @vibeos_on_surface_variant;
 }
 
 .inst-start-button {
-  margin-top: 28px;
+  margin-top: 28dp;
 }
 
 .inst-start-more {
-  margin-top: 28px;
-  font-size: 13px;
+  margin-top: 28dp;
+  font-size: 13sp;
   color: @vibeos_on_surface_variant;
 }
 
@@ -44,12 +45,12 @@ window.inst-window,
 /* text 24px from the window's sides, and the cards' edges under it: the card list keeps 16px of its own on each
  * side, so it gets 8px of the content's padding and the rest 16px more */
 .inst-content {
-  padding: 8px 8px 24px 8px;
+  padding: 8dp 8dp 24dp 8dp;
 }
 
 .inst-content > * {
-  margin-left: 16px;
-  margin-right: 16px;
+  margin-left: 16dp;
+  margin-right: 16dp;
 }
 
 .inst-content > vibeos-card-list {
@@ -58,11 +59,11 @@ window.inst-window,
 }
 
 .inst-header {
-  margin-top: 8px;
+  margin-top: 8dp;
 }
 
 .inst-header image {
-  margin-bottom: 14px;
+  margin-bottom: 14dp;
 }
 
 .inst-sheet-view .inst-header image {
@@ -73,37 +74,37 @@ window.inst-window,
 .inst-generic-icon {
   background-color: @vibeos_primary_container;
   color: @vibeos_on_primary_container;
-  border-radius: 22px;
+  border-radius: 22dp;
 }
 
 .inst-sheet-view .inst-generic-icon {
-  border-radius: 14px;
+  border-radius: 14dp;
 }
 
 .inst-name {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 24sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .inst-sheet-view .inst-name {
-  font-size: 20px;
+  font-size: 20sp;
 }
 
 .inst-sub {
-  font-size: 14px;
+  font-size: 14sp;
   color: @vibeos_on_surface_variant;
 }
 
 /* the question */
 .inst-lead-title {
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 18sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .inst-lead-text {
-  font-size: 15px;
+  font-size: 15sp;
   color: @vibeos_on_surface_variant;
 }
 
@@ -114,25 +115,25 @@ window.inst-window,
 /* the versions side by side, on a card */
 .inst-versions {
   background-color: @vibeos_surface_bright;
-  border-radius: 20px;
-  padding: 14px 18px;
-  margin-top: 6px;
+  border-radius: 20dp;
+  padding: 14dp 18dp;
+  margin-top: 6dp;
 }
 
 .inst-version-what {
-  font-size: 15px;
+  font-size: 15sp;
   color: @vibeos_on_surface_variant;
 }
 
 .inst-version-value {
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 15sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .inst-version-tag {
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 13sp;
+  font-weight: 500;
   color: @vibeos_primary;
 }
 
@@ -142,27 +143,27 @@ window.inst-window,
 
 /* the progress: a status line over a linear indicator */
 .inst-status {
-  font-size: 15px;
+  font-size: 15sp;
   color: @vibeos_on_surface;
 }
 
 .inst-percent {
-  font-size: 15px;
+  font-size: 15sp;
   color: @vibeos_on_surface_variant;
 }
 
 progressbar.inst-progress trough {
-  min-height: 4px;
-  border-radius: 2px;
+  min-height: 4dp;
+  border-radius: 2dp;
   background-color: @vibeos_secondary_container;
   border: none;
 }
 
 progressbar.inst-progress progress {
-  min-height: 4px;
+  min-height: 4dp;
   min-width: 0;
   margin: 0;
-  border-radius: 2px;
+  border-radius: 2dp;
   background-color: @vibeos_primary;
   border: none;
 }
@@ -182,58 +183,58 @@ progressbar.inst-progress progress {
 
 .inst-details {
   font-family: monospace;
-  font-size: 12px;
+  font-size: 12sp;
   color: @vibeos_on_surface_variant;
   background-color: @vibeos_surface_bright;
-  border-radius: 16px;
-  padding: 12px 14px;
-  margin-top: 4px;
+  border-radius: 16dp;
+  padding: 12dp 14dp;
+  margin-top: 4dp;
 }
 
 /* "A package can change anything on this device" */
 .inst-trust {
   color: @vibeos_on_surface_variant;
-  padding: 0 4px;
+  padding: 0 4dp;
 }
 
 .inst-trust-text {
-  font-size: 13px;
+  font-size: 13sp;
   color: @vibeos_on_surface_variant;
 }
 
 /* the app's own words */
 .inst-summary {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 16sp;
+  font-weight: 500;
   color: @vibeos_on_surface;
 }
 
 .inst-description {
-  font-size: 14px;
+  font-size: 14sp;
   color: @vibeos_on_surface_variant;
 }
 
 /* the buttons */
 .inst-action-bar {
-  padding: 12px 20px 16px 20px;
+  padding: 12dp 20dp 16dp 20dp;
   background-color: @vibeos_surface_container;
 }
 
 /* as tall as a text button's touch target, so that the bar keeps its height with a filled button alone */
 .inst-actions {
-  min-height: 48px;
+  min-height: 48dp;
 }
 
 .inst-filled-button {
-  min-height: 40px;
-  border-radius: 20px;
-  padding: 0 24px;
+  min-height: 40dp;
+  border-radius: 20dp;
+  padding: 0 24dp;
   background-color: @vibeos_primary;
 }
 
 .inst-filled-button label {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
   color: @vibeos_on_primary;
 }
 
@@ -274,24 +275,24 @@ window.inst-sheet-window.inst-demo-backdrop {
 
 .inst-sheet {
   background-color: @vibeos_surface_container_low;
-  border-radius: 28px 28px 0 0;
-  padding-bottom: 8px;
+  border-radius: 28dp 28dp 0 0;
+  padding-bottom: 8dp;
 }
 
 .inst-sheet-handle {
-  min-width: 32px;
-  min-height: 4px;
-  border-radius: 2px;
-  margin: 16px 0 8px 0;
+  min-width: 32dp;
+  min-height: 4dp;
+  border-radius: 2dp;
+  margin: 16dp 0 8dp 0;
   background-color: alpha(@vibeos_on_surface_variant, 0.4);
 }
 
 .inst-sheet-view .inst-content {
-  padding: 8px 8px 8px 8px;
+  padding: 8dp 8dp 8dp 8dp;
 }
 
 .inst-sheet-view .inst-actions {
-  padding: 8px 20px 8px 20px;
+  padding: 8dp 20dp 8dp 20dp;
 }
 
 .inst-sheet .inst-versions {

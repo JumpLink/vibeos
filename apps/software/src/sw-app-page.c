@@ -9,8 +9,10 @@
  *   screenshots     sideways
  *   about           the description, its first lines with Read more
  *   what's new      the latest release's notes
- *   permissions     what the app declares, as the store lists it: shown for information only, VibeOS does not
- *                   enforce them yet
+ *   permissions     what the app declares, as the store lists it. VibeOS enforces them: an app installed from here
+ *                   runs sandboxed (vibeos-sandbox), and the user allows or denies each permission in Settings. Once
+ *                   the app is installed, a row here opens its page in Settings. VibeOS's own apps are part of the
+ *                   system and not sandboxed, and the section says so
  *   reviews         the average and how the stars spread, rating and writing (the store decides who may: the reason
  *                   it gives shows when the account may not), the most helpful reviews, all reviews
  *   similar apps
@@ -27,7 +29,12 @@
 #include "sw-widgets.h"
 #include "sw-window.h"
 
+#include <gio/gdesktopappinfo.h>
 #include <math.h>
+
+/* the page's column on a tablet: the head, the Install button and the details in the middle, rather than a button
+ * across the whole screen. A phone is narrower, so there the column keeps the screen's width */
+#define PAGE_MAX 840
 
 typedef struct {
   GtkWidget  *page, *status, *column, *icon, *ring, *name, *developer;
@@ -36,6 +43,7 @@ typedef struct {
   JsonObject *summary, *app, *config, *my;
   GAppInfo   *launcher;
   gboolean    launcher_known;
+  GtkWidget  *permission_link;  /* the card with the row to the app's page in Settings */
   guint       show_tick;     /* the details wait for the page's transition to end (and then fade in: the status) */
   guint       later_tick;    /* the sections below the first screen, built a frame apart */
   guint       built;         /* how many of those are in */
@@ -43,6 +51,7 @@ typedef struct {
 
 static void load (Page *p);
 static void update_action (Page *p);
+static void update_permission_link (Page *p);
 static void update_review_box (Page *p);
 static void schedule_show (Page *p);
 
@@ -97,6 +106,7 @@ on_launcher (GAppInfo *info, gpointer data)
   g_set_object (&p->launcher, info);
   p->launcher_known = TRUE;
   update_action (p);
+  update_permission_link (p);
 }
 
 static void
@@ -231,6 +241,7 @@ on_installer_changed (SwInstaller *installer, const char *package, GtkWidget *pa
   if (!package && sw_installer_get_installed (installer, package_of (p)) && !p->launcher)
     find_launcher (p);
   update_action (p);
+  update_permission_link (p);
 }
 
 static void
@@ -467,36 +478,107 @@ permission_info (Page *p, const char *id)
   return NULL;
 }
 
+/* installed and sandboxed: its permissions are changed on its page in Settings */
+static void
+update_permission_link (Page *p)
+{
+  gboolean sandboxed = p->launcher && G_IS_DESKTOP_APP_INFO (p->launcher)
+                       && g_desktop_app_info_has_key (G_DESKTOP_APP_INFO (p->launcher), "X-VibeOS-Sandbox")
+                       && sw_installer_get_installed (sw_installer_get_default (), package_of (p));
+
+  if (p->permission_link)
+    gtk_widget_set_visible (p->permission_link, sandboxed);
+}
+
+/* the platform data of an activation of Settings: the token that lets its window come to the front (xdg-activation;
+ * without it a Settings already running behind this app only posts "Settings is ready") */
+static GVariant *
+settings_platform_data (GtkWidget *from)
+{
+  g_autoptr (GDesktopAppInfo) info = g_desktop_app_info_new ("vibeos.Settings.desktop");
+  g_autoptr (GdkAppLaunchContext) context = gdk_display_get_app_launch_context (gtk_widget_get_display (from));
+  g_autofree char *token = info ? g_app_launch_context_get_startup_notify_id (G_APP_LAUNCH_CONTEXT (context),
+                                                                             G_APP_INFO (info), NULL) : NULL;
+  GVariantBuilder builder;
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE_VARDICT);
+  if (token)
+    {
+      g_variant_builder_add (&builder, "{sv}", "activation-token", g_variant_new_string (token));
+      g_variant_builder_add (&builder, "{sv}", "desktop-startup-id", g_variant_new_string (token));
+    }
+  return g_variant_builder_end (&builder);
+}
+
+/* the app's page in Settings: GNOME Settings' "launch-panel" action with the "applications" panel and the app's
+ * desktop id, which VibeOS Settings answers */
+static void
+on_permission_settings (VibeosListRow *row, Page *p)
+{
+  GDBusConnection *bus = g_application_get_dbus_connection (g_application_get_default ());
+  GVariantBuilder args, panel;
+
+  if (!bus || !p->launcher)
+    return;
+  g_variant_builder_init (&panel, G_VARIANT_TYPE ("av"));
+  g_variant_builder_add (&panel, "v", g_variant_new_string (g_app_info_get_id (p->launcher)));
+  g_variant_builder_init (&args, G_VARIANT_TYPE ("av"));
+  g_variant_builder_add (&args, "v", g_variant_new ("(sav)", "applications", &panel));
+  g_dbus_connection_call (bus, "vibeos.Settings", "/vibeos/Settings", "org.freedesktop.Application", "ActivateAction",
+                          g_variant_new ("(sav@a{sv})", "launch-panel", &args,
+                                         settings_platform_data (GTK_WIDGET (row))),
+                          NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
+}
+
 static void
 permissions (Page *p)
 {
   JsonArray *list = sw_json_array (p->app, "permissions");
-  GtkWidget *cards = vibeos_card_list_new ();
+  GtkWidget *cards, *row;
+  gboolean system = sw_json_bool (p->app, "system_app", FALSE);
 
   section (p->details, "Permissions");
   gtk_box_append (GTK_BOX (p->details),
-                  sw_label_new ("What the app says it uses. VibeOS shows this for information: it does not ask for "
-                                "or limit these yet.", "sw-caption"));
+                  sw_label_new (system ? "What the app says it uses. VibeOS's own apps are part of the system: they "
+                                         "do not run in a sandbox."
+                                       : "What the app asks for. VibeOS enforces these permissions: the app runs in "
+                                         "a sandbox, and you allow or deny each one in Settings. Taking one away "
+                                         "stops the app.", "sw-caption"));
+  /* an app that names none in its package may be given any: vibeos-sandbox's defaults hold until the user changes
+   * them (the network allowed; the location, the camera and running in the background asked for; nothing else) */
   if (!list || !json_array_get_length (list))
+    gtk_box_append (GTK_BOX (p->details),
+                    sw_label_new (system ? "The app declares no permissions."
+                                         : "The app declares no permissions. Until you change them in Settings, it "
+                                           "may use the network, and you are asked before it gets your location or "
+                                           "the camera, or runs in the background.", "sw-body-text"));
+  else
     {
-      gtk_box_append (GTK_BOX (p->details), sw_label_new ("The app declares no permissions.", "sw-body-text"));
-      return;
-    }
-  for (guint i = 0; i < json_array_get_length (list); i++)
-    {
-      JsonNode *node = json_array_get_element (list, i);
-      const char *id = JSON_NODE_HOLDS_VALUE (node) ? json_node_get_string (node) : NULL;
-      JsonObject *info = permission_info (p, id);
-      GtkWidget *row;
+      cards = vibeos_card_list_new ();
+      for (guint i = 0; i < json_array_get_length (list); i++)
+        {
+          JsonNode *node = json_array_get_element (list, i);
+          const char *id = JSON_NODE_HOLDS_VALUE (node) ? json_node_get_string (node) : NULL;
+          JsonObject *info = permission_info (p, id);
 
-      if (!id)
-        continue;
-      row = vibeos_list_row_new (info ? sw_json_string (info, "name") : id, sw_json_string (info, "description"));
-      vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-shield-symbolic");
-      gtk_widget_set_can_target (row, FALSE);
-      vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
+          if (!id)
+            continue;
+          row = vibeos_list_row_new (info ? sw_json_string (info, "name") : id, sw_json_string (info, "description"));
+          vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-shield-symbolic");
+          gtk_widget_set_can_target (row, FALSE);
+          vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
+        }
+      gtk_box_append (GTK_BOX (p->details), cards);
     }
-  gtk_box_append (GTK_BOX (p->details), cards);
+  /* installed: a row to the app's page in Settings, where they are changed */
+  p->permission_link = vibeos_card_list_new ();
+  row = vibeos_list_row_new ("Permissions in Settings", "Allow or deny each one for this app");
+  vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-settings-symbolic");
+  vibeos_list_row_set_chevron (VIBEOS_LIST_ROW (row));
+  g_signal_connect (row, "clicked", G_CALLBACK (on_permission_settings), p);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (p->permission_link), row);
+  gtk_box_append (GTK_BOX (p->details), p->permission_link);
+  update_permission_link (p);
 }
 
 /* ---- reviews --------------------------------------------------------------------------------------------------- */
@@ -878,7 +960,7 @@ show (Page *p)
   p->built = 0;
   while ((child = gtk_widget_get_first_child (p->details)))
     gtk_box_remove (GTK_BOX (p->details), child);
-  p->more_button = p->previews = p->review_box = NULL;
+  p->more_button = p->previews = p->review_box = p->permission_link = NULL;
   head_update (p, p->app);
   gtk_box_append (GTK_BOX (p->details), stats (p));
   if (shots && json_array_get_length (shots))
@@ -1055,7 +1137,7 @@ sw_app_page_new (const char *app_id, JsonObject *summary)
   p->status = sw_status_new (p->details);
   gtk_widget_set_vexpand (p->status, FALSE);
   gtk_box_append (GTK_BOX (p->column), p->status);
-  top = sw_scroll_new (p->column);
+  top = sw_scroll_new (vibeos_clamp_new (p->column, PAGE_MAX));
   sw_page_set_body (p->page, top);
 
   if (summary)

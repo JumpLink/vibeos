@@ -720,9 +720,9 @@ cal_recurrence_picker_can_handle (const char *rrule)
 
 #define MIN_SCREEN_WIDTH_FOR_SINGLE_ROW_WEEK 450
 #define INTERVAL_DEFAULT 1
-#define BUBBLE_TEXT_NORMAL   0xff737373    /* a day's letter, not themed: the same in every look */
-#define BUBBLE_TEXT_DISABLED 0xffcccccc    /* a disabled day's letter */
-#define BUBBLE_DISABLED      0xff979696    /* a disabled day's ring */
+#define BUBBLE_TEXT_NORMAL   CAL_ON_SURFACE_VARIANT  /* a day's letter */
+#define BUBBLE_TEXT_DISABLED CAL_DISABLED            /* a disabled day's letter */
+#define BUBBLE_DISABLED      CAL_DISABLED            /* a disabled day's ring */
 #define BUBBLE_RADIUS 11.6998              /* the bubbles' circle, in their 24 × 24 viewport */
 #define BUBBLE_STROKE 0.600365
 
@@ -1235,7 +1235,7 @@ draw_day (GtkDrawingArea *area, cairo_t *cr, int width, int height, gpointer dat
   gboolean checked = picker->model.weekly_by_day_of_week[weekday];
   gboolean enabled = gtk_widget_is_sensitive (widget);
   GdkRGBA ring = cal_argb (enabled ? CAL_PRIMARY : BUBBLE_DISABLED);
-  GdkRGBA ink = cal_argb (checked ? 0xffffffff : enabled ? BUBBLE_TEXT_NORMAL : BUBBLE_TEXT_DISABLED);
+  GdkRGBA ink = cal_argb (checked ? CAL_ON_PRIMARY : enabled ? BUBBLE_TEXT_NORMAL : BUBBLE_TEXT_DISABLED);
   g_autoptr(PangoLayout) layout = gtk_widget_create_pango_layout (widget,
                                                                   g_object_get_data (G_OBJECT (area), "cal-name"));
   int text_width, text_height;

@@ -32,6 +32,7 @@
     <file alias="icons/scalable/actions/jelly-refresh-symbolic.svg">jelly-refresh-symbolic.svg</file>
     <file alias="icons/scalable/actions/jelly-search-symbolic.svg">jelly-search-symbolic.svg</file>
     <file alias="icons/scalable/actions/jelly-settings-symbolic.svg">jelly-settings-symbolic.svg</file>
+    <file alias="icons/scalable/actions/jelly-info-symbolic.svg">jelly-info-symbolic.svg</file>
     <file alias="icons/scalable/actions/jelly-share-symbolic.svg">jelly-share-symbolic.svg</file>
     <file alias="icons/scalable/actions/jelly-warning-symbolic.svg">jelly-warning-symbolic.svg</file>
   </gresource>

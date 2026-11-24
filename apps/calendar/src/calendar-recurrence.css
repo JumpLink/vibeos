@@ -4,31 +4,31 @@
 
 .vibeos-dialog.cal-recur-card {             /* the dialog window */
   background-color: @vibeos_surface_container;
-  border-radius: 2px;
+  border-radius: 2dp;
 }
 
 .cal-recur-top {                         /* the frequency and the switch */
-  padding: 12px 12px 4px 12px;
+  padding: 12dp 12dp 4dp 12dp;
 }
 
 .cal-recur-switch {
-  margin-left: 4px;
+  margin-left: 4dp;
 }
 
 .cal-recur cal-spinner,
 .cal-recur-end-spinner {
-  min-height: 48px;
+  min-height: 48dp;
 }
 
 .cal-recur .cal-spinner-text {
-  padding: 12px;
-  font-size: 15px;
-  font-weight: 700;
+  padding: 12dp;
+  font-size: 15sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 .cal-recur-end-spinner .cal-spinner-text {
-  padding: 12px 12px 8px 12px;
+  padding: 12dp 12dp 8dp 12dp;
 }
 
 .cal-recur .cal-spinner-text:disabled,
@@ -38,30 +38,30 @@
 }
 
 .cal-recur-options {
-  padding: 0 12px 4px 12px;
+  padding: 0 12dp 4dp 12dp;
 }
 
 .cal-recur-interval {                    /* "Every [1] week" */
-  padding: 0 4px;
+  padding: 0 4dp;
 }
 
 .cal-recur-text {
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 15sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
 }
 
 /* the number fields: an underline a little above the field's bottom, thicker and in the primary colour with the
  * focus */
 .cal-recur-number {
-  margin: 4px 4px 7px 4px;
-  padding: 10px 0 11px 0;
-  border-bottom: 1px solid @vibeos_on_surface_variant;
+  margin: 4dp 4dp 7dp 4dp;
+  padding: 10dp 0 11dp 0;
+  border-bottom: 1dp solid @vibeos_on_surface_variant;
 }
 
 .cal-recur-number:focus-within {
-  padding-bottom: 10px;
-  border-bottom: 2px solid @vibeos_primary;
+  padding-bottom: 10dp;
+  border-bottom: 2dp solid @vibeos_primary;
 }
 
 .cal-recur-number:disabled {
@@ -71,8 +71,8 @@
 .cal-recur-number text {
   padding: 0;
   background: none;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 15sp;
+  font-weight: 400;
   color: @vibeos_on_surface;
   caret-color: @vibeos_primary;
 }
@@ -86,39 +86,39 @@
 }
 
 .cal-recur-interval-field {              /* room for two digits */
-  min-width: 35px;
+  min-width: 35dp;
 }
 
 .cal-recur-count-field {                 /* room for three digits */
-  min-width: 61px;
+  min-width: 61dp;
 }
 
 /* the weekday buttons' rows, the first under the interval */
 .cal-recur-week {
-  margin: 8px 4px 0 4px;
+  margin: 8dp 4dp 0 4dp;
 }
 
 .cal-recur-week2 {
-  margin: 0 4px;
+  margin: 0 4dp;
 }
 
 .cal-recur-day {                         /* a weekday's toggle */
-  margin: 4px 8px;
-  min-height: 48px;
+  margin: 4dp 8dp;
+  min-height: 48dp;
 }
 
 .cal-recur-day-face {                    /* bold (900 with "Bold text" on), in caps */
-  font-size: 12px;
-  font-weight: 900;
+  font-size: 12sp;
+  font-weight: 600;
 }
 
 /* the monthly choices: a radio mark, then the text */
 .cal-recur-radio {
-  min-height: 48px;
+  min-height: 48dp;
 }
 
 .cal-recur-radio-mark {
-  margin: 0 4px;
+  margin: 0 4dp;
   color: @vibeos_on_surface_variant;
 }
 
@@ -133,41 +133,41 @@
 
 /* the end: the spinner, then the count or the date */
 .cal-recur-end {
-  margin-left: -8px;
+  margin-left: -8dp;
 }
 
 .cal-recur-end-spinner {
-  margin-right: 8px;
+  margin-right: 8dp;
 }
 
 .cal-recur-end-date {                    /* the same grey in every look */
-  min-width: 80px;
-  margin-top: 3px;
-  padding: 0 0 8px 12px;
-  font-size: 15px;
-  font-weight: 700;
-  color: #757575;
+  min-width: 80dp;
+  margin-top: 3dp;
+  padding: 0 0 8dp 12dp;
+  font-size: 15sp;
+  font-weight: 400;
+  color: @vibeos_on_surface_variant;
 }
 
 /* a line under the options, then Done across the bar */
 .cal-recur-divider {
-  min-height: 1px;
-  margin-top: 8px;
+  min-height: 1dp;
+  margin-top: 8dp;
   background-color: alpha(@vibeos_on_surface, 0.12);
 }
 
 .cal-recur-bar {
-  padding: 4px 2px 0 2px;
+  padding: 4dp 2dp 0 2dp;
 }
 
 .cal-recur-done {
-  min-height: 48px;
+  min-height: 48dp;
   color: @vibeos_primary;
 }
 
 .cal-recur-done label {
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 14sp;
+  font-weight: 500;
 }
 
 .cal-recur-done:disabled {

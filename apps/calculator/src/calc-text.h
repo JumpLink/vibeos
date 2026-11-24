@@ -18,8 +18,8 @@
 G_BEGIN_DECLS
 
 #define CALC_FONT              "VibeOS Roboto"
-#define CALC_WEIGHT_REGULAR    700          /* regular, made heavier by Bold text */
-#define CALC_WEIGHT_MEDIUM     800          /* medium, made heavier by Bold text */
+#define CALC_WEIGHT_REGULAR    700          /* regular as Bold text draws it; 400 with Bold text off */
+#define CALC_WEIGHT_MEDIUM     800          /* medium as Bold text draws it; 500 with Bold text off */
 
 /* Roboto's vertical metrics, units of the em (2048) */
 #define CALC_ASCENT            (1900 / 2048.0)

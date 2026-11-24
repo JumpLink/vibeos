@@ -2,86 +2,74 @@
 #include "cal-colors.h"
 
 #include <gtk/gtk.h>
+#include <math.h>
 #include <vibeos.h>
 
-/* dark */
-static const CalPalette dark = {
-  .surface = 0xff141218, .surface_container_low = 0xff1d1b20, .surface_container = 0xff211f26,
-  .surface_container_high = 0xff2b2930, .surface_container_highest = 0xff36343b,
-  .on_surface = 0xffe6e0e9, .on_surface_variant = 0xffcac4d0, .outline = 0xff938f99,
-  .primary = 0xff4d7f86, .on_primary = 0xff381e72, .primary_container = 0xff4f378b,
-  .on_primary_container = 0xffeaddff,
-  .secondary_container = 0xff00363c,
-  .on_secondary_container = 0xffe8def8,
-  .hour_bg = 0xff141414, .future_bg = 0xff141414,
-  .past_bg = 0xff2e2d32,                        /* a faint light wash over the window */
-  .grid_line = 0xff6a6a6a, .hour_label = 0xb2ffffff, .day_label = 0xb2ffffff, .weekend_label = 0xfffafafa,
-  .week_today = 0xff90caf9, .now_line = 0xffff0000, .grid_selected = 0xe633b5e5, .clicked = 0x8033b5e5,
-  .new_event_hint = 0xffffffff, .more_events = 0xff666666, .expand_icon = 0xff797979,
-  .staggered_shadow = 0xf0141414,
-  .month_focus_bg = 0xff212121, .month_other_bg = 0xff000000, .month_today_bg = 0x6efffffa,
-  .month_number = 0xffffffff, .month_other_number = 0xff616161, .month_day_names = 0xffffffff,
-  .month_weekend_names = 0xfff5f5f5, .month_week_number = 0xff4d7f86, .month_event_text = 0xffffffff,
-  .month_event_extra = 0xffffffff, .month_grid_line = 0xff6a6a6a,
-  .agenda_separator = 0xffbbbbbb, .agenda_past_present = 0xb2ff0000,
-  .agenda_day_text = 0xffcac4d0,
-  .agenda_title = 0xffffffff, .agenda_when = 0xfff5f5f5,
-  .agenda_declined_title = 0xff616161, .agenda_declined_when = 0x7fffffff,
-  .selected_number = 0xff141218, .switch_thumb_off = 0xffb9b9b9, .switch_track_off = 0xff5b5a5e,
-  .dark = TRUE,
-};
+/* a role at an alpha, as 0xAARRGGBB */
+static guint32
+argb (VibeosColor color, double alpha)
+{
+  GdkRGBA rgba = vibeos_color (color);
 
-/* Pure black night mode: a black window and the black look's colours; the dialogs and menus keep their surface
- * containers */
-static const CalPalette black = {
-  .surface = 0xff000000, .surface_container_low = 0xff1d1b20, .surface_container = 0xff211f26,
-  .surface_container_high = 0xff2b2930, .surface_container_highest = 0xff36343b,
-  .on_surface = 0xffe6e0e9, .on_surface_variant = 0xffcac4d0, .outline = 0xff938f99,
-  .primary = 0xff4d7f86, .on_primary = 0xff381e72, .primary_container = 0xff4f378b,
-  .on_primary_container = 0xffeaddff, .secondary_container = 0xff00363c, .on_secondary_container = 0xffe8def8,
-  .hour_bg = 0xff000000, .future_bg = 0xff000000,
-  .past_bg = 0xff1d1d1d,                        /* a faint light wash over black */
-  .grid_line = 0xff303030, .hour_label = 0xffffffff, .day_label = 0xffffffff, .weekend_label = 0xfffafafa,
-  .week_today = 0xff90caf9, .now_line = 0xffff0000, .grid_selected = 0xe633b5e5, .clicked = 0x8033b5e5,
-  .new_event_hint = 0xffffffff, .more_events = 0xff666666, .expand_icon = 0xff797979,
-  .staggered_shadow = 0xf0000000,
-  .month_focus_bg = 0xff212121, .month_other_bg = 0xff111111, .month_today_bg = 0x6efffffa,
-  .month_number = 0xffffffff, .month_other_number = 0xff616161, .month_day_names = 0xffffffff,
-  .month_weekend_names = 0xfff5f5f5, .month_week_number = 0xff4d7f86, .month_event_text = 0xffffffff,
-  .month_event_extra = 0xffffffff, .month_grid_line = 0xff303030,
-  .agenda_separator = 0xffbbbbbb, .agenda_past_present = 0xb2ff0000, .agenda_day_text = 0xffcac4d0,
-  .agenda_title = 0xffffffff, .agenda_when = 0xfff5f5f5,
-  .agenda_declined_title = 0xff616161, .agenda_declined_when = 0xff424242,
-  .selected_number = 0xff141218, .switch_thumb_off = 0xffb9b9b9, .switch_track_off = 0xff5b5a5e,
-  .dark = TRUE,
-};
+  return ((guint32) lround (alpha * 255) << 24) | ((guint32) lround (rgba.red * 255) << 16)
+         | ((guint32) lround (rgba.green * 255) << 8) | (guint32) lround (rgba.blue * 255);
+}
 
-/* light; the primary colour is the same as in the dark looks */
-static const CalPalette light = {
-  .surface = 0xfffef7ff, .surface_container_low = 0xfff7f2fa, .surface_container = 0xfff3edf7,
-  .surface_container_high = 0xffece6f0, .surface_container_highest = 0xffe6e0e9,
-  .on_surface = 0xff1d1b20, .on_surface_variant = 0xff49454f, .outline = 0xff79747e,
-  .primary = 0xff4d7f86, .on_primary = 0xffffffff, .primary_container = 0xffeaddff,
-  .on_primary_container = 0xff21005d,
-  .secondary_container = 0xffa0cfd6, .on_secondary_container = 0xff1d192b,
-  .hour_bg = 0xffeeeeee, .future_bg = 0xffffffff,
-  .past_bg = 0xfffaf3fa,                        /* a faint wash over the window */
-  .grid_line = 0xffcccccc, .hour_label = 0xff666666, .day_label = 0xff666666, .weekend_label = 0x80333333,
-  .week_today = 0x802979ff, .now_line = 0xffff0000, .grid_selected = 0xe633b5e5, .clicked = 0x8033b5e5,
-  .new_event_hint = 0xffffffff, .more_events = 0xff666666, .expand_icon = 0xff666666,
-  .staggered_shadow = 0xf0141414,
-  .month_focus_bg = 0xffffffff, .month_other_bg = 0xffeeeeee, .month_today_bg = 0x25a2ff00,
-  .month_number = 0xff555555, .month_other_number = 0xff999999, .month_day_names = 0xff757575,
-  .month_weekend_names = 0xff757575, .month_week_number = 0xff41c3b1, .month_event_text = 0xff333333,
-  .month_event_extra = 0xff666666, .month_grid_line = 0xffdedede,
-  .agenda_separator = 0xffbbbbbb, .agenda_past_present = 0xb2ff0000, .agenda_day_text = 0xff49454f,
-  .agenda_title = 0xff333333, .agenda_when = 0xff666666,
-  .agenda_declined_title = 0x66333333, .agenda_declined_when = 0x66666666,
-  .selected_number = 0xffffffff, .switch_thumb_off = 0xfff1f1f1, .switch_track_off = 0x61000000,
-  .dark = FALSE,
-};
+/* the palette from the theme as it is now: every colour a role of it; the black look puts the window's surfaces on
+ * black */
+static void
+compute (CalPalette *p, CalLook look)
+{
+  gboolean black = look == CAL_LOOK_BLACK;
 
-const CalPalette *cal_palette = &dark;
+  *p = (CalPalette) {
+    .surface = black ? 0xff000000 : argb (VIBEOS_SURFACE, 1),
+    .surface_container_low = argb (VIBEOS_SURFACE_CONTAINER_LOW, 1),
+    .surface_container = argb (VIBEOS_SURFACE_CONTAINER, 1),
+    .surface_container_high = argb (VIBEOS_SURFACE_CONTAINER_HIGH, 1),
+    .surface_container_highest = argb (VIBEOS_SURFACE_CONTAINER_HIGHEST, 1),
+    .on_surface = argb (VIBEOS_ON_SURFACE, 1), .on_surface_variant = argb (VIBEOS_ON_SURFACE_VARIANT, 1),
+    .outline = argb (VIBEOS_OUTLINE, 1),
+    .primary = argb (VIBEOS_PRIMARY, 1), .on_primary = argb (VIBEOS_ON_PRIMARY, 1),
+    .primary_container = argb (VIBEOS_PRIMARY_CONTAINER, 1),
+    .on_primary_container = argb (VIBEOS_ON_PRIMARY_CONTAINER, 1),
+    .secondary_container = argb (VIBEOS_SECONDARY_CONTAINER, 1),
+    .on_secondary_container = argb (VIBEOS_ON_SECONDARY_CONTAINER, 1),
+    /* the Day and Week views: the past a faint wash over the window */
+    .hour_bg = black ? 0xff000000 : argb (VIBEOS_SURFACE, 1),
+    .future_bg = black ? 0xff000000 : argb (VIBEOS_SURFACE, 1),
+    .past_bg = argb (black ? VIBEOS_SURFACE_CONTAINER_LOW : VIBEOS_SURFACE_CONTAINER, 1),
+    .grid_line = argb (VIBEOS_OUTLINE_VARIANT, 1),
+    .hour_label = argb (VIBEOS_ON_SURFACE_VARIANT, 1), .day_label = argb (VIBEOS_ON_SURFACE_VARIANT, 1),
+    .weekend_label = argb (VIBEOS_ON_SURFACE, 1),
+    .week_today = argb (VIBEOS_PRIMARY, 1), .now_line = argb (VIBEOS_ERROR, 1),
+    .grid_selected = argb (VIBEOS_PRIMARY, 0.9), .clicked = argb (VIBEOS_PRIMARY, 0.5),
+    .new_event_hint = argb (VIBEOS_ON_PRIMARY, 1),
+    .more_events = argb (VIBEOS_ON_SURFACE_VARIANT, 1), .expand_icon = argb (VIBEOS_ON_SURFACE_VARIANT, 1),
+    .staggered_shadow = black ? 0xf0000000 : argb (VIBEOS_SURFACE, 0.94),
+    /* Month: the month in focus on the window, every second other month on a container */
+    .month_focus_bg = black ? argb (VIBEOS_SURFACE_CONTAINER_LOW, 1) : argb (VIBEOS_SURFACE, 1),
+    .month_other_bg = black ? 0xff000000 : argb (VIBEOS_SURFACE_CONTAINER, 1),
+    .month_today_bg = argb (VIBEOS_PRIMARY, 0.28),
+    .month_number = argb (VIBEOS_ON_SURFACE, 1), .month_other_number = argb (VIBEOS_OUTLINE, 1),
+    .month_day_names = argb (VIBEOS_ON_SURFACE_VARIANT, 1),
+    .month_weekend_names = argb (VIBEOS_ON_SURFACE_VARIANT, 1), .month_week_number = argb (VIBEOS_PRIMARY, 1),
+    .month_event_text = argb (VIBEOS_ON_SURFACE, 1), .month_event_extra = argb (VIBEOS_ON_SURFACE_VARIANT, 1),
+    .month_grid_line = argb (VIBEOS_OUTLINE_VARIANT, 1),
+    /* Agenda */
+    .agenda_separator = argb (VIBEOS_OUTLINE_VARIANT, 1), .agenda_past_present = argb (VIBEOS_ERROR, 0.7),
+    .agenda_day_text = argb (VIBEOS_ON_SURFACE_VARIANT, 1),
+    .agenda_title = argb (VIBEOS_ON_SURFACE, 1), .agenda_when = argb (VIBEOS_ON_SURFACE_VARIANT, 1),
+    .agenda_declined_title = argb (VIBEOS_OUTLINE, 1), .agenda_declined_when = argb (VIBEOS_ON_SURFACE_VARIANT, 0.5),
+    .selected_number = argb (VIBEOS_ON_PRIMARY, 1),
+    .switch_thumb_off = argb (VIBEOS_OUTLINE, 1), .switch_track_off = argb (VIBEOS_SURFACE_CONTAINER_HIGHEST, 1),
+    .disabled = argb (VIBEOS_ON_SURFACE, 0.38),
+    .dark = vibeos_theme_get_dark (vibeos_theme_get_default ()),
+  };
+}
+
+static CalPalette palette;
+const CalPalette *cal_palette = &palette;
 gboolean cal_theme_light;
 static CalLook current = CAL_LOOK_DARK;
 static GtkCssProvider *overlay;
@@ -89,7 +77,7 @@ static GtkCssProvider *overlay;
 GdkRGBA
 cal_ripple_color (void)
 {
-  return cal_palette->dark ? (GdkRGBA) { 1, 1, 1, 0.2f / 2 } : (GdkRGBA) { 0, 0, 0, 0.12f / 2 };
+  return vibeos_ripple_default_color ();
 }
 
 /* a VibeosPressable as it maps (a page or dialog built after the look changed) takes the look's ripple */
@@ -127,7 +115,7 @@ cal_palette_set (CalLook look)
   static const char *sheets[] = {
     [CAL_LOOK_DARK] = NULL,
     [CAL_LOOK_BLACK] = "/vibeos/Calendar/calendar-black.css",
-    [CAL_LOOK_LIGHT] = "/vibeos/Calendar/calendar-light.css",
+    [CAL_LOOK_LIGHT] = NULL,
   };
   GdkDisplay *display = gdk_display_get_default ();
 
@@ -142,7 +130,7 @@ cal_palette_set (CalLook look)
       hooked = TRUE;
     }
   current = look;
-  cal_palette = look == CAL_LOOK_LIGHT ? &light : look == CAL_LOOK_BLACK ? &black : &dark;
+  compute (&palette, look);
   if (!display)
     return;
   if (overlay)

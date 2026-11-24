@@ -263,6 +263,7 @@ export const SystemState = GObject.registerClass({
         this._wifiDevice?.connectObject(
             'notify::active-access-point', () => this._syncAccessPoint(),
             'state-changed', () => this._syncNetwork(),
+            'notify::state', () => this._syncNetwork(),
             this);
         this._syncAccessPoint();
 
@@ -342,6 +343,12 @@ export const SystemState = GObject.registerClass({
     _syncNetwork() {
         const client = this._client;
         const wifiState = this._wifiDevice?.state ?? NM.DeviceState.UNAVAILABLE;
+        // the access point the device has now, whichever change came first: one taken from an earlier notification
+        // can be gone, or not there yet
+        if ((this._wifiDevice?.active_access_point ?? null) !== this._accessPoint) {
+            this._syncAccessPoint();
+            return;
+        }
         const ap = this._accessPoint;
         let name = '';
         if (ap?.ssid)
@@ -349,7 +356,8 @@ export const SystemState = GObject.registerClass({
         this.wifi = {
             available: !!this._wifiDevice,
             enabled: client.wireless_enabled,
-            connected: wifiState === NM.DeviceState.ACTIVATED && !!ap,
+            // connected is the device's state alone: an access point not known yet only leaves the fan empty
+            connected: wifiState === NM.DeviceState.ACTIVATED,
             level: ap ? wifiLevel(ap.strength) : 0,
             name,
         };

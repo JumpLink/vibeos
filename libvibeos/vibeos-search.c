@@ -26,7 +26,7 @@ struct _VibeosSearchBar {
   GtkWidget *target;           /* the pill's tap target, with the ripple */
   GtkWidget *hint, *end;
   GdkRGBA    fill;
-  gboolean   has_fill;
+  gboolean   has_fill, outlined;
   int        height, side, icon_x, text_x;
 };
 
@@ -101,9 +101,17 @@ vibeos_search_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
   gsk_rounded_rect_init_from_rect (&round, &pill, self->height / 2.0);
   gtk_snapshot_push_rounded_clip (snapshot, &round);
-  gtk_snapshot_append_color (snapshot, &fill, &pill);
+  if (self->has_fill || !self->outlined)
+    gtk_snapshot_append_color (snapshot, &fill, &pill);
   gtk_widget_snapshot_child (widget, self->target, snapshot);
   gtk_snapshot_pop (snapshot);
+  if (self->outlined)
+    {
+      GdkRGBA line = vibeos_color (VIBEOS_OUTLINE_VARIANT);
+
+      gtk_snapshot_append_border (snapshot, &round, (float[4]) { 1, 1, 1, 1 },
+                                  (GdkRGBA[4]) { line, line, line, line });
+    }
   vibeos_snapshot_icon (snapshot, widget, "system-search-symbolic", pill.origin.x + self->icon_x,
                         (self->height - ICON) / 2.0, ICON, &icon);
   gtk_widget_snapshot_child (widget, self->hint, snapshot);
@@ -141,6 +149,13 @@ vibeos_search_bar_set_fill (VibeosSearchBar *self, const GdkRGBA *fill)
   self->has_fill = fill != NULL;
   if (fill)
     self->fill = *fill;
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+void
+vibeos_search_bar_set_outlined (VibeosSearchBar *self, gboolean outlined)
+{
+  self->outlined = outlined;
   gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
@@ -211,7 +226,7 @@ vibeos_search_bar_new (const char *hint)
 
 struct _VibeosSearchView {
   GtkWidget   parent;
-  GtkWidget  *back, *entry, *clear, *content;
+  GtkWidget  *back, *entry, *clear, *end, *content;
   VibeosAnim *fade;
   double      opacity;
   gboolean    closing;
@@ -237,6 +252,8 @@ vibeos_search_view_size_allocate (GtkWidget *widget, int width, int height, int 
 
   put (self->back, VIEW_BACK_X, (VIEW_BAR_H - BUTTON) / 2.0, BUTTON, BUTTON);
   put (self->clear, width - VIEW_BACK_X - BUTTON, (VIEW_BAR_H - BUTTON) / 2.0, BUTTON, BUTTON);
+  if (self->end)
+    put (self->end, width - VIEW_BACK_X - BUTTON, (VIEW_BAR_H - BUTTON) / 2.0, BUTTON, BUTTON);
   entry_w = MAX (width - VIEW_TEXT_X - VIEW_BACK_X - BUTTON, 1);
   natural (self->entry, entry_w, &w, &h);
   put (self->entry, VIEW_TEXT_X, (VIEW_BAR_H - h) / 2.0, entry_w, h);
@@ -293,6 +310,8 @@ on_text_changed (GtkEditable *entry, VibeosSearchView *self)
   const char *text = gtk_editable_get_text (entry);
 
   gtk_widget_set_visible (self->clear, text && *text);
+  if (self->end)
+    gtk_widget_set_visible (self->end, !text || !*text);
   g_signal_emit (self, view_signals[VIEW_CHANGED], 0, text);
 }
 
@@ -334,6 +353,19 @@ vibeos_search_view_set_content (VibeosSearchView *self, GtkWidget *content)
     gtk_widget_set_parent (content, GTK_WIDGET (self));
 }
 
+void
+vibeos_search_view_set_end (VibeosSearchView *self, GtkWidget *end)
+{
+  const char *text = gtk_editable_get_text (GTK_EDITABLE (self->entry));
+
+  g_clear_pointer (&self->end, gtk_widget_unparent);
+  self->end = end;
+  if (!end)
+    return;
+  gtk_widget_set_parent (end, GTK_WIDGET (self));
+  gtk_widget_set_visible (end, !text || !*text);
+}
+
 const char *
 vibeos_search_view_get_text (VibeosSearchView *self)
 {
@@ -352,6 +384,19 @@ vibeos_search_view_open (VibeosSearchView *self, GtkWidget *widget)
   GtkOverlay *overlay = vibeos_window_get_overlay (widget);
 
   g_return_if_fail (overlay != NULL);
+  vibeos_search_view_open_in (self, overlay);
+}
+
+void
+vibeos_search_view_open_in (VibeosSearchView *self, GtkOverlay *overlay)
+{
+  GtkWidget *parent = gtk_widget_get_parent (GTK_WIDGET (self));
+
+  g_return_if_fail (GTK_IS_OVERLAY (overlay));
+  /* held while it moves: still fading out of another overlay, it leaves that one first */
+  g_object_ref (self);
+  if (parent && parent != GTK_WIDGET (overlay))
+    gtk_overlay_remove_overlay (GTK_OVERLAY (parent), GTK_WIDGET (self));
 
   self->closing = FALSE;
   if (gtk_widget_get_parent (GTK_WIDGET (self)) != GTK_WIDGET (overlay))
@@ -362,6 +407,7 @@ vibeos_search_view_open (VibeosSearchView *self, GtkWidget *widget)
     }
   vibeos_anim_start (self->fade, self->opacity, 1, FADE_IN_MS, 0, SPONGY_LINEAR_OUT_SLOW_IN);
   gtk_widget_grab_focus (self->entry);
+  g_object_unref (self);
 }
 
 void
@@ -384,6 +430,7 @@ vibeos_search_view_dispose (GObject *object)
   g_clear_pointer (&self->back, gtk_widget_unparent);
   g_clear_pointer (&self->entry, gtk_widget_unparent);
   g_clear_pointer (&self->clear, gtk_widget_unparent);
+  g_clear_pointer (&self->end, gtk_widget_unparent);
   G_OBJECT_CLASS (vibeos_search_view_parent_class)->dispose (object);
 }
 

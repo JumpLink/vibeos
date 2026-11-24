@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.unifiedpush.Distributor.vibeos
+Exec=@path@
+SystemdService=vibeos-unifiedpush.service

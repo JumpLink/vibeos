@@ -5,6 +5,7 @@
 #include <libsoup/soup.h>
 #include <math.h>
 #include <string.h>
+#include <vibeos.h>
 
 /* Ad blocking: EasyList in WebKit's content-blocker format, compiled once into WebKit's filter store (the network
  * process then blocks without asking us), fetched again once a week. A copy beside the app covers the first start.
@@ -616,8 +617,10 @@ write_icon (GdkTexture *favicon, const char *path)
   const int size = 192;
   cairo_surface_t *surface = cairo_image_surface_create (CAIRO_FORMAT_ARGB32, size, size);
   cairo_t *cr = cairo_create (surface);
+  GdkRGBA white = vibeos_color (VIBEOS_WHITE);
+
   cairo_arc (cr, size / 2.0, size / 2.0, size / 2.0, 0, 2 * G_PI);
-  cairo_set_source_rgb (cr, 1, 1, 1);
+  gdk_cairo_set_source_rgba (cr, &white);
   cairo_fill (cr);
   if (favicon) {
     int w = gdk_texture_get_width (favicon), h = gdk_texture_get_height (favicon);

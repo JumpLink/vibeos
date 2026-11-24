@@ -1,0 +1,6 @@
+{
+  global:
+    navi_map_*;
+  local:
+    *;
+};

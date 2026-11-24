@@ -37,22 +37,11 @@ static CtStore *store;
 static GSettings *settings;
 
 static void
-load_style (void)
-{
-  GtkCssProvider *provider = gtk_css_provider_new ();
-
-  gtk_css_provider_load_from_resource (provider, "/vibeos/Contacts/contacts.css");
-  /* over libvibeos's, which is at APPLICATION priority too: the later provider wins at equal priority */
-  gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
-                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
-  g_object_unref (provider);
-}
-
-static void
 on_startup (GApplication *app, gpointer data)
 {
-  vibeos_init ();
-  load_style ();
+  /* the text follows Font size and Bold text; the stylesheet in sp and dp, over libvibeos's */
+  vibeos_init_full (VIBEOS_INIT_SCALED_TEXT);
+  vibeos_css_load_resource ("/vibeos/Contacts/contacts.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   settings = g_settings_new (CT_APP_ID);
   store = ct_store_new (settings);
 }
@@ -220,9 +209,15 @@ on_insert (GSimpleAction *action, GVariant *parameter, gpointer app)
 {
   GtkWidget *window = contacts_window (app);
   g_autoptr(EContact) prefill = prefill_from (parameter);
+  GtkWidget *top = ct_window_top (window);
 
   gtk_window_present (GTK_WINDOW (window));
+  /* an editor an earlier request opened and nobody touched makes way: stacked, each Discard showed the one under
+   * it and the editor seemed never to close (owner, 11-21) */
+  if (ct_editor_is_untouched_external (top))
+    ct_window_pop (window, top);
   ct_window_new_contact (window, prefill);
+  ct_editor_set_external (ct_window_top (window));
 }
 
 static void
@@ -232,7 +227,10 @@ on_insert_picked (GPtrArray *uids, gpointer data)
   GtkWidget *window = g_object_get_data (G_OBJECT (prefill), "ct-window");
 
   if (uids->len)
-    ct_window_push (window, ct_editor_new (window, uids->pdata[0], prefill));
+    {
+      ct_window_push (window, ct_editor_new (window, uids->pdata[0], prefill));
+      ct_editor_set_external (ct_window_top (window));
+    }
 }
 
 static void
@@ -240,7 +238,10 @@ on_insert_new (gpointer data)
 {
   EContact *prefill = data;
 
-  ct_window_new_contact (g_object_get_data (G_OBJECT (prefill), "ct-window"), prefill);
+  GtkWidget *window = g_object_get_data (G_OBJECT (prefill), "ct-window");
+
+  ct_window_new_contact (window, prefill);
+  ct_editor_set_external (ct_window_top (window));
 }
 
 /* insert-or-edit: "Choose a contact" with "Create new contact" first */

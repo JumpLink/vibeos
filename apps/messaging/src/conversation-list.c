@@ -688,6 +688,12 @@ conversation_list_set_current (ConversationList *self, gint64 id)
 
 /* --- the page */
 
+guint
+conversation_list_get_n_conversations (ConversationList *self)
+{
+  return g_hash_table_size (self->rows);
+}
+
 gboolean
 conversation_list_is_at_top (ConversationList *self)
 {

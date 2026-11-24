@@ -34,8 +34,8 @@
 #define SELECTED_RADIUS   28
 #define HIGHLIGHT_RADIUS  20
 
-typedef enum { START_NONE, START_ICON, START_CIRCLE, START_AVATAR } Start;
-typedef enum { END_NONE, END_SWITCH, END_SPLIT, END_ICON, END_VALUE } End;
+typedef enum { START_NONE, START_ICON, START_CIRCLE, START_AVATAR, START_WIDGET } Start;
+typedef enum { END_NONE, END_SWITCH, END_SPLIT, END_ICON, END_VALUE, END_WIDGET } End;
 
 struct _VibeosListRow {
   GtkWidget  parent;
@@ -44,7 +44,7 @@ struct _VibeosListRow {
   GtkWidget *initials;          /* an avatar's initials, or NULL */
   GtkWidget *title, *summary;
   GtkWidget *chevron;           /* a split row's, before the divider */
-  GtkWidget *end;               /* the switch, the chevron (or another icon) or the value, or NULL */
+  GtkWidget *end;               /* the switch, the chevron (or another icon), the value or the app's widget, or NULL */
   Start      start_kind;
   End        end_kind;
   GdkRGBA    start_fill;
@@ -54,6 +54,7 @@ struct _VibeosListRow {
   double     top_radius, bottom_radius;
   double     exact_h;           /* at the width allocated last */
   gboolean   selected;
+  gboolean   inert;             /* not activatable: it only shows something */
 };
 
 G_DEFINE_FINAL_TYPE (VibeosListRow, vibeos_list_row, GTK_TYPE_WIDGET)
@@ -135,6 +136,7 @@ text_end (VibeosListRow *self, int width)
     case END_ICON:
       return width - END_PAD - ICON - TEXT_GAP;
     case END_VALUE:
+    case END_WIDGET:
       return width - END_PAD - natural_width (self->end) - TEXT_GAP;
     case END_NONE:
     default:
@@ -236,9 +238,13 @@ vibeos_list_row_size_allocate (GtkWidget *widget, int width, int height, int bas
       G_GNUC_FALLTHROUGH;
     case END_SWITCH:
     case END_VALUE:
+    case END_WIDGET:
       {
-        int end_w = natural_width (self->end), end_h = natural_height (self->end, end_w);
+        int end_w = natural_width (self->end), end_h;
 
+        if (!gtk_widget_get_visible (self->end))
+          break;
+        end_h = natural_height (self->end, end_w);
         put (self->end, width - END_PAD - end_w, (h - end_h) / 2, end_w, end_h);
         break;
       }
@@ -415,6 +421,17 @@ vibeos_list_row_set_avatar (VibeosListRow *self, GdkPaintable *picture, const ch
 }
 
 void
+vibeos_list_row_set_start_widget (VibeosListRow *self, GtkWidget *widget)
+{
+  g_return_if_fail (VIBEOS_IS_LIST_ROW (self));
+  g_return_if_fail (GTK_IS_WIDGET (widget));
+
+  vibeos_list_row_clear_start (self);
+  self->start = part (self, widget);
+  self->start_kind = START_WIDGET;
+}
+
+void
 vibeos_list_row_set_text_inset (VibeosListRow *self, int inset)
 {
   self->text_inset = inset;
@@ -475,6 +492,35 @@ vibeos_list_row_set_value (VibeosListRow *self, const char *value)
   gtk_widget_add_css_class (label, "vibeos-list-row-value");
   self->end = part (self, label);
   self->end_kind = END_VALUE;
+}
+
+void
+vibeos_list_row_set_end_widget (VibeosListRow *self, GtkWidget *widget)
+{
+  g_return_if_fail (VIBEOS_IS_LIST_ROW (self));
+  g_return_if_fail (GTK_IS_WIDGET (widget));
+
+  vibeos_list_row_clear_end (self);
+  self->end = widget;
+  gtk_widget_set_parent (widget, GTK_WIDGET (self));
+  self->end_kind = END_WIDGET;
+}
+
+void
+vibeos_list_row_set_activatable (VibeosListRow *self, gboolean activatable)
+{
+  g_return_if_fail (VIBEOS_IS_LIST_ROW (self));
+
+  self->inert = !activatable;
+  gtk_widget_set_can_target (self->target, activatable);
+}
+
+gboolean
+vibeos_list_row_get_activatable (VibeosListRow *self)
+{
+  g_return_val_if_fail (VIBEOS_IS_LIST_ROW (self), FALSE);
+
+  return !self->inert;
 }
 
 void

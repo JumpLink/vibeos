@@ -9,8 +9,8 @@
 #include <spongy-gtk.h>
 #include <string.h>
 
-#define DEFAULT_FAVORITE_COLOR "#4d7f86"   /* a favourite without a colour of its own, as nb-tab.c's */
-#define COLOR_DELETE           "#F44336"   /* behind a row being swiped away */
+/* behind a row being swiped away: the design's fixed red, the same in either mode and whatever the accent */
+#define COLOR_DELETE           "#F44336"
 #define DELETE_MARGIN          12          /* the delete icon, in from the row's end */
 
 /* ==== the frame shared by every page ============================================================================= */
@@ -178,6 +178,7 @@ nb_swipe_row_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   NbSwipeRow *self = NB_SWIPE_ROW (widget);
   double w = gtk_widget_get_width (widget), h = gtk_widget_get_height (widget);
+  /* behind a row being swiped away: the fixed red, the delete icon in black on it */
   GdkRGBA red;
 
   gdk_rgba_parse (&red, COLOR_DELETE);
@@ -186,10 +187,10 @@ nb_swipe_row_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     return;
   }
   if (self->dx < 0) {
-    GdkRGBA black = { 0, 0, 0, 1 };
+    GdkRGBA icon = vibeos_palette_stop (VIBEOS_PALETTE_NEUTRAL1, 1000);
     gtk_snapshot_append_color (snapshot, &red, &GRAPHENE_RECT_INIT (w + self->dx, 0, -self->dx, h));
     vibeos_snapshot_icon (snapshot, widget, "jelly-delete-action-symbolic", w - DELETE_MARGIN - 24, (h - 24) / 2, 24,
-                       &black);
+                       &icon);
   }
   gtk_widget_snapshot_child (widget, self->child, snapshot);
 }
@@ -807,15 +808,16 @@ on_fav_click (GtkWidget *card, Favorites *fav)
   nb_open_tab (g_object_get_data (G_OBJECT (card), "nb-url"), FALSE, NULL, NULL);
 }
 
-/* a raised card in the favourite's colour, the title centred in up to two lines, black or white for contrast */
+/* a raised card in the favourite's colour (its site's), the title centred in up to two lines, black or white for
+ * contrast; a favourite without a colour of its own is in the theme's primary container */
 static GtkWidget *
 favorite_card (Favorites *fav, const NbEntry *e)
 {
   GdkRGBA color;
-  if (!e->color || !gdk_rgba_parse (&color, e->color))
-    gdk_rgba_parse (&color, DEFAULT_FAVORITE_COLOR);
+  gboolean own = e->color && gdk_rgba_parse (&color, e->color);
   GtkWidget *label = nb_label (e->title && *e->title ? e->title : e->url, 18,
-                               is_light (&color) ? "nb-fav-dark-text" : "nb-fav-light-text", FALSE);
+                               !own ? "nb-fav-theme-text" : is_light (&color) ? "nb-fav-dark-text"
+                                                                               : "nb-fav-light-text", FALSE);
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
   gtk_label_set_wrap_mode (GTK_LABEL (label), PANGO_WRAP_WORD_CHAR);
   gtk_label_set_lines (GTK_LABEL (label), 2);
@@ -828,7 +830,10 @@ favorite_card (Favorites *fav, const NbEntry *e)
   gtk_widget_set_hexpand (card, TRUE);
   gtk_widget_add_css_class (card, "nb-fav-card");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (card), VIBEOS_RIPPLE_BOUNDED, 2);
-  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (card), &color, FALSE);
+  if (own)
+    vibeos_pressable_set_fill (VIBEOS_PRESSABLE (card), &color, FALSE);
+  else
+    vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (card), VIBEOS_PRIMARY_CONTAINER, FALSE);
   g_object_set_data_full (G_OBJECT (card), "nb-url", g_strdup (e->url), g_free);
   g_object_set_data_full (G_OBJECT (card), "nb-title", g_strdup (e->title), g_free);
   g_signal_connect (card, "clicked", G_CALLBACK (on_fav_click), fav);

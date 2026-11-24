@@ -11,6 +11,7 @@
 #endif
 
 #define SLIDE_MS 250
+#define MAX_WIDTH 640   /* on a wider screen (a tablet) the sheet keeps to this, centred */
 
 typedef struct {
   GtkWidget *window, *revealer, *scrim;
@@ -110,6 +111,16 @@ on_realize (GtkWidget *window, Sheet *sheet)
 #endif
 }
 
+/* the sheet across a phone's width; on a wider window, MAX_WIDTH wide in the middle */
+static void
+update_width (VibeosLayout *layout, GtkWidget *revealer)
+{
+  int side = MAX (0, (vibeos_layout_get_width (layout) - MAX_WIDTH) / 2);
+
+  gtk_widget_set_margin_start (revealer, side);
+  gtk_widget_set_margin_end (revealer, side);
+}
+
 static gboolean
 on_reveal (gpointer data)
 {
@@ -133,13 +144,9 @@ inst_sheet_new (GtkApplication *app, InstJob *job, const char *parent_window)
   g_object_set_data_full (G_OBJECT (window), "inst-sheet", sheet, sheet_free);
   gtk_window_set_title (GTK_WINDOW (window), _("App Installer"));
   gtk_widget_add_css_class (window, "inst-sheet-window");
-  /* the demo has no app under the sheet: a plain backdrop stands in for it, on the phone's app area */
+  /* the demo has no app under the sheet: a plain backdrop stands in for it */
   if (inst_demo_active ())
-    {
-      gtk_widget_add_css_class (window, "inst-demo-backdrop");
-      vibeos_layout_get_for_window (GTK_WINDOW (window));
-      gtk_window_set_default_size (GTK_WINDOW (window), 360, 721);
-    }
+    gtk_widget_add_css_class (window, "inst-demo-backdrop");
 
   sheet->scrim = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (sheet->scrim, "inst-scrim");
@@ -186,6 +193,12 @@ inst_sheet_new (GtkApplication *app, InstJob *job, const char *parent_window)
   g_signal_connect (window, "close-request", G_CALLBACK (on_close_request), sheet);
   g_signal_connect (window, "realize", G_CALLBACK (on_realize), sheet);
   g_signal_connect (job, "changed", G_CALLBACK (on_job_changed), sheet);
+  {
+    VibeosLayout *layout = vibeos_layout_get_for_window (GTK_WINDOW (window));
+
+    g_signal_connect_object (layout, "changed", G_CALLBACK (update_width), sheet->revealer, 0);
+    update_width (layout, sheet->revealer);
+  }
   /* the whole screen, so that the scrim covers the app under it */
   if (!inst_demo_active ())
     gtk_window_maximize (GTK_WINDOW (window));

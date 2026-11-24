@@ -3,6 +3,7 @@
 #include "vibeos-anim.h"
 #include "vibeos-ripple.h"
 #include "vibeos-style.h"
+#include "vibeos-text.h"
 
 #define BAR_H          80
 #define PILL_W         64
@@ -145,6 +146,29 @@ allocate_badge (Item *item, double x, double y)
                        gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x + ICON / 2.0 + BADGE_X, y + BADGE_Y)));
 }
 
+
+/* a label in a column `width` wide, its top start at (x, y): one wider than the column is drawn smaller to fit, down
+ * to its size at the default Font size, and ellipsized only below that; a smaller one keeps the others' baseline */
+static void
+allocate_fitted_label (GtkWidget *label, double x, double y, int width)
+{
+  int unused, natural, height, baseline, w = width;
+  double scale = 1;
+  GskTransform *transform;
+
+  gtk_widget_measure (label, GTK_ORIENTATION_HORIZONTAL, -1, &unused, &natural, NULL, NULL);
+  if (natural > width && width > 0) {
+    scale = MAX ((double) width / natural, 1 / MAX (vibeos_font_scale (), 1.0));
+    w = MIN (natural, (int) (width / scale + 0.999));
+  }
+  gtk_widget_measure (label, GTK_ORIENTATION_VERTICAL, w, &height, &unused, &baseline, NULL);
+  if (baseline > 0)
+    y += baseline * (1 - scale);
+  transform = gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x, y));
+  transform = gsk_transform_scale (transform, scale, scale);
+  gtk_widget_allocate (label, w, height, -1, transform);
+}
+
 static void
 vibeos_nav_bar_size_allocate (GtkWidget *widget, int width, int height, int baseline)
 {
@@ -170,10 +194,7 @@ vibeos_nav_bar_size_allocate (GtkWidget *widget, int width, int height, int base
                          gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x + (col - ICON) / 2,
                                                                               PILL_TOP + (PILL_H - ICON) / 2)));
     allocate_badge (item, x + (col - ICON) / 2, PILL_TOP + (PILL_H - ICON) / 2);
-    int label_h, unused;
-    gtk_widget_measure (item->label, GTK_ORIENTATION_VERTICAL, (int) col, &label_h, &unused, NULL, NULL);
-    gtk_widget_allocate (item->label, (int) col, label_h, -1,
-                         gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x, LABEL_TOP)));
+    allocate_fitted_label (item->label, x, LABEL_TOP, (int) col);
   }
 }
 

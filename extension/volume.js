@@ -19,13 +19,17 @@ import {Canvas, paintIcon, VectorIcon} from './icons.js';
 import {animate, animateSpring, bezier, clamp, EMPHASIZED_DECELERATE, lerp, Spring} from './motion.js';
 import {Color, rgba, setSource} from './palette.js';
 import {openSettings} from './settings.js';
-import {px, SCALE, SCREEN_H, screenPixels} from './units.js';
+import {HEIGHT, px, SCALE, screenPixels, TABLET} from './units.js';
 
 // --- geometry, screen px; the window runs from the status bar's bottom to the screen's
 const ROOT_W = 528;                     // how far the panel slides
 const WINDOW_TOP = 116;
+const TABLET_WINDOW_TOP = 84;           // a tablet's status bar
 const SLIDER_H = 762;                   // centred in the window
-const S = (WINDOW_TOP + SCREEN_H) / 2 - SLIDER_H / 2;      // the slider's top: 817
+// The slider's top on the reference's 2280 px tall screen: 817. Every position below is laid out on it, and the
+// dialog moves down (or up) by what the middle of the screen as it is now differs by.
+const REFERENCE_H = 2280;
+const S = (WINDOW_TOP + REFERENCE_H) / 2 - SLIDER_H / 2;
 const PILL_X = 24;                      // from the screen's edge
 const PILL_W = 180;
 const PILL_RADIUS = 90;
@@ -174,7 +178,7 @@ class VolumeSlider extends Canvas {
 
     // the fraction under the finger, unclamped; measured on the screen, not on the slider the overscroll moves
     _fractionAt(gesture) {
-        const y = gesture.get_centroid_abs().y * SCALE - S;
+        const y = (gesture.get_centroid_abs().y - this._dialog.y) * SCALE - S;
         return (TRACK_TOP + TRACK_LEN - y) / TRACK_LEN;
     }
 
@@ -255,7 +259,7 @@ class VolumeDialog extends St.Widget {
         super({
             name: 'vibeosVolume',
             x: monitor.x, y: monitor.y,
-            width: px(ROOT_W), height: px(SCREEN_H),
+            width: px(ROOT_W), height: monitor.height,
             visible: false,
         });
 
@@ -692,7 +696,18 @@ class VolumeDialog extends St.Widget {
 
     // --- showing and hiding
 
+    // the slider centred in the window below the status bar of the screen as it is turned now
+    _place() {
+        const monitor = Main.layoutManager.primaryMonitor;
+        const top = TABLET ? TABLET_WINDOW_TOP : WINDOW_TOP;
+        const shift = (top + HEIGHT) / 2 - SLIDER_H / 2 - S;
+        this.set_position(monitor.x, monitor.y + px(shift));
+        this.height = monitor.height - px(shift);
+    }
+
     show() {
+        if (!this._shown)
+            this._place();
         raiseToTop(this);
         this._shown = true;
         this._syncStreamValue();

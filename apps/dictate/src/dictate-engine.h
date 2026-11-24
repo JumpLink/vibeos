@@ -23,6 +23,10 @@ DictateEngine *dictate_engine_new          (void);
 /* the language listened in, by its code (dictate-models.h): from the next start on */
 void           dictate_engine_set_language (DictateEngine *self, const char *code);
 const char    *dictate_engine_get_language (DictateEngine *self);
+/* from the next start on: listening for one turn of the speaker's. The speech is cut out of the audio by voice
+ * activity detection (dictate-vad.h) and only it is recognised; once the speaker has finished, or said nothing for
+ * a while, the engine stops by itself (STOPPING is skipped: the state goes from listening to idle) */
+void           dictate_engine_set_turns    (DictateEngine *self, gboolean turns);
 /* FALSE, with the reason for the user, when the language's model or its recogniser is not installed */
 gboolean       dictate_engine_available    (DictateEngine *self, char **reason);
 void           dictate_engine_start        (DictateEngine *self);

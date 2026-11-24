@@ -17,6 +17,11 @@
 // finger is down, Keyboard.close only marks the keyboard to close; the last finger lifting closes it, unless a field
 // took the focus meanwhile (open).
 //
+// A terminal's field (VTE's: Console) has the input focus all the while its window has, and VTE never asks for the
+// keyboard either: once put away, the keyboard did not come back. On Android a tap on a terminal brings it up. So a tap
+// (one finger, not moved past the touch slop, lifted before a long press) in the focused window, after which the input
+// focus is still that terminal's, opens it. A tap that moved the focus elsewhere (a header bar's button) does not.
+//
 // And a window over its whole screen is no popover. The shell takes every skip-taskbar window for one and, with the
 // keyboard up, moves popovers up until their bottom clears it: the launcher (full screen, skip-taskbar) went up by the
 // keyboard's height, its drawer's search field under the status bar, and the next tap hit an app (2026-11-13).
@@ -30,6 +35,9 @@ const FOCUS_WAIT_MS = 800;      // a page's field: the tap goes to WebKit's web 
 const POLL_MS = 40;
 const CLOSE_AFTER_LIFT_MS = 60; // the app has the lift (and its button its click) before its window grows back
 const CLOSE_HELD_MAX_MS = 2000; // a lift that never came (a grab took the touch) cannot keep the keyboard up
+const TAP_SLOP = 8;             // px of the stage (dp): Android's touch slop
+const TAP_MAX_MS = 500;         // a long press is no tap
+const TERMINAL_WAIT_MS = 120;   // a terminal tapped: the app has the tap (and a button it hit, the focus) first
 
 // the one running, for gestureTookTouches ()
 let current = null;
@@ -47,6 +55,7 @@ export class TouchFocusKeyboard {
         this._hadFocus = true;
         this._pollId = 0;
         this._touches = 0;
+        this._tap = null;
         this._closeId = 0;
         this._holdClose();
         this._noFullScreenPopovers();
@@ -134,30 +143,72 @@ export class TouchFocusKeyboard {
     _onEvent(event) {
         const type = event.type();
         if (type === Clutter.EventType.TOUCH_BEGIN) {
+            // a finger alone may tap, and not on the keyboard: its hide chevron puts it away on the lift, the window
+            // grows back under the spot, and the terminal check found the tap on the terminal and opened the
+            // keyboard again (owner, 11-21)
+            const [x, y] = event.get_coords();
+            const actor = global.stage.get_event_actor(event);
+            const onKeys = !!actor && Main.layoutManager.keyboardBox.contains(actor);
+            this._tap = this._touches === 0 && !onKeys
+                ? {x, y, time: event.get_time(), focus: Main.inputMethod.currentFocus} : null;
             this._touches++;
             this._stop();
             this._hadFocus = Main.inputMethod.currentFocus !== null;
+        } else if (type === Clutter.EventType.TOUCH_UPDATE) {
+            if (this._tap && this._moved(this._tap, event))
+                this._tap = null;
         } else if (type === Clutter.EventType.TOUCH_END || type === Clutter.EventType.TOUCH_CANCEL) {
             this._touches = Math.max(0, this._touches - 1);
             if (this._touches === 0 && Main.keyboard._keyboard?.__vibeosCloseHeld)
                 this._closeLater(CLOSE_AFTER_LIFT_MS);
-            if (type === Clutter.EventType.TOUCH_END)
-                this._watch();
+            const tap = this._tap;
+            this._tap = null;
+            if (type === Clutter.EventType.TOUCH_END) {
+                const tapped = tap && !this._moved(tap, event) && event.get_time() - tap.time < TAP_MAX_MS;
+                this._watch(tapped ? tap : null);
+            }
         }
         return Clutter.EVENT_PROPAGATE;
     }
 
-    _watch() {
+    _moved(tap, event) {
+        const [x, y] = event.get_coords();
+        return Math.hypot(x - tap.x, y - tap.y) > TAP_SLOP;
+    }
+
+    // the tap was on the focused window and its field, still focused, is a terminal's
+    _onTerminal(tap) {
+        if (Main.inputMethod.currentFocus !== tap.focus ||
+            Main.inputMethod.content_purpose !== Clutter.InputContentPurpose.TERMINAL)
+            return false;
+        const rect = global.display.focus_window?.get_frame_rect();
+        return !!rect && tap.x >= rect.x && tap.x < rect.x + rect.width && tap.y >= rect.y &&
+            tap.y < rect.y + rect.height;
+    }
+
+    _watch(tap = null) {
         this._stop();
-        const end = GLib.get_monotonic_time() + FOCUS_WAIT_MS * 1000;
+        const start = GLib.get_monotonic_time();
+        const end = start + FOCUS_WAIT_MS * 1000;
+        // a tap with a field focused already: a terminal's?
+        let held = tap?.focus ? tap : null;
         this._pollId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, POLL_MS, () => {
             if (Main.inputMethod.currentFocus === null) {
                 // the focus left a field: it may come back to another one
                 this._hadFocus = false;
+                held = null;
             } else if (!this._hadFocus) {
                 this._pollId = 0;
                 this._open();
                 return GLib.SOURCE_REMOVE;
+            } else if (held && GLib.get_monotonic_time() - start >= TERMINAL_WAIT_MS * 1000) {
+                const terminal = this._onTerminal(held);
+                held = null;
+                if (terminal) {
+                    this._pollId = 0;
+                    this._open();
+                    return GLib.SOURCE_REMOVE;
+                }
             }
             if (GLib.get_monotonic_time() < end)
                 return GLib.SOURCE_CONTINUE;

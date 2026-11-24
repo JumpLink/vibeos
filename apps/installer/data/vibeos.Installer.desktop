@@ -6,6 +6,9 @@ Exec=vibeos-installer %F
 Icon=vibeos.Installer
 Terminal=false
 StartupNotify=false
+# no icon in the launcher, the drawer or Settings' app list: it opens from a package file (Files), and Software
+# reaches it over D-Bus
+NoDisplay=true
 DBusActivatable=true
 Categories=System;PackageManager;GTK;
 Keywords=Install;Uninstall;Package;deb;Software;App;

@@ -24,9 +24,16 @@ void       vibeos_nav_rail_set_selected (VibeosNavRail *self, int index);
 int        vibeos_nav_rail_get_selected (VibeosNavRail *self);
 /* labelled (the default), or icons only */
 void       vibeos_nav_rail_set_labels   (VibeosNavRail *self, gboolean labels);
+/* the destinations from the top, right under the header, rather than in the rail's middle (a list of places, as
+ * the files app's) */
+void       vibeos_nav_rail_set_top_aligned (VibeosNavRail *self, gboolean top);
 /* a widget at the top, over the destinations (NULL for none) */
 void       vibeos_nav_rail_set_header   (VibeosNavRail *self, GtkWidget *header);
+/* a badge on an item's icon, as VibeosNavBar's: a number ("3") in a small pill in the error colour, a dot for "",
+ * none for NULL */
+void       vibeos_nav_rail_set_badge    (VibeosNavRail *self, int index, const char *text);
 
-/* Signals: "selected" (int index) */
+/* Signals: "selected" (int index); "reselected" (int index), a tap on the item already selected.
+ * The rail is 80 wide; a size request makes it wider, with its items in its middle. */
 
 G_END_DECLS

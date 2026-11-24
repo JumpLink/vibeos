@@ -1,0 +1,13 @@
+#!/bin/sh
+# gnome-control-center [PANEL [ARGUMENT...]]: GNOME Settings' command, which VibeOS Settings replaces. It opens
+# VibeOS Settings at that panel's page (GNOME Settings' panel names), "applications ID" at that app's page, or at its
+# main page. GNOME Settings' options are accepted and ignored.
+panel=
+for a; do
+    case "$a" in
+        -*) ;;
+        *) if [ -z "$panel" ]; then panel=$a; elif [ "$panel" = applications ]; then exec vibeos-settings --app "$a"; fi ;;
+    esac
+done
+[ -n "$panel" ] && exec vibeos-settings --page "$panel"
+exec vibeos-settings

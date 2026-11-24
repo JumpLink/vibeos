@@ -22,6 +22,7 @@ import Shell from 'gi://Shell';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {NAV_GESTURE_H} from './task.js';
+import {TABLET} from './units.js';
 
 const EDGE_W = 30 * 3;                  // device px, the same edge strip as back.js
 const SLOP = 8 * 3 * 0.75;              // touch slop × 0.75, as back.js
@@ -31,10 +32,11 @@ const MIN_SCALE = 0.8;                  // the window at COMMIT_DP and beyond
 const SETTLE_MS = 200;
 const CLOSE_GRACE_MS = 3000;            // an app asked to close that is still there: whole again
 
-// one panel, wider than tall: ours to handle (docked, nothing is turned and the upright gestures stand)
+// one panel, wider than tall: ours to handle (docked, nothing is turned and the upright gestures stand). Not on a
+// tablet: its gestures and recents are laid out on its screen as it is turned (task.js), landscape too.
 export function sideways() {
     const monitors = Main.layoutManager.monitors;
-    return monitors.length === 1 && monitors[0].width > monitors[0].height;
+    return !TABLET && monitors.length === 1 && monitors[0].width > monitors[0].height;
 }
 
 export class SidewaysGestures {

@@ -29,9 +29,9 @@
 #define SCROLLER_MARGIN 8       /* the fast scroller's top and bottom margins */
 #define TOUCH_WIDTH     20      /* the strip at the end that takes the fast scroller's drags */
 #define BUBBLE          88      /* the letter shown beside the thumb while it is dragged */
-#define THUMB_IDLE      0xa3a7ac
-#define THUMB_DRAGGED   0x1f2728
-#define BUBBLE_TEXT     0xdadce0
+#define THUMB_IDLE      VIBEOS_ON_SURFACE_VARIANT
+#define THUMB_DRAGGED   VIBEOS_SECONDARY_CONTAINER
+#define BUBBLE_TEXT     VIBEOS_ON_SECONDARY_CONTAINER
 
 #define NAME_STYLE      ((TextStyle) { TEXT_GSF, 16, 700 })
 #define BUBBLE_STYLE    ((TextStyle) { TEXT_GSF, 48, 700 })
@@ -280,7 +280,6 @@ contacts_row_init (ContactsRow *self)
   self->target = vibeos_pressable_new (GTK_WIDGET (self->content));
   /* the press ripple, over the touch area only */
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->target), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (self->target), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_widget_set_parent (self->target, GTK_WIDGET (self));
   g_signal_connect_swapped (self->target, "clicked", G_CALLBACK (on_target_clicked), self);
 }
@@ -649,11 +648,10 @@ add_contact_row (ContactsPage *self)
   gtk_widget_set_margin_start (label, NAME_START);
   gtk_widget_set_margin_end (label, NAME_END);
   gtk_widget_add_css_class (label, "dialer-primary-text");
-  vibeos_label_set_font_padding (label, 16);
+  vibeos_label_set_font_padding_sp (label, 16);
   gtk_box_append (GTK_BOX (box), label);
   row = vibeos_pressable_new (box);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &(GdkRGBA) { 1, 1, 1, 0.06 });
   gtk_widget_set_margin_top (row, ADD_TOP);
   gtk_widget_set_margin_start (row, HEADER_WIDTH);
   gtk_widget_set_margin_end (row, TARGET_END);

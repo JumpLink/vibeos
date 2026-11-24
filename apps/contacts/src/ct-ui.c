@@ -100,7 +100,7 @@ ct_label (const char *text, const char *css_class, double size)
 
   gtk_widget_add_css_class (label, css_class);
   gtk_label_set_xalign (GTK_LABEL (label), 0);
-  vibeos_label_set_font_padding (label, size);
+  vibeos_label_set_font_padding_sp (label, size);
   return label;
 }
 
@@ -121,7 +121,7 @@ ct_text_button (const char *label, const char *css_class)
   GtkWidget *text = gtk_label_new (caps);
   GtkWidget *button;
 
-  vibeos_label_set_font_padding (text, 14);
+  vibeos_label_set_font_padding_sp (text, 14);
   gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
   button = vibeos_pressable_new (text);
   gtk_widget_add_css_class (button, "ct-text-button");

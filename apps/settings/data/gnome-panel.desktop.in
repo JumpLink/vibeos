@@ -1,0 +1,11 @@
+[Desktop Entry]
+# GNOME Settings' @panel@ panel, which VibeOS Settings replaces: its page in VibeOS Settings
+Name=Settings
+Comment=Phone settings
+Exec=vibeos-settings --page @panel@
+Icon=vibeos.Settings
+Terminal=false
+Type=Application
+NoDisplay=true
+StartupNotify=true
+X-GNOME-Settings-Panel=@panel@

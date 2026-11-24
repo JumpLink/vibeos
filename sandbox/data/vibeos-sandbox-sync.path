@@ -1,0 +1,10 @@
+# dpkg rewrites its status file after each package it installs, updates or removes
+[Unit]
+Description=Follow what dpkg installs and removes, for the sandbox
+
+[Path]
+PathChanged=/var/lib/dpkg/status
+Unit=vibeos-sandbox-follow.service
+
+[Install]
+WantedBy=default.target

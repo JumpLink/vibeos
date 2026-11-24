@@ -29,6 +29,8 @@ void main()
     cov *= rrect_coverage(v_local, v_shape) -
            rrect_coverage(v_local, vec4(v_shape.xy - w, max(v_shape.z - w, 0.0), 0.0));
     c = v_color;
+  } else if (v_shape.w == 5.0) {                // a piece of a picture: its edges are where the next piece's begin
+    c = v_color * texture(tex, v_uv);
   } else {
     cov *= rrect_coverage(v_local, v_shape);
     c = v_shape.w == 1.0 ? v_color : v_color * texture(tex, v_uv);

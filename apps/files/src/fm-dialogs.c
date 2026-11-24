@@ -6,6 +6,7 @@
 #include "fm-util.h"
 
 #include <glib/gi18n.h>
+#include <string.h>
 #include <spongy-gtk.h>
 
 VibeosDialog *
@@ -118,6 +119,13 @@ void
 fm_text_dialog (GtkWidget *parent, const char *title, const char *value, int select_end, FmTextCheck check,
                 FmTextDone done, gpointer data)
 {
+  fm_text_dialog_suffix (parent, title, value, select_end, NULL, check, done, data);
+}
+
+void
+fm_text_dialog_suffix (GtkWidget *parent, const char *title, const char *value, int select_end, const char *suffix,
+                       FmTextCheck check, FmTextDone done, gpointer data)
+{
   GtkWidget *content;
   VibeosDialog *dialog = fm_dialog_new (title, &content);
   TextDialog *text = g_new0 (TextDialog, 1);
@@ -130,7 +138,19 @@ fm_text_dialog (GtkWidget *parent, const char *title, const char *value, int sel
   gtk_widget_add_css_class (text->entry, "fm-name-entry");
   text->error = fm_label (NULL, "fm-field-error", 12, TRUE);
   gtk_widget_set_visible (text->error, FALSE);
-  gtk_box_append (GTK_BOX (content), text->entry);
+  if (suffix)
+    {
+      /* Compress: the field and ".zip" after it, on its line */
+      GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+      GtkWidget *label = fm_label (suffix, "fm-field-suffix", 16, FALSE);
+
+      gtk_widget_set_valign (label, GTK_ALIGN_CENTER);
+      gtk_box_append (GTK_BOX (row), text->entry);
+      gtk_box_append (GTK_BOX (row), label);
+      gtk_box_append (GTK_BOX (content), row);
+    }
+  else
+    gtk_box_append (GTK_BOX (content), text->entry);
   gtk_box_append (GTK_BOX (content), text->error);
   fm_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
   text->ok = fm_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
@@ -142,6 +162,201 @@ fm_text_dialog (GtkWidget *parent, const char *title, const char *value, int sel
   vibeos_dialog_present (dialog, parent);
   /* after the dialog's own focus, which selects all */
   g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, select_stem, text, NULL);
+}
+
+/* ---- Batch Rename ----------------------------------------------------------------------------------------------- */
+
+typedef struct {
+  GtkWidget *entry, *extension, *ok, *tokens, *more;
+  GPtrArray *labels;            /* the list's, one a name */
+  GStrv names;                  /* the names as they are */
+  FmBatchNames preview;
+  FmBatchDone done;
+  gpointer data;
+} BatchDialog;
+
+static void
+batch_free (BatchDialog *batch)
+{
+  g_ptr_array_unref (batch->labels);
+  g_strfreev (batch->names);
+  g_free (batch);
+}
+
+/* OK while the names can be made; the list shows them then, else the names as they are */
+static void
+batch_changed (GtkEditable *editable, BatchDialog *batch)
+{
+  const char *pattern = gtk_editable_get_text (GTK_EDITABLE (batch->entry));
+  const char *extension = gtk_editable_get_text (GTK_EDITABLE (batch->extension));
+  gboolean valid = *pattern && !strchr (pattern, '/') && !strchr (extension, '/');
+  g_auto(GStrv) renamed = valid && batch->preview ? batch->preview (pattern, extension, batch->data) : NULL;
+
+  gtk_widget_set_sensitive (batch->ok, valid);
+  for (guint i = 0; i < batch->labels->len; i++)
+    gtk_label_set_text (batch->labels->pdata[i], renamed ? renamed[i] : batch->names[i]);
+}
+
+/* the token at the name field's cursor, in place of what is selected there */
+static void
+batch_insert (BatchDialog *batch, const char *token)
+{
+  GtkEditable *entry = GTK_EDITABLE (batch->entry);
+  int position;
+
+  gtk_editable_delete_selection (entry);
+  position = gtk_editable_get_position (entry);
+  gtk_editable_insert_text (entry, token, -1, &position);
+  gtk_entry_grab_focus_without_selecting (GTK_ENTRY (batch->entry));
+  gtk_editable_set_position (entry, position);
+}
+
+static void
+on_batch_name (VibeosPressable *button, BatchDialog *batch)
+{
+  batch_insert (batch, FM_BATCH_NAME);
+}
+
+static void
+on_batch_number (VibeosPressable *button, BatchDialog *batch)
+{
+  batch_insert (batch, "(" FM_BATCH_NUMBER ")");
+}
+
+static void
+on_batch_more (GtkWidget *button, BatchDialog *batch)
+{
+  gtk_widget_set_visible (batch->more, FALSE);
+  gtk_widget_set_visible (batch->tokens, TRUE);
+}
+
+static void
+on_batch_response (VibeosDialog *dialog, int response, BatchDialog *batch)
+{
+  g_autofree char *pattern = g_strdup (gtk_editable_get_text (GTK_EDITABLE (batch->entry)));
+  g_autofree char *extension = g_strdup (gtk_editable_get_text (GTK_EDITABLE (batch->extension)));
+
+  /* done frees the data the preview reads */
+  batch->preview = NULL;
+  if (response == VIBEOS_RESPONSE_OK)
+    batch->done (pattern, extension, batch->data);
+  else
+    batch->done (NULL, NULL, batch->data);
+}
+
+static void
+on_batch_activate (GtkEntry *entry, VibeosDialog *dialog)
+{
+  BatchDialog *batch = g_object_get_data (G_OBJECT (dialog), "fm-batch");
+
+  if (gtk_widget_get_sensitive (batch->ok))
+    vibeos_dialog_respond (dialog, VIBEOS_RESPONSE_OK);
+}
+
+static GtkWidget *
+batch_token (const char *icon, const char *name, GCallback clicked, BatchDialog *batch)
+{
+  GtkWidget *image = gtk_image_new_from_icon_name (icon);
+  GtkWidget *button;
+
+  gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
+  button = vibeos_pressable_new (image);
+  gtk_widget_add_css_class (button, "fm-batch-token");
+  gtk_widget_set_hexpand (button, TRUE);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, name, -1);
+  gtk_widget_set_tooltip_text (button, name);
+  g_signal_connect (button, "clicked", clicked, batch);
+  return button;
+}
+
+void
+fm_batch_rename_dialog (GtkWidget *parent, const char *const *names, guint n_names, const char *extension,
+                        FmBatchNames preview, FmBatchDone done, gpointer data)
+{
+  GtkWidget *content, *list, *scroller, *row, *dot;
+  VibeosDialog *dialog = fm_dialog_new (_("Batch Rename"), &content);
+  BatchDialog *batch = g_new0 (BatchDialog, 1);
+  g_autofree char *more = NULL;
+
+  batch->preview = preview;
+  batch->done = done;
+  batch->data = data;
+  batch->labels = g_ptr_array_new ();
+  batch->names = g_strdupv ((char **) names);
+
+  /* the names, in a box of their own that scrolls past four */
+  list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  for (guint i = 0; i < n_names; i++)
+    {
+      GtkWidget *label = fm_label (names[i], "fm-batch-name", 16, FALSE);
+
+      gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_MIDDLE);
+      gtk_box_append (GTK_BOX (list), label);
+      g_ptr_array_add (batch->labels, label);
+    }
+  scroller = gtk_scrolled_window_new ();
+  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scroller), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+  gtk_scrolled_window_set_propagate_natural_height (GTK_SCROLLED_WINDOW (scroller), TRUE);
+  gtk_scrolled_window_set_max_content_height (GTK_SCROLLED_WINDOW (scroller), 4 * 31);
+  gtk_scrolled_window_set_child (GTK_SCROLLED_WINDOW (scroller), list);
+  gtk_widget_add_css_class (scroller, "fm-batch-names");
+  gtk_box_append (GTK_BOX (content), scroller);
+
+  /* MORE shows these: the old name (%%) and the number (##) at the cursor */
+  batch->tokens = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
+  gtk_widget_add_css_class (batch->tokens, "fm-batch-tokens");
+  gtk_box_append (GTK_BOX (batch->tokens), batch_token ("edit-copy-symbolic", _("Name"),
+                                                        G_CALLBACK (on_batch_name), batch));
+  gtk_box_append (GTK_BOX (batch->tokens), batch_token ("view-list-ordered-symbolic", _("Number"),
+                                                        G_CALLBACK (on_batch_number), batch));
+  gtk_widget_set_visible (batch->tokens, FALSE);
+  gtk_box_append (GTK_BOX (content), batch->tokens);
+
+  /* the new name, "." and the extension */
+  row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_widget_add_css_class (row, "fm-batch-row");
+  batch->entry = fm_entry_new (NULL);
+  batch->extension = fm_entry_new (extension);
+  gtk_widget_set_hexpand (batch->extension, FALSE);
+  gtk_editable_set_width_chars (GTK_EDITABLE (batch->extension), 4);
+  gtk_widget_set_size_request (batch->extension, 64, -1);
+  dot = fm_label (".", "fm-field-suffix", 16, FALSE);
+  gtk_widget_set_valign (dot, GTK_ALIGN_END);
+  gtk_box_append (GTK_BOX (row), batch->entry);
+  gtk_box_append (GTK_BOX (row), dot);
+  gtk_box_append (GTK_BOX (row), batch->extension);
+  gtk_box_append (GTK_BOX (content), row);
+
+  more = fm_caps (_("More"));
+  batch->more = vibeos_dialog_add_neutral_button (dialog, more);
+  g_signal_connect (batch->more, "clicked", G_CALLBACK (on_batch_more), batch);
+  fm_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  batch->ok = fm_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
+  g_object_set_data_full (G_OBJECT (dialog), "fm-batch", batch, (GDestroyNotify) batch_free);
+  g_signal_connect (batch->entry, "changed", G_CALLBACK (batch_changed), batch);
+  g_signal_connect (batch->extension, "changed", G_CALLBACK (batch_changed), batch);
+  g_signal_connect (batch->entry, "activate", G_CALLBACK (on_batch_activate), dialog);
+  g_signal_connect (batch->extension, "activate", G_CALLBACK (on_batch_activate), dialog);
+  g_signal_connect (dialog, "response", G_CALLBACK (on_batch_response), batch);
+  batch_changed (NULL, batch);
+  vibeos_dialog_present (dialog, parent);
+  gtk_widget_grab_focus (batch->entry);
+}
+
+char *
+fm_batch_name (const char *pattern, const char *stem, guint number)
+{
+  g_autofree char *count = g_strdup_printf ("%u", number);
+  g_autoptr(GString) name = g_string_new (pattern);
+
+  /* without either token every name would be the same: the number goes at the end */
+  if (!strstr (pattern, FM_BATCH_NAME) && !strstr (pattern, FM_BATCH_NUMBER))
+    g_string_append (name, " (" FM_BATCH_NUMBER ")");
+  /* the number first: a name may have "##" in it, a number never has "%%" */
+  g_string_replace (name, FM_BATCH_NUMBER, count, 0);
+  g_string_replace (name, FM_BATCH_NAME, stem, 0);
+  return g_string_free_and_steal (g_steal_pointer (&name));
 }
 
 /* ---- a question ------------------------------------------------------------------------------------------------ */
@@ -206,7 +421,6 @@ fm_list_dialog (GtkWidget *parent, const char *title, const FmListRow *rows, int
   ListDialog *list = g_new0 (ListDialog, 1);
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *scroll = spongy_scroll_view_new ();
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE_CARD);
 
   list->chosen = chosen;
   list->data = data;
@@ -235,7 +449,6 @@ fm_list_dialog (GtkWidget *parent, const char *title, const FmListRow *rows, int
       row = vibeos_pressable_new (line);
       gtk_widget_add_css_class (row, "fm-list-dialog-row");
       vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (row), VIBEOS_RIPPLE_BOUNDED, 0);
-      vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (row), &ripple);
       g_object_set_data (G_OBJECT (row), "fm-index", GINT_TO_POINTER (i));
       g_signal_connect (row, "clicked", G_CALLBACK (on_list_row), dialog);
       gtk_box_append (GTK_BOX (box), row);
@@ -330,7 +543,7 @@ property_row (GtkWidget *content, const char *label, const char *value)
   gtk_box_append (GTK_BOX (content), fm_form_row (label, text));
   gtk_widget_remove_css_class (gtk_widget_get_prev_sibling (text), "fm-form-label");
   gtk_widget_add_css_class (gtk_widget_get_prev_sibling (text), "fm-property-label");
-  vibeos_label_set_font_padding (gtk_widget_get_prev_sibling (text), 14);
+  vibeos_label_set_font_padding_sp (gtk_widget_get_prev_sibling (text), 14);
   return text;
 }
 

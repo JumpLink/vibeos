@@ -10,7 +10,8 @@
 
 G_BEGIN_DECLS
 
-GtkWidget *dictate_window_new              (GtkApplication *app);
+/* agent: Agent's window, a spoken conversation with the model on the phone (Talk) instead of the document */
+GtkWidget *dictate_window_new              (GtkApplication *app, gboolean agent);
 /* what the microphone FAB does: start listening, or stop */
 void       dictate_window_toggle_dictation (GtkWidget *window);
 

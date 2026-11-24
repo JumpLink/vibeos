@@ -56,7 +56,8 @@ make_layout (GtkWidget *widget, const char *text, double size, int weight)
   PangoFontDescription *font = pango_font_description_from_string (FAMILY);
 
   pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
-  pango_font_description_set_weight (font, weight);
+  /* a weight from 700 up is Bold text's, which draws the regular ones 300 heavier */
+  pango_font_description_set_weight (font, weight >= 700 ? vibeos_font_weight (weight - 300) : weight);
   pango_layout_set_font_description (layout, font);
   pango_font_description_free (font);
   return layout;
@@ -916,7 +917,7 @@ cam_countdown_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     return;
   text = g_strdup_printf ("%d", self->remaining);
   /* regular, made heavier by Bold text */
-  layout = make_layout (widget, text, CAM_SP_COUNTDOWN, 700);
+  layout = make_layout (widget, text, vibeos_sp (CAM_SP_COUNTDOWN), 700);
   pango_layout_get_extents (layout, NULL, &logical);
   white.alpha = 1 - self->t;
   gtk_snapshot_save (snapshot);

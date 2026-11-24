@@ -1,6 +1,6 @@
 /* The contact editor (ct-editor.h).
  *
- * The screen top to bottom: the toolbar (✕, "Create new contact" / "Edit contact", SAVE), the photo (width / 1.96),
+ * The screen top to bottom: the toolbar (✕, "Create new contact" / "Edit contact", SAVE), the photo (a square),
  * the account header ("Saving to"), then the sections in this order: name, nickname, company,
  * phone, email, address, website, event, relation, note, labels; "More fields" while any of them is hidden; and the
  * read-only IM and SIP rows ("Can't update this info").
@@ -119,6 +119,7 @@ struct _Editor {
   GSettings *settings;
   char *uid;                    /* NULL: a new contact */
   gboolean profile, is_new, from_quick;
+  gboolean external;            /* another app opened it (insert): closing goes back to that app */
   EContact *original;           /* what was loaded (a duplicate), or an empty contact */
   char *book_uid;
 
@@ -142,6 +143,7 @@ struct _Editor {
   GtkWidget *more_fields, *legacy;
   gboolean expanded;            /* "More fields" was tapped */
   char *initial_state;
+  char *opened_state;           /* the screen as opened, prefill and all: untouched while it matches */
   char *saved_name;
   gboolean saving;
 };
@@ -173,42 +175,178 @@ on_text_view_changed (GtkTextBuffer *buffer, GtkWidget *placeholder)
   gtk_widget_set_visible (placeholder, gtk_text_buffer_get_char_count (buffer) == 0);
 }
 
-/* A finger on a field that does not have the focus is the scroll view's: GtkText claims a touch the moment it
- * lands (to place the cursor or select), and a claim cancels the scroll view's drag, so a page full of fields could
- * not be scrolled by them. Until the field has the focus its touches stop here, after
- * the scroll view (an ancestor) has seen them in the capture phase; a touch that ends where it began focuses the
- * field with the cursor at the end of its text. Once focused, the field has its touches (cursor, selection). */
+/* A finger on a field is the scroll view's until it lifts near where it landed. GtkText and GtkTextView claim a touch
+ * the moment it lands (their click gesture's "pressed", to place the cursor) and again as it moves (their drag
+ * gesture's "drag-update", to drag the cursor or a selection), and a claim cancels the scroll view's drag: a page
+ * full of fields could not be scrolled by them. Those two handlers of theirs are blocked while a finger is down
+ * (a mouse keeps them), so the scroll view takes a swipe; a touch that ends near where it began is a tap, handled
+ * here: a field without the focus gets it with the cursor at the end of its text, the focused one its cursor at the
+ * tapped spot. Their "released" still runs after that, and it is what asks the shell for the keyboard
+ * (on_text_released).
+ *
+ * Until 11-21 the focused field kept its touches and the others swallowed theirs: with the keyboard up the editor
+ * would not scroll, the field in focus filling much of what the keyboard left, a swipe on it dragging its cursor
+ * (GTK's magnifier came up) instead (owner, 11-21). On Android a drag over a focused field scrolls too. */
+
+/* GTK asks for the keyboard as a tap on a field lifts (GtkText's and GtkTextView's own "released": a text-input
+ * show_input_panel), but mutter takes a text-input request in with the next commit, and GTK sends none with it: after
+ * a press of GTK's own one follows (the cursor it placed, the focus it took), after a tap handled here nothing did, and
+ * the keyboard never came (owner, 11-21). A change to the field's hints commits: one GTK hint the compositor has no
+ * use for (vertical writing; text-input has no such hint, and the shell's keyboard reads none of it), on and off. */
+static void
+on_text_released (GtkGestureClick *gesture, int n_press, double x, double y, GtkWidget *editable)
+{
+  GdkEvent *event = gtk_event_controller_get_current_event (GTK_EVENT_CONTROLLER (gesture));
+  GtkInputHints hints;
+
+  if (!event || gdk_device_get_source (gdk_event_get_device (event)) != GDK_SOURCE_TOUCHSCREEN ||
+      !gtk_widget_has_focus (editable))
+    return;
+  if (GTK_IS_TEXT (editable))
+    {
+      hints = gtk_text_get_input_hints (GTK_TEXT (editable));
+      gtk_text_set_input_hints (GTK_TEXT (editable), hints ^ GTK_INPUT_HINT_VERTICAL_WRITING);
+      gtk_text_set_input_hints (GTK_TEXT (editable), hints);
+    }
+  else if (GTK_IS_TEXT_VIEW (editable))
+    {
+      hints = gtk_text_view_get_input_hints (GTK_TEXT_VIEW (editable));
+      gtk_text_view_set_input_hints (GTK_TEXT_VIEW (editable), hints ^ GTK_INPUT_HINT_VERTICAL_WRITING);
+      gtk_text_view_set_input_hints (GTK_TEXT_VIEW (editable), hints);
+    }
+}
+
+/* @editable's own gestures, found once (observing a widget's controllers costs while the list is held) */
+static void
+find_text_gestures (GtkWidget *editable)
+{
+  GListModel *controllers = gtk_widget_observe_controllers (editable);
+
+  for (guint i = 0; i < g_list_model_get_n_items (controllers); i++)
+    {
+      g_autoptr(GObject) controller = g_list_model_get_item (controllers, i);
+
+      if (GTK_IS_GESTURE_CLICK (controller))
+        {
+          g_object_set_data (G_OBJECT (editable), "ct-click", controller);
+          g_signal_connect_after (controller, "released", G_CALLBACK (on_text_released), editable);
+        }
+      else if (GTK_IS_GESTURE_DRAG (controller))
+        g_object_set_data (G_OBJECT (editable), "ct-drag", controller);
+    }
+  g_object_unref (controllers);
+}
+
+/* @editable's own "pressed" and "drag-update" blocked (@hold) or not */
+static void
+hold_text_gestures (GtkWidget *editable, gboolean hold)
+{
+  static const struct { const char *key, *signal; } claims[] = { { "ct-click", "pressed" }, { "ct-drag", "drag-update" } };
+
+  if (GPOINTER_TO_INT (g_object_get_data (G_OBJECT (editable), "ct-held")) == hold)
+    return;
+  g_object_set_data (G_OBJECT (editable), "ct-held", GINT_TO_POINTER (hold));
+  for (guint i = 0; i < G_N_ELEMENTS (claims); i++)
+    {
+      GObject *gesture = g_object_get_data (G_OBJECT (editable), claims[i].key);
+      guint id = gesture ? g_signal_lookup (claims[i].signal, G_OBJECT_TYPE (gesture)) : 0;
+
+      if (!id)
+        continue;
+      if (hold)
+        g_signal_handlers_block_matched (gesture, G_SIGNAL_MATCH_ID | G_SIGNAL_MATCH_DATA, id, 0, NULL, NULL, editable);
+      else
+        g_signal_handlers_unblock_matched (gesture, G_SIGNAL_MATCH_ID | G_SIGNAL_MATCH_DATA, id, 0, NULL, NULL,
+                                           editable);
+    }
+}
+
+/* @event's position in @widget's coordinates */
+static gboolean
+event_point (GdkEvent *event, GtkWidget *widget, graphene_point_t *out)
+{
+  GtkNative *native = gtk_widget_get_native (widget);
+  double x, y, nx, ny;
+
+  if (!native)
+    return FALSE;
+  gdk_event_get_position (event, &x, &y);
+  gtk_native_get_surface_transform (native, &nx, &ny);
+  return gtk_widget_compute_point (GTK_WIDGET (native), widget, &GRAPHENE_POINT_INIT ((float) (x - nx), (float) (y - ny)),
+                                   out);
+}
+
+/* the cursor of the focused @editable to where @event is */
+static void
+place_cursor_at (GtkWidget *editable, GdkEvent *event)
+{
+  graphene_point_t p;
+
+  if (!event_point (event, editable, &p))
+    return;
+  if (GTK_IS_TEXT_VIEW (editable))
+    {
+      GtkTextIter iter;
+      int bx, by;
+
+      gtk_text_view_window_to_buffer_coords (GTK_TEXT_VIEW (editable), GTK_TEXT_WINDOW_WIDGET, (int) p.x, (int) p.y,
+                                             &bx, &by);
+      gtk_text_view_get_iter_at_location (GTK_TEXT_VIEW (editable), &iter, bx, by);
+      gtk_text_buffer_place_cursor (gtk_text_view_get_buffer (GTK_TEXT_VIEW (editable)), &iter);
+    }
+  else
+    {
+      /* GtkText lays its text out from its left edge, one line (scrolled sideways only when it is wider) */
+      const char *text = gtk_editable_get_text (GTK_EDITABLE (editable));
+      g_autoptr(PangoLayout) layout = gtk_widget_create_pango_layout (editable, text);
+      int index = 0, trailing = 0;
+
+      pango_layout_xy_to_index (layout, (int) (p.x * PANGO_SCALE), 0, &index, &trailing);
+      gtk_editable_set_position (GTK_EDITABLE (editable),
+                                 (int) g_utf8_pointer_to_offset (text, text + index) + trailing);
+    }
+}
+
 static gboolean
 on_field_touch (GtkEventControllerLegacy *controller, GdkEvent *event, GtkWidget *editable)
 {
   static double start_x, start_y;
   GdkEventType type = gdk_event_get_event_type (event);
+  gboolean focused = gtk_widget_has_focus (editable);
   double x, y;
 
-  if (gtk_widget_has_focus (editable) || gtk_widget_has_focus (gtk_widget_get_parent (editable))
-      || (type != GDK_TOUCH_BEGIN && type != GDK_TOUCH_UPDATE && type != GDK_TOUCH_END && type != GDK_TOUCH_CANCEL))
+  if (type != GDK_TOUCH_BEGIN && type != GDK_TOUCH_UPDATE && type != GDK_TOUCH_END && type != GDK_TOUCH_CANCEL)
     return GDK_EVENT_PROPAGATE;
   gdk_event_get_position (event, &x, &y);
   if (type == GDK_TOUCH_BEGIN)
     {
       start_x = x;
       start_y = y;
+      hold_text_gestures (editable, TRUE);
     }
   else if (type == GDK_TOUCH_END && hypot (x - start_x, y - start_y) < CT_TOUCH_SLOP_DP)
     {
-      gtk_widget_grab_focus (editable);
-      if (GTK_IS_TEXT_VIEW (editable))
-        {
-          GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (editable));
-          GtkTextIter end;
-
-          gtk_text_buffer_get_end_iter (buffer, &end);
-          gtk_text_buffer_place_cursor (buffer, &end);
-        }
+      if (focused)
+        place_cursor_at (editable, event);
       else
-        gtk_editable_set_position (GTK_EDITABLE (editable), -1);
+        {
+          gtk_widget_grab_focus (editable);
+          if (GTK_IS_TEXT_VIEW (editable))
+            {
+              GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (editable));
+              GtkTextIter end;
+
+              gtk_text_buffer_get_end_iter (buffer, &end);
+              gtk_text_buffer_place_cursor (buffer, &end);
+            }
+          else
+            gtk_editable_set_position (GTK_EDITABLE (editable), -1);
+        }
     }
-  return GDK_EVENT_STOP;
+  /* the end's "released" (the keyboard) is not one of the two */
+  if (type == GDK_TOUCH_END || type == GDK_TOUCH_CANCEL)
+    hold_text_gestures (editable, FALSE);
+  return GDK_EVENT_PROPAGATE;
 }
 
 /* A text field: the text with the underline under it, thicker and in the accent colour when focused.
@@ -261,12 +399,16 @@ field_new (const char *hint, const char *text, gboolean multiline, GtkInputPurpo
     }
   gtk_widget_set_vexpand (input, TRUE);
   gtk_box_append (GTK_BOX (field), input);
+  /* the input fills the field, but the field takes none of the page's spare height: on a tablet held upright the page
+   * is taller than the form, and every field grew to share it */
+  gtk_widget_set_vexpand (field, FALSE);
   {
     GtkEventController *touch = gtk_event_controller_legacy_new ();
 
     gtk_event_controller_set_propagation_phase (touch, GTK_PHASE_CAPTURE);
     g_signal_connect (touch, "event", G_CALLBACK (on_field_touch), *editable);
     gtk_widget_add_controller (input, touch);
+    find_text_gestures (*editable);
   }
   return field;
 }
@@ -1070,11 +1212,8 @@ static void
 ed_photo_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
                   int *minimum_baseline, int *natural_baseline)
 {
-  /* as wide as the screen, width / 1.96 tall */
-  if (orientation == GTK_ORIENTATION_VERTICAL)
-    *minimum = *natural = (int) round ((for_size > 0 ? for_size : 360) / CT_ED_PHOTO_RATIO);
-  else
-    *minimum = *natural = 0;
+  /* a square */
+  *minimum = *natural = CT_ED_PHOTO_DP;
 }
 
 static GtkSizeRequestMode
@@ -1219,6 +1358,8 @@ photo_area (Editor *editor)
 
   ED_PHOTO (photo)->editor = editor;
   editor->photo = photo;
+  gtk_widget_set_halign (button, GTK_ALIGN_CENTER);
+  gtk_widget_set_margin_top (button, CT_ED_PHOTO_TOP_DP);
   gtk_widget_add_css_class (button, "ct-ed-photo-button");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
   g_signal_connect (button, "clicked", G_CALLBACK (on_photo_tapped), editor);
@@ -1627,11 +1768,19 @@ close_editor (Editor *editor, const char *saved_uid)
 {
   GtkWidget *window = editor->window;
   CtStore *store = editor->store;
-  gboolean from_quick = editor->from_quick;
+  gboolean from_quick = editor->from_quick, external = editor->external;
   g_autofree char *uid = g_strdup (saved_uid);
 
   g_object_ref (store);
   ct_window_pop (window, editor->page);
+  /* opened by another app (the Dialer's Create new contact): back to that app, saved or not, as the editor activity
+   * in the caller's task finishes on Android; Contacts stays where it was under it */
+  if (external)
+    {
+      gtk_window_minimize (GTK_WINDOW (window));
+      g_object_unref (store);
+      return;
+    }
   /* the saved contact's card, unless the editor was opened from it (it is under the editor, and up to date) */
   if (uid && !from_quick)
     show_card (window, store, uid);
@@ -1744,6 +1893,7 @@ editor_free (gpointer data)
   g_free (editor->photo_tint_uid);
   g_free (editor->book_uid);
   g_free (editor->initial_state);
+  g_free (editor->opened_state);
   g_free (editor->saved_name);
   g_signal_handlers_disconnect_by_data (editor->store, editor);
   g_object_unref (editor->store);
@@ -1786,6 +1936,20 @@ load_rows (Editor *editor, EContact *contact, EContact *extra)
     }
 }
 
+/* The form on a tablet: the phone's, in a column in the middle of the page beside the rail. At the window's full
+ * width the fields ran 1200 dp wide (owner, 11-21). A phone keeps the full width. */
+static void
+fit_column (GtkWidget *content)
+{
+  Editor *editor = g_object_get_data (G_OBJECT (content), "ct-editor");
+  VibeosLayout *layout = vibeos_layout_get_for_window (GTK_WINDOW (editor->window));
+  int page = vibeos_layout_get_width (layout) - (int) CT_RAIL_W_DP;
+  int margin = vibeos_layout_is_tablet (layout) ? MAX (0, (page - CT_ED_COLUMN_MAX_DP) / 2) : 0;
+
+  gtk_widget_set_margin_start (content, margin);
+  gtk_widget_set_margin_end (content, margin);
+}
+
 GtkWidget *
 ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill)
 {
@@ -1802,6 +1966,7 @@ ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill)
 
   editor->page = page;
   editor->window = window;
+  g_object_set_data (G_OBJECT (page), "ct-editor", editor);
   editor->store = g_object_ref (ct_window_get_store (window));
   editor->settings = g_object_ref (ct_window_get_settings (window));
   editor->profile = g_strcmp0 (uid, CT_PROFILE_UID) == 0;
@@ -1887,6 +2052,10 @@ ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill)
 
   editor->scroll = spongy_scroll_view_new ();
   spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (editor->scroll), editor->content);
+  g_object_set_data (G_OBJECT (editor->content), "ct-editor", editor);
+  g_signal_connect_object (vibeos_layout_get_for_window (GTK_WINDOW (window)), "changed", G_CALLBACK (fit_column),
+                           editor->content, G_CONNECT_SWAPPED);
+  fit_column (editor->content);
   gtk_widget_set_vexpand (editor->scroll, TRUE);
   frame = gtk_overlay_new ();
   gtk_overlay_set_child (GTK_OVERLAY (frame), editor->scroll);
@@ -1905,6 +2074,7 @@ ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill)
   {
     char *state = editor_state (editor);
 
+    editor->opened_state = g_strdup (state);
     if (editor->is_new && prefill)
       {
         g_free (state);
@@ -1914,4 +2084,25 @@ ct_editor_new (GtkWidget *window, const char *uid, EContact *prefill)
   }
   g_signal_connect_after (page, "map", G_CALLBACK (on_map), editor);
   return page;
+}
+
+void
+ct_editor_set_external (GtkWidget *page)
+{
+  Editor *editor = g_object_get_data (G_OBJECT (page), "ct-editor");
+
+  if (editor)
+    editor->external = TRUE;
+}
+
+gboolean
+ct_editor_is_untouched_external (GtkWidget *page)
+{
+  Editor *editor = page ? g_object_get_data (G_OBJECT (page), "ct-editor") : NULL;
+  g_autofree char *now = NULL;
+
+  if (!editor || !editor->external || editor->saving)
+    return FALSE;
+  now = editor_state (editor);
+  return g_strcmp0 (now, editor->opened_state) == 0;
 }

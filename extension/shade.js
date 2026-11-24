@@ -1,7 +1,12 @@
-// The notification shade. Pulled from the status bar it tracks the finger 1:1 over H = 2190 px; on release it flings
-// open (motion.js's fling) with an overshoot that springs back, or flings closed. Behind it the screen blurs and zooms
-// out (depth controller); in front, the QQS and the notifications scrim, whose top (stackY) is also the QS clip edge.
+// The notification shade. Pulled from the status bar it tracks the finger over its layout's travel (shadelayout.js; a
+// phone's 2190 px); on release it flings open (motion.js's fling) with an overshoot that springs back, or flings closed.
 // Dragged down once open, the QS expands; dragged up, the shade closes.
+//
+// A phone's: behind it the screen blurs, dims and zooms out (depth controller) and the status bar fades; in front, the
+// first two rows of tiles and the notification panel, whose top (stackY) comes down from the status bar and is also
+// the edge the quick settings are cut at, so the tiles are uncovered as it passes them. The header and the
+// notifications fade in at the end. The second pull takes the panel down off the screen as it fades.
+// A tablet's: an opaque scrim comes down as a sheet, the quick settings and the panel with it (_applyTablet).
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
@@ -14,14 +19,16 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {animate, Animator, clamp, FAST_OUT_SLOW_IN, fling, lerp, MIN_FLING_VELOCITY, Spring,
     VelocityTracker} from './motion.js';
 import {NotificationStack} from './notifications.js';
-import {Color, rgba, SHADE_PANEL} from './palette.js';
-import {QQS_HEIGHT, QSPanel} from './qs.js';
+import {Color, rgba, SHADE_PANEL, TabletShade} from './palette.js';
+import {clipAbove, QSPanel} from './qs.js';
 import {wholeFrames} from './redraws.js';
-import {px, SCALE, SCREEN_H} from './units.js';
+import {shadeLayout} from './shadelayout.js';
+import {BAR_HEIGHT} from './statusbar.js';
+import {geometry, HEIGHT, px, SCALE, SCREEN_H} from './units.js';
 
 // --- the shade's geometry and motion, screen px
-const H = 2190;                         // the height the finger tracks over
-const QS_TRAVEL = 1680;                 // the stack's way from the QQS (644) to below the screen, q 0 -> 1
+let H = 2190;                           // the height the finger tracks over (the layout's travel)
+let QS_TRAVEL = 1636;                   // the second pull's way, q 0 -> 1 (the layout's qsTravel)
 const OVERSHOOT = 48;                   // at 4500 px/s and above; 20 % of it at rest
 const OVERSHOOT_FULL_VELOCITY = 4500;
 const SPRING_BACK_MS = 400;
@@ -30,8 +37,6 @@ const QS_OPPOSITE_MS = 350;
 const TOUCH_SLOP = 24;
 const CUTOFF = 0.5;
 const STACK_START_FRACTION = 0.5;
-const SCRIM_TOP_PADDING = 48;           // between the scrim top and the stack's first row
-const SCRIM_RADIUS = 96;                // the scrim's top corners
 const BLUR_MIN = 1;
 const BLUR_MAX = 102;                   // the blur radius with the shade open
 const BLUR_INTERACTION = 0.8;           // the rest is the spring
@@ -41,6 +46,8 @@ const BLUR_VELOCITY_MAX = 3000;
 const ZOOM_LAUNCHER = 0.05;
 const ZOOM_APP = 0.025;
 const MIRROR_MS = 150;                  // the shade fading away around the brightness slider
+const TABLET_FADE_FROM = 0.15;          // a tablet's quick settings and panel fade in over this part of the pull...
+const TABLET_FADE_TO = 0.7;             // ... as they come down
 
 // the content's alpha over the expansion f: 0 below f 0.417, 0.164 at 0.5, 0.837 at 0.7
 export function contentAlpha(f) {
@@ -91,21 +98,19 @@ export const Shade = GObject.registerClass({
         });
         this.add_child(this._tint);
 
-        this._qs = new QSPanel(state, this, statusBar.cutout);
+        this._qs = new QSPanel(state, this);
         this.add_child(this._qs);
 
-        // the notifications scrim: from stackY down, rounded at the top, half opaque, faded in with f
-        const r = px(SCRIM_RADIUS).toFixed(2);
-        this._scrim = new St.Widget({
-            width: this.width,
-            height: px(SCREEN_H + SCRIM_RADIUS),
-            style: `background-color: ${rgba(Color.notificationScrim, 0.5)}; border-radius: ${r}px ${r}px 0 0;`,
-            opacity: 0,
-        });
+        // the notification panel: from stackY down, rounded at the top (shaped and coloured by the layout)
+        this._scrim = new St.Widget({width: this.width, height: px(SCREEN_H), opacity: 0});
         this.add_child(this._scrim);
 
         this._stack = new NotificationStack(this);
         this.add_child(this._stack);
+
+        // a turned screen: the shade and its full-screen layers cover it as it is now
+        geometry.connectObject('changed', () => this._fit(), this);
+        this._layout = null;            // shadelayout.js's
 
         // expansion: f (0..1), the overshoot in px, the QS expansion q (0..1)
         this._f = 0;
@@ -114,6 +119,8 @@ export const Shade = GObject.registerClass({
         this._mirror = 0;
         this._stackY = 0;
         this._tracking = false;
+        this._dragToQs = false;         // the drag is a two-finger pull
+        this._qsAfterOpen = false;      // ... let go before the quick settings: they open after the shade
         this._velocity = new VelocityTracker();
 
         // the blur's spring (the part of the blur BLUR_INTERACTION leaves it) and its bookkeeping
@@ -137,10 +144,27 @@ export const Shade = GObject.registerClass({
         this._pull.connect('end', () => this._endDrag(false));
         this._pull.connect('cancel', () => this._endDrag(true));
         statusBar.add_action(this._pull);
+        // a phone's: two fingers pulled from the status bar open the shade straight into all the quick settings
+        this._pullQs = new Clutter.PanGesture({
+            pan_axis: Clutter.PanAxis.Y,
+            min_n_points: 2,
+            max_n_points: 2,
+            begin_threshold: px(TOUCH_SLOP),
+        });
+        this._pullQs.connect('may-recognize', () => !Main.sessionMode.isLocked && this._layout.phone &&
+            QS_TRAVEL > 0);
+        this._pullQs.connect('recognize', g => this._beginDrag(g, false, null, true));
+        this._pullQs.connect('pan-update', g => this._updateDrag(g));
+        this._pullQs.connect('end', () => this._endDrag(false));
+        this._pullQs.connect('cancel', () => this._endDrag(true));
+        statusBar.add_action(this._pullQs);
         // at shutdown the status bar may go first
-        statusBar.connectObject('destroy', () => {
-            this._statusBar = null;
-        }, this);
+        statusBar.connectObject(
+            'destroy', () => {
+                this._statusBar = null;
+            },
+            'content-changed', () => this._barChanged(),
+            this);
 
         // drags on the open shade: down expands the QS, up collapses QS and then the shade
         this._pan = new Clutter.PanGesture({
@@ -160,12 +184,14 @@ export const Shade = GObject.registerClass({
             const point = g.get_point_coords(0);
             const target = global.stage.get_actor_at_pos(Clutter.PickMode.REACTIVE,
                 this.x + point.x, this.y + point.y);
-            if (target === this && point.y * SCALE > this._stackY)
+            // on the scrim anywhere under the header
+            if (target === this && point.y * SCALE > this._layout.header.height)
                 this.close();
         });
         this.add_action(this._tap);
 
         this.connect('destroy', () => this._onDestroy());
+        this._fitLayout();
     }
 
     get expansion() {
@@ -183,7 +209,7 @@ export const Shade = GObject.registerClass({
 
     // where the stack's first row is, screen px, and whether it shows @notification expanded
     get notificationsTop() {
-        return this._stackY + SCRIM_TOP_PADDING;
+        return this._stackY + this._layout.rows.top;
     }
 
     rowExpanded(notification) {
@@ -214,17 +240,20 @@ export const Shade = GObject.registerClass({
     _setPosition(p, maxP) {
         p = clamp(p, 0, maxP);
         this._f = Math.min(p, H) / H;
-        this._q = Math.max(p - H, 0) / QS_TRAVEL;
+        this._q = QS_TRAVEL > 0 ? Math.max(p - H, 0) / QS_TRAVEL : 0;
         this._queueApply();
     }
 
-    _beginDrag(gesture, open, startP = null) {
+    // @toQs: a two-finger pull, which runs through the first pull and the second in one way of the finger
+    _beginDrag(gesture, open, startP = null, toQs = false) {
+        this._qsAfterOpen = false;
         // on the open shade a drag on a long stack scrolls it first (NPVC: canCollapsePanelOnTouch, QS expands
         // only from the stack's top)
         if (open && this._f === 1 && this._q === 0 && !this._anim) {
             const begin = gesture.get_begin_centroid_abs().y;
             const up = gesture.get_centroid_abs().y < begin;
-            if (this._stack.canScroll(begin * SCALE, up)) {
+            const x = this._layout ? (gesture.get_begin_centroid_abs().x - this.x) * SCALE : null;
+            if (this._stack.canScroll(begin * SCALE, up, x)) {
                 this._scrolling = true;
                 this._dragStartY = gesture.get_centroid_abs().y;
                 this._velocity.clear();
@@ -237,6 +266,7 @@ export const Shade = GObject.registerClass({
         this._stopAnimation();
         this._tracking = true;
         this._dragOpen = open;
+        this._dragToQs = toQs;
         this._dragStartP = startP ?? this._position;
         this._dragStartY = gesture.get_centroid_abs().y;
         this._velocity.clear();
@@ -263,8 +293,12 @@ export const Shade = GObject.registerClass({
             return;
         this._trackVelocity(gesture);
         const dy = (gesture.get_centroid_abs().y - this._dragStartY) * SCALE;
-        // a pull from the status bar stops at the QQS; on the open shade the drag reaches the full QS
-        this._setPosition(this._dragStartP + dy, this._dragOpen ? H + QS_TRAVEL : H);
+        // a pull from the status bar stops at the QQS; on the open shade the drag reaches the full QS, as does a
+        // two-finger pull over the same way as a one-finger one
+        if (this._dragToQs)
+            this._setPosition(this._dragStartP + dy * (H + QS_TRAVEL) / H, H + QS_TRAVEL);
+        else
+            this._setPosition(this._dragStartP + dy, this._dragOpen ? H + QS_TRAVEL : H);
     }
 
     _endDrag(cancelled) {
@@ -283,6 +317,8 @@ export const Shade = GObject.registerClass({
             this._flingQs(expand, v);
         } else {
             const expand = Math.abs(v) >= MIN_FLING_VELOCITY ? v > 0 : this._f > CUTOFF;
+            // a two-finger pull let go short of the quick settings opens them once the shade is open
+            this._qsAfterOpen = expand && this._dragToQs;
             this._flingPanel(expand, v);
         }
     }
@@ -424,10 +460,21 @@ export const Shade = GObject.registerClass({
     }
 
     _settled() {
+        if (this._qsAfterOpen) {
+            this._qsAfterOpen = false;
+            this._flingQs(true, 0);
+            return;
+        }
+        this._queueApply();
+    }
+
+    // the stack's "No notifications" came or went: the panel goes or comes with it
+    stackEmptyChanged() {
         this._queueApply();
     }
 
     _closed() {
+        this._qsAfterOpen = false;
         this._f = 0;
         this._q = 0;
         this._over = 0;
@@ -504,27 +551,40 @@ export const Shade = GObject.registerClass({
     }
 
     _apply() {
-        const f = this._f, q = this._q, over = this._over, m = this._mirror;
-        const shown = f > 0;
-        this.visible = shown || this._tracking;
+        if (this._layout.phone)
+            this._applyPhone();
+        else
+            this._applyTablet();
+    }
+
+    // A phone's: the panel's top comes down from the status bar's bottom to the layout's, then the second pull takes it
+    // down off the screen. The quick settings are cut at it, its cards fade in with the header at the end of the pull
+    // (contentAlpha), and the panel itself shows from the start, with the blur and the dim behind.
+    _applyPhone() {
+        const f = this._f, q = this._q, over = this._over, m = this._mirror, layout = this._layout;
+        this.visible = f > 0 || this._tracking;
         this._updateDepth(f);
 
-        const stackY = lerp(0, QQS_HEIGHT + over, f) + q * QS_TRAVEL;
-        this._stackY = stackY;
+        const {panel, header} = layout;
+        const top = lerp(header.height, panel.top + over, f) + q * (HEIGHT - panel.top);
+        this._stackY = top;
         const content = contentAlpha(f);
 
-        // the tiles squish with the stack's expansion fraction, not counting the shelf
-        const end = SCREEN_H - QQS_HEIGHT;
-        const squish = clamp((lerp(STACK_START_FRACTION, 1, f) * end - SCRIM_TOP_PADDING) /
-            (end - SCRIM_TOP_PADDING));
-
         this._tint.opacity = Math.round(255 * f * (1 - m));
-        this._qs.layoutFor({q, squish, contentAlpha: content, mirror: m});
-        this._qs.set_clip(0, 0, this.width, Math.max(px(stackY), 0));
+        this._qs.layoutFor({q, contentAlpha: content, mirror: m});
+        this._qs.set_clip(0, 0, this.width, Math.max(px(top), 0));
+        // the status bar fades as the screen behind blurs; the header takes its line
+        if (this._statusBar) {
+            this._statusBar.opacity = Math.round(255 * (1 - notificationScrimAlpha(f) * (1 - m)));
+            this._statusBar.setLineHidden(content > 0);
+        }
 
-        this._scrim.set_position(0, px(stackY));
-        this._scrim.opacity = Math.round(255 * f * (1 - m));
-        this._stack.layoutFor({stackY, ratio: squish, alpha: content * (1 - m)});
+        const away = 1 - clamp(q);
+        this._scrim.set_position(px(panel.x), px(top));
+        this._scrim.opacity = Math.round(255 * f * (1 - m) * away * (1 - this._stack.emptyAlpha));
+        this._scrim.visible = this._scrim.opacity > 0;
+        this._stack.layoutFor({stackY: top, ratio: lerp(STACK_START_FRACTION, 1, f), alpha: content * (1 - m) * away,
+            clipTop: header.height});
 
         this._applyBlur();
         this.emit('expansion-changed');
@@ -619,7 +679,98 @@ export const Shade = GObject.registerClass({
         }
     }
 
+    // A tablet's shade: the screen behind neither blurs nor zooms. An opaque scrim comes down from the top as a sheet
+    // whose edge follows the pull. The quick settings and the notification panel come down with the finger, from a
+    // whole pull above their places, out from under the header, fading in; a fast fling takes them a little past, they
+    // spring back, and closing they go back up the same way. Upright the second pull takes the panel on down off the
+    // screen as it fades. With no notifications there is no panel: "No notifications" on the scrim.
+    _applyTablet() {
+        const f = this._f, q = this._q, m = this._mirror, layout = this._layout;
+        this.visible = f > 0 || this._tracking;
+        const content = FAST_OUT_SLOW_IN(clamp((f - TABLET_FADE_FROM) / (TABLET_FADE_TO - TABLET_FADE_FROM)));
+        const slide = (f - 1) * H + this._over;
+
+        // The scrim is a sheet that comes down from the top as the phone's panel does, not the whole screen going
+        // grey at once: the shade shows only above its edge, which follows the pull (and a fling's overshoot) from
+        // the header's bottom (the clock and the icons are there from the start) to the screen's
+        const {panel, header} = layout;
+        const edge = Math.max(f * this.height + px(this._over), px(header.height));
+        this.set_clip(0, 0, this.width, Math.min(edge, this.height));
+        const scrim = notificationScrimAlpha(f);
+        this._tint.opacity = Math.round(255 * (1 - m));
+        this._qs.layoutFor({q, contentAlpha: content, mirror: m, slide});
+        // the header draws the status bar's clock and icons at their places while the shade shows, the bar's own
+        // hidden under them; the rest of the bar fades as the scrim comes
+        if (this._statusBar) {
+            this._statusBar.opacity = Math.round(255 * (1 - scrim * (1 - m)));
+            this._statusBar.setLineHidden(this.visible);
+        }
+
+        const top = panel.top + slide + q * (HEIGHT - panel.top);
+        this._stackY = top;
+        const alpha = content * (1 - m) * (1 - q);
+        this._scrim.set_position(px(panel.x), px(top));
+        this._scrim.opacity = Math.round(255 * alpha * (1 - this._stack.emptyAlpha));
+        this._scrim.visible = this._scrim.opacity > 0;
+        clipAbove(this._scrim, px(header.height));
+        this._stack.layoutFor({stackY: top, ratio: lerp(STACK_START_FRACTION, 1, f), alpha,
+            endShift: panel.roundBottom ? slide : 0, clipTop: header.height});
+        this.emit('expansion-changed');
+    }
+
+    _fit() {
+        const monitor = Main.layoutManager.primaryMonitor;
+        this.set_position(monitor.x, monitor.y);
+        this.set_size(monitor.width, monitor.height);
+        this._blurLayer.set_size(monitor.width, monitor.height);
+        this._tint.set_size(monitor.width, monitor.height);
+        this._scrim.width = monitor.width;
+        this._fitLayout();
+    }
+
+    // the layout for the screen as it is turned now: a turn to landscape leaves no second pull to be in
+    _fitLayout() {
+        const layout = this._layout = shadeLayout(this._statusBar?.barHeight ?? BAR_HEIGHT);
+        H = layout.travel;
+        QS_TRAVEL = layout.qsTravel;
+        if (QS_TRAVEL === 0)
+            this._q = 0;
+        const {panel} = layout;
+        const r = px(panel.radius).toFixed(2);
+        if (layout.phone) {
+            // translucent over the blurred screen: the dim, and a half opaque panel
+            this._tint.style = `background-color: ${rgba(SHADE_PANEL[0].map(Math.round), SHADE_PANEL[1])};`;
+            this._scrim.style = `background-color: ${rgba(Color.notificationScrim, 0.5)}; ` +
+                `border-radius: ${r}px ${r}px 0 0;`;
+        } else {
+            this._tint.style = `background-color: ${rgba(TabletShade.scrim)};`;
+            this._scrim.style = `background-color: ${rgba(TabletShade.panel)}; ` +
+                `border-radius: ${panel.roundBottom ? `${r}px` : `${r}px ${r}px 0 0`};`;
+            this._qs.remove_clip();
+        }
+        // a panel that runs off the bottom of the screen is a pull longer, so its end never shows on the way down
+        this._scrim.set_size(px(panel.width), px(panel.height + (panel.roundBottom ? 0 : H)));
+        this._qs.setLayout(layout);
+        this._syncBarLine();
+        this._stack.setFrame(layout.rows);
+        this._queueApply();
+    }
+
+    // the status bar laid out again (a turn, the clock's minute): a phone's header is the bar's height, and the header
+    // draws the clock and the icons where the bar has them
+    _barChanged() {
+        if (this._layout?.phone && this._layout.header.height !== this._statusBar.barHeight)
+            this._fitLayout();
+        else
+            this._syncBarLine();
+    }
+
+    _syncBarLine() {
+        if (this._layout && this._statusBar)
+            this._qs.setBarLine(this._statusBar.contentLine);
+    }
     _onDestroy() {
+        geometry.disconnectObject(this);
         wholeFrames(this, false);
         this._stopAnimation();
         this._blurAnim?.stop();
@@ -628,6 +779,11 @@ export const Shade = GObject.registerClass({
             global.compositor.get_laters().remove(this._applyId);
         this._ungrab();
         this._statusBar?.remove_action(this._pull);
+        this._statusBar?.remove_action(this._pullQs);
+        if (this._statusBar) {
+            this._statusBar.opacity = 255;
+            this._statusBar.setLineHidden(false);
+        }
         global.window_group.set_scale(1, 1);
         global.window_group.set_translation(0, 0, 0);
     }

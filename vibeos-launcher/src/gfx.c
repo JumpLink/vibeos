@@ -45,6 +45,9 @@ static struct {
 
   State                 state;
   GArray               *stack;      /* State */
+  float                 hole[4];    /* gfx_occlude's, screen x0 y0 x1 y1; x1 <= x0 = none */
+  bool                  count_fill;
+  double                fill_blend, fill_opaque;
 } G;
 
 static void
@@ -220,11 +223,36 @@ gfx_frame_begin (void)
   return true;
 }
 
+/* the px of the pass a quad's fragments are shaded for (its clip is the shader's, not the rasterizer's: no less) */
+static double
+shaded (const GfxInst *q)
+{
+  bool edges = q->mode == GFX_MODE_PIECE;
+  float w = edges ? q->w - q->x : q->w, h = edges ? q->h - q->y : q->h;
+  if (q->m[1] != 0 || q->m[2] != 0)
+    return fabs (q->m[0] * q->m[3] - q->m[1] * q->m[2]) * w * h;
+  float x0 = q->m[0] * q->x + q->tx, x1 = q->m[0] * (q->x + w) + q->tx;
+  float y0 = q->m[3] * q->y + q->ty, y1 = q->m[3] * (q->y + h) + q->ty;
+  float sw = MIN (MAX (x0, x1), G.pass_w) - MAX (MIN (x0, x1), 0);
+  float sh = MIN (MAX (y0, y1), G.pass_h) - MAX (MIN (y0, y1), 0);
+  return sw > 0 && sh > 0 ? (double) sw * sh : 0;
+}
+
 static void
 flush_batch (void)
 {
   if (!G.batch_count)
     return;
+  if (G.count_fill) {
+    const GfxInst *q = &G.inst[G.batch_first];
+    double px = 0;
+    for (uint32_t i = 0; i < G.batch_count; i++)
+      px += shaded (&q[i]);
+    if (G.batch_pipe == GFX_PIPE_OPAQUE)
+      G.fill_opaque += px;
+    else
+      G.fill_blend += px;
+  }
   G.b->draw (G.batch_pipe, G.batch_tex, &G.push, G.batch_first, G.batch_count);
   G.batch_first += G.batch_count;
   G.batch_count = 0;
@@ -248,6 +276,7 @@ gfx_pass_begin (GfxTex *target, GfxColor c)
   G.in_pass = true;
   state_identity (&G.state);
   g_array_set_size (G.stack, 0);
+  memset (G.hole, 0, sizeof G.hole);
 }
 
 void
@@ -340,6 +369,69 @@ gfx_clip (float x0, float y0, float x1, float y1)
   s->clip[0] = sx0; s->clip[1] = sy0; s->clip[2] = sx1; s->clip[3] = sy1;
 }
 
+/* ---- fill (VIBEOS_STATS) -------------------------------------------------------------------------------------- */
+
+void
+gfx_count_fill (bool on)
+{
+  G.count_fill = on;
+}
+
+void
+gfx_fill (double *blended, double *opaque)
+{
+  *blended = G.fill_blend;
+  *opaque = G.fill_opaque;
+  G.fill_blend = G.fill_opaque = 0;
+}
+
+/* ---- what will be covered ------------------------------------------------------------------------------------ */
+
+void
+gfx_occlude (float x0, float y0, float x1, float y1)
+{
+  G.hole[0] = x0; G.hole[1] = y0; G.hole[2] = x1; G.hole[3] = y1;
+}
+
+/* The parts of a rect of the current space outside the hole: the band above it, the one below and the two beside,
+ * as many as there are (0: all of it is in the hole). -1: the hole leaves it whole, or the transform is no plain
+ * scale and move. A part's edges along the hole lie on its whole pixels, so the parts meet without a seam. */
+static int
+around_hole (float x, float y, float w, float h, float out[4][4])
+{
+  const State *s = &G.state;
+  if (G.hole[2] <= G.hole[0] || s->m[1] != 0 || s->m[2] != 0 || s->m[0] <= 0 || s->m[3] <= 0)
+    return -1;
+  float hx0 = (G.hole[0] - s->t[0]) / s->m[0], hx1 = (G.hole[2] - s->t[0]) / s->m[0];
+  float hy0 = (G.hole[1] - s->t[1]) / s->m[3], hy1 = (G.hole[3] - s->t[1]) / s->m[3];
+  float ix0 = MAX (x, hx0), ix1 = MIN (x + w, hx1), iy0 = MAX (y, hy0), iy1 = MIN (y + h, hy1);
+  if (ix1 <= ix0 || iy1 <= iy0)
+    return -1;
+  int n = 0;
+  if (iy0 > y)
+    memcpy (out[n++], (float[4]) { x, y, w, iy0 - y }, sizeof out[0]);
+  if (iy1 < y + h)
+    memcpy (out[n++], (float[4]) { x, iy1, w, y + h - iy1 }, sizeof out[0]);
+  if (ix0 > x)
+    memcpy (out[n++], (float[4]) { x, iy0, ix0 - x, iy1 - iy0 }, sizeof out[0]);
+  if (ix1 < x + w)
+    memcpy (out[n++], (float[4]) { ix1, iy0, x + w - ix1, iy1 - iy0 }, sizeof out[0]);
+  return n;
+}
+
+/* all of a rect of the current space in the hole, its antialiased edge too */
+static bool
+hidden (float x, float y, float w, float h)
+{
+  const State *s = &G.state;
+  if (G.hole[2] <= G.hole[0] || s->m[1] != 0 || s->m[2] != 0)
+    return false;
+  float x0 = s->m[0] * x + s->t[0], x1 = s->m[0] * (x + w) + s->t[0];
+  float y0 = s->m[3] * y + s->t[1], y1 = s->m[3] * (y + h) + s->t[1];
+  return MIN (x0, x1) - 1 >= G.hole[0] && MAX (x0, x1) + 1 <= G.hole[2] &&
+         MIN (y0, y1) - 1 >= G.hole[1] && MAX (y0, y1) + 1 <= G.hole[3];
+}
+
 /* ---- drawing -------------------------------------------------------------------------------------------------- */
 
 GfxInst *
@@ -379,6 +471,10 @@ gfx_effect_params (const float p[8])
 static GfxInst *
 solid (float x, float y, float w, float h, float radius, GfxColor c)
 {
+  if (hidden (x, y, w, h)) {
+    static GfxInst scratch;                   /* to be covered: not drawn */
+    return &scratch;
+  }
   GfxInst *q = gfx_push (NULL, GFX_PIPE_QUAD);
   float a = c.a * q->a;
   q->x = x; q->y = y; q->w = w; q->h = h;
@@ -392,7 +488,14 @@ solid (float x, float y, float w, float h, float radius, GfxColor c)
 void
 gfx_rect (float x, float y, float w, float h, float radius, GfxColor c)
 {
-  solid (x, y, w, h, radius, c);
+  float parts[4][4];
+  int n = radius == 0 ? around_hole (x, y, w, h, parts) : -1;
+  if (n < 0) {
+    solid (x, y, w, h, radius, c);
+    return;
+  }
+  for (int i = 0; i < n; i++)
+    solid (parts[i][0], parts[i][1], parts[i][2], parts[i][3], 0, c);
 }
 
 void
@@ -415,6 +518,8 @@ void
 gfx_image_uv (GfxTex *t, float x, float y, float w, float h, float u0, float v0, float u1, float v1,
               float radius, float alpha)
 {
+  if (hidden (x, y, w, h))
+    return;
   GfxInst *q = gfx_push (t, GFX_PIPE_QUAD);
   float a = alpha * q->a;
   q->x = x; q->y = y; q->w = w; q->h = h;
@@ -428,6 +533,48 @@ void
 gfx_image (GfxTex *t, float x, float y, float w, float h, float radius, float alpha)
 {
   gfx_image_uv (t, x, y, w, h, 0, 0, 1, 1, radius, alpha);
+}
+
+void
+gfx_image_piece (GfxTex *t, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1)
+{
+  if (hidden (x0, y0, x1 - x0, y1 - y0))
+    return;
+  GfxInst *q = gfx_push (t, GFX_PIPE_QUAD);
+  float a = q->a;
+  q->x = x0; q->y = y0; q->w = x1; q->h = y1;
+  q->u0 = u0; q->v0 = v0; q->u1 = u1; q->v1 = v1;
+  q->r = q->g = q->b = q->a = a;
+  q->mode = GFX_MODE_PIECE;
+}
+
+static void
+opaque (GfxTex *t, float x, float y, float w, float h, float u0, float v0, float u1, float v1)
+{
+  GfxInst *q = gfx_push (t, GFX_PIPE_OPAQUE);
+  q->x = x; q->y = y; q->w = w; q->h = h;
+  q->u0 = u0; q->v0 = v0; q->u1 = u1; q->v1 = v1;
+  q->r = q->g = q->b = q->a = 1;
+  q->mode = GFX_MODE_TEX;
+}
+
+void
+gfx_image_opaque (GfxTex *t, float x, float y, float w, float h)
+{
+  if (G.state.alpha < 1 || G.state.clip[2] > G.state.clip[0]) {
+    gfx_image (t, x, y, w, h, 0, 1);
+    return;
+  }
+  float parts[4][4];
+  int n = around_hole (x, y, w, h, parts);
+  if (n < 0) {
+    opaque (t, x, y, w, h, 0, 0, 1, 1);
+    return;
+  }
+  for (int i = 0; i < n; i++) {
+    const float *r = parts[i];
+    opaque (t, r[0], r[1], r[2], r[3], (r[0] - x) / w, (r[1] - y) / h, (r[0] + r[2] - x) / w, (r[1] + r[3] - y) / h);
+  }
 }
 
 /* ---- blur ----------------------------------------------------------------------------------------------------- */

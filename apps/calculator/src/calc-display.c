@@ -11,16 +11,19 @@
 #define HANDLE_HEIGHT     4
 #define HANDLE_RADIUS     2
 #define HANDLE_MARGIN     8       /* above and below the handle */
+#define TABLET_HANDLE_MARGIN 16   /* ... on a tablet */
 #define CORNER            16      /* the display's bottom corners */
 #define MODE_START        16      /* the mode label's inset from the start */
 #define MODE_SIZE         16      /* the mode label's text size */
-#define OVERFLOW_X        66.5    /* device px from the end to the ⋮'s dots */
-#define OVERFLOW_Y        95.5    /* device px down from the toolbar's top to the ⋮'s dots */
+#define OVERFLOW_X        (66.5 / 3)  /* from the end to the ⋮'s dots (66.5 device px on the reference phone) */
+#define OVERFLOW_Y        (95.5 / 3)  /* down from the toolbar's top to the ⋮'s dots (95.5 device px there) */
 #define BUTTON            48      /* the ⋮ button's touch target */
 
 struct _CalcDisplay {
   GtkWidget    parent;
   gboolean     one_line;
+  int          handle_margin;
+  double       formula_top, formula_bottom, formula_end;
   GtkWidget   *formula;
   GtkWidget   *result;
   GtkWidget   *overflow;
@@ -63,7 +66,7 @@ calc_display_size_allocate (GtkWidget *widget, int width, int height, int baseli
   int scale = vibeos_device_scale (widget);
   int W = (int) round (display_width (self) * scale), H = (int) round (display_height (self) * scale);
   int toolbar = TOOLBAR * scale;
-  int handle = (HANDLE_HEIGHT + 2 * HANDLE_MARGIN) * scale;
+  int handle = (HANDLE_HEIGHT + 2 * self->handle_margin) * scale;
   int inner = MAX (0, H - toolbar - handle);
   double w = (double) W / scale;
   double formula_ty = 0, result_ty = 0;
@@ -85,8 +88,8 @@ calc_display_size_allocate (GtkWidget *widget, int width, int height, int baseli
     double result_pad_bottom, result_pad_end;
 
     calc_result_get_padding (CALC_RESULT (self->result), &result_pad_bottom, &result_pad_end);
-    /* the formula's bottom padding: 8 in portrait, 28 in landscape */
-    result_ty = (formula_bottom - result_bottom) - ((self->one_line ? 28 : 8) - result_pad_bottom);
+    /* to the formula's bottom padding */
+    result_ty = (formula_bottom - result_bottom) - (self->formula_bottom - result_pad_bottom);
     formula_ty = self->one_line ? -((double) toolbar / scale + formula_bottom) : -formula_bottom;
   }
 
@@ -110,8 +113,8 @@ calc_display_size_allocate (GtkWidget *widget, int width, int height, int baseli
 
   /* the ⋮: an icon button centred on the dots */
   gtk_widget_allocate (self->overflow, BUTTON, BUTTON, -1,
-                       gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT ((W - OVERFLOW_X) / scale - BUTTON / 2.0,
-                                                                            OVERFLOW_Y / scale - BUTTON / 2.0)));
+                       gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (w - OVERFLOW_X - BUTTON / 2.0,
+                                                                            OVERFLOW_Y - BUTTON / 2.0)));
 }
 
 static void
@@ -153,7 +156,7 @@ calc_display_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   /* the drag handle */
   {
     double hx = round ((w * scale - HANDLE_WIDTH * scale) / 2) / scale;
-    double hy = h - HANDLE_MARGIN - HANDLE_HEIGHT;
+    double hy = h - self->handle_margin - HANDLE_HEIGHT;
     GskRoundedRect handle;
 
     gsk_rounded_rect_init_from_rect (&handle, &GRAPHENE_RECT_INIT (hx, hy, HANDLE_WIDTH, HANDLE_HEIGHT),
@@ -206,23 +209,44 @@ calc_display_init (CalcDisplay *self)
 GtkWidget *
 calc_display_new (gboolean one_line)
 {
+  return calc_display_new_full (one_line, FALSE);
+}
+
+/* the text sizes and paddings: a phone's upright and sideways, a tablet's (the same both ways but for the formula's
+ * smallest size and the result's bottom padding) */
+typedef struct {
+  double formula_min, formula_max, result_size;
+  double formula_padding[4], result_padding[4];      /* top, bottom, start, end */
+  int handle_margin;
+} Metrics;
+
+static const Metrics phone_metrics = { 32, 48, 32, { 16, 8, 16, 16 }, { 8, 32, 16, 16 }, HANDLE_MARGIN };
+static const Metrics phone_one_line = { 42, 56, 42, { 8, 28, 16, 16 }, { 8, 28, 16, 16 }, HANDLE_MARGIN };
+static const Metrics tablet_metrics = { 48, 128, 72, { 32, 22, 44, 44 }, { 22, 64, 44, 44 }, TABLET_HANDLE_MARGIN };
+static const Metrics tablet_one_line = { 32, 128, 72, { 32, 22, 44, 44 }, { 22, 44, 44, 44 }, TABLET_HANDLE_MARGIN };
+
+GtkWidget *
+calc_display_new_full (gboolean one_line, gboolean tablet)
+{
   CalcDisplay *self = g_object_new (CALC_TYPE_DISPLAY, NULL);
+  const Metrics *m = tablet ? (one_line ? &tablet_one_line : &tablet_metrics)
+                            : (one_line ? &phone_one_line : &phone_metrics);
 
   self->one_line = one_line;
-  if (one_line) {
-    /* landscape: larger text, more padding below */
-    self->formula = calc_formula_new (42, 56, 8);
-    calc_formula_set_padding (CALC_FORMULA (self->formula), 8, 28, 16, 16);
-    self->result = calc_result_new (42);
-    calc_result_set_padding (CALC_RESULT (self->result), 8, 28, 16, 16);
-    /* the result starts invisible */
+  self->handle_margin = m->handle_margin;
+  self->formula_top = m->formula_padding[0];
+  self->formula_bottom = m->formula_padding[1];
+  self->formula_end = m->formula_padding[3];
+  /* landscape: larger text, more padding below; a tablet: larger still */
+  self->formula = calc_formula_new (m->formula_min, m->formula_max, 8);
+  calc_formula_set_padding (CALC_FORMULA (self->formula), m->formula_padding[0], m->formula_padding[1],
+                            m->formula_padding[2], m->formula_padding[3]);
+  self->result = calc_result_new (m->result_size);
+  calc_result_set_padding (CALC_RESULT (self->result), m->result_padding[0], m->result_padding[1],
+                           m->result_padding[2], m->result_padding[3]);
+  /* the one-line display's result starts invisible */
+  if (one_line)
     gtk_widget_set_child_visible (self->result, FALSE);
-  } else {
-    self->formula = calc_formula_new (32, 48, 8);
-    calc_formula_set_padding (CALC_FORMULA (self->formula), 16, 8, 16, 16);
-    self->result = calc_result_new (32);
-    calc_result_set_padding (CALC_RESULT (self->result), 8, 32, 16, 16);
-  }
   gtk_widget_set_parent (self->formula, GTK_WIDGET (self));
   gtk_widget_set_parent (self->result, GTK_WIDGET (self));
   self->overflow = vibeos_icon_button_new ("calc-more-symbolic");
@@ -231,6 +255,14 @@ calc_display_new (gboolean one_line)
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->overflow), GTK_ACCESSIBLE_PROPERTY_LABEL, "More options", -1);
   gtk_widget_set_parent (self->overflow, GTK_WIDGET (self));
   return GTK_WIDGET (self);
+}
+
+void
+calc_display_get_formula_padding (CalcDisplay *self, double *top, double *bottom, double *end)
+{
+  *top = self->formula_top;
+  *bottom = self->formula_bottom;
+  *end = self->formula_end;
 }
 
 CalcFormula *

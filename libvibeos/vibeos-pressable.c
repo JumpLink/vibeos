@@ -358,6 +358,16 @@ vibeos_pressable_set_fill (VibeosPressable *self, const GdkRGBA *fill, gboolean 
 }
 
 void
+vibeos_pressable_set_fill_role (VibeosPressable *self, VibeosColor role, gboolean elevated)
+{
+  g_return_if_fail (role < VIBEOS_N_COLORS);
+  self->fill = vibeos_color (role);
+  self->fill_role = role;
+  self->elevated = elevated;
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+void
 vibeos_pressable_set_scale (VibeosPressable *self, double scale)
 {
   self->scale = scale;

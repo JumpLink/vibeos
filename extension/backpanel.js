@@ -17,7 +17,7 @@ import {cubic} from './launch.js';
 import {Animator, VelocityTracker} from './motion.js';
 import {overWindows} from './scanout.js';
 import {SCREEN_H, SCREEN_W, Spring, clamp, lerp} from './task.js';
-import {SCALE} from './units.js';
+import {geometry, SCALE} from './units.js';
 
 const DP = 3;
 const curve = (...p) => {
@@ -34,7 +34,10 @@ const BACKGROUND = [38, 62, 66], ARROW = [168, 195, 198];
 // the touch slops and the shortest, slowest fling
 const EDGE_SLOP = 12 * DP, TOUCH_SLOP = 8 * DP, MIN_FLING_DISTANCE = TOUCH_SLOP * 3, MIN_FLING_V = 50 * DP;
 const STATIC_THRESHOLD = 16 * DP, REACTIVATION = 32 * DP, DEACTIVATION = -32 * DP;
-const FULLY_STRETCHED = Math.min(SCREEN_W, 412 * DP);
+let FULLY_STRETCHED = Math.min(SCREEN_W, 412 * DP);
+geometry.connect('changed', () => {
+    FULLY_STRETCHED = Math.min(SCREEN_W, 412 * DP);
+});
 
 const MIN_DURATION_ACTIVE_BEFORE_INACTIVE = 300;
 const MIN_DURATION_ACTIVE_AFTER_INACTIVE = 130;

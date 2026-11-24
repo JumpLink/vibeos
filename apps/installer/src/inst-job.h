@@ -85,6 +85,10 @@ InstJob    *inst_job_new_remove  (const char *package);
 
 /* READING and CHECKING, up to READY or REFUSED (or FAILED, when PackageKit cannot even be asked) */
 void        inst_job_prepare     (InstJob *job);
+/* An install from Software (the D-Bus API) or from a .deb file runs sandboxed: once it is DONE, the package and
+ * every package installed with it that has an app are handed to vibeos-sandbox before the job ends (a new install
+ * only: an update keeps whatever the package had). Not set for `vibeos-installer --install`. */
+void        inst_job_set_sandbox (InstJob *job, gboolean sandbox);
 /* the yes: RUNNING, up to DONE, FAILED or CANCELLED */
 void        inst_job_start       (InstJob *job);
 /* no, or stop: before RUNNING always; while RUNNING only while inst_job_can_cancel (PackageKit cannot stop dpkg) */

@@ -717,14 +717,20 @@ on_instance (ICalComponent *icomp, ICalTime *start, ICalTime *end, gpointer data
   return !g_cancellable_is_cancelled (cancellable);
 }
 
+/* One calendar's occurrences at a time: two threads expanding at once (two calendars read for the same range)
+ * crashed the app now and then as it started, an object freed twice as the second thread let go of it. */
+static GMutex expanding;
+
 static void
 read_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancellable)
 {
   Reading *reading = data;
 
   reading->events = g_ptr_array_new_with_free_func ((GDestroyNotify) cal_event_unref);
+  g_mutex_lock (&expanding);
   e_cal_client_generate_instances_sync (reading->client, reading->start, reading->end, cancellable, on_instance,
                                         reading);
+  g_mutex_unlock (&expanding);
   g_task_return_boolean (task, TRUE);
 }
 
@@ -855,9 +861,11 @@ find_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancella
   Finding *finding = data;
 
   /* a year either way: an event moved by its editor is still found */
+  g_mutex_lock (&expanding);
   e_cal_client_generate_instances_for_uid_sync (finding->client, finding->uid, finding->near - 366 * 86400,
                                                 finding->near + 366 * 86400, cancellable, on_found_instance,
                                                 finding);
+  g_mutex_unlock (&expanding);
   if (finding->found)
     g_task_return_pointer (task, cal_event_ref (finding->found), (GDestroyNotify) cal_event_unref);
   else

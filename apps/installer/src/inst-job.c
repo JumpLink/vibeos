@@ -11,6 +11,11 @@
 #include <glib/gstdio.h>
 #include <string.h>
 
+/* runs the apps installed from Software sandboxed */
+#ifndef SANDBOX_PATH
+#define SANDBOX_PATH "/usr/bin/vibeos-sandbox"
+#endif
+
 /* the package lists are refreshed before a lookup when they are older than this */
 #define LISTS_OLD      (6 * G_TIME_SPAN_HOUR)
 /* and again when a package is not found, unless they were refreshed this recently */
@@ -46,6 +51,8 @@ struct _InstJob {
   InstPkTx     *tx;
   Step          step;
   gboolean      refreshed;     /* the lists were refreshed by this job */
+  gboolean      sandbox;       /* its apps run sandboxed (inst_job_set_sandbox) */
+  GPtrArray    *installing;    /* char *: the other packages the dry run installs new */
   gboolean      catalog_done;
 
   int           percent;
@@ -56,6 +63,8 @@ struct _InstJob {
 };
 
 G_DEFINE_FINAL_TYPE (InstJob, inst_job, G_TYPE_OBJECT)
+
+static gboolean sandbox_new_apps (InstJob *self);
 
 enum { SIGNAL_CHANGED, SIGNAL_FINISHED, N_SIGNALS };
 static guint signals[N_SIGNALS];
@@ -110,6 +119,7 @@ inst_job_finalize (GObject *object)
   g_free (self->title);
   g_free (self->text);
   g_free (self->details);
+  g_ptr_array_unref (self->installing);
   G_OBJECT_CLASS (inst_job_parent_class)->finalize (object);
 }
 
@@ -137,6 +147,7 @@ inst_job_init (InstJob *self)
   self->status_id = "reading";
   self->plan.also_install = g_ptr_array_new_with_free_func (g_free);
   self->plan.also_remove = g_ptr_array_new_with_free_func (g_free);
+  self->installing = g_ptr_array_new_with_free_func (g_free);
 }
 
 static InstJob *
@@ -688,6 +699,7 @@ read_check (InstJob *self, InstPkTx *tx)
 
   g_ptr_array_set_size (self->plan.also_install, 0);
   g_ptr_array_set_size (self->plan.also_remove, 0);
+  g_ptr_array_set_size (self->installing, 0);
   for (guint i = 0; i < packages->len; i++)
     {
       InstPkPackage *p = g_ptr_array_index (packages, i);
@@ -704,6 +716,10 @@ read_check (InstJob *self, InstPkTx *tx)
       switch (p->info)
         {
         case INST_PK_INFO_INSTALLING:
+          if (!g_ptr_array_find_with_equal_func (self->installing, p->name, g_str_equal, NULL))
+            g_ptr_array_add (self->installing, g_strdup (p->name));
+          list = self->plan.also_install;
+          break;
         case INST_PK_INFO_UPDATING:
         case INST_PK_INFO_DOWNGRADING:
         case INST_PK_INFO_REINSTALLING:
@@ -955,6 +971,8 @@ on_tx_finished (InstPkTx *tx, gpointer data)
               self->plan.name = g_strdup (app->name);
             text = g_strdup_printf (_("%s %s is installed."), inst_job_get_display_name (self), self->plan.version);
             set_message (self, _("Installed"), text, NULL);
+            if (sandbox_new_apps (self))
+              return;
           }
         end (self, INST_PHASE_DONE);
         return;
@@ -963,6 +981,83 @@ on_tx_finished (InstPkTx *tx, gpointer data)
     case STEP_NONE:
       break;
     }
+}
+
+/* ---- the sandbox ------------------------------------------------------------------------------------------- */
+
+void
+inst_job_set_sandbox (InstJob *self, gboolean sandbox)
+{
+  self->sandbox = sandbox;
+}
+
+/* vibeos-sandbox add has written the app's desktop file: when the app shows under another id (its own is not one
+ * the portals take), that is the one to open */
+static void
+follow_sandboxed_id (InstJob *self)
+{
+  g_autofree char *path = NULL;
+  g_autoptr (GKeyFile) k = g_key_file_new ();
+  g_autofree char *app_id = NULL;
+
+  if (!self->plan.desktop_id)
+    return;
+  path = g_build_filename (g_get_user_data_dir (), "applications", self->plan.desktop_id, NULL);
+  if (!g_key_file_load_from_file (k, path, G_KEY_FILE_NONE, NULL)
+      || !g_key_file_get_boolean (k, G_KEY_FILE_DESKTOP_GROUP, "NoDisplay", NULL)
+      || !(app_id = g_key_file_get_string (k, G_KEY_FILE_DESKTOP_GROUP, "X-VibeOS-Sandbox", NULL)))
+    return;
+  g_free (self->plan.desktop_id);
+  self->plan.desktop_id = g_strconcat (app_id, ".desktop", NULL);
+}
+
+static void
+on_sandboxed (GObject *source, GAsyncResult *result, gpointer data)
+{
+  g_autoptr (InstJob) self = data;
+  g_autoptr (GError) error = NULL;
+
+  /* the app is installed either way; a package vibeos-sandbox would not take (part of the system) says so */
+  if (!g_subprocess_wait_check_finish (G_SUBPROCESS (source), result, &error))
+    g_warning ("vibeos-sandbox: %s", error->message);
+  follow_sandboxed_id (self);
+  end (self, INST_PHASE_DONE);
+}
+
+/* hands the package just installed, and the new ones installed with it, to vibeos-sandbox; TRUE when the job ends
+ * once that is done */
+static gboolean
+sandbox_new_apps (InstJob *self)
+{
+  g_autoptr (GPtrArray) argv = NULL;
+  g_autoptr (GSubprocess) proc = NULL;
+  g_autoptr (GError) error = NULL;
+
+  if (!self->sandbox || self->plan.change != INST_CHANGE_NEW || !self->plan.package
+      || !g_file_test (SANDBOX_PATH, G_FILE_TEST_IS_EXECUTABLE) || inst_demo_active ())
+    return FALSE;
+  argv = g_ptr_array_new_with_free_func (g_free);
+  g_ptr_array_add (argv, g_strdup (SANDBOX_PATH));
+  g_ptr_array_add (argv, g_strdup ("add"));
+  g_ptr_array_add (argv, g_strdup (self->kind == INST_JOB_FILE ? "--origin=file" : "--origin=store"));
+  g_ptr_array_add (argv, g_strdup (self->plan.package));
+  for (guint i = 0; i < self->installing->len; i++)
+    {
+      const char *name = g_ptr_array_index (self->installing, i);
+      g_autofree char *reason = inst_job_protected_reason (name);
+
+      if (!reason)
+        g_ptr_array_add (argv, g_strdup (name));
+    }
+  g_ptr_array_add (argv, NULL);
+  proc = g_subprocess_newv ((const char *const *) argv->pdata, G_SUBPROCESS_FLAGS_STDOUT_SILENCE, &error);
+  if (!proc)
+    {
+      g_warning ("vibeos-sandbox: %s", error->message);
+      return FALSE;
+    }
+  g_subprocess_wait_check_async (proc, NULL, on_sandboxed, g_object_ref (self));
+  return TRUE;
 }
 
 static void

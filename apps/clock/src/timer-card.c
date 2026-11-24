@@ -24,6 +24,7 @@
 #define BUTTON_PADDING  24      /* both buttons' padding at the sides */
 #define TIME_SIZE       40      /* at most: it shrinks to fit */
 #define TIME_PADDING    24      /* ... and its padding either side */
+#define BOX_HEIGHT      160     /* a card without the ring (a tablet's third column): the time's box, this tall */
 
 #define HOUR (60 * 60 * 1000)
 
@@ -40,6 +41,7 @@ struct _TimerCard
 
   GtkWidget *label_button, *label_text, *close, *time, *reset, *add, *play, *play_icon;
   graphene_rect_t ring;         /* the ring's box (circle_container) */
+  gboolean no_ring;             /* the time in a box as wide as the ring's would be, BOX_HEIGHT tall, no ring */
   double fitted;                /* the width the time was last fitted to */
   guint refit;
 };
@@ -299,7 +301,7 @@ compute_layout (TimerCard *self, int width, Layout *layout)
   gtk_widget_measure (self->add, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &pill, NULL, NULL);
   size = CLAMP (right - pill - 2 * CIRCLE_MARGIN - x, 0, MAX_CIRCLE);
   column = (close ? ICON_BUTTON : 0) + SPACE + ADD_HEIGHT + 2 * INSET + SPACE + PLAY_HEIGHT + 2 * INSET;
-  inner = MAX (column, label_bottom - top + CIRCLE_MARGIN + size);
+  inner = MAX (column, label_bottom - top + CIRCLE_MARGIN + (self->no_ring ? BOX_HEIGHT : size));
   layout->height = inner + 2 * PADDING;
 
   layout->close = GRAPHENE_RECT_INIT (right - ICON_BUTTON, top, ICON_BUTTON, ICON_BUTTON);
@@ -312,7 +314,10 @@ compute_layout (TimerCard *self, int width, Layout *layout)
   {
     double space_top = label_bottom + CIRCLE_MARGIN;
 
-    layout->ring = GRAPHENE_RECT_INIT (x, space_top + (top + inner - space_top - size) / 2, size, size);
+    double box = self->no_ring ? BOX_HEIGHT : size;
+
+    layout->ring = GRAPHENE_RECT_INIT (x, space_top + (top + inner - space_top - box) / 2,
+                                       self->no_ring ? right - pill - 2 * CIRCLE_MARGIN - x : size, box);
   }
 }
 
@@ -383,7 +388,7 @@ timer_card_size_allocate (GtkWidget *widget, int width, int height, int baseline
   if (gtk_widget_get_visible (self->reset))
     place (self->reset, &GRAPHENE_RECT_INIT (layout.ring.origin.x + (layout.ring.size.width - ICON_BUTTON) / 2,
                                              layout.ring.origin.y + layout.ring.size.height - ICON_BUTTON
-                                               - floor ((layout.ring.size.width - 2 * STROKE) / 8),
+                                               - (self->no_ring ? 0 : floor ((layout.ring.size.width - 2 * STROKE) / 8)),
                                              ICON_BUTTON, ICON_BUTTON));
 }
 
@@ -402,7 +407,7 @@ snapshot_ring (TimerCard *self, GtkSnapshot *snapshot)
   double radius = half - STROKE, gone;
   GdkRGBA left = vibeos_color (VIBEOS_PRIMARY), background = vibeos_color (VIBEOS_SURFACE);
 
-  if (radius <= 0 || self->ring_hidden || !self->state)
+  if (radius <= 0 || self->ring_hidden || !self->state || self->no_ring)
     return;
   gone = self->state == TIMER_RESET ? 0 : self->state == TIMER_EXPIRED ? 1 : self->elapsed;
   clock_snapshot_arcs (snapshot, scale, cx, cy, radius, STROKE,
@@ -425,6 +430,17 @@ timer_card_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_pop (snapshot);
   snapshot_ring (self, snapshot);
   GTK_WIDGET_CLASS (timer_card_parent_class)->snapshot (widget, snapshot);
+}
+
+void
+timer_card_set_ring (TimerCard *self, gboolean ring)
+{
+  gboolean no_ring = !ring;
+
+  if (no_ring == self->no_ring)
+    return;
+  self->no_ring = no_ring;
+  gtk_widget_queue_resize (GTK_WIDGET (self));
 }
 
 /* --- GObject */
@@ -467,9 +483,8 @@ static GtkWidget *
 pill_new (GtkWidget *child, VibeosColor fill, int height)
 {
   GtkWidget *pill = vibeos_pressable_new (child);
-  GdkRGBA color = vibeos_color (fill);
 
-  vibeos_pressable_set_fill (VIBEOS_PRESSABLE (pill), &color, FALSE);
+  vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (pill), fill, FALSE);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pill), VIBEOS_RIPPLE_BOUNDED, height / 2.0);
   return pill;
 }
@@ -485,7 +500,7 @@ timer_card_init (TimerCard *self)
   gtk_label_set_ellipsize (GTK_LABEL (self->label_text), PANGO_ELLIPSIZE_START);
   gtk_label_set_single_line_mode (GTK_LABEL (self->label_text), TRUE);
   gtk_label_set_xalign (GTK_LABEL (self->label_text), 0);
-  vibeos_label_set_font_padding (self->label_text, 20);
+  vibeos_label_set_font_padding_sp (self->label_text, 20);
   gtk_widget_set_valign (self->label_text, GTK_ALIGN_START);
   gtk_widget_set_margin_start (self->label_text, LABEL_MARGIN);
   gtk_widget_set_margin_end (self->label_text, LABEL_MARGIN);
@@ -522,7 +537,7 @@ timer_card_init (TimerCard *self)
   /* "+ 1:00" in the tertiary colour, and play/pause in primary under it, as wide as it */
   add_text = gtk_label_new (_("+ 1:00"));
   gtk_widget_add_css_class (add_text, "timer-add");
-  vibeos_label_set_font_padding (add_text, 20);
+  vibeos_label_set_font_padding_sp (add_text, 20);
   gtk_widget_set_valign (add_text, GTK_ALIGN_CENTER);
   gtk_widget_set_margin_start (add_text, BUTTON_PADDING);
   gtk_widget_set_margin_end (add_text, BUTTON_PADDING);

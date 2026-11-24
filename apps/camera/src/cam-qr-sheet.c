@@ -443,7 +443,7 @@ static void
 cam_qr_sheet_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CamQrSheet *self = CAM_QR_SHEET (widget);
-  GdkRGBA scrim = { 0, 0, 0, SCRIM_ALPHA * self->shown };
+  GdkRGBA scrim = vibeos_color_alpha (VIBEOS_SCRIM, SCRIM_ALPHA * self->shown);
   int h = gtk_widget_get_height (self->sheet);
 
   gtk_snapshot_append_color (snapshot, &scrim, &GRAPHENE_RECT_INIT (0, 0, gtk_widget_get_width (widget),

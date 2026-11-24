@@ -15,6 +15,8 @@
 
 #include <gtk/gtk.h>
 
+#include "vibeos-style.h"
+
 G_BEGIN_DECLS
 
 typedef enum {
@@ -37,6 +39,9 @@ void       vibeos_pressable_set_ripple_color (VibeosPressable *self, const GdkRG
 /* A fill in the widget's shape (and a raised button's shadow under it when `elevated`): what a FAB's background
  * tint is. Unlike a CSS background it scales with vibeos_pressable_set_scale. */
 void       vibeos_pressable_set_fill     (VibeosPressable *self, const GdkRGBA *fill, gboolean elevated);
+/* The same fill in a colour role of the theme, read as the widget draws: it follows the theme as it changes, as the
+ * FABs' fills do. vibeos_pressable_set_fill () sets a fixed colour again. */
+void       vibeos_pressable_set_fill_role (VibeosPressable *self, VibeosColor role, gboolean elevated);
 
 /* Draw-time scale about the centre (Android's scaleX/scaleY): the FAB shows and hides with it. 0 hides it and
  * makes it untappable; the layout does not change. */

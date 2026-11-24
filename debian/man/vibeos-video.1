@@ -1,0 +1,18 @@
+.TH VIBEOS-VIDEO 1 "2026-11-21" "vibeos 0.1.3" "VibeOS"
+.SH NAME
+vibeos-video \- video player for VibeOS
+.SH SYNOPSIS
+.B vibeos-video
+.RI [ FILE | URI ]
+.SH DESCRIPTION
+Plays a video with mpv (libmpv) under an Android player's controls. A tap shows or hides the controls, which also go
+by themselves 2 seconds into playing; a double tap on the left or right third skips 10 seconds back or on. Space or
+k plays and pauses, Left and Right skip, Escape closes. A file on a GVfs share (smb://, sftp://) plays through its
+FUSE path, and the share is mounted first if it is not yet. Where each film was left is kept in
+~/.local/state/vibeos/video/watch-later and playback resumes there.
+.SH ENVIRONMENT
+.TP
+.B VIBEOS_VIDEO_LOG
+mpv's log level for messages printed to the standard error (default: error).
+.SH SEE ALSO
+mpv(1)

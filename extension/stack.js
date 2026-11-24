@@ -8,6 +8,8 @@ import Meta from 'gi://Meta';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {TABLET} from './units.js';
+
 // the keys this changes, saved as the user had them (null: the default)
 const KEYS = [
     ['org.gnome.mutter', 'dynamic-workspaces', 'b', false],
@@ -52,14 +54,17 @@ export class SingleStack {
             this._hold(actor.meta_window);
     }
 
-    // full screen and fixed: no dragging an app off its place by its header bar
+    // full screen and fixed: no dragging an app off its place by its header bar. The mobile shell's tracker
+    // maximizes a window once, as it comes; on a phone's screen no app's window is smaller than that anyway. A
+    // tablet's screen is bigger than many an app's window wants to be, and one that let go of its maximized state
+    // stayed a window in the middle of the screen (Console, 11-19): there it is held maximized as on a stock shell.
     _hold(win) {
         if (this._home.isHome(win) || win.is_override_redirect())
             return;
         const tracker = Main.wm.workspaceTracker;
         if (tracker?._maximizeInSingleWindowWorkspace)
             tracker._maximizeInSingleWindowWorkspace(win);
-        else
+        if (TABLET || !tracker?._maximizeInSingleWindowWorkspace)
             this._maximize(win);
         if (win.get_window_type() === Meta.WindowType.NORMAL && !win.get_transient_for())
             win.set_can_grab?.(false);
@@ -70,8 +75,12 @@ export class SingleStack {
     _maximize(win) {
         if (win.get_window_type() !== Meta.WindowType.NORMAL || win.get_transient_for())
             return;
+        // Not while the keyboard has it: with the keyboard up, the shell unmaximizes the focused window and fits it
+        // from the top down to the keys (keyboard.js _animateWindow, which marks it __keyboardMoved), and maximizes it
+        // again as the keyboard goes. Held maximized through that, the window stayed under the keys, and so did the
+        // dialog centred in it: Settings' "Add a printer" and Wi-Fi password fields typed blind (owner, 11-21).
         const maximize = () => {
-            if (!win.is_maximized() && !win.fullscreen && win.can_maximize())
+            if (!win.is_maximized() && !win.fullscreen && win.can_maximize() && !win.__keyboardMoved)
                 win.maximize();
         };
         maximize();

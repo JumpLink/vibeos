@@ -9,7 +9,9 @@ import {ScreenshotChord} from './chord.js';
 import {CollectWhenStill} from './gc.js';
 import {Cutout, CutoutBand} from './cutout.js';
 import {Desktop, isDesktopSession} from './dock.js';
+import {DisplayChangeOnPanel} from './displaychange.js';
 import {EndMark} from './endmark.js';
+import {FrameLog} from './framelog.js';
 import {syncGtkCss} from './gtkcss.js';
 import {HeadsUp} from './headsup.js';
 import {Home} from './home.js';
@@ -18,6 +20,7 @@ import {KeyHaptics} from './keyhaptics.js';
 import {AppSwitchKey} from './keys.js';
 import {Keyguard} from './keyguard.js';
 import {NoWindowMipmaps} from './mipmaps.js';
+import {ModalWatch} from './modalwatch.js';
 import {AndroidKeyboard} from './osk.js';
 import {TouchFocusKeyboard} from './oskfocus.js';
 import {overWindows, restoreUnredirect} from './scanout.js';
@@ -28,6 +31,8 @@ import {Service} from './service.js';
 import {Shade} from './shade.js';
 import {SystemState} from './state.js';
 import {StatusBar, hideShellPanel} from './statusbar.js';
+import {Taskbar} from './taskbar.js';
+import {TABLET, geometry} from './units.js';
 import {VolumeDialog} from './volume.js';
 import {WhenLocked} from './whenlocked.js';
 
@@ -37,11 +42,17 @@ const WALLPAPER_WAIT_MS = 2000;
 
 export default class VibeosExtension extends Extension {
     enable() {
+        // the screen's geometry first: every module lays out with it, and its monitors-changed handler runs before
+        // theirs
+        geometry.start();
+
         // ~/.config/vibeos/debug: the shell's Eval and Screenshot D-Bus calls are open to every client, for
         // development only
         const debug = GLib.build_filenamev([GLib.get_user_config_dir(), 'vibeos', 'debug']);
         if (GLib.file_test(debug, GLib.FileTest.EXISTS))
             global.context.unsafe_mode = true;
+        // frame times in the journal while $XDG_RUNTIME_DIR/vibeos-frame-log exists
+        this._frameLog = new FrameLog();
 
         this._keepThroughLock();
 
@@ -89,10 +100,11 @@ export default class VibeosExtension extends Extension {
         // 15 s, a phone held sideways that long included.
         this._startupHold = Main.layoutManager.holdStartup?.() ?? null;
 
-        // the lock screen and home are portrait, the session starts locked, and everything is laid out for an upright
-        // panel: a shell started sideways turns upright first
+        // a phone's lock screen and home are portrait, the session starts locked, and everything is laid out for an
+        // upright panel: a shell started sideways turns upright first. A tablet's follow the sensor and lay out
+        // whichever way it is turned: built at once.
         this._rotation = new Rotation();
-        this._rotation.hold();
+        this._rotation.holdHome();
         this._buildId = this._rotation.whenUpright(() => {
             this._buildId = 0;
             this._build();
@@ -133,6 +145,13 @@ export default class VibeosExtension extends Extension {
         overWindows(this._cutoutBand);
         Main.layoutManager.addChrome(this._statusBar, {affectsStruts: true});
         overWindows(this._statusBar);
+        // a tablet's taskbar, over apps and recents
+        if (TABLET) {
+            this._taskbar = new Taskbar(this._service.navigation, this._home);
+            Main.layoutManager.addChrome(this._taskbar.actor);
+            overWindows(this._taskbar.actor);
+            this._service.navigation.taskbar = this._taskbar;
+        }
         // ... and the notification shade pulled from it, above everything
         this._shade = new Shade(this._state, this._statusBar);
         Main.layoutManager.addTopChrome(this._shade);
@@ -149,6 +168,8 @@ export default class VibeosExtension extends Extension {
         // an app's window over the lock screen: the ringing alarm, a call coming in
         this._whenLocked = new WhenLocked(this._keyguard);
         this._rotation.follow(this._keyguard, this._home);
+        // the shell's "Keep these display settings?" on the built-in panel, where a finger can answer it
+        this._displayChange = new DisplayChangeOnPanel();
         // the volume keys show the volume dialog, over the shade and the lock screen too
         this._volume = new VolumeDialog();
         // ... unless the app in front took them (a ringing timer stops on one)
@@ -177,6 +198,10 @@ export default class VibeosExtension extends Extension {
             if (this._power.interactive)
                 this._service.toggleRecents();
         });
+        // a modal grab still up with the shell at rest on the home screen goes to the journal
+        const nav = this._service.navigation;
+        this._modalWatch = new ModalWatch(() => this._power.interactive && !this._keyguard.showing &&
+            !nav.recentsShown && !this._shade?.isOpen && !this._powerMenu?.showing && nav._atHome());
         // ... and over them all, the end of uiGroup
         this._endMark = new EndMark();
         // GNOME's on-screen keyboard's keys tick under the finger (paused while VibeOS's keyboard is in use)
@@ -225,6 +250,8 @@ export default class VibeosExtension extends Extension {
     }
 
     disable() {
+        this._frameLog?.destroy();
+        this._frameLog = null;
         if (this._keptThroughLock)
             delete Main.extensionManager._getModeExtensions;
         this._keptThroughLock = false;
@@ -248,12 +275,16 @@ export default class VibeosExtension extends Extension {
         this._endMark = null;
         this._appSwitch?.destroy();
         this._appSwitch = null;
+        this._modalWatch?.destroy();
+        this._modalWatch = null;
         this._power?.destroy();
         this._power = null;
         this._powerMenu?.destroy();
         this._powerMenu = null;
         this._volume?.destroy();
         this._volume = null;
+        this._displayChange?.destroy();
+        this._displayChange = null;
         this._chord?.destroy();
         this._chord = null;
         this._whenLocked?.destroy();
@@ -266,6 +297,10 @@ export default class VibeosExtension extends Extension {
         this._shade = null;
         this._cutoutBand?.destroy();
         this._cutoutBand = null;
+        if (this._service?.navigation)
+            this._service.navigation.taskbar = null;
+        this._taskbar?.destroy();
+        this._taskbar = null;
         this._statusBar?.destroy();
         this._statusBar = null;
         this._cutout?.destroy();
@@ -287,5 +322,6 @@ export default class VibeosExtension extends Extension {
         this._rotation = null;
         // every actor that held the display composited is gone by now
         restoreUnredirect();
+        geometry.stop();
     }
 }

@@ -71,7 +71,8 @@ calc_toast_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (-bar_w / 2, -MIN_HEIGHT / 2.0));
   gsk_rounded_rect_init_from_rect (&shape, &GRAPHENE_RECT_INIT (0, 0, bar_w, MIN_HEIGHT), MIN (CORNER, MIN_HEIGHT / 2.0));
   gtk_snapshot_push_opacity (snapshot, self->background);
-  gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.3f }, 0, 1, 0, 3);
+  gtk_snapshot_append_outset_shadow (snapshot, &shape, (GdkRGBA[]) { vibeos_color_alpha (VIBEOS_SHADOW, 0.3f) },
+                                     0, 1, 0, 3);
   gtk_snapshot_push_rounded_clip (snapshot, &shape);
   gtk_snapshot_append_color (snapshot, &background, &shape.bounds);
   gtk_snapshot_pop (snapshot);

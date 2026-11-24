@@ -9,8 +9,7 @@ m = meson.get_compiler('c').find_library('m')
 bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
 gettext_args = ['-DGETTEXT_PACKAGE="vibeos-calendar"',
-                '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
-                '-DCAL_VERSION="@0@"'.format(meson.project_version())]
+                '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir'))]
 
 # the events and their rules (cal-model), their text (cal-format) and evolution-data-server (cal-store): shared by
 # the app, the reminder service and the tests
@@ -25,7 +24,7 @@ executable('vibeos-calendar', 'src/cal-main.c', 'src/cal-window.c', 'src/cal-tex
            'src/cal-settings.c', 'src/cal-compat-switch.c', 'src/cal-time-picker.c', 'src/cal-colors.c',
            'src/cal-prefs.c', 'src/cal-tz-picker.c', 'src/cal-search.c', 'src/cal-accounts.c',
            'src/cal-color-picker.c', 'src/cal-material-switch.c', 'src/cal-recurrence-picker.c',
-           'src/cal-alert-page.c', 'src/cal-outlined-field.c', resources,
+           'src/cal-alert-page.c', 'src/cal-outlined-field.c', 'src/cal-side.c', resources,
            link_with: core, install: true, c_args: gettext_args,
            dependencies: [gio, ecal, m, dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'),
                           dependency('spongy-gtk-1'), dependency('icu-i18n'), dependency('icu-uc')])

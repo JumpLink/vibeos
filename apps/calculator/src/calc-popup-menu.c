@@ -83,7 +83,8 @@ calc_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   gtk_snapshot_push_opacity (snapshot, self->closing ? self->shown : MIN (1, self->shown * 2));
   gsk_rounded_rect_init_from_rect (&shape, &self->card, CORNER);
   /* a faint shadow, just enough to lift the card off the background */
-  gtk_snapshot_append_outset_shadow (snapshot, &shape, &(GdkRGBA) { 0, 0, 0, 0.3f }, 0, 2, 0, 6);
+  gtk_snapshot_append_outset_shadow (snapshot, &shape, (GdkRGBA[]) { vibeos_color_alpha (VIBEOS_SHADOW, 0.3f) },
+                                     0, 2, 0, 6);
   gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (self->card.origin.x, self->card.origin.y,
                                                          self->card.size.width, self->card.size.height * reveal));
   gtk_snapshot_push_rounded_clip (snapshot, &shape);

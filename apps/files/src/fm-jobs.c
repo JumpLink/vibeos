@@ -5,6 +5,9 @@
 #include "fm-ui.h"
 #include "fm-util.h"
 
+#include <archive.h>
+#include <archive_entry.h>
+#include <errno.h>
 #include <glib/gi18n.h>
 #include <vibeos.h>
 
@@ -19,6 +22,8 @@ typedef enum {
   JOB_RESTORE,
   JOB_UNTRASH,                  /* UNDO of a recycle: the originals looked up in the Recycle Bin */
   JOB_EMPTY,
+  JOB_COMPRESS,                 /* the sources into the .zip @dest */
+  JOB_RENAME,                   /* each source to its name in @names (Batch Rename) */
 } JobKind;
 
 typedef enum {
@@ -35,6 +40,7 @@ typedef struct {
   GPtrArray *sources;           /* GFile */
   GPtrArray *targets;           /* RESTORE: where each goes back to (GFile) */
   GFile *dest;
+  char **names;                 /* RENAME */
   GCancellable *cancellable;
 
   GMutex lock;
@@ -69,6 +75,7 @@ job_free (Job *job)
   g_ptr_array_unref (job->sources);
   g_clear_pointer (&job->targets, g_ptr_array_unref);
   g_clear_object (&job->dest);
+  g_strfreev (job->names);
   g_object_unref (job->cancellable);
   g_mutex_clear (&job->lock);
   g_cond_clear (&job->cond);
@@ -698,6 +705,243 @@ run_empty (Job *job)
     }
 }
 
+/* ---- Compress: a .zip written with libarchive through the target's GOutputStream, so it goes anywhere GIO
+ * writes (a share too) ---- */
+
+typedef struct {
+  GOutputStream *out;
+  GCancellable *cancellable;
+  GError *error;
+} ArchiveSink;
+
+static la_ssize_t
+sink_write (struct archive *archive, void *data, const void *buffer, size_t length)
+{
+  ArchiveSink *sink = data;
+  gsize written = 0;
+
+  if (!g_output_stream_write_all (sink->out, buffer, length, &written, sink->cancellable,
+                                  sink->error ? NULL : &sink->error))
+    {
+      archive_set_error (archive, EIO, "%s", sink->error ? sink->error->message : "write failed");
+      return -1;
+    }
+  return (la_ssize_t) written;
+}
+
+#define COMPRESS_ATTRIBUTES "standard::type,standard::size,standard::symlink-target,time::modified,unix::mode"
+
+/* @file into the archive as @name: a folder with all it has, a link as a link; other kinds (a socket) are left */
+static gboolean
+compress_tree (Job *job, struct archive *archive, GFile *file, const char *name)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GFileInfo) info = g_file_query_info (file, COMPRESS_ATTRIBUTES, G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                                 job->cancellable, &error);
+  struct archive_entry *entry;
+  GFileType type;
+  guint mode;
+  gboolean ok = TRUE;
+
+  if (!info)
+    {
+      fail (job, error->message);
+      return FALSE;
+    }
+  type = g_file_info_get_file_type (info);
+  if (type != G_FILE_TYPE_DIRECTORY && type != G_FILE_TYPE_REGULAR && type != G_FILE_TYPE_SYMBOLIC_LINK)
+    return TRUE;
+  mode = g_file_info_has_attribute (info, G_FILE_ATTRIBUTE_UNIX_MODE)
+           ? g_file_info_get_attribute_uint32 (info, G_FILE_ATTRIBUTE_UNIX_MODE) & 07777
+           : type == G_FILE_TYPE_DIRECTORY ? 0755 : 0644;
+  entry = archive_entry_new ();
+  archive_entry_set_pathname_utf8 (entry, name);
+  archive_entry_set_mtime (entry, (time_t) g_file_info_get_attribute_uint64 (info, G_FILE_ATTRIBUTE_TIME_MODIFIED),
+                           0);
+  archive_entry_set_perm (entry, mode);
+  set_paths (job, file, job->dest);
+  if (type == G_FILE_TYPE_DIRECTORY)
+    {
+      archive_entry_set_filetype (entry, AE_IFDIR);
+      archive_entry_set_size (entry, 0);
+    }
+  else if (type == G_FILE_TYPE_SYMBOLIC_LINK)
+    {
+      archive_entry_set_filetype (entry, AE_IFLNK);
+      archive_entry_set_symlink_utf8 (entry, g_file_info_get_symlink_target (info));
+      archive_entry_set_size (entry, 0);
+    }
+  else
+    {
+      archive_entry_set_filetype (entry, AE_IFREG);
+      archive_entry_set_size (entry, g_file_info_get_size (info));
+    }
+  if (archive_write_header (archive, entry) != ARCHIVE_OK)
+    {
+      fail (job, archive_error_string (archive));
+      archive_entry_free (entry);
+      return FALSE;
+    }
+  archive_entry_free (entry);
+
+  if (type == G_FILE_TYPE_REGULAR)
+    {
+      g_autoptr(GFileInputStream) in = g_file_read (file, job->cancellable, &error);
+      g_autofree char *buffer = g_malloc (64 * 1024);
+      gssize got;
+
+      if (!in)
+        {
+          fail (job, error->message);
+          return FALSE;
+        }
+      while ((got = g_input_stream_read (G_INPUT_STREAM (in), buffer, 64 * 1024, job->cancellable, &error)) > 0)
+        {
+          if (archive_write_data (archive, buffer, got) < 0)
+            {
+              fail (job, archive_error_string (archive));
+              return FALSE;
+            }
+          g_mutex_lock (&job->lock);
+          job->done_bytes += got;
+          g_mutex_unlock (&job->lock);
+        }
+      if (got < 0)
+        {
+          if (!g_cancellable_is_cancelled (job->cancellable))
+            fail (job, error->message);
+          return FALSE;
+        }
+      add_files (job, 1, 0);
+    }
+  else if (type == G_FILE_TYPE_DIRECTORY)
+    {
+      g_autoptr(GFileEnumerator) children = g_file_enumerate_children (file, G_FILE_ATTRIBUTE_STANDARD_NAME,
+                                                                       G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+                                                                       job->cancellable, &error);
+      GFileInfo *child;
+      GFile *location;
+
+      add_files (job, 1, 0);
+      if (!children)
+        {
+          fail (job, error->message);
+          return FALSE;
+        }
+      while (ok && g_file_enumerator_iterate (children, &child, &location, job->cancellable, &error) && child)
+        {
+          g_autofree char *child_name = g_strconcat (name, "/", g_file_info_get_name (child), NULL);
+
+          ok = compress_tree (job, archive, location, child_name);
+        }
+      if (ok && error)
+        {
+          if (!g_cancellable_is_cancelled (job->cancellable))
+            fail (job, error->message);
+          ok = FALSE;
+        }
+    }
+  else
+    add_files (job, 1, 0);
+  return ok && !g_cancellable_is_cancelled (job->cancellable);
+}
+
+static void
+run_compress (Job *job)
+{
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GFileOutputStream) out = NULL;
+  ArchiveSink sink = { 0 };
+  struct archive *archive;
+  gboolean ok = TRUE;
+
+  for (guint i = 0; i < job->sources->len && !g_cancellable_is_cancelled (job->cancellable); i++)
+    {
+      FmCount count = { 0 };
+
+      fm_count_tree (job->sources->pdata[i], job->cancellable, &count);
+      g_mutex_lock (&job->lock);
+      job->total_bytes += count.bytes;
+      job->total_files += count.files + count.folders;
+      g_mutex_unlock (&job->lock);
+    }
+  g_mutex_lock (&job->lock);
+  job->preparing = FALSE;
+  job->copy_started = g_get_monotonic_time ();
+  g_mutex_unlock (&job->lock);
+  if (g_cancellable_is_cancelled (job->cancellable))
+    return;
+
+  out = g_file_create (job->dest, G_FILE_CREATE_NONE, job->cancellable, &error);
+  if (!out)
+    {
+      fail (job, error->message);
+      return;
+    }
+  sink.out = G_OUTPUT_STREAM (out);
+  sink.cancellable = job->cancellable;
+  archive = archive_write_new ();
+  archive_write_set_format_zip (archive);
+  /* the zip ends where its data does, not padded with zeroes to libarchive's 10 KiB blocks */
+  archive_write_set_bytes_in_last_block (archive, 1);
+  if (archive_write_open2 (archive, &sink, NULL, sink_write, NULL, NULL) != ARCHIVE_OK)
+    {
+      fail (job, archive_error_string (archive));
+      ok = FALSE;
+    }
+  for (guint i = 0; ok && i < job->sources->len && !g_cancellable_is_cancelled (job->cancellable); i++)
+    {
+      g_autofree char *base = g_file_get_basename (job->sources->pdata[i]);
+
+      ok = compress_tree (job, archive, job->sources->pdata[i], base);
+    }
+  if (ok && !g_cancellable_is_cancelled (job->cancellable) && archive_write_close (archive) != ARCHIVE_OK)
+    {
+      fail (job, archive_error_string (archive));
+      ok = FALSE;
+    }
+  archive_write_free (archive);
+  g_output_stream_close (G_OUTPUT_STREAM (out), NULL, NULL);
+  g_clear_error (&sink.error);
+  /* stopped or failed: no half archive left behind */
+  if (!ok || g_cancellable_is_cancelled (job->cancellable))
+    g_file_delete (job->dest, NULL, NULL);
+  else
+    note_done (job, job->dest);
+}
+
+/* ---- Batch Rename ---- */
+
+static void
+run_rename (Job *job)
+{
+  g_mutex_lock (&job->lock);
+  job->total_files = job->sources->len;
+  job->preparing = FALSE;
+  g_mutex_unlock (&job->lock);
+  for (guint i = 0; i < job->sources->len && job->names[i] && !g_cancellable_is_cancelled (job->cancellable); i++)
+    {
+      GFile *source = job->sources->pdata[i];
+      g_autoptr(GError) error = NULL;
+      g_autoptr(GFile) parent = fm_parent (source);
+      g_autoptr(GFile) target = parent ? g_file_get_child_for_display_name (parent, job->names[i], &error) : NULL;
+      g_autoptr(GFile) renamed = NULL;
+
+      set_paths (job, source, NULL);
+      if (target && g_file_equal (target, source))
+        ;
+      else if (!target)
+        fail (job, error ? error->message : _("Failed to rename"));
+      else if (g_file_query_exists (target, job->cancellable))
+        fail (job, _("File or folder already exists"));
+      else if ((renamed = g_file_set_display_name (source, job->names[i], job->cancellable, &error)))
+        note_done (job, renamed);
+      else
+        fail (job, error->message);
+      add_files (job, 1, 0);
+    }
+}
+
 static void
 job_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancellable)
 {
@@ -722,6 +966,12 @@ job_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancellab
     case JOB_EMPTY:
       run_empty (job);
       break;
+    case JOB_COMPRESS:
+      run_compress (job);
+      break;
+    case JOB_RENAME:
+      run_rename (job);
+      break;
     }
   g_task_return_boolean (task, TRUE);
 }
@@ -742,6 +992,10 @@ job_title (JobKind kind)
     case JOB_RESTORE:
     case JOB_UNTRASH:
       return _("Restoring");
+    case JOB_COMPRESS:
+      return _("Compressing");
+    case JOB_RENAME:
+      return _("Renaming");
     case JOB_DELETE:
     case JOB_EMPTY:
     default:
@@ -940,6 +1194,12 @@ on_job_done (GObject *source, GAsyncResult *result, gpointer data)
         case JOB_UNTRASH:
           what = _("Failed to restore files");
           break;
+        case JOB_COMPRESS:
+          what = _("Failed to compress");
+          break;
+        case JOB_RENAME:
+          what = _("Failed to rename");
+          break;
         default:
           what = _("Failed to delete files");
           break;
@@ -983,6 +1243,13 @@ on_job_done (GObject *source, GAsyncResult *result, gpointer data)
           break;
         case JOB_EMPTY:
           message = g_strdup (_("The Recycle Bin is empty"));
+          break;
+        case JOB_COMPRESS:
+          message = g_strdup_printf (_("'%s' created"), job->first_name);
+          break;
+        case JOB_RENAME:
+          message = n == 1 ? g_strdup (_("Renamed successfully"))
+                           : g_strdup_printf (ngettext ("%d item renamed", "%d items renamed", n), n);
           break;
         }
     }
@@ -1073,4 +1340,24 @@ void
 fm_jobs_empty_trash (FmShell *shell)
 {
   job_start (job_new (shell, JOB_EMPTY, NULL));
+}
+
+void
+fm_jobs_compress (FmShell *shell, GPtrArray *files, GFile *target)
+{
+  g_autoptr(GPtrArray) sources = copy_files (files);
+  Job *job = job_new (shell, JOB_COMPRESS, sources);
+
+  job->dest = g_object_ref (target);
+  job_start (job);
+}
+
+void
+fm_jobs_rename (FmShell *shell, GPtrArray *files, char **names)
+{
+  g_autoptr(GPtrArray) sources = copy_files (files);
+  Job *job = job_new (shell, JOB_RENAME, sources);
+
+  job->names = g_strdupv (names);
+  job_start (job);
 }

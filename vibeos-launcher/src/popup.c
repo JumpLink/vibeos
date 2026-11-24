@@ -27,7 +27,7 @@
 #define TEXT_X_DP         54
 #define TEXT_END_DP       16
 #define TEXT_SP           14
-#define CAP_HEIGHT        0.716f        /* Google Sans Flex: capHeight 1432 / 2000 */
+#define CAP_HEIGHT        0.711f        /* VibeOS Roboto: capHeight 1456 / 2048 */
 #define APP_ICON_DP       32            /* a shortcut's row shows the app's icon */
 #define APP_ICON_X_DP     11.5
 #define ABOVE_GAP_DP      15
@@ -119,7 +119,7 @@ load_icons (void)
 {
   if (P.font)
     return;
-  P.font = text_font_axes ("Google Sans Flex", 600, dp (TEXT_SP), "opsz=14");
+  P.font = text_font_axes ("VibeOS Roboto", 600, dp (TEXT_SP), "opsz=14");
   int px = (int) lroundf (dp (SYS_ICON_DP));
   for (int i = 0; i < N_ICONS; i++)
     P.icons[i] = svg_texture (SVGS[i], px);
@@ -223,7 +223,7 @@ popup_open_icon (Tile *t, ModelPos pos, bool from_drawer, float ix, float iy, fl
   add_card (0, n_sys);
   add_card (n_sys, P.n_rows - n_sys);
   h = total_height ();
-  float top = roundf (dp (STATUS_BAR_DP));
+  float top = roundf (dp (N.status_dp));
   P.above = iy - dp (ABOVE_GAP_DP) - h >= top;
   if (!P.above && P.n_cards == 2) {
     Card sys = P.cards[0];
@@ -260,7 +260,7 @@ popup_open_options (float x, float y)
     add_card (i, 1);
   P.w = dp (POP_W_DP);
   float h = total_height ();
-  float top = roundf (dp (STATUS_BAR_DP));
+  float top = roundf (dp (N.status_dp));
   P.above = y - dp (OPTIONS_GAP_DP) - h >= top;
   stack (P.above ? y - dp (OPTIONS_GAP_DP) - h : y + dp (OPTIONS_GAP_DP), true);
   P.x = roundf (CLAMP (x - P.w / 2, dp (OPTIONS_SIDE_DP), N.W - dp (OPTIONS_SIDE_DP) - P.w));

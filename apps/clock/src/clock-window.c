@@ -18,6 +18,8 @@
 #define SIDE_BUTTON   56        /* the left and right buttons, smaller than the FAB */
 #define LEFT_BIAS     0.6       /* where each sits in the space beside the FAB */
 #define RIGHT_BIAS    0.4
+#define FAB_COLUMN    180       /* a tablet in landscape: the buttons' column at the end, beside the pages */
+#define COLUMN_GAP    24        /* in the column, between the FAB and the buttons over and under it */
 #define SCALE_MS      200       /* SHORT: the buttons' scale animations */
 
 typedef enum { TAB_ALARM, TAB_CLOCK, TAB_TIMER, TAB_STOPWATCH, N_TABS } Tab;
@@ -39,6 +41,8 @@ typedef struct
   GtkWidget *pages[N_TABS];
   Tab tab;
   Button buttons[CLOCK_N_BUTTONS];
+  VibeosLayout *layout;
+  gboolean column;              /* the buttons in a column at the end rather than a row at the bottom */
 } Shell;
 
 /* the bottom navigation bar's tabs */
@@ -256,6 +260,18 @@ on_settings_button (VibeosPressable *button, Shell *shell)
   show_settings (shell);
 }
 
+/* ⋮: About, VibeOS's About sheet, as every VibeOS app has it */
+static const VibeosAboutInfo clock_about = { .name = "Clock", .icon_name = "vibeos.Clock" };
+
+static void
+on_more_button (VibeosPressable *button, Shell *shell)
+{
+  VibeosMenu *menu = vibeos_menu_new ();
+
+  vibeos_menu_append_about (menu, &clock_about);
+  vibeos_menu_present (menu, GTK_WIDGET (button));
+}
+
 static void
 on_picker_settings (GtkWidget *picker, Shell *shell)
 {
@@ -297,7 +313,9 @@ show_tab (Shell *shell, Tab tab)
 
 /* The FAB is centred in a FAB_ROW-tall row at the bottom of the content, raised by the snackbar while it shows; the
  * side buttons are centred on the same line, each placed in the space beside the FAB by its bias. They are placed on
- * their own, not in a full-width box, so that touches between them still reach the list under them. */
+ * their own, not in a full-width box, so that touches between them still reach the list under them.
+ * On a tablet in landscape they are in a FAB_COLUMN-wide column at the end instead, the pages beside it: the FAB in
+ * its middle, the left button over it and the right one under it. */
 static gboolean
 on_child_position (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *rect, Shell *shell)
 {
@@ -309,6 +327,18 @@ on_child_position (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *rect, Sh
     return FALSE;
   gtk_widget_measure (shell->buttons[CLOCK_FAB].widget, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &fab, NULL, NULL);
   gtk_widget_measure (child, GTK_ORIENTATION_HORIZONTAL, -1, NULL, &size, NULL, NULL);
+  if (shell->column)
+    {
+      rect->x = width - FAB_COLUMN / 2 - size / 2;
+      if (child == shell->buttons[CLOCK_FAB].widget)
+        rect->y = (height - fab) / 2;
+      else if (child == shell->buttons[CLOCK_LEFT].widget)
+        rect->y = (height - fab) / 2 - COLUMN_GAP - size;
+      else
+        rect->y = (height + fab) / 2 + COLUMN_GAP;
+      rect->width = rect->height = size;
+      return TRUE;
+    }
   centre_y = height - FAB_ROW / 2 - (int) vibeos_snackbar_get_lift (shell->snackbar);
   fab_x = (width - fab) / 2;
   if (child == shell->buttons[CLOCK_FAB].widget)
@@ -325,6 +355,23 @@ on_child_position (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *rect, Sh
 static void
 on_lift (VibeosSnackbar *snackbar, GParamSpec *pspec, Shell *shell)
 {
+  gtk_widget_queue_allocate (shell->content);
+}
+
+/* a tablet: its own text sizes (clock.css); in landscape the pages end where the buttons' column starts */
+static void
+on_layout_changed (VibeosLayout *layout, Shell *shell)
+{
+  gboolean column = vibeos_layout_is_tablet (layout) && vibeos_layout_is_landscape (layout);
+
+  if (vibeos_layout_is_tablet (layout))
+    gtk_widget_add_css_class (shell->window, "tablet");
+  else
+    gtk_widget_remove_css_class (shell->window, "tablet");
+  if (column == shell->column)
+    return;
+  shell->column = column;
+  gtk_widget_set_margin_end (shell->stack, column ? FAB_COLUMN : 0);
   gtk_widget_queue_allocate (shell->content);
 }
 
@@ -350,6 +397,8 @@ shell_free (gpointer data)
 
   for (int i = 0; i < CLOCK_N_BUTTONS; i++)
     vibeos_anim_free (shell->buttons[i].scale);
+  g_signal_handlers_disconnect_by_data (shell->layout, shell);
+  g_object_unref (shell->layout);
   g_object_unref (shell->settings);
   g_free (shell);
 }
@@ -362,7 +411,8 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *gear = gtk_image_new_from_icon_name ("clock-settings-symbolic");
-  GtkWidget *settings_button;
+  GtkWidget *more = gtk_image_new_from_icon_name ("clock-more-symbolic");
+  GtkWidget *settings_button, *more_button;
   GtkEventController *key, *shortcuts;
 
   shell->window = window;
@@ -377,7 +427,7 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   gtk_widget_set_hexpand (shell->title, TRUE);
   gtk_widget_set_valign (shell->title, GTK_ALIGN_CENTER);
   gtk_label_set_xalign (GTK_LABEL (shell->title), 0);
-  vibeos_label_set_font_padding (shell->title, 22);
+  vibeos_label_set_font_padding_sp (shell->title, 22);
   gtk_box_append (GTK_BOX (bar), shell->title);
   /* the Settings action, a white gear in a button flush with the end */
   gtk_image_set_pixel_size (GTK_IMAGE (gear), 24);
@@ -390,6 +440,17 @@ clock_window_new (GtkApplication *app, GSettings *settings)
                                   -1);
   g_signal_connect (settings_button, "clicked", G_CALLBACK (on_settings_button), shell);
   gtk_box_append (GTK_BOX (bar), settings_button);
+  /* then ⋮, the same size, for the menu */
+  gtk_image_set_pixel_size (GTK_IMAGE (more), 24);
+  more_button = vibeos_pressable_new (more);
+  gtk_widget_set_size_request (more_button, 48, 48);
+  gtk_widget_set_valign (more_button, GTK_ALIGN_CENTER);
+  vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (more_button), VIBEOS_RIPPLE_CIRCLE, 20);
+  gtk_widget_add_css_class (more_button, "clock-settings-button");
+  gtk_accessible_update_property (GTK_ACCESSIBLE (more_button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"),
+                                  -1);
+  g_signal_connect (more_button, "clicked", G_CALLBACK (on_more_button), shell);
+  gtk_box_append (GTK_BOX (bar), more_button);
   gtk_box_append (GTK_BOX (box), bar);
 
   /* the content: the pages, then the row of buttons and the snackbar over their bottom */
@@ -448,6 +509,9 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   key = gtk_event_controller_key_new ();
   g_signal_connect (key, "key-pressed", G_CALLBACK (on_key), shell);
   gtk_widget_add_controller (window, key);
+  shell->layout = g_object_ref (vibeos_layout_get_for_window (GTK_WINDOW (window)));
+  g_signal_connect (shell->layout, "changed", G_CALLBACK (on_layout_changed), shell);
+  on_layout_changed (shell->layout, shell);
   /* the tab it was left on */
   shell->tab = g_settings_get_enum (settings, "selected-tab");
   vibeos_nav_bar_set_selected (VIBEOS_NAV_BAR (shell->nav), shell->tab);

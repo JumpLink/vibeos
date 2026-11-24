@@ -2,6 +2,7 @@
 #include "calc-text.h"
 
 #include <math.h>
+#include <vibeos.h>
 
 /* the letter spacing of a calc_text_ui_layout, px */
 static double
@@ -18,7 +19,8 @@ calc_text_set_size (PangoLayout *layout, double size, int weight)
   PangoFontDescription *font = pango_font_description_new ();
 
   pango_font_description_set_family (font, CALC_FONT);
-  pango_font_description_set_weight (font, weight);
+  /* the weight is Bold text's (CALC_WEIGHT_*): Bold text off draws it 300 lighter */
+  pango_font_description_set_weight (font, vibeos_font_weight (weight - 300));
   pango_font_description_set_absolute_size (font, size * PANGO_SCALE);
   pango_layout_set_font_description (layout, font);
   pango_font_description_free (font);

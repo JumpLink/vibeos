@@ -34,6 +34,8 @@ typedef struct {
   VibeosAnim *toast_anim;
   guint toast_timeout;
   GtkWidget *back_marker;
+  GtkWidget *row;               /* the window's content: the docked drawer, then the page */
+  VibeosLayout *layout;
   FmSnackAction snack_cb;
   gpointer snack_data;
   GDestroyNotify snack_destroy;
@@ -339,17 +341,6 @@ launch_failed (GtkWidget *window, const GError *error)
     fm_shell_toast (shell, error->message);
 }
 
-static void
-on_launched (GObject *source, GAsyncResult *result, gpointer data)
-{
-  GtkWidget *window = data;
-  g_autoptr(GError) error = NULL;
-
-  if (!g_app_info_launch_default_for_uri_finish (result, &error))
-    launch_failed (window, error);
-  g_object_unref (window);
-}
-
 static gboolean
 launch_files (GtkWidget *window, GAppInfo *app, GList *files)
 {
@@ -363,49 +354,124 @@ launch_files (GtkWidget *window, GAppInfo *app, GList *files)
   return FALSE;
 }
 
+/* ---- opening a file: as an app opens from its icon ----------------------------------------------------------------- */
+
+/* A file opens in the app for its type, which gets its URI or GVfs's FUSE path for a server's file. The shell starts
+ * the app (vibeos.Shell.Open): out of the file's icon as an app out of its icon on the home screen, its splash until
+ * the window is there, and back at the window's root flies it back into the file. A shell without Open: the app is
+ * started here, as it was. */
+typedef struct {
+  GtkWidget *window;
+  GFile *file;
+  GAppInfo *app;
+  double box[4];        /* the icon it opens out of, in the window's surface px; no size: none */
+} OpenRequest;
+
+static void
+open_request_free (OpenRequest *r)
+{
+  g_object_unref (r->window);
+  g_object_unref (r->file);
+  g_clear_object (&r->app);
+  g_free (r);
+}
+
+static void
+open_here (OpenRequest *r)
+{
+  GList files = { r->file, NULL, NULL };
+
+  launch_files (r->window, r->app, &files);
+}
+
+static void
+on_shell_open (GObject *source, GAsyncResult *result, gpointer data)
+{
+  OpenRequest *r = data;
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GVariant) ret = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), result, &error);
+
+  if (!ret)
+    {
+      g_debug ("vibeos.Shell.Open: %s", error->message);
+      open_here (r);
+    }
+  open_request_free (r);
+}
+
 static void
 on_default_handler (GObject *source, GAsyncResult *result, gpointer data)
 {
-  GtkWidget *window = data;
+  OpenRequest *r = data;
   g_autoptr(GError) error = NULL;
-  g_autoptr(GAppInfo) app = g_file_query_default_handler_finish (G_FILE (source), result, &error);
+  GDBusConnection *bus;
+  g_autofree char *uri = NULL;
+  const char *id;
 
-  if (!app)
-    launch_failed (window, error);
-  else
+  r->app = g_file_query_default_handler_finish (G_FILE (source), result, &error);
+  if (!r->app)
     {
-      GList files = { source, NULL, NULL };
-
-      launch_files (window, app, &files);
+      launch_failed (r->window, error);
+      open_request_free (r);
+      return;
     }
-  g_object_unref (window);
+  id = g_app_info_get_id (r->app);
+  bus = g_application_get_dbus_connection (g_application_get_default ());
+  if (!id || !bus)
+    {
+      open_here (r);
+      open_request_free (r);
+      return;
+    }
+  uri = g_file_get_uri (r->file);
+  g_dbus_connection_call (bus, "vibeos.Shell", "/vibeos/Shell", "vibeos.Shell", "Open",
+                          g_variant_new ("(ss(dddd))", uri, id, r->box[0], r->box[1], r->box[2], r->box[3]),
+                          NULL, G_DBUS_CALL_FLAGS_NO_AUTO_START, 5000, NULL, on_shell_open, r);
 }
 
-/* a local file by its URI, which goes through the OpenURI portal when the app is sandboxed; a server's file by the
- * app for its type, which gets the URI or GVfs's FUSE path for it */
+/* @from's box in its window's surface (what the shell places windows by) */
 static void
-open_file (FmShell *shell, GFile *file)
+surface_box (GtkWidget *from, double box[4])
 {
-  if (g_file_is_native (file))
-    {
-      g_autofree char *uri = g_file_get_uri (file);
-      g_autoptr(GAppLaunchContext) context = G_APP_LAUNCH_CONTEXT (gdk_display_get_app_launch_context (
-        gtk_widget_get_display (shell->window)));
+  GtkNative *native;
+  graphene_rect_t r;
+  double sx, sy;
 
-      g_app_info_launch_default_for_uri_async (uri, context, NULL, on_launched, g_object_ref (shell->window));
-    }
+  box[0] = box[1] = box[2] = box[3] = 0;
+  if (!from || !(native = gtk_widget_get_native (from))
+      || !gtk_widget_compute_bounds (from, GTK_WIDGET (native), &r))
+    return;
+  gtk_native_get_surface_transform (native, &sx, &sy);
+  box[0] = r.origin.x + sx;
+  box[1] = r.origin.y + sy;
+  box[2] = r.size.width;
+  box[3] = r.size.height;
+}
+
+static void
+open_file (FmShell *shell, GFile *file, GtkWidget *from)
+{
+  OpenRequest *r = g_new0 (OpenRequest, 1);
+
+  r->window = g_object_ref (shell->window);
+  r->file = g_object_ref (file);
+  surface_box (from, r->box);
+  g_file_query_default_handler_async (file, G_PRIORITY_DEFAULT, NULL, on_default_handler, r);
+}
+
+void
+fm_shell_open_item_from (FmShell *shell, GFile *location, gboolean is_folder, GtkWidget *from)
+{
+  if (is_folder)
+    fm_shell_open_location (shell, location);
   else
-    g_file_query_default_handler_async (file, G_PRIORITY_DEFAULT, NULL, on_default_handler,
-                                        g_object_ref (shell->window));
+    open_file (shell, location, from);
 }
 
 void
 fm_shell_open_item_location (FmShell *shell, GFile *location, gboolean is_folder)
 {
-  if (is_folder)
-    fm_shell_open_location (shell, location);
-  else
-    open_file (shell, location);
+  fm_shell_open_item_from (shell, location, is_folder, NULL);
 }
 
 /* ---- the selection's actions --------------------------------------------------------------------------------------- */
@@ -587,6 +653,92 @@ on_rename_done (const char *text, gpointer data)
   rename_request_free (request);
 }
 
+/* Batch Rename: each item's new name from the pattern, its stem for %% and its place in the selection for ## */
+typedef struct {
+  FmShell *shell;
+  GPtrArray *items;             /* FmItem */
+} BatchRequest;
+
+/* the items' new names, in their order */
+static GStrv
+batch_names (const char *pattern, const char *extension, gpointer data)
+{
+  BatchRequest *request = data;
+  g_autoptr(GStrvBuilder) builder = g_strv_builder_new ();
+
+  for (guint i = 0; i < request->items->len; i++)
+    {
+      FmItem *item = request->items->pdata[i];
+      const char *name = item->edit_name ? item->edit_name : item->name;
+      gboolean folder = fm_item_is_folder (item);
+      g_autofree char *stem = NULL, *renamed = NULL;
+      int end = -1;
+
+      fm_stem_range (name, folder, &end);
+      stem = g_utf8_substring (name, 0, end);
+      renamed = fm_batch_name (pattern, stem, i + 1);
+      /* a file takes the extension typed; one left empty, or a folder, keeps its own */
+      if (*extension && !folder)
+        g_strv_builder_take (builder, g_strconcat (renamed, ".", extension, NULL));
+      else
+        g_strv_builder_take (builder, g_strconcat (renamed, g_utf8_offset_to_pointer (name, end), NULL));
+    }
+  return g_strv_builder_end (builder);
+}
+
+static void
+on_batch_done (const char *pattern, const char *extension, gpointer data)
+{
+  BatchRequest *request = data;
+
+  if (pattern)
+    {
+      g_autoptr(GPtrArray) files = locations_of (request->items);
+      g_auto(GStrv) names = batch_names (pattern, extension, request);
+
+      fm_jobs_rename (request->shell, files, names);
+      end_selection (request->shell);
+    }
+  g_ptr_array_unref (request->items);
+  g_free (request);
+}
+
+static void
+batch_rename (FmShell *shell, GPtrArray *items)
+{
+  BatchRequest *request = g_new0 (BatchRequest, 1);
+  g_autofree const char **names = g_new0 (const char *, items->len + 1);
+  g_autofree char *common = NULL;
+  gboolean mixed = FALSE;
+
+  request->shell = shell;
+  request->items = g_ptr_array_ref (items);
+  /* the extension field starts with the one all the files share, empty when they differ or a folder is there */
+  for (guint i = 0; i < items->len; i++)
+    {
+      FmItem *item = items->pdata[i];
+      const char *name = item->edit_name ? item->edit_name : item->name;
+      int end = -1;
+      const char *extension;
+
+      names[i] = name;
+      if (fm_item_is_folder (item))
+        {
+          mixed = TRUE;
+          continue;
+        }
+      fm_stem_range (name, FALSE, &end);
+      extension = g_utf8_offset_to_pointer (name, end);
+      extension = *extension == '.' ? extension + 1 : extension;
+      if (!common)
+        common = g_strdup (extension);
+      else if (strcmp (common, extension))
+        mixed = TRUE;
+    }
+  fm_batch_rename_dialog (shell->window, names, items->len, mixed || !common ? "" : common, batch_names, on_batch_done,
+                          request);
+}
+
 static void
 rename_selected (FmShell *shell)
 {
@@ -595,6 +747,11 @@ rename_selected (FmShell *shell)
   const char *name;
   int end = -1;
 
+  if (items->len > 1)
+    {
+      batch_rename (shell, items);
+      return;
+    }
   if (items->len != 1)
     return;
   request = g_new0 (RenameRequest, 1);
@@ -681,17 +838,93 @@ add_bookmark (FmShell *shell, FmItem *item)
     fm_shell_toast (shell, _("This folder is already bookmarked"));
 }
 
+/* Compress: the name of the .zip, made in the folder of the first item */
+typedef struct {
+  FmShell *shell;
+  GPtrArray *files;             /* GFile */
+  GFile *folder;
+  gboolean here;                /* the folder is the one listed: its names are known without asking */
+} CompressRequest;
+
+static const char *
+check_compress (const char *text, gpointer data)
+{
+  CompressRequest *request = data;
+  FmNameCheck check = fm_check_name (text);
+  g_autofree char *name = NULL;
+
+  if (check != FM_NAME_OK)
+    return fm_name_check_message (check);
+  name = g_strconcat (text, ".zip", NULL);
+  if (request->here && fm_browser_has_name (request->shell->browser, name))
+    return _("File or folder already exists");
+  return NULL;
+}
+
+static void
+on_compress_done (const char *text, gpointer data)
+{
+  CompressRequest *request = data;
+
+  if (text)
+    {
+      g_autofree char *name = g_strconcat (text, ".zip", NULL);
+      g_autoptr(GFile) target = g_file_get_child_for_display_name (request->folder, name, NULL);
+
+      if (target)
+        fm_jobs_compress (request->shell, request->files, target);
+      end_selection (request->shell);
+    }
+  g_ptr_array_unref (request->files);
+  g_object_unref (request->folder);
+  g_free (request);
+}
+
+static void
+compress_selected (FmShell *shell, GPtrArray *items)
+{
+  CompressRequest *request;
+  FmItem *first = items->pdata[0];
+  const char *name = first->edit_name ? first->edit_name : first->name;
+  GFile *listed = fm_browser_get_location (shell->browser);
+  g_autoptr(GFile) location = fm_item_get_location (first);
+  g_autofree char *stem = NULL;
+  int end = -1;
+
+  request = g_new0 (CompressRequest, 1);
+  request->shell = shell;
+  request->files = locations_of (items);
+  request->folder = fm_parent (location);
+  if (!request->folder)
+    {
+      fm_shell_toast (shell, _("Failed to compress"));
+      g_ptr_array_unref (request->files);
+      g_free (request);
+      return;
+    }
+  request->here = listed && !fm_browser_is_virtual (shell->browser) && g_file_equal (listed, request->folder);
+  /* the first item's name, a file's without its extension */
+  fm_stem_range (name, fm_item_is_folder (first), &end);
+  stem = g_utf8_substring (name, 0, end);
+  fm_text_dialog_suffix (shell->window, _("Compress"), stem, -1, ".zip", check_compress, on_compress_done, request);
+}
+
 typedef enum {
   MORE_SHARE,
   MORE_BOOKMARK,
+  MORE_COMPRESS,
   MORE_OPEN_WITH,
   MORE_PROPERTIES,
+  MORE_SETTINGS,
 } MoreChoice;
 
-/* More: Share, Add Bookmark (a folder), Open with (a file), Properties. The popup's scrim
- * keeps the selection as it is while it shows, so the choice is found again from it. */
+#define MORE_MAX 6
+
+/* More: Share, Add Bookmark (a folder), Compress, Open with (a file), Properties, Settings, as File Manager+'s. A
+ * bookmark is a place to go to, so a file gets none. The popup's scrim keeps the selection as it is while it shows,
+ * so the choice is found again from it. */
 static int
-more_choices (FmShell *shell, GPtrArray *items, MoreChoice *choices, const char **labels)
+more_choices (FmShell *shell, GPtrArray *items, MoreChoice *choices, const char **labels, const char **icons)
 {
   g_autoptr(GPtrArray) files = locations_of (items);
   int n = 0;
@@ -699,20 +932,30 @@ more_choices (FmShell *shell, GPtrArray *items, MoreChoice *choices, const char 
   if (fm_share_possible (files))
     {
       choices[n] = MORE_SHARE;
+      icons[n] = "send-to-symbolic";
       labels[n++] = _("Share");
     }
   if (items->len == 1 && fm_item_is_folder (items->pdata[0]))
     {
       choices[n] = MORE_BOOKMARK;
+      icons[n] = "user-bookmarks-symbolic";
       labels[n++] = _("Add Bookmark");
     }
-  else if (items->len == 1)
+  choices[n] = MORE_COMPRESS;
+  icons[n] = "package-x-generic-symbolic";
+  labels[n++] = _("Compress");
+  if (items->len == 1 && !fm_item_is_folder (items->pdata[0]))
     {
       choices[n] = MORE_OPEN_WITH;
+      icons[n] = "document-open-symbolic";
       labels[n++] = _("Open with");
     }
   choices[n] = MORE_PROPERTIES;
+  icons[n] = "help-about-symbolic";
   labels[n++] = _("Properties");
+  choices[n] = MORE_SETTINGS;
+  icons[n] = "emblem-system-symbolic";
+  labels[n++] = _("Settings");
   return n;
 }
 
@@ -722,13 +965,13 @@ on_more (int index, gpointer data)
   FmShell *shell = data;
   g_autoptr(GPtrArray) items = selected_items (shell);
   g_autoptr(GPtrArray) files = locations_of (items);
-  MoreChoice choices[4];
-  const char *labels[4];
+  MoreChoice choices[MORE_MAX];
+  const char *labels[MORE_MAX], *icons[MORE_MAX];
   int n;
 
   if (!items->len)
     return;
-  n = more_choices (shell, items, choices, labels);
+  n = more_choices (shell, items, choices, labels, icons);
   if (index < 0 || index >= n)
     return;
   switch (choices[index])
@@ -745,8 +988,15 @@ on_more (int index, gpointer data)
       open_with (shell, items->pdata[0]);
       end_selection (shell);
       break;
+    case MORE_COMPRESS:
+      compress_selected (shell, items);
+      break;
     case MORE_PROPERTIES:
       fm_properties_dialog (shell->window, items);
+      break;
+    case MORE_SETTINGS:
+      end_selection (shell);
+      fm_shell_show_page (shell, FM_PAGE_SETTINGS);
       break;
     }
 }
@@ -755,17 +1005,16 @@ static void
 show_more (FmShell *shell, GtkWidget *anchor)
 {
   g_autoptr(GPtrArray) items = selected_items (shell);
-  MoreChoice choices[4];
-  const char *labels[4];
+  MoreChoice choices[MORE_MAX];
+  const char *labels[MORE_MAX], *icons[MORE_MAX];
   int n;
 
   if (!items->len)
     return;
-  n = more_choices (shell, items, choices, labels);
-  /* above the bar, its bottom on the bar's top and its end at the item's; the menu is 48 px a row and 8 px at each
-   * end */
-  fm_popup_show (anchor, labels, n, FM_POPUP_AT, gtk_widget_get_width (anchor) - 196, -(double) (n * 48 + 16),
-                 on_more, shell);
+  n = more_choices (shell, items, choices, labels, icons);
+  /* above the bar, its bottom on the bar's top and its end at the item's; the menu is 48 px a row */
+  fm_popup_show_icons (anchor, labels, icons, n, FM_POPUP_AT, gtk_widget_get_width (anchor) - 196, -(double) (n * 48),
+                       on_more, shell);
 }
 
 /* ---- the toolbar's actions ----------------------------------------------------------------------------------------- */
@@ -900,13 +1149,17 @@ typedef enum {
   OVERFLOW_NEW_FOLDER,
   OVERFLOW_REFRESH,
   OVERFLOW_SETTINGS,
+  OVERFLOW_ABOUT,
 } OverflowChoice;
+
+/* About: VibeOS's About sheet, as every VibeOS app has it */
+static const VibeosAboutInfo fm_about = { .name = "Files", .icon_name = "vibeos.Files" };
 
 static void
 on_overflow_chosen (int index, gpointer data)
 {
   FmShell *shell = data;
-  OverflowChoice choices[3];
+  OverflowChoice choices[4];
   int n = 0;
 
   /* the same list on_overflow made */
@@ -914,7 +1167,10 @@ on_overflow_chosen (int index, gpointer data)
     choices[n++] = OVERFLOW_NEW_FOLDER;
   choices[n++] = OVERFLOW_REFRESH;
   if (shell->page == FM_PAGE_HOME)
-    choices[n++] = OVERFLOW_SETTINGS;
+    {
+      choices[n++] = OVERFLOW_SETTINGS;
+      choices[n++] = OVERFLOW_ABOUT;
+    }
   if (index < 0 || index >= n)
     return;
   switch (choices[index])
@@ -928,21 +1184,27 @@ on_overflow_chosen (int index, gpointer data)
     case OVERFLOW_SETTINGS:
       fm_shell_show_page (shell, FM_PAGE_SETTINGS);
       break;
+    case OVERFLOW_ABOUT:
+      vibeos_about_present (shell->window, &fm_about);
+      break;
     }
 }
 
-/* the overflow: Home has Refresh and Settings; a folder New folder and Refresh; the Recycle Bin Refresh */
+/* the overflow: Home has Refresh, Settings and About; a folder New folder and Refresh; the Recycle Bin Refresh */
 static void
 on_overflow (VibeosPressable *button, FmShell *shell)
 {
-  const char *labels[3];
+  const char *labels[4];
   int n = 0;
 
   if (shell->page == FM_PAGE_BROWSER && !fm_browser_is_virtual (shell->browser))
     labels[n++] = _("New folder");
   labels[n++] = _("Refresh");
   if (shell->page == FM_PAGE_HOME)
-    labels[n++] = _("Settings");
+    {
+      labels[n++] = _("Settings");
+      labels[n++] = _("About");
+    }
   fm_popup_show (GTK_WIDGET (button), labels, n, FM_POPUP_OVER_END, 0, 0, on_overflow_chosen, shell);
 }
 
@@ -976,7 +1238,6 @@ typedef enum {
   BOTTOM_MORE,
   BOTTOM_RESTORE,
   BOTTOM_CANCEL,
-  BOTTOM_NEW_FOLDER,
   BOTTOM_PASTE,
 } BottomItem;
 
@@ -1008,9 +1269,6 @@ on_bottom_item (VibeosPressable *button, FmShell *shell)
     case BOTTOM_CANCEL:
       fm_shell_set_clip (shell, NULL, FALSE);
       break;
-    case BOTTOM_NEW_FOLDER:
-      new_folder (shell);
-      break;
     case BOTTOM_PASTE:
       {
         GFile *dest = fm_browser_get_location (shell->browser);
@@ -1033,7 +1291,6 @@ bottom_item (FmShell *shell, BottomItem item, const char *icon, const char *labe
   GtkWidget *image = gtk_image_new_from_icon_name (icon);
   GtkWidget *text = fm_label (label, "fm-bottom-text", 14, FALSE);
   GtkWidget *button;
-  GdkRGBA ripple = fm_rgba (FM_C_RIPPLE);
 
   gtk_image_set_pixel_size (GTK_IMAGE (image), 24);
   gtk_widget_add_css_class (image, "fm-bottom-icon");
@@ -1045,7 +1302,6 @@ bottom_item (FmShell *shell, BottomItem item, const char *icon, const char *labe
   gtk_widget_add_css_class (button, "fm-bottom-item");
   gtk_widget_set_hexpand (button, TRUE);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (button), VIBEOS_RIPPLE_BOUNDED, 0);
-  vibeos_pressable_set_ripple_color (VIBEOS_PRESSABLE (button), &ripple);
   gtk_widget_set_sensitive (button, sensitive);
   g_object_set_data (G_OBJECT (button), "fm-item", GINT_TO_POINTER (item));
   g_signal_connect (button, "clicked", G_CALLBACK (on_bottom_item), shell);
@@ -1065,7 +1321,7 @@ update_bottom (FmShell *shell, gboolean selecting, guint selected)
   GtkWidget *child;
 
   if (selecting)
-    mode = g_strdup_printf ("select:%d:%d", trash, selected == 1);
+    mode = g_strdup_printf ("select:%d", trash);
   else if (shell->clip)
     mode = g_strdup_printf ("paste:%d", can_paste);
   gtk_widget_set_visible (shell->bottom, mode != NULL);
@@ -1084,17 +1340,16 @@ update_bottom (FmShell *shell, gboolean selecting, guint selected)
     }
   else if (selecting)
     {
+      /* File Manager+'s action bar: Rename with several selected is Batch Rename */
       bottom_item (shell, BOTTOM_COPY, "edit-copy-symbolic", _("Copy"), TRUE);
-      bottom_item (shell, BOTTOM_CUT, "edit-cut-symbolic", _("Cut"), TRUE);
+      bottom_item (shell, BOTTOM_CUT, "edit-cut-symbolic", _("Move"), TRUE);
+      bottom_item (shell, BOTTOM_RENAME, "insert-text-symbolic", _("Rename"), TRUE);
       bottom_item (shell, BOTTOM_DELETE, "user-trash-symbolic", _("Delete"), TRUE);
-      if (selected == 1)
-        bottom_item (shell, BOTTOM_RENAME, "document-edit-symbolic", _("Rename"), TRUE);
       bottom_item (shell, BOTTOM_MORE, "view-more-symbolic", _("More"), TRUE);
     }
   else
     {
       bottom_item (shell, BOTTOM_CANCEL, "window-close-symbolic", _("Cancel"), TRUE);
-      bottom_item (shell, BOTTOM_NEW_FOLDER, "folder-new-symbolic", _("New folder"), can_paste);
       bottom_item (shell, BOTTOM_PASTE, "edit-paste-symbolic", _("Paste"), can_paste);
     }
 }
@@ -1151,12 +1406,14 @@ fm_shell_update_bars (FmShell *shell)
   gtk_widget_remove_css_class (shell->toolbar, "fm-cab");
   if (selecting)
     {
-      g_autofree char *title = g_strdup_printf (ngettext ("%d selected", "%d selected", selected), selected);
+      g_autofree char *title = g_strdup_printf ("%u/%u", selected, fm_list_count_items (list));
 
       gtk_widget_add_css_class (shell->toolbar, "fm-cab");
       gtk_label_set_text (GTK_LABEL (shell->select_title), title);
     }
   gtk_label_set_text (GTK_LABEL (shell->title), page_title (shell));
+  if (shell->drawer)
+    fm_drawer_sync_rail (shell->drawer);
   gtk_window_set_title (GTK_WINDOW (shell->window), shell->page == FM_PAGE_HOME ? _("Files") : page_title (shell));
 
   gtk_widget_set_visible (s->search, browsing && !trash && !network);
@@ -1252,7 +1509,7 @@ fm_shell_reload (FmShell *shell)
     fm_browser_reload (shell->browser, NULL);
   else if (shell->page == FM_PAGE_HOME)
     fm_home_refresh (shell->home);
-  if (fm_drawer_is_open (shell->drawer))
+  if (fm_drawer_is_open (shell->drawer) || fm_drawer_is_docked (shell->drawer))
     fm_drawer_refresh (shell->drawer);
   fm_shell_update_bars (shell);
 }
@@ -1262,7 +1519,7 @@ on_mounts_changed (GVolumeMonitor *monitor, GMount *mount, FmShell *shell)
 {
   if (shell->page == FM_PAGE_HOME)
     fm_home_refresh (shell->home);
-  if (fm_drawer_is_open (shell->drawer))
+  if (fm_drawer_is_open (shell->drawer) || fm_drawer_is_docked (shell->drawer))
     fm_drawer_refresh (shell->drawer);
 }
 
@@ -1307,6 +1564,9 @@ shell_free (gpointer data)
   g_clear_pointer (&s->toast_anim, vibeos_anim_free);
   g_signal_handlers_disconnect_by_data (shell->monitor, shell);
   g_signal_handlers_disconnect_by_data (shell->settings, shell);
+  if (s->layout)
+    g_signal_handlers_disconnect_by_data (s->layout, shell);
+  g_clear_object (&s->layout);
   fm_browser_free (shell->browser);
   fm_home_free (shell->home);
   fm_remote_page_free (shell->remote_page);
@@ -1422,6 +1682,19 @@ toolbar_new (Shell *s)
   return stack;
 }
 
+/* a tablet held sideways: the drawer docked at the window's start as a sidebar; held upright: the rail of the places
+ * there, with ☰ on it; either way the toolbar has no ☰ */
+static void
+on_layout_changed (VibeosLayout *layout, FmShell *shell)
+{
+  gboolean tablet = vibeos_layout_is_tablet (layout);
+  gboolean sideways = tablet && vibeos_layout_is_landscape (layout);
+
+  fm_drawer_set_docked (shell->drawer, SHELL (shell)->row, sideways);
+  gtk_widget_set_visible (fm_drawer_get_rail (shell->drawer), tablet && !sideways);
+  gtk_widget_set_visible (shell->nav, !tablet);
+}
+
 GtkWidget *
 fm_window_new (GtkApplication *app, GSettings *settings)
 {
@@ -1478,7 +1751,11 @@ fm_window_new (GtkApplication *app, GSettings *settings)
   gtk_box_append (GTK_BOX (shell->bottom), shell->bottom_items);
   gtk_widget_set_visible (shell->bottom, FALSE);
   gtk_box_append (GTK_BOX (main), shell->bottom);
-  vibeos_window_set_content (GTK_WINDOW (window), main);
+  /* the row: the docked drawer of a tablet comes in at its start */
+  s->row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_widget_set_hexpand (main, TRUE);
+  gtk_box_append (GTK_BOX (s->row), main);
+  vibeos_window_set_content (GTK_WINDOW (window), s->row);
 
   overlay = GTK_OVERLAY (g_object_get_data (G_OBJECT (window), "vibeos-overlay"));
   /* the marker the shell's back gesture sees while Back has something to leave */
@@ -1495,6 +1772,9 @@ fm_window_new (GtkApplication *app, GSettings *settings)
   shell->drawer = fm_drawer_new (shell);
   gtk_overlay_add_overlay (overlay, fm_drawer_get_widget (shell->drawer));
   fm_drawer_attach_edge (shell->drawer, main);
+  /* the upright tablet's rail, at the row's start (hidden until the layout asks for it) */
+  gtk_widget_set_visible (fm_drawer_get_rail (shell->drawer), FALSE);
+  gtk_box_prepend (GTK_BOX (s->row), fm_drawer_get_rail (shell->drawer));
 
   g_signal_connect (fm_browser_get_list (shell->browser), "selection-changed", G_CALLBACK (on_list_changed), shell);
   g_signal_connect (shell->monitor, "mount-added", G_CALLBACK (on_mounts_changed), shell);
@@ -1513,5 +1793,8 @@ fm_window_new (GtkApplication *app, GSettings *settings)
   shell->page = FM_PAGE_HOME;
   gtk_stack_set_visible_child_name (GTK_STACK (shell->pages), "home");
   fm_shell_update_bars (shell);
+  s->layout = g_object_ref (vibeos_layout_get_for_window (GTK_WINDOW (window)));
+  g_signal_connect (s->layout, "changed", G_CALLBACK (on_layout_changed), shell);
+  on_layout_changed (s->layout, shell);
   return window;
 }

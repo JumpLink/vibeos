@@ -26,22 +26,13 @@ static GSettings *settings;
 static GtkWidget *alarm_window;         /* the Ringing app's ringing alarm, while it is open */
 
 static void
-load_style (void)
-{
-  GtkCssProvider *provider = gtk_css_provider_new ();
-
-  gtk_css_provider_load_from_resource (provider, "/vibeos/Clock/clock.css");
-  /* over libvibeos's, which is at APPLICATION priority too: the later provider wins at equal priority */
-  gtk_style_context_add_provider_for_display (gdk_display_get_default (), GTK_STYLE_PROVIDER (provider),
-                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
-  g_object_unref (provider);
-}
-
-static void
 on_startup (GApplication *app, gpointer data)
 {
-  vibeos_init ();
-  load_style ();
+  /* the text follows Font size and Bold text; the stylesheet in sp and dp, over libvibeos's. The Clock is dark in
+   * light mode too, the ringing alarm and the timers that ran out with it, as on the reference phone and tablet: the
+   * theme's colour and contrast still apply, in its dark scheme */
+  vibeos_init_full (VIBEOS_INIT_SCALED_TEXT | VIBEOS_INIT_ALWAYS_DARK);
+  vibeos_css_load_resource ("/vibeos/Clock/clock.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
 }
 
 /* --- the app */

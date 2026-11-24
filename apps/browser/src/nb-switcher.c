@@ -234,18 +234,42 @@ scroll_to_current (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
+/* the grid's columns: two on a phone, more as the window widens (a tablet upright, then turned) */
+static int
+columns (void)
+{
+  VibeosLayout *layout = nb->win ? vibeos_layout_get (nb->win) : NULL;
+
+  if (!layout)
+    return 2;
+  switch (vibeos_layout_get_width_class (layout))
+    {
+    case VIBEOS_WIDTH_EXPANDED:
+      return 4;
+    case VIBEOS_WIDTH_MEDIUM:
+      return 3;
+    default:
+      return 2;
+    }
+}
+
 static void
 rebuild (void)
 {
   GtkWidget *child;
   guint n = nb->tabs->len;
+  int cols = columns ();
   int win_width = nb->win ? gtk_widget_get_width (nb->win) : 0;
-  int width = ((win_width > 0 ? win_width : 360) - 3 * GRID_SPACING) / 2;
+  int width = ((win_width > 0 ? win_width : 360) - (cols + 1) * GRID_SPACING) / cols;
 
   while ((child = gtk_widget_get_first_child (nb->switcher_grid)))
     gtk_grid_remove (GTK_GRID (nb->switcher_grid), child);
   for (guint i = 0; i < n; i++)
-    gtk_grid_attach (GTK_GRID (nb->switcher_grid), card_new (nb->tabs->pdata[i], width), i % 2, i / 2, 1, 1);
+    gtk_grid_attach (GTK_GRID (nb->switcher_grid), card_new (nb->tabs->pdata[i], width), i % cols, i / cols, 1, 1);
+  /* a wide window's few tabs keep to their columns' width rather than spreading over the row (a phone's one tab
+   * takes the row, as it always has) */
+  for (int i = n; cols > 2 && i > 0 && i < cols; i++)
+    gtk_grid_attach (GTK_GRID (nb->switcher_grid), gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), i, 0, 1, 1);
   g_autofree char *title = n == 1 ? g_strdup ("1 tab") : g_strdup_printf ("%u tabs", n);
   gtk_label_set_text (GTK_LABEL (nb->switcher_title), n ? title : "Tabs");
   gtk_widget_set_visible (switcher_scroll, n > 0);
@@ -393,6 +417,24 @@ on_window_destroy (GtkWidget *win, gpointer data)
   nb->switcher_open = FALSE;
 }
 
+gboolean
+nb_is_tablet (void)
+{
+  VibeosLayout *layout = nb->win ? vibeos_layout_get (nb->win) : NULL;
+
+  return layout && vibeos_layout_is_tablet (layout);
+}
+
+/* turned, or a display-size change: the switcher's columns, and each page's user agent and zoom (a user agent
+ * changed takes effect with the page's next load) */
+static void
+on_layout_changed (VibeosLayout *layout, gpointer data)
+{
+  for (guint i = 0; i < nb->tabs->len; i++)
+    nb_apply_view_settings (nb->tabs->pdata[i]);
+  queue_rebuild ();
+}
+
 GtkWidget *
 nb_window_get (void)
 {
@@ -414,5 +456,7 @@ nb_window_get (void)
   g_signal_connect (nb->win, "notify::is-active", G_CALLBACK (on_active), NULL);
   g_signal_connect (nb->win, "close-request", G_CALLBACK (on_close_request), NULL);
   g_signal_connect (nb->win, "destroy", G_CALLBACK (on_window_destroy), NULL);
+  g_signal_connect_object (vibeos_layout_get_for_window (GTK_WINDOW (nb->win)), "changed",
+                           G_CALLBACK (on_layout_changed), nb->win, 0);
   return nb->win;
 }

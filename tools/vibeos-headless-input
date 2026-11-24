@@ -3,7 +3,8 @@
 #
 #   vibeos-headless-input tap X Y
 #   vibeos-headless-input swipe X0 Y0 X1 Y1 [MS]
-#   vibeos-headless-input keyboard      a keyboard plugged in until mutter goes (vibeos-headless start runs it)
+#   vibeos-headless-input keyboard      a keyboard and a touchscreen plugged in until mutter goes (vibeos-headless
+#                                       start runs it, before any app)
 #
 # Coordinates are in dp (the headless display runs at scale 1). VIBEOS_HEADLESS_BUS is the private bus the headless
 # mutter is on. Absolute input needs a screen-cast stream of the monitor to give the coordinates a frame, so each
@@ -55,19 +56,6 @@ def main():
         call(bus, rd_service, rd_session, rd_service + '.Session', method,
              GLib.Variant(signature, args) if signature else None)
 
-    if command == 'keyboard':
-        # Mutter activates a window (xdg_toplevel "activated": GTK's is-active, an app's onResume) only while the
-        # seat has a keyboard. The phone always has one (its power and volume keys), the headless display none, so
-        # every window on it was inactive. A session's keyboard is made on its first key and lasts as long as the
-        # session: one key (Shift, which no app acts on alone), then the session is held until mutter's bus goes.
-        rd('Start')
-        rd('NotifyKeyboardKeysym', '(ub)', SHIFT_L, True)
-        rd('NotifyKeyboardKeysym', '(ub)', SHIFT_L, False)
-        loop = GLib.MainLoop()
-        bus.connect('closed', lambda *args: loop.quit())
-        loop.run()
-        return
-
     session_id = call(bus, rd_service, rd_session, 'org.freedesktop.DBus.Properties', 'Get',
                       GLib.Variant('(ss)', (rd_service + '.Session', 'SessionId')), '(v)').unpack()[0]
 
@@ -79,12 +67,28 @@ def main():
                   GLib.Variant('(sa{sv})', ('Meta-0', {})), '(o)').unpack()[0]
 
     rd('Start')
-    # Mutter makes the session's touchscreen on its first touch: that touch announces the device to the app, which
-    # binds wl_touch a round trip later, after the touch has gone by. So the first one primes the device (and is
-    # lost on the way, whatever it lands on), and the real one follows once the app is listening.
-    rd('NotifyTouchDown', '(sudd)', stream, 0, 0.0, 0.0)
-    rd('NotifyTouchUp', '(u)', 0)
-    spin(0.3)
+
+    if command == 'keyboard':
+        # Mutter activates a window (xdg_toplevel "activated": GTK's is-active, an app's onResume) only while the
+        # seat has a keyboard. The phone always has one (its power and volume keys), the headless display none, so
+        # every window on it was inactive. A session's keyboard is made on its first key and lasts as long as the
+        # session: one key (Shift, which no app acts on alone).
+        rd('NotifyKeyboardKeysym', '(ub)', SHIFT_L, True)
+        rd('NotifyKeyboardKeysym', '(ub)', SHIFT_L, False)
+        # A touchscreen too, as the phone's, made by a touch (on no window: no app is on the display yet). With a
+        # touchscreen only in each tap's session, the seat lost its touch when the session closed, and a GTK 4.24
+        # app whose touch events were still queued then (one busy for 0.1 s after the tap) crashed on them: GDK
+        # takes the device's seat away, gdk_seat_get_topmost_grab_surface (NULL) in GTK's rewrite_event_for_grabs.
+        # It also lets an app bind wl_touch at its start, so a tap's first touch is no longer lost.
+        rd('NotifyTouchDown', '(sudd)', stream, 0, 0.0, 0.0)
+        rd('NotifyTouchUp', '(u)', 0)
+        spin(0.1)
+        # the session is held until mutter's bus goes; vibeos-headless start waits for this line
+        print('vibeos-headless-input: keyboard and touchscreen ready', flush=True)
+        loop = GLib.MainLoop()
+        bus.connect('closed', lambda *args: loop.quit())
+        loop.run()
+        return
 
     if command == 'tap':
         x, y = numbers

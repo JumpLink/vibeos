@@ -25,5 +25,7 @@ GtkWidget *cal_agenda_view_new       (void);
 void       cal_agenda_view_go_to     (CalAgendaView *self, int day);
 void       cal_agenda_view_get_range (CalAgendaView *self, int *first, int *last);
 void       cal_agenda_view_set_events (CalAgendaView *self, GPtrArray *events);
+/* @event (or none) on a band: the one a tablet shows beside the list */
+void       cal_agenda_view_set_selected (CalAgendaView *self, const CalEvent *event);
 
 G_END_DECLS

@@ -6,7 +6,8 @@
 # to the real session bus (its services, its settings) but draws on the headless display, where it gets frames as
 # on a lit screen: its animations run. Pictures come from the app itself (libvibeos's VIBEOS_SHOT, at the scale of
 # the screen the size stands for: 3x for the phone's); touches go in through mutter's RemoteDesktop API
-# (vibeos-headless-input), which also keeps a keyboard plugged in, so its windows are active as on the phone.
+# (vibeos-headless-input), which also keeps a keyboard and a touchscreen plugged in, as on the phone: its windows
+# are active, and its touches never lose their device.
 #
 #   vibeos-headless start                  the display: the phone's app area under its status bar, in dp: 360 x 721
 #                                       on the Galaxy S10e, 360 x 761 on the POCO X3 (VIBEOS_HEADLESS_SIZE to choose:
@@ -38,18 +39,68 @@
 # VIBEOS_HEADLESS_RUNTIME=DIR keeps the display's socket and state in DIR instead of /run/user/UID, and runs the apps
 # with XDG_RUNTIME_DIR=DIR: what a rig on a private bus must do (see RUNTIME below). Every command takes the same.
 #
-# Run it as root on the phone; it does the rest as the session user.
+# Run as root on the phone, it does the rest as the session user (VIBEOS_USER, "user"), and the apps it runs use the
+# session's bus, settings and services, as an app on the phone's own screen does.
+#
+# Run as a normal user (on the phone or on a computer), it is all that user's and the apps are kept to themselves
+# (VIBEOS_HEADLESS_PRIVATE=1, the default there; 0 to have them on the session's as above):
+#   - the display's socket and state in a runtime directory of their own, ${TMPDIR:-/tmp}/vibeos-headless-UID, which
+#     is the apps' XDG_RUNTIME_DIR too;
+#   - the display's own bus as their session bus and as their system bus, so they reach no service of the session's
+#     or the system's (a network list, the accounts, the battery come back empty: test data only);
+#   - their settings in a keyfile under the state directory (GSETTINGS_BACKEND=keyfile), their HOME and XDG data,
+#     config and cache directories there too; no accessibility bus (NO_AT_BRIDGE=1, GTK_A11Y=none).
+#   An app that is not installed gets what it needs from the command line `run` is given, before the app:
+#   `vibeos-headless run env GSETTINGS_SCHEMA_DIR=... LD_LIBRARY_PATH=... ./app`.
+#   VIBEOS_HEADLESS_HOSTNAME=NAME runs the apps with that host name (a user namespace of their own), for pictures
+#   that do not show the machine's.
+#   Taps and swipes need PipeWire (mutter's screen cast frames them): VIBEOS_HEADLESS_PIPEWIRE=DIR names the runtime
+#   directory of a PipeWire to use; without it, `tap` and `swipe` do not work and pictures and dumps do.
+#
+# VIBEOS_HEADLESS_CHROOT=DIR runs the bus and mutter in the system installed in DIR (through `sudo -n chroot
+# --userspec`), for a computer without mutter: a Debian with the same mutter as the phones', of the computer's own
+# architecture. The runtime directory is then in DIR's /tmp. The apps still run outside it.
 set -e
 
-USER_NAME=${VIBEOS_USER:-user}
-# The display's runtime directory (its Wayland socket, its state): VIBEOS_HEADLESS_RUNTIME, else the session's. A rig
-# that runs apps on a bus of its own must give one of its own (made by it, the session user's, mode 700): whatever
-# such an app activates on its bus (xdg-document-portal on $XDG_RUNTIME_DIR/doc, the a11y bus on .../at-spi) takes
-# over the session's own when it shares the session's directory (11-10: the session's document portal died of it).
-SESSION_RUNTIME=/run/user/$(id -u "$USER_NAME")
-RUNTIME=${VIBEOS_HEADLESS_RUNTIME:-$SESSION_RUNTIME}
+if [ "$(id -u)" = 0 ]; then
+    USER_NAME=${VIBEOS_USER:-user}
+    PRIVATE=${VIBEOS_HEADLESS_PRIVATE:-0}
+else
+    USER_NAME=$(id -un)
+    PRIVATE=${VIBEOS_HEADLESS_PRIVATE:-1}
+fi
+USER_ID=$(id -u "$USER_NAME")
+CHROOT=${VIBEOS_HEADLESS_CHROOT:-}
+CHROOT=${CHROOT%/}
+# The display's runtime directory (its Wayland socket, its state): VIBEOS_HEADLESS_RUNTIME, else the session's, or a
+# private one. A rig that runs apps on a bus of its own must give one of its own (made by it, the session user's,
+# mode 700): whatever such an app activates on its bus (xdg-document-portal on $XDG_RUNTIME_DIR/doc, the a11y bus on
+# .../at-spi) takes over the session's own when it shares the session's directory (11-10: the session's document
+# portal died of it).
+SESSION_RUNTIME=/run/user/$USER_ID
+if [ -n "${VIBEOS_HEADLESS_RUNTIME:-}" ]; then
+    RUNTIME=$VIBEOS_HEADLESS_RUNTIME
+elif [ -n "$CHROOT" ]; then
+    RUNTIME=$CHROOT/tmp/vibeos-headless-$USER_ID
+elif [ "$PRIVATE" = 1 ]; then
+    RUNTIME=${TMPDIR:-/tmp}/vibeos-headless-$USER_ID
+else
+    RUNTIME=$SESSION_RUNTIME
+fi
+if [ -n "$CHROOT" ]; then
+    case $RUNTIME in
+    "$CHROOT"/*) ;;
+    *)
+        echo "vibeos-headless: with VIBEOS_HEADLESS_CHROOT the runtime directory has to be in $CHROOT" >&2
+        exit 2
+        ;;
+    esac
+fi
 NAME=${VIBEOS_HEADLESS:-vibeos-headless}
 STATE=$RUNTIME/$NAME.d          # beside the Wayland socket, $RUNTIME/$NAME
+# the same, as the bus and mutter see them (in the chroot)
+IN_RUNTIME=${RUNTIME#"$CHROOT"}
+IN_STATE=${STATE#"$CHROOT"}
 SHOT=$STATE/shot.png
 HERE=$(dirname "$(readlink -f "$0")")
 # the mutter to run: the mutter package's, or VIBEOS_HEADLESS_MUTTER, a command line, on a phone without that package
@@ -57,7 +108,7 @@ HERE=$(dirname "$(readlink -f "$0")")
 # and its plugin, given with --mutter-plugin=PATH, from anywhere)
 MUTTER=${VIBEOS_HEADLESS_MUTTER:-mutter}
 # the app area: the panel in GTK px (scale 3) less the 39 px status bar
-case "$(tr -d '\0' < /proc/device-tree/compatible 2>/dev/null)" in
+case "$( { tr -d '\0' < /proc/device-tree/compatible; } 2>/dev/null)" in
 *surya*) AREA=360x761 ;;      # 1080 x 2400
 *)       AREA=360x721 ;;      # 1080 x 2280, the Galaxy S10e
 esac
@@ -76,18 +127,44 @@ tablet-port) AREA=800x1220 SCALE=2 ;;
     ;;
 esac
 DUMP=$STATE/dump.xml
+# the display's bus, where the apps and the input tool reach it, and where the bus itself listens
+BUS=unix:path=$STATE/bus.socket
+IN_BUS=unix:path=$IN_STATE/bus.socket
 
+# a command as the session user (as root on the phone: through sudo)
 as_user() {
-    sudo -u "$USER_NAME" env XDG_RUNTIME_DIR="$RUNTIME" "$@"
+    if [ "$(id -u)" = 0 ]; then
+        sudo -u "$USER_NAME" env XDG_RUNTIME_DIR="$RUNTIME" "$@"
+    else
+        env XDG_RUNTIME_DIR="$RUNTIME" "$@"
+    fi
 }
 
-# A daemon as the session user, detached, its pid in $STATE/NAME.pid and its output in $STATE/NAME.log. Not
-# `as_user ... &`: that forks the script to run the function, and the fork keeps the caller's stdout open (dash's
-# saved copy), so an ssh running this script never sees it end.
+# a command of the display's own (the bus, mutter), as the session user, in the chroot when there is one
+as_display() {
+    if [ -n "$CHROOT" ]; then
+        sudo -n chroot --userspec="$USER_ID:$(id -g "$USER_NAME")" "$CHROOT" \
+            env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin LC_ALL=C.UTF-8 HOME="$IN_STATE/home" \
+            XDG_RUNTIME_DIR="$IN_RUNTIME" "$@"
+    else
+        as_user "$@"
+    fi
+}
+
+# A daemon, detached, its pid in $STATE/NAME.pid and its output in $STATE/NAME.log. Not `as_user ... &`: that
+# forks the script to run the function, and the fork keeps the caller's stdout open (dash's saved copy), so an ssh
+# running this script never sees it end. `as_display_daemon` runs it as as_display does.
 as_user_daemon() {
     name=$1
     shift
     as_user setsid -f sh -c 'echo $$ >"$0"; exec "$@"' "$STATE/$name.pid" "$@" \
+        </dev/null >"$STATE/$name.log" 2>&1
+}
+
+as_display_daemon() {
+    name=$1
+    shift
+    as_display setsid -f sh -c 'echo $$ >"$0"; exec "$@"' "$IN_STATE/$name.pid" "$@" \
         </dev/null >"$STATE/$name.log" 2>&1
 }
 
@@ -106,38 +183,55 @@ start)
             "for a second display" >&2
         exit 1
     fi
-    if ! command -v ${MUTTER%% *} >/dev/null; then
-        echo "vibeos-headless: no mutter: install the mutter package, or see VIBEOS_HEADLESS_MUTTER" >&2
+    if [ -z "$CHROOT" ] && ! command -v ${MUTTER%% *} >/dev/null; then
+        echo "vibeos-headless: no mutter: install the mutter package, or see VIBEOS_HEADLESS_MUTTER and" \
+            "VIBEOS_HEADLESS_CHROOT" >&2
         exit 1
     fi
-    as_user mkdir -p "$STATE"
+    if [ "$RUNTIME" != "$SESSION_RUNTIME" ]; then
+        as_user mkdir -p -m 700 "$RUNTIME"
+        as_user chmod 700 "$RUNTIME"
+    fi
+    as_user mkdir -p "$STATE" "$STATE/home"
+    rm -f "$STATE/bus.socket"
     # the scale the display's pictures are made at, for `run`
     echo "$SCALE" | as_user tee "$STATE/scale" >/dev/null
-    # the private bus, and mutter on it; --print-address writes where the bus is, for the input tool
-    as_user dbus-daemon --session --fork --print-address=1 --print-pid=1 </dev/null >"$STATE/bus.tmp"
-    head -1 "$STATE/bus.tmp" >"$STATE/bus"
-    tail -1 "$STATE/bus.tmp" >"$STATE/bus.pid"
-    rm -f "$STATE/bus.tmp"
-    # PipeWire is the session's, wherever the display's runtime directory is: mutter's RemoteDesktop (taps, swipes)
-    # will not start without it
+    # the private bus, and mutter on it
+    echo "$BUS" | as_user tee "$STATE/bus" >/dev/null
+    as_display dbus-daemon --session --address="$IN_BUS" --fork --print-pid=1 </dev/null >"$STATE/bus.pid"
+    if [ "$PRIVATE" = 1 ]; then
+        # mutter's own settings stay with it too
+        set -- env GSETTINGS_BACKEND=memory NO_AT_BRIDGE=1
+        [ -n "${VIBEOS_HEADLESS_PIPEWIRE:-}" ] && set -- "$@" PIPEWIRE_RUNTIME_DIR="${VIBEOS_HEADLESS_PIPEWIRE#"$CHROOT"}"
+    else
+        # PipeWire is the session's, wherever the display's runtime directory is: mutter's RemoteDesktop (taps,
+        # swipes) will not start without it
+        set -- env PIPEWIRE_RUNTIME_DIR="$SESSION_RUNTIME"
+    fi
     # shellcheck disable=SC2086 # a command line, split into words
-    as_user_daemon mutter env DBUS_SESSION_BUS_ADDRESS="$(cat "$STATE/bus")" PIPEWIRE_RUNTIME_DIR="$SESSION_RUNTIME" \
+    as_display_daemon mutter "$@" DBUS_SESSION_BUS_ADDRESS="$IN_BUS" \
         $MUTTER --headless --wayland --no-x11 \
         --wayland-display="$NAME" --virtual-monitor "$AREA"
     # ready once its Wayland socket is there
-    for _ in $(seq 50); do [ -S "$RUNTIME/$NAME" ] && break; sleep 0.1; done
+    for _ in $(seq 100); do [ -S "$RUNTIME/$NAME" ] && break; sleep 0.1; done
     if [ ! -S "$RUNTIME/$NAME" ]; then
         echo "vibeos-headless: mutter did not start, see $STATE/mutter.log" >&2
         exit 1
     fi
-    # a keyboard for the seat, or no window on it is ever active (see vibeos-headless-input); the script goes in as an
-    # argument, read by root, since the daemon's stdin is /dev/null
-    as_user_daemon keyboard env VIBEOS_HEADLESS_BUS="$(cat "$STATE/bus")" \
+    # a keyboard for the seat, or no window on it is ever active, and a touchscreen that stays (see
+    # vibeos-headless-input); the script goes in as an argument, read by root, since the daemon's stdin is /dev/null.
+    # Its touch must come before any app's window, so `start` returns once it is there.
+    as_user_daemon keyboard env VIBEOS_HEADLESS_BUS="$BUS" \
         python3 -c "$(cat "$HERE/vibeos-headless-input")" keyboard
+    for _ in $(seq 100); do grep -q ready "$STATE/keyboard.log" 2>/dev/null && break; sleep 0.1; done
+    grep -q ready "$STATE/keyboard.log" 2>/dev/null ||
+        echo "vibeos-headless: no keyboard or touchscreen yet, see $STATE/keyboard.log" >&2
     # A phone that suspends under the display stops mutter, the app and the ssh that drives them alike, so the
     # phone stays awake for as long as mutter runs (a logind inhibitor, which s10e-sleepd honours)
-    setsid -f systemd-inhibit --what=sleep --who=vibeos-headless --why="a test display is running" \
-        tail --pid="$(cat "$STATE/mutter.pid")" -f /dev/null </dev/null >/dev/null 2>&1
+    if [ "$(id -u)" = 0 ]; then
+        setsid -f systemd-inhibit --what=sleep --who=vibeos-headless --why="a test display is running" \
+            tail --pid="$(cat "$STATE/mutter.pid")" -f /dev/null </dev/null >/dev/null 2>&1
+    fi
     # Left running, that kept a phone off its charger awake until the battery was empty (11-07: four hours from
     # 70 %). So the display stops itself once no command has used it for VIBEOS_HEADLESS_IDLE minutes (15).
     touch "$STATE/used"
@@ -150,11 +244,25 @@ start)
 run)
     shift
     rm -f "$SHOT" "$DUMP"
-    as_user_daemon app env DBUS_SESSION_BUS_ADDRESS="unix:path=$SESSION_RUNTIME/bus" WAYLAND_DISPLAY="$NAME" \
-        GDK_BACKEND=wayland GSK_RENDERER=${GSK_RENDERER:-gl} VIBEOS_SHOT="$SHOT" VIBEOS_DUMP="$DUMP" \
-        VIBEOS_SHOT_SCALE="$(cat "$STATE/scale" 2>/dev/null || echo 3)" "$@"
-    # the app's first picture comes a second after its window shows
-    for _ in $(seq 100); do [ -f "$SHOT" ] && exit 0; sleep 0.1; done
+    if [ "$PRIVATE" = 1 ]; then
+        as_user mkdir -p "$STATE/config" "$STATE/data" "$STATE/cache"
+        set -- env DBUS_SESSION_BUS_ADDRESS="$BUS" DBUS_SYSTEM_BUS_ADDRESS="$BUS" NO_AT_BRIDGE=1 GTK_A11Y=none \
+            GSETTINGS_BACKEND=keyfile HOME="$STATE/home" XDG_CONFIG_HOME="$STATE/config" \
+            XDG_DATA_HOME="$STATE/data" XDG_CACHE_HOME="$STATE/cache" "$@"
+        if [ -n "${VIBEOS_HEADLESS_HOSTNAME:-}" ]; then
+            # a namespace where the app is root, to name the host, and one inside it where it is itself again (a
+            # D-Bus peer is told its user id: it has to be the one the bus sees)
+            set -- unshare --user --map-root-user --uts sh -c 'hostname "$0" && u=$1 g=$2 && shift 2 &&
+                exec unshare --user --map-user="$u" --map-group="$g" "$@"' "$VIBEOS_HEADLESS_HOSTNAME" "$USER_ID" \
+                "$(id -g "$USER_NAME")" "$@"
+        fi
+    else
+        set -- env DBUS_SESSION_BUS_ADDRESS="unix:path=$SESSION_RUNTIME/bus" "$@"
+    fi
+    as_user_daemon app env WAYLAND_DISPLAY="$NAME" GDK_BACKEND=wayland GSK_RENDERER=${GSK_RENDERER:-gl} \
+        VIBEOS_SHOT="$SHOT" VIBEOS_DUMP="$DUMP" VIBEOS_SHOT_SCALE="$(cat "$STATE/scale" 2>/dev/null || echo 3)" "$@"
+    # the app's first picture comes a second after its window shows (more for one under an emulator)
+    for _ in $(seq "${VIBEOS_HEADLESS_WAIT:-100}"); do [ -f "$SHOT" ] && exit 0; sleep 0.1; done
     echo "vibeos-headless: no window yet, see $STATE/app.log" >&2
     exit 1
     ;;
@@ -179,6 +287,7 @@ stop)
         [ -f "$STATE/$p.pid" ] && kill "$(cat "$STATE/$p.pid")" 2>/dev/null || true
         rm -f "$STATE/$p.pid"
     done
+    rm -f "$STATE/bus.socket"
     ;;
 *)
     # the comment at the top
