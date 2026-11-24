@@ -4,6 +4,7 @@
 
 #include <glib/gi18n.h>
 #include <glib/gstdio.h>
+#include <vibeos-locale.h>
 
 #define UNIT        "vibeos-navi-leave" /* the timer's and its service's name */
 #define WAKEUP_NAME "navi-leave"        /* our wake-up's key in vibeos-wakeup */
@@ -262,8 +263,7 @@ navi_plan_describe (gint64 time, gboolean use_24h)
 {
   g_autoptr (GDateTime) t = g_date_time_new_from_unix_local (time);
   g_autoptr (GDateTime) now = g_date_time_new_now_local ();
-  g_autofree char *clock = g_date_time_format (t, use_24h ? "%H:%M" : "%-l:%M %p");
-  g_strstrip (clock);
+  g_autofree char *clock = vibeos_format_date (t, use_24h ? "Hm" : "hm");
   g_autoptr (GDateTime) d0 = day_of (now);
   g_autoptr (GDateTime) d1 = day_of (t);
   /* rounded: a day with a clock change is 23 or 25 hours long */
@@ -274,7 +274,7 @@ navi_plan_describe (gint64 time, gboolean use_24h)
   if (days == 1)
     /* TRANSLATORS: "Reminder tomorrow at 08:15" */
     return g_strdup_printf (_("Reminder tomorrow at %s"), clock);
-  g_autofree char *day = g_date_time_format (t, "%a");
+  g_autofree char *day = vibeos_format_date (t, "EEE");
   /* TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15" */
   return g_strdup_printf (_("Reminder on %s at %s"), day, clock);
 }

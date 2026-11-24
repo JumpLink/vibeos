@@ -1,0 +1,1019 @@
+# Dutch translations of vibeos-navi.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-navi\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:41+0100\n"
+"PO-Revision-Date: 2026-11-24 03:41+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Dutch\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: data/vibeos.Navi.desktop.in
+msgid "Navi"
+msgstr ""
+
+#: data/vibeos.Navi.desktop.in
+msgid "Turn-by-turn directions for driving"
+msgstr ""
+
+#: data/vibeos.Navi.desktop.in
+msgid "map;navigation;route;directions;drive;"
+msgstr ""
+
+#: src/navi-alerts.c
+msgid "Red light camera"
+msgstr ""
+
+#: src/navi-alerts.c
+msgid "Section control"
+msgstr ""
+
+#: src/navi-alerts.c
+msgid "Speed camera"
+msgstr ""
+
+#: src/navi-alerts.c
+msgid "Danger zone"
+msgstr ""
+
+#: src/navi-geo.c
+#, c-format
+msgid "%ld min"
+msgstr ""
+
+#: src/navi-geo.c
+#, c-format
+msgid "%ld h"
+msgstr ""
+
+#. TRANSLATORS: hours and minutes, "1 h 37 min"
+#: src/navi-geo.c
+#, c-format
+msgid "%ld h %ld min"
+msgstr ""
+
+# android: Framework input_method_nav_back_button_desc (several translations, short)
+#: src/navi-main.c
+msgid "Back"
+msgstr "Terug"
+
+#: src/navi-main.c
+msgid "Destination"
+msgstr ""
+
+# android: Framework accessibility_system_action_menu_label (short)
+#: src/navi-main.c src/navi-panels.c
+msgid "Menu"
+msgstr "Menu"
+
+#: src/navi-main.c
+msgid "Drive"
+msgstr ""
+
+# android: Framework search_go (short)
+#: src/navi-main.c src/navi-panels.c
+msgid "Search"
+msgstr "Zoeken"
+
+#: src/navi-panels.c
+msgid "Gas station"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "EV charging"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Parking"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Restaurant"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Fast food"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Café"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Supermarket"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Pharmacy"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Hospital"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "ATM"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Bank"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Hotel"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Toilets"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Search for your home address"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Search for your work address"
+msgstr ""
+
+# android: Settings bluetooth_rename_button (short)
+#: src/navi-panels.c
+msgid "Rename"
+msgstr "Naam wijzigen"
+
+# android: Framework cancel (several translations, short)
+#: src/navi-panels.c ../dictate/src/dictate-download-dialog.c
+msgid "Cancel"
+msgstr "Annuleren"
+
+# android: Framework autofill_save_yes (short)
+#: src/navi-panels.c
+msgid "Save"
+msgstr "Opslaan"
+
+# android: Framework kg_reordering_delete_drop_target_text (short)
+#: src/navi-panels.c
+msgid "Remove"
+msgstr "Verwijderen"
+
+# android: Framework action_menu_overflow_description (short)
+#: src/navi-panels.c
+msgid "More options"
+msgstr "Meer opties"
+
+#: src/navi-panels.c
+msgid "Cancel reminder"
+msgstr ""
+
+# android: Settings action_corner_action_titles[1] (several translations, short)
+#: src/navi-panels.c
+msgid "Home"
+msgstr "Home"
+
+# android: Framework resolver_work_tab (short)
+#: src/navi-panels.c
+msgid "Work"
+msgstr "Werk"
+
+#: src/navi-panels.c
+msgid "Set once and go"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Planned drive"
+msgstr ""
+
+# android: Settings wifi_add_app_single_network_saved_summary (short)
+#: src/navi-panels.c
+msgid "Saved"
+msgstr "Opgeslagen"
+
+# android: Framework recent_tasks_title (short)
+#: src/navi-panels.c
+msgid "Recent"
+msgstr "Recent"
+
+#: src/navi-panels.c
+msgid "Search is unavailable right now"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "No results"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Search is unavailable right now. These are from the map, nearby."
+msgstr ""
+
+#: src/navi-panels.c
+msgid "None along the route"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Along the route"
+msgstr ""
+
+#: src/navi-panels.c
+#, c-format
+msgid "%s ahead · %s"
+msgstr ""
+
+# android: DeskClock world_time_ahead
+#: src/navi-panels.c
+#, c-format
+msgid "%s ahead"
+msgstr "%s later"
+
+#: src/navi-panels.c
+msgid "On the route"
+msgstr ""
+
+#: src/navi-panels.c
+#, c-format
+msgid "+%d min"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Getting ready…"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Say where to go"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Search by voice"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Where to?"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Gas"
+msgstr ""
+
+# android: SettingsLib usb_configuration_titles[0] (short)
+#: src/navi-panels.c
+msgid "Charging"
+msgstr "Opladen"
+
+#: src/navi-panels.c
+msgid "Food"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Coffee"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Groceries"
+msgstr ""
+
+#. Waze's two choices; a tap outside or Back keeps the drive as it is (three buttons do not fit a phone)
+#: src/navi-panels.c
+#, c-format
+msgid "Drive to %s?"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "this place"
+msgstr ""
+
+#: src/navi-panels.c
+msgid ""
+"Add it as a stop on the way, or make it the new destination and cancel the "
+"current route."
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Add a stop"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "New destination"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Cancel the current route?"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Keep driving"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Keep route"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Cancel route"
+msgstr ""
+
+# android: Settings vpn_always_on_summary_active (short)
+#: src/navi-panels.c
+msgid "Always on"
+msgstr "Altijd aan"
+
+# android: Framework wifi_calling_off_summary (several translations, short)
+#: src/navi-panels.c
+msgid "Off"
+msgstr "Uit"
+
+#: src/navi-panels.c
+msgid "As the system"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Only at night"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "3D"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "2D"
+msgstr ""
+
+# android: Aperture effect_auto (adapted, short)
+#: src/navi-panels.c
+msgid "Auto"
+msgstr "AUTOMATISCH"
+
+#: src/navi-panels.c
+msgid "Alerts only"
+msgstr ""
+
+# android: Framework accessibility_shortcut_menu_item_status_on (short)
+#: src/navi-panels.c
+msgid "On"
+msgstr "Aan"
+
+#: src/navi-panels.c
+msgid "Motorcycle"
+msgstr ""
+
+# android: Settings zen_mode_icon_options_descriptions[28] (short)
+#: src/navi-panels.c
+msgid "Car"
+msgstr "Auto"
+
+#: src/navi-panels.c
+msgid "Kilometers"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Miles"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "At the limit"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "5 mph over"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "10 km/h over"
+msgstr ""
+
+#: src/navi-panels.c
+#, no-c-format
+msgid "10 % over"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "3 mph over"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "5 km/h over"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Tilted, always"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Flat, always"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Flat while browsing, 3D while driving"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Miles in the UK and the US, else kilometers"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Not set: tap to search for it"
+msgstr ""
+
+# android: Settings dark_ui_title (adapted, short)
+#: src/navi-panels.c
+msgid "Dark mode"
+msgstr "Donkere modus"
+
+#: src/navi-panels.c
+msgid "Map view"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Speeding warning"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Vehicle type"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Units"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Spoken directions"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Voice language"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Forget Home?"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Forget Work?"
+msgstr ""
+
+# android: Settings forget (short)
+#: src/navi-panels.c
+msgid "Forget"
+msgstr "Vergeten"
+
+# android: Framework global_action_settings (short)
+#: src/navi-panels.c
+msgid "Settings"
+msgstr "Instellingen"
+
+#: src/navi-panels.c
+msgid "Map display"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Auto: flat while browsing, 3D while driving"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Keep map north up"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Auto zoom"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Zoom out as the car goes faster"
+msgstr ""
+
+#. Waze's Navigation: the next route, and a new one on the way, follow them
+#: src/navi-panels.c
+msgid "Navigation"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Avoid toll roads"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Avoid highways"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Avoid ferries"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Voice and sound"
+msgstr ""
+
+# android: Framework notification_channel_network_alert (short)
+#: src/navi-panels.c
+msgid "Alerts"
+msgstr "Meldingen"
+
+#: src/navi-panels.c
+msgid "Speed camera alerts"
+msgstr ""
+
+#: src/navi-panels.c
+msgid ""
+"Where the law allows them: never in Switzerland, only danger zones in "
+"France, and in Germany not for the driver while driving"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "The speedometer turns red above the limit"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Saved places"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Stop navigation and exit?"
+msgstr ""
+
+# android: Settings private_space_exit_label (short)
+#: src/navi-panels.c
+msgid "Exit"
+msgstr "Sluiten"
+
+# android: Framework lockscreen_sound_off_label (short)
+#: src/navi-panels.c
+msgid "Sound off"
+msgstr "Geluid uit"
+
+# android: Framework lockscreen_sound_on_label (short)
+#: src/navi-panels.c
+msgid "Sound on"
+msgstr "Geluid aan"
+
+#: src/navi-panels.c
+msgid "Saved as Home"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Saved as Work"
+msgstr ""
+
+# android: Framework aerr_close (short)
+#: src/navi-panels.c
+msgid "Close"
+msgstr "Sluiten"
+
+#: src/navi-panels.c
+msgid "Set as Home"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Set as Work"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "View routes"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Reminders cannot be set here"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Your location"
+msgstr ""
+
+# android: Settings retry (short)
+#. after a failure: ask again
+#: src/navi-panels.c ../dictate/src/dictate-download-dialog.c
+msgid "Retry"
+msgstr "Opnieuw proberen"
+
+#: src/navi-panels.c
+msgid "Leave later"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Go now"
+msgstr ""
+
+# android: Contacts contact_status_update_attribution (adapted)
+#: src/navi-panels.c
+#, c-format
+msgid "Via %s"
+msgstr "Via %s"
+
+#: src/navi-panels.c
+msgid "Best route"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Toll road"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Ferry"
+msgstr ""
+
+# android: SystemUI accessibility_recent (short)
+#: src/navi-panels.c
+msgid "Overview"
+msgstr "Overzicht"
+
+#: src/navi-panels.c
+msgid "Re-center"
+msgstr ""
+
+# android: Framework lockscreen_transport_stop_description (short)
+#: src/navi-panels.c
+msgid "Stop"
+msgstr "Stoppen"
+
+# android: Framework fp_power_button_bp_negative_button (short)
+#: src/navi-panels.c
+msgid "Continue"
+msgstr "Doorgaan"
+
+#: src/navi-panels.c
+msgid "You have arrived"
+msgstr ""
+
+# android: Framework sim_done_button (several translations, short)
+#: src/navi-panels.c
+msgid "Done"
+msgstr "Klaar"
+
+#: src/navi-panels.c
+msgid "Your destination is on the right"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Your destination is on the left"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Lanes"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "and then"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "North up"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Drive here"
+msgstr ""
+
+# android: Framework ime_action_go (short)
+#: src/navi-panels.c
+msgid "Go"
+msgstr "Ga"
+
+#: src/navi-panels.c
+msgid "Your Home"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Your Work"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Finding the best routes…"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "The map's centre"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Finding a new route…"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "No route from here yet. Trying again…"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "Your destination"
+msgstr ""
+
+#: src/navi-panels.c
+#, c-format
+msgid "Speed limit %d mph"
+msgstr ""
+
+#: src/navi-panels.c
+#, c-format
+msgid "Speed limit %d km/h"
+msgstr ""
+
+#: src/navi-panels.c
+msgid "No speed limit"
+msgstr ""
+
+#: src/navi-panels.c
+msgid ""
+"Not allowed everywhere. In Germany the driver may not use them while driving "
+"(§23 (1c) StVO); a passenger may. In Switzerland Navi never shows them, and "
+"in France only danger zones.\n"
+"\n"
+"You can turn them off in Settings at any time."
+msgstr ""
+
+# android: Framework fp_power_button_enrollment_button_text (short)
+#: src/navi-panels.c
+msgid "Turn off"
+msgstr "Uitzetten"
+
+# android: Framework httpErrorOk (short)
+#: src/navi-panels.c ../dictate/src/dictate-download-dialog.c
+msgid "OK"
+msgstr "OK"
+
+#: src/navi-plan.c
+#, c-format
+msgid "Time to leave for %s"
+msgstr ""
+
+#: src/navi-plan.c
+msgid "Tap for the routes from where you are."
+msgstr ""
+
+#. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"
+#: src/navi-plan.c
+#, c-format
+msgid "Reminder at %s"
+msgstr ""
+
+#. TRANSLATORS: "Reminder tomorrow at 08:15"
+#: src/navi-plan.c
+#, c-format
+msgid "Reminder tomorrow at %s"
+msgstr ""
+
+#. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"
+#: src/navi-plan.c
+#, c-format
+msgid "Reminder on %s at %s"
+msgstr ""
+
+#: src/navi-voice.c
+#, c-format
+msgid "Piper voice %s, on this device"
+msgstr ""
+
+#: src/navi-voice.c
+msgid "Piper voice, on this device"
+msgstr ""
+
+#: src/navi-voice.c
+msgid "eSpeak NG voices, on this device"
+msgstr ""
+
+#: src/navi-voice.c
+msgid "No voice on this phone"
+msgstr ""
+
+#: src/navi-window.c
+msgid "The map cannot be loaded. Check the connection."
+msgstr ""
+
+#: src/navi-window.c
+msgid "Best"
+msgstr ""
+
+#: src/navi-window.c
+msgid "Navigating"
+msgstr ""
+
+#: src/navi-window.c
+msgid "Navi cannot reach a road there. Choose a place on a road in Europe."
+msgstr ""
+
+#: src/navi-window.c
+msgid "No route found there. Choose a place on a road."
+msgstr ""
+
+#: src/navi-window.c
+msgid "The route server cannot be reached. Check the connection."
+msgstr ""
+
+#: src/navi-window.c
+msgid "No GPS – showing your approximate location"
+msgstr ""
+
+#: src/navi-window.c
+msgid "Dropped pin"
+msgstr ""
+
+#: src/navi-window.c
+msgid "Place"
+msgstr ""
+
+#. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Needs %s, which is not installed"
+msgstr ""
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Not available on this phone"
+msgstr ""
+
+#. TRANSLATORS: under a language in the list; the first %s is a speech recogniser (Vosk), the second a size
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s and %s to download"
+msgstr ""
+
+#. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s to install"
+msgstr ""
+
+#. TRANSLATORS: under a language in the list; %s is a size: 90.4 MB
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s to download"
+msgstr ""
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s was not downloaded"
+msgstr ""
+
+#. TRANSLATORS: the first %s is what went wrong, the second a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s. %s was installed, but none of the files were kept on the phone."
+msgstr ""
+
+#. TRANSLATORS: %s is what went wrong
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s. Nothing of it was kept on the phone."
+msgstr ""
+
+# android: SystemUI screen_record_video_preview_elapsed_time_a11y_template
+#. TRANSLATORS: the progress, two sizes: 12.3 MB of 90.4 MB
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s of %s"
+msgstr "%s van %s"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Unpacking and installing…"
+msgstr ""
+
+# android: PackageInstaller installing (short)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Installing…"
+msgstr "Installeren…"
+
+# android: Framework serviceClassVoice (short)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Voice"
+msgstr "Spraak"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Speech recognition"
+msgstr ""
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "The files came, but the language is still not ready"
+msgstr ""
+
+#. TRANSLATORS: in the progress dialog; %s is a speech recogniser (Vosk)
+#. TRANSLATORS: what is installed, in the download dialog; %s is a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s speech recogniser"
+msgstr ""
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s"
+msgstr ""
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "The package was installed, but the language is still not ready"
+msgstr ""
+
+#. TRANSLATORS: the sum of the sizes in the download dialog; %s is a size: 90.4 MB
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s in all"
+msgstr ""
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Download %s?"
+msgstr ""
+
+#. TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second an app's name (Navi)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "To speak %s, %s needs this on the phone:"
+msgstr ""
+
+#. TRANSLATORS: %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "To hear and speak %s, Agent needs these on the phone:"
+msgstr ""
+
+#. TRANSLATORS: %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "To hear %s, Dictate needs these on the phone:"
+msgstr ""
+
+#. TRANSLATORS: under it; %s is its Debian package (vibeos-dictate-vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "the %s package from the VibeOS archive"
+msgstr ""
+
+#. TRANSLATORS: under what is downloaded: what it is, its licence and where it comes from
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s · %s · from %s"
+msgstr ""
+
+# android: Messaging action_download (short)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Download"
+msgstr "Downloaden"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Français)
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s is not available"
+msgstr ""
+
+#. TRANSLATORS: the first %s is the language's name for itself, the second a speech recogniser (Vosk), the
+#. * third its Debian package (vibeos-dictate-vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid ""
+"%s is heard by %s, which is not installed on this phone. Install the %s "
+"package, then choose %s again."
+msgstr ""
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "There is nothing to download for it."
+msgstr ""
+
+#. TRANSLATORS: %s is what went wrong, from the network or the file system
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "The download failed: %s"
+msgstr ""
+
+#. TRANSLATORS: %s is what went wrong
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "The files could not be put in place: %s"
+msgstr ""
+
+#. TRANSLATORS: %s is a file's name
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "%s did not come whole"
+msgstr ""
+
+#. TRANSLATORS: %s is a file's name
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "%s is not the file it should be: its checksum does not match"
+msgstr ""
+
+#. TRANSLATORS: %s is a file's name
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "%s is larger than it should be"
+msgstr ""
+
+#. TRANSLATORS: %s is a file's name, %u and the last %s the server's answer (404, Not Found)
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "The server did not give %s: %u %s"
+msgstr ""
+
+#. TRANSLATORS: %s is a file's name
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "%s is not the size it should be: it has changed on the server"
+msgstr ""
+
+#. TRANSLATORS: the %s are sizes: 90.4 MB
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "There is not enough space on the phone: %s are needed, %s are free"
+msgstr ""
