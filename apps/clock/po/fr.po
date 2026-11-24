@@ -30,15 +30,15 @@ msgstr "Horloge"
 
 #: data/vibeos.Clock.desktop.in
 msgid "Alarms and the time"
-msgstr ""
+msgstr "Alarmes et heure"
 
 #: data/vibeos.Clock.desktop.in
 msgid "alarm;time;"
-msgstr ""
+msgstr "alarme;heure;réveil;minuteur;chronomètre;"
 
 #: src/alarm-card.c
 msgid "Add label"
-msgstr ""
+msgstr "Ajouter un libellé"
 
 # android: DeskClock alarm_tomorrow
 #: src/alarm-card.c
@@ -66,7 +66,7 @@ msgstr "Ignorer"
 #. the hint "Label" until it has one; on the expired screen no hint, and no label at all without one
 #: src/alarm-card.c src/timer-card.c
 msgid "Label"
-msgstr "Titre"
+msgstr "Libellé"
 
 # android: DeskClock timer_cancel
 #: src/alarm-card.c src/clock-dialogs.c src/ringtone-picker.c src/timer-card.c
@@ -122,7 +122,7 @@ msgstr "Annuler"
 
 #: src/alarm-page.c
 msgid "Missed alarm has been deleted"
-msgstr ""
+msgstr "L'alarme manquée a été supprimée"
 
 # android: DeskClock button_alarms
 #: src/alarm-page.c
@@ -356,11 +356,10 @@ msgctxt "city"
 msgid "Caracas"
 msgstr "Caracas"
 
-# android: DeskClock C39
 #: src/cities-data.h
 msgctxt "city"
 msgid "Cayman"
-msgstr "Caïmans (îles)"
+msgstr "Îles Caïmans"
 
 # android: DeskClock C40
 #: src/cities-data.h
@@ -428,17 +427,15 @@ msgctxt "city"
 msgid "Grenada"
 msgstr "Grenade"
 
-# android: DeskClock C52
 #: src/cities-data.h
 msgctxt "city"
 msgid "Guatemala City"
-msgstr "Guatemala (ville)"
+msgstr "Guatemala"
 
-# android: DeskClock C53
 #: src/cities-data.h
 msgctxt "city"
 msgid "Guyana"
-msgstr "Guyane"
+msgstr "Guyana"
 
 # android: DeskClock C54
 #: src/cities-data.h
@@ -816,7 +813,7 @@ msgstr "Hong Kong"
 #: src/cities-data.h
 msgctxt "city"
 msgid "Jakarta"
-msgstr "Djakarta"
+msgstr "Jakarta"
 
 # android: DeskClock C118
 #: src/cities-data.h
@@ -1046,11 +1043,10 @@ msgctxt "city"
 msgid "Saskatchewan"
 msgstr "Saskatchewan"
 
-# android: DeskClock C158
 #: src/cities-data.h
 msgctxt "city"
 msgid "Easter Island"
-msgstr "Pâques (île de)"
+msgstr "Île de Pâques"
 
 # android: DeskClock C159
 #: src/cities-data.h
@@ -1142,11 +1138,10 @@ msgctxt "city"
 msgid "Helsinki"
 msgstr "Helsinki"
 
-# android: DeskClock C174
 #: src/cities-data.h
 msgctxt "city"
 msgid "Isle of Man"
-msgstr "Man (île de)"
+msgstr "Île de Man"
 
 # android: DeskClock C175
 #: src/cities-data.h
@@ -1280,11 +1275,10 @@ msgctxt "city"
 msgid "Tallinn"
 msgstr "Tallinn"
 
-# android: DeskClock C197
 #: src/cities-data.h
 msgctxt "city"
 msgid "Vatican"
-msgstr "Vatican (cité du)"
+msgstr "Vatican"
 
 # android: DeskClock C198
 #: src/cities-data.h
@@ -1574,11 +1568,10 @@ msgctxt "city"
 msgid "Cleveland"
 msgstr "Cleveland"
 
-# android: DeskClock C248
 #: src/cities-data.h
 msgctxt "city"
 msgid "New Orleans"
-msgstr "Nouvelle-Orléans"
+msgstr "La Nouvelle-Orléans"
 
 # android: DeskClock C249
 #: src/cities-data.h
@@ -1622,11 +1615,10 @@ msgctxt "city"
 msgid "Doha"
 msgstr "Doha"
 
-# android: DeskClock timezone_labels[64]
 #: src/cities-data.h
 msgctxt "city"
 msgid "Beijing"
-msgstr "Beijing"
+msgstr "Pékin"
 
 # android: DeskClock C257
 #: src/cities-data.h
@@ -2558,11 +2550,10 @@ msgctxt "time zone"
 msgid "Bangkok"
 msgstr "Bangkok"
 
-# android: DeskClock timezone_labels[64]
 #: src/cities-data.h
 msgctxt "time zone"
 msgid "Beijing"
-msgstr "Beijing"
+msgstr "Pékin"
 
 # android: DeskClock timezone_labels[65]
 #: src/cities-data.h
@@ -2682,7 +2673,7 @@ msgstr "Tonga"
 #: src/cities-data.h
 msgctxt "time zone"
 msgid "Jakarta"
-msgstr "Djakarta"
+msgstr "Jakarta"
 
 # android: DeskClock menu_item_sort_by_gmt_offset
 #. the item names the order it switches to
@@ -2808,15 +2799,15 @@ msgstr "Minuteur arrivé à expiration"
 #, c-format
 msgid "%d hr"
 msgid_plural "%d hr"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d h"
+msgstr[1] "%d h"
 
 #: src/clock-page.c src/ringing-window.c
 #, c-format
 msgid "%d min"
 msgid_plural "%d min"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d min"
+msgstr[1] "%d min"
 
 # android: DeskClock world_hours_minutes_ahead
 #: src/clock-page.c
@@ -2842,11 +2833,10 @@ msgstr "%s de plus"
 msgid "%s behind"
 msgstr "%s de moins"
 
-# android: DeskClock world_hours_tomorrow (several translations)
 #: src/clock-page.c
 #, c-format
 msgid "Tomorrow, %s"
-msgstr "J+1, %s"
+msgstr "Demain, %s"
 
 # android: DeskClock world_hours_yesterday
 #: src/clock-page.c
@@ -2877,7 +2867,7 @@ msgstr "Chronomètre"
 
 #: src/expired-window.c
 msgid "A timer is ringing"
-msgstr ""
+msgstr "Un minuteur sonne"
 
 # android: DeskClock description_direction_left
 #: src/ringing-window.c
@@ -2902,7 +2892,7 @@ msgstr "Alarme arrêtée"
 #. KEEP_SCREEN_ON
 #: src/ringing-window.c
 msgid "An alarm is ringing"
-msgstr ""
+msgstr "Une alarme sonne"
 
 # android: DeskClock confirm_remove_custom_ringtone
 #: src/ringtone-picker.c
@@ -2948,12 +2938,11 @@ msgstr "Son du minuteur"
 # android: DeskClock shortcut_start_screensaver_short (several translations, short)
 #: src/screensaver.c src/settings-page.c
 msgid "Screen saver"
-msgstr "Économ. d'écran"
+msgstr "Économiseur d'écran"
 
-# android: DeskClock alarm_volume_title (several translations, short)
 #: src/settings-page.c
 msgid "Alarm volume"
-msgstr "Volume"
+msgstr "Volume de l'alarme"
 
 # android: Settings category_name_brightness (other app, short)
 #: src/settings-page.c
@@ -3013,11 +3002,11 @@ msgstr "Aperçu"
 
 #: src/settings-page.c
 msgid "Starts the screen saver immediately"
-msgstr ""
+msgstr "Lance l'économiseur d'écran immédiatement"
 
 #: src/settings-page.c
 msgid "Opens Clock's screen saver settings"
-msgstr ""
+msgstr "Ouvre les paramètres de l'économiseur d'écran de l'Horloge"
 
 # android: DeskClock alarm_settings (several translations, short)
 #. (no "Select/enable screen saver": see the top)
@@ -3049,8 +3038,8 @@ msgstr "Augmenter le volume progressivement"
 #, c-format
 msgid "%d second"
 msgid_plural "%d seconds"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%d seconde"
+msgstr[1] "%d secondes"
 
 # android: DeskClock crescendo_entries[0] (several translations, short)
 #: src/settings-page.c
@@ -3125,11 +3114,11 @@ msgstr "Couleur"
 
 #: src/settings-page.c
 msgid "Bold clock text"
-msgstr ""
+msgstr "Texte de l'horloge en gras"
 
 #: src/settings-page.c
 msgid "Show AM/PM indicator"
-msgstr ""
+msgstr "Afficher l'indicateur AM/PM"
 
 # android: DeskClock night_mode_title
 #: src/settings-page.c
@@ -3148,11 +3137,11 @@ msgstr "Affichage peu lumineux (pour les pièces sombres)"
 
 #: src/settings-page.c
 msgid "Follow DND state"
-msgstr ""
+msgstr "Suivre le mode Ne pas déranger"
 
 #: src/settings-page.c
 msgid "Night mode follows Do Not Disturb state"
-msgstr ""
+msgstr "Le mode Nuit suit l'état du mode Ne pas déranger"
 
 # android: DeskClock screensaver_settings
 #. the screen saver's page has a title of its own
@@ -3174,13 +3163,13 @@ msgstr "Tour %02d"
 
 #: src/stopwatch-page.c
 msgid "The stopwatch is running"
-msgstr ""
+msgstr "Le chronomètre est en marche"
 
 # android: DeskClock sw_share_main
 #: src/stopwatch-page.c
 #, c-format
 msgid "My time is %s"
-msgstr "Mon heure est %s"
+msgstr "Mon temps est de %s"
 
 # android: DeskClock sw_share_laps
 #: src/stopwatch-page.c
@@ -3189,7 +3178,7 @@ msgstr "Temps de circuit :"
 
 #: src/stopwatch-page.c
 msgid "Copied to clipboard"
-msgstr ""
+msgstr "Copié dans le presse-papiers"
 
 # android: DeskClock sw_pause_button (several translations, short)
 #: src/stopwatch-page.c src/stopwatch-service.c src/timer-card.c
@@ -3213,10 +3202,9 @@ msgstr "Réinitialiser"
 msgid "Share"
 msgstr "Partager"
 
-# android: DeskClock sw_lap_button
 #: src/stopwatch-page.c src/stopwatch-service.c
 msgid "Lap"
-msgstr "Intervalle"
+msgstr "Tour"
 
 # android: DeskClock sw_resume_button (several translations, short)
 #: src/stopwatch-service.c src/timer-service.c
@@ -3229,10 +3217,9 @@ msgstr "Reprendre"
 msgid "Lap %u"
 msgstr "Tour %u"
 
-# android: DeskClock swn_paused (several translations, short)
 #: src/stopwatch-service.c
 msgid "Paused"
-msgstr "Interrompu"
+msgstr "En pause"
 
 # android: DeskClock timer_stop
 #: src/timer-card.c src/timer-service.c
@@ -3260,30 +3247,29 @@ msgstr "Ajouter un minuteur"
 msgid "Add 1 min"
 msgstr "Ajouter 1 min"
 
-# android: DeskClock timer_reset_all
 #: src/timer-service.c
 msgid "Reset all timers"
-msgstr "Réinit. minuteurs"
+msgstr "Tout réinitialiser"
 
 #. only with two or more; the plural forms are for the languages with several
 #: src/timer-service.c
 #, c-format
 msgid "%u timer"
 msgid_plural "%u timers"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u minuteur"
+msgstr[1] "%u minuteurs"
 
 #: src/timer-service.c
 #, c-format
 msgid "%u timer paused"
 msgid_plural "%u timers paused"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u minuteur en pause"
+msgstr[1] "%u minuteurs en pause"
 
 # android: DeskClock timer_paused
 #: src/timer-service.c
 msgid "Timer paused"
-msgstr "Minuteur interrompu"
+msgstr "Minuteur en pause"
 
 # android: DeskClock timer_stop_all
 #: src/timer-service.c
@@ -3294,8 +3280,8 @@ msgstr "Arrêter tous les minuteurs"
 #, c-format
 msgid "%u timer expired"
 msgid_plural "%u timers expired"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u minuteur arrivé à expiration"
+msgstr[1] "%u minuteurs arrivés à expiration"
 
 # android: DeskClock timer_times_up
 #: src/timer-service.c
@@ -3306,19 +3292,17 @@ msgstr "Le temps est écoulé."
 #, c-format
 msgid "%u timer missed"
 msgid_plural "%u timers missed"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u minuteur manqué"
+msgstr[1] "%u minuteurs manqués"
 
-# android: DeskClock missed_named_timer_notification_label
 #: src/timer-service.c
 #, c-format
 msgid "Missed timer: %s"
-msgstr "Rappel manqué : %s"
+msgstr "Minuteur manqué : %s"
 
-# android: DeskClock missed_timer_notification_label
 #: src/timer-service.c
 msgid "Missed timer"
-msgstr "Rappel manqué"
+msgstr "Minuteur manqué"
 
 # android: DeskClock hours_label
 #: src/timer-setup.c
@@ -3338,4 +3322,4 @@ msgstr "s"
 #: src/timer-setup.c
 #, c-format
 msgid "Delete %d"
-msgstr ""
+msgstr "Supprimer %d"
