@@ -1168,6 +1168,12 @@ build (Player *p)
 
   p->message = gtk_label_new (_("Open a video from Files"));
   gtk_widget_add_css_class (p->message, "video-message");
+  /* a message wider than the screen (Russian's, at a large font size) goes on to more lines, centred */
+  gtk_label_set_wrap (GTK_LABEL (p->message), TRUE);
+  gtk_label_set_wrap_mode (GTK_LABEL (p->message), PANGO_WRAP_WORD_CHAR);
+  gtk_label_set_justify (GTK_LABEL (p->message), GTK_JUSTIFY_CENTER);
+  gtk_widget_set_margin_start (p->message, 24);
+  gtk_widget_set_margin_end (p->message, 24);
   gtk_widget_set_halign (p->message, GTK_ALIGN_CENTER);
   gtk_widget_set_valign (p->message, GTK_ALIGN_END);
   gtk_widget_set_margin_bottom (p->message, 120);
