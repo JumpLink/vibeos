@@ -4,12 +4,23 @@ add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers'
                       '-DGETTEXT_PACKAGE="vibeos-video"',
                       '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')), language: 'c')
 
-# mpv plays (libmpv, its OpenGL renderer through epoxy); the window, its colours and its text are libvibeos's
+# mpv plays (libmpv, its OpenGL renderer through epoxy); the window, its colours and its text are libvibeos's; ICU
+# names the tracks' languages
 deps = [dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'), dependency('mpv'), dependency('epoxy'),
-        meson.get_compiler('c').find_library('m')]
+        dependency('icu-uc'), meson.get_compiler('c').find_library('m')]
 
 executable('vibeos-video', 'main.c', dependencies: deps, install: true)
-install_data('data/vibeos.Video.desktop', install_dir: get_option('datadir') / 'applications')
+i18n = import('i18n')
+i18n.merge_file(input: 'data/vibeos.Video.desktop.in', output: 'vibeos.Video.desktop', type: 'desktop', po_dir: 'po',
+                install: true, install_dir: get_option('datadir') / 'applications')
+# started by its D-Bus name, with the session's activation environment (a language changed in Settings); the files
+# it plays come to it as the service's Open
+configure_file(input: 'data/vibeos.Video.service.in', output: 'vibeos.Video.service',
+               configuration: {'bindir': get_option('prefix') / get_option('bindir')},
+               install_dir: get_option('datadir') / 'dbus-1/services')
 install_data('data/vibeos.Video.svg', install_dir: get_option('datadir') / 'icons/hicolor/scalable/apps')
 # the default app for videos (read before Debian's /usr/share/applications/gnome-mimeapps.list)
 install_data('data/mimeapps.list', install_dir: get_option('sysconfdir') / 'xdg')
+
+# the translations, and their checks
+subdir('po')

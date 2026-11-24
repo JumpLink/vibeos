@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=vibeos.Video
+Exec=@bindir@/vibeos-video --gapplication-service

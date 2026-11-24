@@ -1,0 +1,3 @@
+# the files with translatable strings
+data/vibeos.Video.desktop.in
+main.c

@@ -1,0 +1,144 @@
+# Dutch translations of vibeos-video.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-video\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 16:55+0100\n"
+"PO-Revision-Date: 2026-11-24 16:54+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Dutch\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. the name the sound settings list it under
+#: data/vibeos.Video.desktop.in main.c
+msgid "Video Player"
+msgstr "Videospeler"
+
+#: data/vibeos.Video.desktop.in
+msgid "Play videos"
+msgstr "Video's afspelen"
+
+#: main.c
+msgid "Playing a video"
+msgstr "Er wordt een video afgespeeld"
+
+#: main.c
+msgid "Can’t play this video"
+msgstr "Deze video kan niet worden afgespeeld"
+
+#: main.c
+msgid "Exit full screen"
+msgstr "Volledig scherm sluiten"
+
+#: main.c
+msgid "Full screen"
+msgstr "Volledig scherm"
+
+#. TRANSLATORS: keep the links' markup as it is
+#: main.c
+msgid ""
+"Videos are played by <a href=\"https://mpv.io/\">mpv</a> (libmpv), under the "
+"GNU GPL 2.0 or later."
+msgstr ""
+"Video's worden afgespeeld door <a href=\"https://mpv.io/\">mpv</a> (libmpv), "
+"onder de GNU GPL 2.0 of later."
+
+#. TRANSLATORS: keep the links' markup as it is
+#: main.c
+msgid ""
+"<a href=\"https://ffmpeg.org/\">FFmpeg</a> reads and decodes them, under the "
+"GNU LGPL 2.1 or later (the GPL 2.0 or later as Debian builds it)."
+msgstr ""
+"<a href=\"https://ffmpeg.org/\">FFmpeg</a> leest en decodeert ze, onder de "
+"GNU LGPL 2.1 of later (de GPL 2.0 of later zoals Debian het bouwt)."
+
+#: main.c
+msgid "Timed text"
+msgstr "Getimede tekst"
+
+#. TRANSLATORS: a track with neither a title nor a language; %u is its number
+#: main.c
+#, c-format
+msgid "Track %u"
+msgstr "Spoor %u"
+
+#: main.c
+msgid "Mono"
+msgstr "Mono"
+
+#: main.c
+msgid "Stereo"
+msgstr "Stereo"
+
+#. TRANSLATORS: a subtitle track read from a file of its own, next to the video
+#: main.c
+msgid "From a file"
+msgstr "Uit een bestand"
+
+#: main.c
+msgctxt "no track"
+msgid "Off"
+msgstr "Uit"
+
+#: main.c
+msgid "Audio track"
+msgstr "Audiospoor"
+
+#: main.c
+msgid "Subtitles"
+msgstr "Ondertiteling"
+
+#: main.c
+msgid "Black bar at the camera"
+msgstr "Zwarte balk bij de camera"
+
+#: main.c
+msgid "Keep full screen clear of the camera hole instead of playing under it"
+msgstr ""
+"Houd in volledig scherm het cameragat vrij in plaats van eronder af te spelen"
+
+#: main.c
+msgid "Settings"
+msgstr "Instellingen"
+
+#: main.c
+msgid "Back"
+msgstr "Terug"
+
+#: main.c
+msgid "More options"
+msgstr "Meer opties"
+
+#: main.c
+msgid "Back 10 seconds"
+msgstr "10 seconden terug"
+
+#: main.c
+msgid "Play or pause"
+msgstr "Afspelen of pauzeren"
+
+#: main.c
+msgid "On 10 seconds"
+msgstr "10 seconden vooruit"
+
+#: main.c
+msgid "Open a video from Files"
+msgstr "Open een video vanuit Bestanden"
+
+#: main.c
+msgid "Opening…"
+msgstr "Openen…"
+
+#: main.c
+msgid "Can’t reach this video"
+msgstr "Deze video is niet bereikbaar"
+
+#: main.c
+msgid "The player could not start"
+msgstr "De speler kon niet starten"
