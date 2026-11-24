@@ -1,6 +1,7 @@
 #!/bin/sh
-# Installs the session files on the phone (as root): the session unit, the shell's drop-in, the input boost (its
-# binary from the build: /usr/local/sbin/input-boost), the lock screen's PAM service (for /usr/local/libexec/vibeos-auth),
+# Installs the session files on the phone (as root): the session unit (and vibeos-session-language, which starts it
+# in the user's language), the shell's drop-in, the input boost (its binary from the build:
+# /usr/local/sbin/input-boost), the lock screen's PAM service (for /usr/local/libexec/vibeos-auth),
 # the session's environment (libspongy's density) and the dock switcher (vibeos-dock, its unit and udev rule, and the
 # docked desktop's session unit), sim-apn (a mobile data profile for every new SIM) and vibeos-wakeup (wakes the phone
 # for alarm clocks; its binary from the build: /usr/local/sbin/vibeos-wakeup), and logind's drop-in that leaves the power
@@ -11,6 +12,7 @@ cd "$(dirname "$0")"
 install -m 644 vibeos.service gnome-desktop.service vibeos-dock.service input-boost.service sim-apn.service \
     vibeos-wakeup.service /etc/systemd/system/
 install -m 755 vibeos-dock sim-apn /usr/local/sbin/
+install -D -m 755 vibeos-session-language /usr/local/libexec/vibeos-session-language
 install -m 644 71-vibeos-dock.rules /etc/udev/rules.d/
 install -m 644 90-vibeos-internal-storage.rules /etc/udev/rules.d/
 install -m 644 pam.d/vibeos /etc/pam.d/

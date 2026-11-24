@@ -2,6 +2,7 @@ usr/lib/systemd/system/vibeos.service
 usr/lib/systemd/system/gnome-desktop.service
 usr/lib/systemd/system/vibeos-dock.service
 usr/sbin/vibeos-dock
+usr/libexec/vibeos-session-language
 usr/share/vibeos-session/71-vibeos-dock.rules
 usr/lib/udev/rules.d/90-vibeos-internal-storage.rules
 usr/share/gnome-shell/modes/vibeos.json

@@ -1,6 +1,7 @@
 # The session's system files, installed by a package (debian/: vibeos-session, vibeos-daemons, sim-apn)
 # instead of install.sh. Its own project, like libvibeos and the apps; the programs the units start come from the
-# top-level project (input-boost, vibeos-wakeup, vibeos-auth) or from here (vibeos-dock, sim-apn).
+# top-level project (input-boost, vibeos-wakeup, vibeos-auth) or from here (vibeos-dock, sim-apn,
+# vibeos-session-language).
 #
 # Left out on purpose: environment.d/60-spongy.conf (one phone's density) and org.gnome.Shell@.service.d/50-mobile.conf
 # (a shell built into /opt by hand); install.sh, which enables the phone session, stays the hand-install path.
@@ -22,6 +23,8 @@ foreach unit : ['vibeos.service', 'gnome-desktop.service', 'vibeos-dock.service'
 endforeach
 
 install_data('vibeos-dock', 'sim-apn', install_dir: sbindir, install_mode: 'rwxr-xr-x')
+# the session units start gnome-session through it, in the user's language (see the file)
+install_data('vibeos-session-language', install_dir: libexecdir, install_mode: 'rwxr-xr-x')
 # the dock switcher's udev rule is opt-in: on a plug or an unplug vibeos-dock starts a session, which would take over a
 # desktop that did not ask for it. Linked into /etc/udev/rules.d by whoever wants it
 install_data('71-vibeos-dock.rules', install_dir: datadir / 'vibeos-session')
