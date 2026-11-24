@@ -16,7 +16,8 @@ VIBEOS_OUT=/srv/vibeos-images/0.1.3
 # JOBS=8				# compile jobs
 
 # ---- build-system.sh: the system image
-VDEBS=/srv/vibeos-debs/0.1.3		# VibeOS's own .debs, version 1:0.1.3 (dpkg-buildpackage of this repository)
+# SYSTEM_VERSION=0.1.4			# the release the system image carries (build-system.sh; 0.1.4 when unset)
+VDEBS=/srv/vibeos-debs/0.1.4		# VibeOS's own .debs, version 1:SYSTEM_VERSION (dpkg-buildpackage of this repository)
 MUTTER=/srv/vibeos-debs/mutter		# mutter 51.0-3+gp1: Debian's mutter 51.0-3 with patches/mutter (build-mutter.sh)
 SPEECH=/srv/vibeos-debs/speech		# the vibeos-dictate-* packages: tools/vibeos-dictate-speech/build-debs.sh
 MOBILE=/srv/gnome-mobile.tar		# GNOME Shell mobile with patches/gnome-shell, as a tar of opt/gnome-mobile (build-mobile.sh)

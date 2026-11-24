@@ -1,6 +1,7 @@
 #!/bin/sh
 # build-zips.sh system|s10e|poco|s5e: the LineageOS recovery zips of VibeOS 0.1.3, from the built pieces:
-#   system  OUT/system/vibeos-system-0.1.3-arm64.zip: rootfs.img (OUT/system/rootfs.img) + the generic installer
+#   system  OUT/system/vibeos-system-VERSION-arm64.zip: rootfs.img (OUT/system/rootfs.img) + the generic installer;
+#           VERSION is the one the image says (/etc/vibeos/system-image)
 #   DEVICE  OUT/DEVICE/vibeos-device-DEVICE-0.1.3.zip: payload.tar, debs/, the boot pieces + the device installer
 # Every file the installers write is listed with its size and sha256 in the zip's sums; the installers read each
 # one back against it. Stored (zip -0) for the big images: recovery streams them to the device.
@@ -33,7 +34,10 @@ system)
 	S=${SYS_DIR:-$O/system}
 	[ -s "$S/rootfs.img" ] || { echo "no $S/rootfs.img" >&2; exit 1; }
 	cp "$Z/system-install.sh" "$W/install.sh"
-	cp "$Z/system/updater-script" "$W/META-INF/com/google/android/updater-script"
+	# the release the image carries, from the image itself (no mount: debugfs reads it)
+	SV=$("$(command -v debugfs || echo /sbin/debugfs)" -R "cat /etc/vibeos/system-image" "$S/rootfs.img" 2>/dev/null | sed -n 's/^VERSION=1:\([0-9][0-9.]*\)$/\1/p')
+	[ -n "$SV" ] || { echo "$S/rootfs.img: no VERSION=1:X.Y.Z in /etc/vibeos/system-image" >&2; exit 1; }
+	sed "s/@VERSION@/$SV/" "$Z/system/updater-script" > "$W/META-INF/com/google/android/updater-script"
 	# the GPT tool, from src/ (make -C src)
 	VP=${VIBEOS_PART:-$T/src/s10e-part}
 	[ -s "$VP" ] || { echo "no $VP: make -C image/src" >&2; exit 1; }
@@ -59,7 +63,7 @@ system)
 	U=$W/META-INF/com/google/android/updater-script
 	awk -v w="$WRITE" '$0 == "@WRITE@" {print w; next} {print}' "$U" > "$U.new" && mv "$U.new" "$U"
 	! grep -q '@WRITE@' "$U" || exit 1
-	OUTZ=$S/vibeos-system-0.1.3-arm64.zip
+	OUTZ=$S/vibeos-system-$SV-arm64.zip
 	FILES="META-INF vibeos-lib.sh install.sh vibeos-part vibeos-sums.txt $(cd "$W" && ls rootfs.img.[0-9] | tr '\n' ' ')"
 	;;
 s10e|poco|s5e)

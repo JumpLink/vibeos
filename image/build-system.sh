@@ -1,5 +1,5 @@
 #!/bin/sh
-# build-system.sh: the generic VibeOS 0.1.3 system image (arm64, no kernel, no modules, no device firmware), made
+# build-system.sh: the generic VibeOS system image (arm64, no kernel, no modules, no device firmware), made
 # from a COPY of a base image: VibeOS goes in.
 #
 #   sudo image/build-system.sh WORK.img
@@ -8,8 +8,9 @@
 #   - build-base.sh's, from the Debian and Mobian archives alone (/etc/vibeos/base says so): step 2 has nothing to do
 #   - the S10e clean r7 image, the 0.1.3 release's base, the way the S20 FE's root was made
 #     (G780F/kit/rootfs/build-rootfs.sh): its S10e device layer comes out in step 2 (STAGE needed)
-# Inputs (environment, defaults below): VDEBS the 0.1.3 build's .debs; MUTTER, SPEECH (mutter 51.0-3+gp1 and the
-# speech models, carried since 0.1.1: build-mutter.sh, tools/vibeos-dictate-speech/build-debs.sh); ART (the
+# Inputs (environment, defaults below): SYSTEM_VERSION the release (default 0.1.4), VDEBS its .debs (1:SYSTEM_VERSION);
+# MUTTER, SPEECH (mutter 51.0-3+gp1 and the speech models, carried since 0.1.1: build-mutter.sh,
+# tools/vibeos-dictate-speech/build-debs.sh); ART (the
 # third-party icon packs and parallax sets: ROM only, never in the repo or a release; optional); STAGE (the S10e
 # device stage, whose every file is the device layer to remove: the r7 base only); MOBILE (GNOME Shell mobile with
 # libshell patch 0005, as on the S10e and the Poco since 11-17: build-mobile.sh); KIT (the Poco kit: home layout,
@@ -22,7 +23,7 @@
 #   3. generic identity: fstab LABEL=vibeos, hostname vibeos, no machine-info, no SSH host keys and no snakeoil
 #      key (made on the first boot), nothing of the machine the base was built on (its resolv.conf, its name in
 #      exim4's settings); the first-boot units every device shares (grow the root; install the device package)
-#   4. VibeOS 0.1.3 (apt in an arm64 chroot, local .debs + Debian for new dependencies: mpv, libmpv2): every
+#   4. VibeOS SYSTEM_VERSION (apt in an arm64 chroot, local .debs + Debian for new dependencies: mpv, libmpv2): every
 #      package of the build except -dev, -dbgsym and the neo-* transitional ones; mutter gp1 held; GNOME's own
 #      apps out (the ROM list), Showtime out, GNOME Settings out (vibeos-settings replaces it), Files and Vim
 #      hidden; the home screen and the drawer list of the POCO ROM (Showtime's place: Video Player); user's
@@ -42,7 +43,9 @@ T=$(cd "$(dirname "$0")" && pwd)
 [ ! -f "$T/local.conf" ] || . "$T/local.conf"	# this machine's settings (local.conf.example)
 [ -z "${BASE_ORIG:-}" ] || [ "$(readlink -f "$IMG")" != "$(readlink -f "$BASE_ORIG")" ] || { echo "refusing: $IMG is BASE_ORIG (work on a copy)" >&2; exit 1; }
 O=${VIBEOS_OUT:?set VIBEOS_OUT (image/local.conf): the directory builds, work files and logs go to}
-VDEBS=${VDEBS:?set VDEBS: the directory with the 1:0.1.3 .debs}
+SV=${SYSTEM_VERSION:-0.1.4}	# the VibeOS release the image carries: VDEBS holds its packages (1:SV)
+case $SV in [0-9]*.[0-9]*.[0-9]*) ;; *) echo "SYSTEM_VERSION $SV: not a release number" >&2; exit 1 ;; esac
+VDEBS=${VDEBS:?set VDEBS: the directory with the 1:$SV .debs}
 MUTTER=${MUTTER:?set MUTTER: the directory with mutter 51.0-3+gp1}
 SPEECH=${SPEECH:?set SPEECH: the directory with the vibeos-dictate-* .debs}
 ART=${ART:-}	# the third-party icon packs and parallax sets (not in this repository): left out when unset
@@ -63,10 +66,10 @@ mountpoint -q "$M" 2>/dev/null && { echo "$M is mounted already" >&2; exit 1; }
 
 # the package set, before anything changes
 P=$L/debs; mkdir -p "$P"
-for f in "$VDEBS"/*_1:0.1.3_*.deb "$VDEBS"/*_0.1.3_*.deb; do
+for f in "$VDEBS"/*_1:${SV}_*.deb "$VDEBS"/*_${SV}_*.deb; do
 	[ -f "$f" ] || continue
 	p=$(dpkg-deb -f "$f" Package); v=$(dpkg-deb -f "$f" Version)
-	[ "$v" = 1:0.1.3 ] || { echo "$f: version $v, not 1:0.1.3" >&2; exit 1; }
+	[ "$v" = 1:$SV ] || { echo "$f: version $v, not 1:$SV" >&2; exit 1; }
 	case $p in *-dbgsym|*-dev|neo-*) continue ;; esac
 	cp "$f" "$P/"
 done
@@ -250,9 +253,15 @@ done
 $CH apt-mark manual $NEW > /dev/null
 AR=$($CH apt-get -s -q autoremove 2>/dev/null | sed -n 's/^Remv \([^ :]*\).*/\1/p' | tr '\n' ' ')
 [ -z "$AR" ] || { $CH apt-mark manual $AR > /dev/null; echo "marked manual (autoremove would have taken them with gnome-core gone): $AR" >> "$L/removed.txt"; }
-add "VibeOS 0.1.3: $(echo $OURS | wc -w) packages (debs.sha256), plus $NEW from Debian; gnome-control-center, showtime (and the gnome-core metapackage) removed, gnome-control-center-data kept"
+add "VibeOS $SV: $(echo $OURS | wc -w) packages (debs.sha256), plus $NEW from Debian; gnome-control-center, showtime (and the gnome-core metapackage) removed, gnome-control-center-data kept"
 HOLD=$(echo "$OURS" | grep mutter | tr '\n' ' ')
 $CH apt-mark hold $HOLD > /dev/null; add "held: $HOLD(VibeOS's mutter build)"
+# Debian's evolution-data-server where it is (EDS_HOLD, the list releases.html gives for 0.1.4): VibeOS 0.1.4 is built
+# against EDS 3.56, every image's, and not yet against the 3.62 Debian unstable has now, whose upgrade would take
+# VibeOS's apps with it. Exactly the installed part of the list
+EDS_HOLD=${EDS_HOLD-evolution-data-server evolution-data-server-common libebook-1.2-21t64 libecal-2.0-3 libedata-book-1.2-27t64 libedata-cal-2.0-2t64 libebackend-1.2-11t64 libedataserverui-1.2-4t64 libedataserverui4-1.0-0t64 gir1.2-camel-1.2 gir1.2-ecal-2.0 gir1.2-edataserver-1.2 libfolks26 libfolks-eds26 folks-common}
+EH=$(for p in $EDS_HOLD; do [ "$($CH dpkg-query -W -f '${db:Status-Abbrev}' "$p" 2>/dev/null)" = "ii " ] && echo "$p"; done | tr '\n' ' ')
+[ -z "$EH" ] || { $CH apt-mark hold $EH > /dev/null; add "held: $EH(Debian's EDS, which VibeOS $SV is built against)"; }
 # GNOME's own apps out (the ROM's list, as the S10e/POCO/S20): exactly the installed part of it, or nothing
 RL=$(for p in $(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$KIT/ourapps-remove"); do
 	[ "$($CH dpkg-query -W -f '${db:Status-Abbrev}' "$p" 2>/dev/null)" = "ii " ] && echo "$p"; done | LC_ALL=C sort -u)
@@ -304,7 +313,7 @@ else sed -i '/^\[User\]/a Session=vibeos' "$F"; fi
 chmod 600 "$F"; add "user's session: vibeos (AccountsService)"
 $CH glib-compile-schemas /usr/share/glib-2.0/schemas
 # what the image says about itself
-{ echo "VERSION=1:0.1.3"; echo "BUILT=$(date -u +%Y-%m-%dT%H:%MZ)"; echo "BASE=$BASE"; } > "$M/etc/vibeos/system-image"
+{ echo "VERSION=1:$SV"; echo "BUILT=$(date -u +%Y-%m-%dT%H:%MZ)"; echo "BASE=$BASE"; } > "$M/etc/vibeos/system-image"
 $CH dpkg-query -W -f '${Package} ${Version} ${db:Status-Abbrev}\n' > "$L/installed.txt"
 # every file the image's packages own: build-device.sh diverts the ones a device package ships too (SYSFILES)
 cat "$M"/var/lib/dpkg/info/*.list | LC_ALL=C sort -u > "$L/packaged-final.txt"

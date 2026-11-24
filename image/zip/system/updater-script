@@ -1,4 +1,4 @@
-ui_print("VibeOS 0.1.3: the system (Debian, GNOME, VibeOS), for every device.");
+ui_print("VibeOS @VERSION@: the system (Debian, GNOME, VibeOS), for every device.");
 ui_print("Then install this device's VibeOS zip, before restarting.");
 show_progress(1.000000, 0);
 package_extract_file("vibeos-lib.sh", "/tmp/vibeos-lib.sh");
