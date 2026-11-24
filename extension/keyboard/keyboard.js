@@ -223,7 +223,8 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
     // The shell's keyboard is set up, then its looks are taken away and ours put in
     _setupKeyboard() {
         this._kb = {locale: 'en_US', purpose: Clutter.InputContentPurpose.NORMAL, page: 'alphabet', view: null,
-            touches: new Map(), passOn: new Set(), more: null, preview: null, lastShift: 0, manualShift: false, capitals: null};
+            touches: new Map(), passOn: new Set(), more: null, preview: null, lastShift: 0, manualShift: false, capitals: null,
+            hiding: false, unredirect: false};
         this._layers = {default: 'alphabet', shift: 'alphabet-shifted'};
         super._setupKeyboard();
 
@@ -265,6 +266,26 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         this.add_child(this._kbKeys);
         this.add_child(this._kbNav);
 
+        // a keyboard left on the screen closed (_kbStale) goes at the first touch on it, and the keys see nothing of
+        // that touch (or click), to its end: it types nothing
+        const swallowed = new Set();
+        this.connect('captured-event', (_actor, event) => {
+            const T = Clutter.EventType;
+            const type = event.type();
+            const pointer = type === T.BUTTON_PRESS || type === T.BUTTON_RELEASE || type === T.MOTION;
+            const id = pointer ? 'pointer' : touchId(event);
+            if (type === T.TOUCH_BEGIN || type === T.BUTTON_PRESS) {
+                if (!this._kbSettle())
+                    return Clutter.EVENT_PROPAGATE;
+                swallowed.add(id);
+                return Clutter.EVENT_STOP;
+            }
+            if (!swallowed.has(id))
+                return Clutter.EVENT_PROPAGATE;
+            if (type === T.TOUCH_END || type === T.TOUCH_CANCEL || type === T.BUTTON_RELEASE)
+                swallowed.delete(id);
+            return Clutter.EVENT_STOP;
+        });
         this._kbKeys.connect('touch-event', (_actor, event) => this._onTouch(event));
         this._kbKeys.connect('button-press-event', (_actor, event) => this._onButton(event, true));
         this._kbKeys.connect('button-release-event', (_actor, event) => this._onButton(event, false));
@@ -297,6 +318,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
     }
 
     _onDestroy() {
+        this._kbGone = true;
         if (this._kbSuggestId)
             GLib.source_remove(this._kbSuggestId);
         this._kbSuggestId = 0;
@@ -452,7 +474,12 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
     }
 
     _animateShow() {
-        global.compositor.disable_unredirect();
+        // the compositor's unredirection stopped once while the keyboard is up, allowed again once it is gone
+        // (_animateHideComplete)
+        if (!this._kb.unredirect)
+            global.compositor.disable_unredirect();
+        this._kb.unredirect = true;
+        this._kb.hiding = false;
         Main.layoutManager.keyboardBox.show();
         this._keyboardVisible = true;
         if (this._focusWindow && !Main.overview.visible)
@@ -475,17 +502,70 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         if (this._focusPopovers.size > 0)
             this._animatePopovers(false);
         this._kbReleaseAll();
+        this._keyboardVisible = false;
+        this._kbSlideAway();
+        this.emit('visibility-changed');
+    }
+
+    // The slide down, and the keyboard gone from the screen at its end. Also when another slide cuts it short: with
+    // the end of a finished slide alone, the shell's swipe down, cancelled by the close, slid the closed keyboard back
+    // up, and it stayed on the screen, closed, over the app and then the launcher (owner, 11-24).
+    _kbSlideAway() {
+        this._kb.hiding = true;
         this.ease({
             translation_y: this.height,
             duration: HIDE_MS,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
-            onComplete: () => {
+            onStopped: () => {
+                if (this._kbGone)
+                    return;
+                this._kb.hiding = false;
+                if (this._keyboardVisible)
+                    return;
                 this.opacity = 0;
                 this._animateHideComplete();
             },
         });
-        this._keyboardVisible = false;
-        this.emit('visibility-changed');
+    }
+
+    _animateHideComplete() {
+        Main.layoutManager.keyboardBox.hide();
+        if (this._kb.unredirect)
+            global.compositor.enable_unredirect();
+        this._kb.unredirect = false;
+    }
+
+    // Closed, not on its way down, and still on the screen: what a hide cut short left. Back and a touch on it take it
+    // away (keyboardShown, dismissKeyboard, the captured touch in _setupKeyboard).
+    get _kbStale() {
+        return !this._kbGone && !this._keyboardVisible && !this._kb.hiding && !this._gestureInProgress &&
+            Main.layoutManager.keyboardBox.visible && this.mapped && this.opacity > 0 &&
+            this.translation_y < this.height;
+    }
+
+    _kbSettle() {
+        if (!this._kbStale)
+            return false;
+        this._kbReleaseAll();
+        this._kbSlideAway();
+        return true;
+    }
+
+    // The swipe down takes the finger: counted gone, as by the other gestures that take one (gestureTookTouches), so a
+    // close is not held for a lift the stage may never see (oskfocus.js), and one held already comes now
+    _panBegin(gesture) {
+        gestureTookTouches();
+        super._panBegin(gesture);
+    }
+
+    // The swipe down let go, or cancelled. A keyboard closed under the finger (a field losing the focus closes it, and
+    // the close turns the swipe off, which cancels it) is not brought back: the shell's own end slid it back up and
+    // fitted the window above it again, closed.
+    _panEnd(gesture) {
+        if (this._keyboardVisible)
+            super._panEnd(gesture);
+        else
+            this._kbSettle();
     }
 
     // ---- the keyboard's own ----
@@ -1263,6 +1343,13 @@ export function dismissKeyboard() {
     keyboard?._kbReleaseAll?.();
     gestureTookTouches();
     keyboard?.close();
+    // and one left on the screen closed (Keyboard.close does nothing to a closed one)
+    keyboard?._kbSettle?.();
+}
+
+// Up, for Back: open, or left on the screen closed (which dismissKeyboard takes away)
+export function keyboardShown() {
+    return !!Main.keyboard.visible || !!Main.keyboard._keyboard?._kbStale;
 }
 
 // A keyboard taken out of use: the window it moved put back, the shell's composited state and its swipe gesture
@@ -1274,8 +1361,11 @@ function retire(keyboard) {
     const window = keyboard._focusWindow;
     if (window?.__keyboardMoved)
         keyboard._animateWindow(window, false);
-    if (keyboard._keyboardVisible)
+    // (ours keeps its own count: a hide that remove_all_transitions cut short has allowed it already)
+    if (keyboard._kb ? keyboard._kb.unredirect : keyboard._keyboardVisible)
         global.compositor.enable_unredirect();
+    if (keyboard._kb)
+        keyboard._kb.unredirect = false;
     keyboard._keyboardVisible = false;
     if (keyboard._surroundingTextId) {
         Main.inputMethod.disconnect(keyboard._surroundingTextId);
