@@ -899,7 +899,11 @@ make_info (GtkWidget *window, CalEvent *event, gboolean pane)
 
   /* REMINDERS as a list separator, the rows, "Add reminder" */
   info->reminders_header = text ("cal-list-separator", FALSE);
-  gtk_label_set_label (GTK_LABEL (info->reminders_header), _("REMINDERS"));
+  {
+    /* in capitals, as Android's list separators (textAllCaps) */
+    g_autofree char *reminders = g_utf8_strup (_("Reminders"), -1);
+    gtk_label_set_label (GTK_LABEL (info->reminders_header), reminders);
+  }
   gtk_box_append (GTK_BOX (content), info->reminders_header);
   info->reminders = cal_reminders_new ();
   gtk_widget_add_css_class (info->reminders, "cal-info-reminders");

@@ -42,6 +42,9 @@ char *cal_format_reminder_minutes (int minutes);
 /* an RRULE in words ("Weekly on Monday", "Every 2 days; until 12/31/2026",
  * "Monthly (on every first Monday)"), or NULL for a rule it has no words for. @start is the first occurrence. */
 char *cal_format_rrule (const char *rrule, gint64 start);
+/* "on every first Monday", translated: @weekday 0 Sunday … 6 Saturday, @nth 1 … 4 the first to the fourth, 5 the
+ * last */
+const char *cal_format_nth_weekday (int weekday, int nth);
 
 /* the first day of the week, 0 Sunday … 6 Saturday: @setting ("Week starts on": -1 the locale's, 7 Saturday,
  * 1 Sunday, 2 Monday), else the locale's (glibc's LC_TIME) */

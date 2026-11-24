@@ -267,7 +267,7 @@ update (Picker *picker)
                                                           : g_strdup (_("Selected date"));
   g_autofree char *month = cal_format_month_year (month_start (picker->month));
   g_autofree char *current = picker->selected != NO_DAY ? g_strdup_printf (_("Current selection: %s"), selection)
-                                                        : g_strdup (_("None"));
+                                                        : g_strdup (_("No date selected"));
 
   gtk_label_set_label (GTK_LABEL (picker->selection), selection);
   gtk_accessible_update_property (GTK_ACCESSIBLE (picker->selection), GTK_ACCESSIBLE_PROPERTY_LABEL, current, -1);

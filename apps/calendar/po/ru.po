@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-calendar\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-24 14:29+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Russian\n"
@@ -68,8 +68,10 @@ msgid "Name"
 msgstr "Название"
 
 # android: Etar discard_label (several translations, short)
+#. "✕ CANCEL" and "✓ DONE" in two equal halves of the toolbar, the divider between; in capitals, as Android's
+#. * (textAllCaps)
 #: src/cal-accounts.c src/cal-alert-page.c src/cal-date-picker.c
-#: src/cal-dialogs.c src/cal-time-picker.c
+#: src/cal-dialogs.c src/cal-time-picker.c src/event-editor.c
 msgid "Cancel"
 msgstr "Отмена"
 
@@ -351,10 +353,10 @@ msgctxt "alert"
 msgid "%s, %s"
 msgstr "%s, %s"
 
-# android: Etar no_reminder_label (several translations, short)
-#: src/cal-alerts.c src/cal-date-picker.c src/cal-prefs.c
+#: src/cal-alerts.c
+msgctxt "no sound"
 msgid "None"
-msgstr "Нет"
+msgstr "Без звука"
 
 # android: Settings notification_ringtone_title (other app)
 #: src/cal-alerts.c
@@ -390,6 +392,10 @@ msgstr "Выбранная дата"
 #, c-format
 msgid "Current selection: %s"
 msgstr "Текущий выбор: %s"
+
+#: src/cal-date-picker.c
+msgid "No date selected"
+msgstr "Дата не выбрана"
 
 # android: Settings date_time_set_date_title (other app, short)
 #: src/cal-date-picker.c
@@ -532,6 +538,181 @@ msgstr[0] "%d минута"
 msgstr[1] "%d минуты"
 msgstr[2] "%d минут"
 
+# android: Etar repeat_by_nth_sun[0]
+#: src/cal-format.c
+msgid "on every first Sunday"
+msgstr "первое воскресенье месяца"
+
+# android: Etar repeat_by_nth_sun[1]
+#: src/cal-format.c
+msgid "on every second Sunday"
+msgstr "второе воскресенье месяца"
+
+# android: Etar repeat_by_nth_sun[2]
+#: src/cal-format.c
+msgid "on every third Sunday"
+msgstr "третье воскресенье месяца"
+
+# android: Etar repeat_by_nth_sun[3]
+#: src/cal-format.c
+msgid "on every fourth Sunday"
+msgstr "четвертое воскресенье месяца"
+
+# android: Etar repeat_by_nth_sun[4]
+#: src/cal-format.c
+msgid "on every last Sunday"
+msgstr "последнее воскресенье месяца"
+
+# android: Etar repeat_by_nth_mon[0]
+#: src/cal-format.c
+msgid "on every first Monday"
+msgstr "первый понедельник месяца"
+
+# android: Etar repeat_by_nth_mon[1]
+#: src/cal-format.c
+msgid "on every second Monday"
+msgstr "второй понедельник месяца"
+
+# android: Etar repeat_by_nth_mon[2]
+#: src/cal-format.c
+msgid "on every third Monday"
+msgstr "третий понедельник месяца"
+
+# android: Etar repeat_by_nth_mon[3]
+#: src/cal-format.c
+msgid "on every fourth Monday"
+msgstr "четвертый понедельник месяца"
+
+# android: Etar repeat_by_nth_mon[4]
+#: src/cal-format.c
+msgid "on every last Monday"
+msgstr "последний понедельник месяца"
+
+# android: Etar repeat_by_nth_tues[0]
+#: src/cal-format.c
+msgid "on every first Tuesday"
+msgstr "первый вторник месяца"
+
+# android: Etar repeat_by_nth_tues[1]
+#: src/cal-format.c
+msgid "on every second Tuesday"
+msgstr "второй вторник месяца"
+
+# android: Etar repeat_by_nth_tues[2]
+#: src/cal-format.c
+msgid "on every third Tuesday"
+msgstr "третий вторник месяца"
+
+# android: Etar repeat_by_nth_tues[3]
+#: src/cal-format.c
+msgid "on every fourth Tuesday"
+msgstr "четвертый вторник месяца"
+
+# android: Etar repeat_by_nth_tues[4]
+#: src/cal-format.c
+msgid "on every last Tuesday"
+msgstr "последний вторник месяца"
+
+# android: Etar repeat_by_nth_wed[0]
+#: src/cal-format.c
+msgid "on every first Wednesday"
+msgstr "первая среда месяца"
+
+# android: Etar repeat_by_nth_wed[1]
+#: src/cal-format.c
+msgid "on every second Wednesday"
+msgstr "вторая среда месяца"
+
+# android: Etar repeat_by_nth_wed[2]
+#: src/cal-format.c
+msgid "on every third Wednesday"
+msgstr "третья среда месяца"
+
+# android: Etar repeat_by_nth_wed[3]
+#: src/cal-format.c
+msgid "on every fourth Wednesday"
+msgstr "четвертая среда месяца"
+
+# android: Etar repeat_by_nth_wed[4]
+#: src/cal-format.c
+msgid "on every last Wednesday"
+msgstr "последняя среда месяца"
+
+# android: Etar repeat_by_nth_thurs[0]
+#: src/cal-format.c
+msgid "on every first Thursday"
+msgstr "первый четверг месяца"
+
+# android: Etar repeat_by_nth_thurs[1]
+#: src/cal-format.c
+msgid "on every second Thursday"
+msgstr "второй четверг месяца"
+
+# android: Etar repeat_by_nth_thurs[2]
+#: src/cal-format.c
+msgid "on every third Thursday"
+msgstr "третий четверг месяца"
+
+# android: Etar repeat_by_nth_thurs[3]
+#: src/cal-format.c
+msgid "on every fourth Thursday"
+msgstr "четвертый четверг месяца"
+
+# android: Etar repeat_by_nth_thurs[4]
+#: src/cal-format.c
+msgid "on every last Thursday"
+msgstr "последний четверг месяца"
+
+# android: Etar repeat_by_nth_fri[0]
+#: src/cal-format.c
+msgid "on every first Friday"
+msgstr "первая пятница месяца"
+
+# android: Etar repeat_by_nth_fri[1]
+#: src/cal-format.c
+msgid "on every second Friday"
+msgstr "вторая пятница месяца"
+
+# android: Etar repeat_by_nth_fri[2]
+#: src/cal-format.c
+msgid "on every third Friday"
+msgstr "третья пятница месяца"
+
+# android: Etar repeat_by_nth_fri[3]
+#: src/cal-format.c
+msgid "on every fourth Friday"
+msgstr "четвертая пятница месяца"
+
+# android: Etar repeat_by_nth_fri[4]
+#: src/cal-format.c
+msgid "on every last Friday"
+msgstr "последняя пятница месяца"
+
+# android: Etar repeat_by_nth_sat[0]
+#: src/cal-format.c
+msgid "on every first Saturday"
+msgstr "первая суббота месяца"
+
+# android: Etar repeat_by_nth_sat[1]
+#: src/cal-format.c
+msgid "on every second Saturday"
+msgstr "вторая суббота месяца"
+
+# android: Etar repeat_by_nth_sat[2]
+#: src/cal-format.c
+msgid "on every third Saturday"
+msgstr "третья суббота месяца"
+
+# android: Etar repeat_by_nth_sat[3]
+#: src/cal-format.c
+msgid "on every fourth Saturday"
+msgstr "четвертая суббота месяца"
+
+# android: Etar repeat_by_nth_sat[4]
+#: src/cal-format.c
+msgid "on every last Saturday"
+msgstr "последняя суббота месяца"
+
 # android: Etar endByDate
 #: src/cal-format.c
 #, c-format
@@ -548,12 +729,18 @@ msgstr[1] "; %d раза"
 msgstr[2] "; %d раз"
 
 #: src/cal-format.c
-#, c-format
 msgid "Daily"
+msgstr "Ежедневно"
+
+# android: Etar recurrence_interval_daily
+#. TRANSLATORS: also shown in pieces around a number field: the words before %d, the field, the words after
+#: src/cal-format.c src/cal-recurrence-picker.c
+#, c-format
+msgid "Every %d day"
 msgid_plural "Every %d days"
-msgstr[0] "Раз в %d день"
-msgstr[1] "Раз в %d дня"
-msgstr[2] "Раз в %d дней"
+msgstr[0] "Каждый %d день"
+msgstr[1] "Каждые %d дня"
+msgstr[2] "Каждые %d дней"
 
 # android: Etar every_weekday
 #: src/cal-format.c
@@ -573,31 +760,12 @@ msgstr[0] "Раз в %d неделю (%s)"
 msgstr[1] "Раз в %d недели (%s)"
 msgstr[2] "Раз в %d недель (%s)"
 
-#: src/cal-format.c
-msgid "first"
-msgstr "первой"
-
-#: src/cal-format.c
-msgid "second"
-msgstr "второй"
-
-#: src/cal-format.c
-msgid "third"
-msgstr "третьей"
-
-#: src/cal-format.c
-msgid "fourth"
-msgstr "четвертой"
-
-#: src/cal-format.c
-msgid "last"
-msgstr "последней"
-
-#. "on every first Monday"
+#. TRANSLATORS: a monthly repeat by the weekday, the %s the repeat dialog's words for it ("on every first
+#. * Monday"): "Monthly (on every first Monday)"
 #: src/cal-format.c
 #, c-format
-msgid "Monthly (on every %s %s)"
-msgstr "Ежемесячно (%2$s %1$s недели)"
+msgid "Monthly (%s)"
+msgstr "Ежемесячно (%s)"
 
 # android: Etar monthly
 #: src/cal-format.c
@@ -626,189 +794,10 @@ msgstr[2] "Неделя %d"
 msgid "Back"
 msgstr "Назад"
 
-# android: Etar repeat_by_nth_sun[0]
-#: src/cal-recurrence-picker.c
-msgid "on every first Sunday"
-msgstr "первое воскресенье месяца"
-
-# android: Etar repeat_by_nth_sun[1]
-#: src/cal-recurrence-picker.c
-msgid "on every second Sunday"
-msgstr "второе воскресенье месяца"
-
-# android: Etar repeat_by_nth_sun[2]
-#: src/cal-recurrence-picker.c
-msgid "on every third Sunday"
-msgstr "третье воскресенье месяца"
-
-# android: Etar repeat_by_nth_sun[3]
-#: src/cal-recurrence-picker.c
-msgid "on every fourth Sunday"
-msgstr "четвертое воскресенье месяца"
-
-# android: Etar repeat_by_nth_sun[4]
-#: src/cal-recurrence-picker.c
-msgid "on every last Sunday"
-msgstr "последнее воскресенье месяца"
-
-# android: Etar repeat_by_nth_mon[0]
-#: src/cal-recurrence-picker.c
-msgid "on every first Monday"
-msgstr "первый понедельник месяца"
-
-# android: Etar repeat_by_nth_mon[1]
-#: src/cal-recurrence-picker.c
-msgid "on every second Monday"
-msgstr "второй понедельник месяца"
-
-# android: Etar repeat_by_nth_mon[2]
-#: src/cal-recurrence-picker.c
-msgid "on every third Monday"
-msgstr "третий понедельник месяца"
-
-# android: Etar repeat_by_nth_mon[3]
-#: src/cal-recurrence-picker.c
-msgid "on every fourth Monday"
-msgstr "четвертый понедельник месяца"
-
-# android: Etar repeat_by_nth_mon[4]
-#: src/cal-recurrence-picker.c
-msgid "on every last Monday"
-msgstr "последний понедельник месяца"
-
-# android: Etar repeat_by_nth_tues[0]
-#: src/cal-recurrence-picker.c
-msgid "on every first Tuesday"
-msgstr "первый вторник месяца"
-
-# android: Etar repeat_by_nth_tues[1]
-#: src/cal-recurrence-picker.c
-msgid "on every second Tuesday"
-msgstr "второй вторник месяца"
-
-# android: Etar repeat_by_nth_tues[2]
-#: src/cal-recurrence-picker.c
-msgid "on every third Tuesday"
-msgstr "третий вторник месяца"
-
-# android: Etar repeat_by_nth_tues[3]
-#: src/cal-recurrence-picker.c
-msgid "on every fourth Tuesday"
-msgstr "четвертый вторник месяца"
-
-# android: Etar repeat_by_nth_tues[4]
-#: src/cal-recurrence-picker.c
-msgid "on every last Tuesday"
-msgstr "последний вторник месяца"
-
-# android: Etar repeat_by_nth_wed[0]
-#: src/cal-recurrence-picker.c
-msgid "on every first Wednesday"
-msgstr "первая среда месяца"
-
-# android: Etar repeat_by_nth_wed[1]
-#: src/cal-recurrence-picker.c
-msgid "on every second Wednesday"
-msgstr "вторая среда месяца"
-
-# android: Etar repeat_by_nth_wed[2]
-#: src/cal-recurrence-picker.c
-msgid "on every third Wednesday"
-msgstr "третья среда месяца"
-
-# android: Etar repeat_by_nth_wed[3]
-#: src/cal-recurrence-picker.c
-msgid "on every fourth Wednesday"
-msgstr "четвертая среда месяца"
-
-# android: Etar repeat_by_nth_wed[4]
-#: src/cal-recurrence-picker.c
-msgid "on every last Wednesday"
-msgstr "последняя среда месяца"
-
-# android: Etar repeat_by_nth_thurs[0]
-#: src/cal-recurrence-picker.c
-msgid "on every first Thursday"
-msgstr "первый четверг месяца"
-
-# android: Etar repeat_by_nth_thurs[1]
-#: src/cal-recurrence-picker.c
-msgid "on every second Thursday"
-msgstr "второй четверг месяца"
-
-# android: Etar repeat_by_nth_thurs[2]
-#: src/cal-recurrence-picker.c
-msgid "on every third Thursday"
-msgstr "третий четверг месяца"
-
-# android: Etar repeat_by_nth_thurs[3]
-#: src/cal-recurrence-picker.c
-msgid "on every fourth Thursday"
-msgstr "четвертый четверг месяца"
-
-# android: Etar repeat_by_nth_thurs[4]
-#: src/cal-recurrence-picker.c
-msgid "on every last Thursday"
-msgstr "последний четверг месяца"
-
-# android: Etar repeat_by_nth_fri[0]
-#: src/cal-recurrence-picker.c
-msgid "on every first Friday"
-msgstr "первая пятница месяца"
-
-# android: Etar repeat_by_nth_fri[1]
-#: src/cal-recurrence-picker.c
-msgid "on every second Friday"
-msgstr "вторая пятница месяца"
-
-# android: Etar repeat_by_nth_fri[2]
-#: src/cal-recurrence-picker.c
-msgid "on every third Friday"
-msgstr "третья пятница месяца"
-
-# android: Etar repeat_by_nth_fri[3]
-#: src/cal-recurrence-picker.c
-msgid "on every fourth Friday"
-msgstr "четвертая пятница месяца"
-
-# android: Etar repeat_by_nth_fri[4]
-#: src/cal-recurrence-picker.c
-msgid "on every last Friday"
-msgstr "последняя пятница месяца"
-
-# android: Etar repeat_by_nth_sat[0]
-#: src/cal-recurrence-picker.c
-msgid "on every first Saturday"
-msgstr "первая суббота месяца"
-
-# android: Etar repeat_by_nth_sat[1]
-#: src/cal-recurrence-picker.c
-msgid "on every second Saturday"
-msgstr "вторая суббота месяца"
-
-# android: Etar repeat_by_nth_sat[2]
-#: src/cal-recurrence-picker.c
-msgid "on every third Saturday"
-msgstr "третья суббота месяца"
-
-# android: Etar repeat_by_nth_sat[3]
-#: src/cal-recurrence-picker.c
-msgid "on every fourth Saturday"
-msgstr "четвертая суббота месяца"
-
-# android: Etar repeat_by_nth_sat[4]
-#: src/cal-recurrence-picker.c
-msgid "on every last Saturday"
-msgstr "последняя суббота месяца"
-
-# android: Etar recurrence_interval_daily
-#: src/cal-recurrence-picker.c
-#, c-format
-msgid "Every %d day"
-msgid_plural "Every %d days"
-msgstr[0] "Каждый %d день"
-msgstr[1] "Каждые %d дня"
-msgstr[2] "Каждые %d дней"
+#: src/cal-prefs.c
+msgctxt "no reminder"
+msgid "None"
+msgstr "Нет"
 
 # android: Etar recurrence_interval_weekly
 #: src/cal-recurrence-picker.c
@@ -838,6 +827,8 @@ msgstr[1] "Каждые %d года"
 msgstr[2] "Каждые %d лет"
 
 # android: Etar recurrence_end_count
+#. TRANSLATORS: shown in pieces around a number field: the words before %d, the field, the words after. With
+#. * nothing before %d the dialog shows "For a number of events" and the field instead
 #: src/cal-recurrence-picker.c
 #, c-format
 msgid "For %d event"
@@ -847,6 +838,8 @@ msgstr[1] "%d повтора"
 msgstr[2] "%d повторов"
 
 # android: Etar recurrence_end_date
+#. TRANSLATORS: shown in pieces: the words before %s, then a date field. With nothing before %s, or words after
+#. * it, the dialog shows "Until a date" and the field instead
 #: src/cal-recurrence-picker.c
 #, c-format
 msgid "Until %s"
@@ -873,25 +866,22 @@ msgstr "Бесконечно"
 msgid "Select date"
 msgstr "Выберите дату"
 
-# android: Etar recurrence_freq[0]
+#. in capitals, as Android's (textAllCaps)
 #: src/cal-recurrence-picker.c
-msgid "REPEAT DAILY"
-msgstr "ЕЖЕДНЕВНО"
+msgid "Repeat daily"
+msgstr "Ежедневно"
 
-# android: Etar recurrence_freq[1]
 #: src/cal-recurrence-picker.c
-msgid "REPEAT WEEKLY"
-msgstr "ЕЖЕНЕДЕЛЬНО"
+msgid "Repeat weekly"
+msgstr "Еженедельно"
 
-# android: Etar recurrence_freq[2]
 #: src/cal-recurrence-picker.c
-msgid "REPEAT MONTHLY"
-msgstr "ЕЖЕМЕСЯЧНО"
+msgid "Repeat monthly"
+msgstr "Ежемесячно"
 
-# android: Etar recurrence_freq[3]
 #: src/cal-recurrence-picker.c
-msgid "REPEAT YEARLY"
-msgstr "ЕЖЕГОДНО"
+msgid "Repeat yearly"
+msgstr "Ежегодно"
 
 # android: Etar recurrence_month_pattern_by_day
 #: src/cal-recurrence-picker.c
@@ -908,7 +898,7 @@ msgid "change end date"
 msgstr "изменить дату окончания"
 
 # android: Etar save_label (several translations, short)
-#: src/cal-recurrence-picker.c
+#: src/cal-recurrence-picker.c src/event-editor.c
 msgid "Done"
 msgstr "Готово"
 
@@ -1560,16 +1550,6 @@ msgstr "Отменить изменения?"
 msgid "Discard"
 msgstr "Не сохранять"
 
-# android: Launcher3 dialog_cancel (other app, short)
-#: src/event-editor.c
-msgid "CANCEL"
-msgstr "ОТМЕНА"
-
-# android: Etar save_label (adapted, several translations, short)
-#: src/event-editor.c
-msgid "DONE"
-msgstr "ГОТОВО"
-
 # android: Etar hint_what
 #: src/event-editor.c
 msgid "Event name"
@@ -1804,10 +1784,10 @@ msgstr "Календарь:"
 msgid "Organizer:"
 msgstr "Организатор:"
 
-# android: Etar event_info_reminders_label (adapted)
+#. in capitals, as Android's list separators (textAllCaps)
 #: src/event-info.c
-msgid "REMINDERS"
-msgstr "НАПОМИНАНИЯ"
+msgid "Reminders"
+msgstr "Напоминания"
 
 # android: Etar map_label
 #: src/reminders-main.c

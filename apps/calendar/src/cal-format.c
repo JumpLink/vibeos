@@ -301,6 +301,31 @@ cal_week_start (int setting)
 
 static const char *byday_names[] = { "SU", "MO", "TU", "WE", "TH", "FR", "SA" };
 
+/* "on every [first … fourth, last] [weekday]", one string each for the languages whose
+ * words change with the weekday's gender: the repeat dialog's choice, and a monthly rule's words */
+static const char *const repeat_by_nth[7][5] = {
+  { N_("on every first Sunday"), N_("on every second Sunday"), N_("on every third Sunday"),
+    N_("on every fourth Sunday"), N_("on every last Sunday") },
+  { N_("on every first Monday"), N_("on every second Monday"), N_("on every third Monday"),
+    N_("on every fourth Monday"), N_("on every last Monday") },
+  { N_("on every first Tuesday"), N_("on every second Tuesday"), N_("on every third Tuesday"),
+    N_("on every fourth Tuesday"), N_("on every last Tuesday") },
+  { N_("on every first Wednesday"), N_("on every second Wednesday"), N_("on every third Wednesday"),
+    N_("on every fourth Wednesday"), N_("on every last Wednesday") },
+  { N_("on every first Thursday"), N_("on every second Thursday"), N_("on every third Thursday"),
+    N_("on every fourth Thursday"), N_("on every last Thursday") },
+  { N_("on every first Friday"), N_("on every second Friday"), N_("on every third Friday"),
+    N_("on every fourth Friday"), N_("on every last Friday") },
+  { N_("on every first Saturday"), N_("on every second Saturday"), N_("on every third Saturday"),
+    N_("on every fourth Saturday"), N_("on every last Saturday") },
+};
+
+const char *
+cal_format_nth_weekday (int weekday, int nth)
+{
+  return _(repeat_by_nth[CLAMP (weekday, 0, 6)][CLAMP (nth, 1, 5) - 1]);
+}
+
 static char *
 weekday_name (int weekday, gboolean abbreviated)
 {
@@ -389,8 +414,10 @@ cal_format_rrule (const char *rrule, gint64 start)
   if (count > 0)
     g_string_append_printf (end, g_dngettext (NULL, "; for one time", "; for %d times", count), count);
 
-  if (g_str_equal (freq, "DAILY"))
-    text = g_strdup_printf (g_dngettext (NULL, "Daily", "Every %d days", interval), interval);
+  if (g_str_equal (freq, "DAILY") && interval == 1)
+    text = g_strdup (_("Daily"));
+  else if (g_str_equal (freq, "DAILY"))
+    text = g_strdup_printf (g_dngettext (NULL, "Every %d day", "Every %d days", interval), interval);
   else if (g_str_equal (freq, "WEEKLY"))
     {
       g_autoptr(GString) names = g_string_new (NULL);
@@ -424,12 +451,12 @@ cal_format_rrule (const char *rrule, gint64 start)
     {
       if (nth_byday && n_days == 1)
         {
-          static const char *nth[] = { N_("first"), N_("second"), N_("third"), N_("fourth"), N_("last") };
           int week = (g_date_time_get_day_of_month (first) - 1) / 7;
-          g_autofree char *name = weekday_name (g_date_time_get_day_of_week (first) % 7, FALSE);
+          const char *nth = cal_format_nth_weekday (g_date_time_get_day_of_week (first) % 7, MIN (week, 4) + 1);
 
-          /* "on every first Monday" */
-          text = g_strdup_printf (_("Monthly (on every %s %s)"), _(nth[MIN (week, 4)]), name);
+          /* TRANSLATORS: a monthly repeat by the weekday, the %s the repeat dialog's words for it ("on every first
+           * Monday"): "Monthly (on every first Monday)" */
+          text = g_strdup_printf (_("Monthly (%s)"), nth);
         }
       else
         text = g_strdup (_("Monthly"));

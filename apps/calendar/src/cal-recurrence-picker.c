@@ -726,25 +726,6 @@ cal_recurrence_picker_can_handle (const char *rrule)
 #define BUBBLE_RADIUS 11.6998              /* the bubbles' circle, in their 24 × 24 viewport */
 #define BUBBLE_STROKE 0.600365
 
-/* "on every [first … fourth, last] [weekday]", one string each for the languages whose
- * words change with the weekday's gender */
-static const char *const repeat_by_nth[7][5] = {
-  { N_("on every first Sunday"), N_("on every second Sunday"), N_("on every third Sunday"),
-    N_("on every fourth Sunday"), N_("on every last Sunday") },
-  { N_("on every first Monday"), N_("on every second Monday"), N_("on every third Monday"),
-    N_("on every fourth Monday"), N_("on every last Monday") },
-  { N_("on every first Tuesday"), N_("on every second Tuesday"), N_("on every third Tuesday"),
-    N_("on every fourth Tuesday"), N_("on every last Tuesday") },
-  { N_("on every first Wednesday"), N_("on every second Wednesday"), N_("on every third Wednesday"),
-    N_("on every fourth Wednesday"), N_("on every last Wednesday") },
-  { N_("on every first Thursday"), N_("on every second Thursday"), N_("on every third Thursday"),
-    N_("on every fourth Thursday"), N_("on every last Thursday") },
-  { N_("on every first Friday"), N_("on every second Friday"), N_("on every third Friday"),
-    N_("on every fourth Friday"), N_("on every last Friday") },
-  { N_("on every first Saturday"), N_("on every second Saturday"), N_("on every third Saturday"),
-    N_("on every fourth Saturday"), N_("on every last Saturday") },
-};
-
 typedef struct {
   VibeosDialog *dialog;
   CalRecurrenceSet done;
@@ -793,12 +774,17 @@ split_marker (const char *text, const char *marker, char **before, char **after)
   return TRUE;
 }
 
+/* The repeat dialog shows a sentence with a field in it in pieces: the words before the placeholder, the field,
+ * the words after ("Every" [2] "weeks", "Until" [date], "For" [5] "events"). A translation with no words before the
+ * placeholder ("%d повтор"), or with words after a date, makes the dialog show whole labels instead ("For a number
+ * of events" and the field alone). */
 static const char *
 interval_string (CalRepeatFreq freq, int n)
 {
   switch (freq)
     {
     case CAL_REPEAT_DAILY:
+      /* TRANSLATORS: also shown in pieces around a number field: the words before %d, the field, the words after */
       return g_dngettext (NULL, "Every %d day", "Every %d days", n);
     case CAL_REPEAT_WEEKLY:
       return g_dngettext (NULL, "Every %d week", "Every %d weeks", n);
@@ -812,6 +798,8 @@ interval_string (CalRepeatFreq freq, int n)
 static const char *
 end_count_string (int n)
 {
+  /* TRANSLATORS: shown in pieces around a number field: the words before %d, the field, the words after. With
+   * nothing before %d the dialog shows "For a number of events" and the field instead */
   return g_dngettext (NULL, "For %d event", "For %d events", n);
 }
 
@@ -869,12 +857,16 @@ static void
 update_end_label (Picker *picker)
 {
   g_autofree char *before = NULL, *after = NULL;
+  /* TRANSLATORS: shown in pieces: the words before %s, then a date field. With nothing before %s, or words after
+   * it, the dialog shows "Until a date" and the field instead */
   const char *date = _("Until %s");
   gboolean form;
 
-  /* a translation that puts nothing before the date or the count shows the whole labels */
-  form = !split_marker (date, "%s", &before, NULL) || !*before;
+  /* a translation that puts nothing before the date or the count, or words after the date (no label follows the
+   * date's field), shows the whole labels */
+  form = !split_marker (date, "%s", &before, &after) || !*before || *after;
   g_clear_pointer (&before, g_free);
+  g_clear_pointer (&after, g_free);
   form = form || !split_marker (end_count_string (1), "%d", &before, NULL) || !*before;
   g_clear_pointer (&before, g_free);
   picker->hide_post_end_count = FALSE;
@@ -1377,7 +1369,10 @@ cal_recurrence_picker_show (GtkWidget *parent, const char *rrule, gint64 start, 
                             CalRecurrenceSet done, gpointer data)
 {
   Picker *picker = g_new0 (Picker, 1);
-  const char *freqs[] = { _("REPEAT DAILY"), _("REPEAT WEEKLY"), _("REPEAT MONTHLY"), _("REPEAT YEARLY") };
+  /* in capitals, as Android's (textAllCaps) */
+  g_autofree char *daily = g_utf8_strup (_("Repeat daily"), -1), *weekly = g_utf8_strup (_("Repeat weekly"), -1);
+  g_autofree char *monthly = g_utf8_strup (_("Repeat monthly"), -1), *yearly = g_utf8_strup (_("Repeat yearly"), -1);
+  const char *freqs[] = { daily, weekly, monthly, yearly };
   int week_start = first_day_of_week ();
   int width, height, card_width, row1, idx;
   gboolean one_row;
@@ -1460,9 +1455,9 @@ cal_recurrence_picker_show (GtkWidget *parent, const char *rrule, gint64 start, 
   /* monthly: by the date, or by the nth weekday (its text set once, from the model) */
   picker->month_group = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   picker->by_month_day = radio_row (picker, _("on the same day each month"));
-  nth_text = g_strdup (_(repeat_by_nth[picker->model.monthly_by_day_of_week]
-                                      [(picker->model.monthly_by_nth_day_of_week < 0 ? FIFTH_WEEK_IN_A_MONTH
-                                        : picker->model.monthly_by_nth_day_of_week) - 1]));
+  nth_text = g_strdup (cal_format_nth_weekday (picker->model.monthly_by_day_of_week,
+                                               picker->model.monthly_by_nth_day_of_week < 0 ? FIFTH_WEEK_IN_A_MONTH
+                                               : picker->model.monthly_by_nth_day_of_week));
   picker->by_nth = radio_row (picker, nth_text);
   gtk_box_append (GTK_BOX (picker->month_group), picker->by_month_day);
   gtk_box_append (GTK_BOX (picker->month_group), picker->by_nth);

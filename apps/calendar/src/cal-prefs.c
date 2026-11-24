@@ -294,7 +294,7 @@ cal_list_pref_widget (CalListPref *list)
 char *
 cal_pref_minutes_label (int minutes)
 {
-  return minutes < 0 ? g_strdup (_("None")) : cal_format_reminder_minutes (minutes);
+  return minutes < 0 ? g_strdup (C_("no reminder", "None")) : cal_format_reminder_minutes (minutes);
 }
 
 GtkWidget *

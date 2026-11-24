@@ -15,6 +15,8 @@ test_rrule (void)
     { "FREQ=WEEKLY;BYDAY=MO", "Weekly on Monday" },
     { "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR", "Every weekday (Mon–Fri)" },
     { "FREQ=YEARLY", "Yearly" },
+    /* by the weekday: the repeat dialog's words for it, whole */
+    { "FREQ=MONTHLY;BYDAY=2MO", "Monthly (on every second Monday)" },
     { "FREQ=DAILY;COUNT=5", "Daily; for 5 times" },
     /* the end on the local date the UTC time falls on (Berlin: 00:59:59 on December 1), a DATE as written */
     { "FREQ=DAILY;UNTIL=20261130T235959Z", "Daily; until 12/1/2026" },
