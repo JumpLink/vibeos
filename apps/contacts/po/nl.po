@@ -24,11 +24,11 @@ msgstr "Contacten"
 
 #: data/vibeos.Contacts.desktop.in
 msgid "Keep the people you know in one list"
-msgstr ""
+msgstr "Alle mensen die je kent in één lijst"
 
 #: data/vibeos.Contacts.desktop.in
 msgid "Contacts;People;Address;Book;vCard;Friends;"
-msgstr ""
+msgstr "contacten;personen;adresboek;adres;vcard;vrienden;"
 
 # android: Framework phoneTypes[1] (short)
 #. the Device account's spinner
@@ -259,15 +259,15 @@ msgstr "NetMeeting"
 
 #: src/ct-contact.c
 msgid "Gadu-Gadu"
-msgstr ""
+msgstr "Gadu-Gadu"
 
 #: src/ct-contact.c
 msgid "GroupWise"
-msgstr ""
+msgstr "GroupWise"
 
 #: src/ct-contact.c
 msgid "Matrix"
-msgstr ""
+msgstr "Matrix"
 
 # android: Contacts cancel_button_content_description (several translations, short)
 #. the toolbar: ✕ "Cancel", the title, SAVE flush with the end
@@ -283,7 +283,7 @@ msgstr "OK"
 #. Translators: the order of the date picker's wheels: M month, D day, Y year (German: DMY)
 #: src/ct-dialogs.c
 msgid "MDY"
-msgstr ""
+msgstr "DMY"
 
 # android: Contacts date_year_toggle
 #: src/ct-dialogs.c
@@ -340,10 +340,9 @@ msgstr "Adres"
 msgid "Website"
 msgstr "Website"
 
-# android: Framework zen_mode_default_events_name (several translations, short)
 #: src/ct-editor.c src/ct-quick.c
 msgid "Event"
-msgstr "Afspraak"
+msgstr "Evenement"
 
 # android: Contacts relationLabelsGroup
 #: src/ct-editor.c
@@ -353,7 +352,7 @@ msgstr "Relatie"
 # android: Contacts label_notes (several translations, short)
 #: src/ct-editor.c
 msgid "Notes"
-msgstr "Opmerkingen"
+msgstr "Notities"
 
 # android: Contacts menu_title_groups
 #: src/ct-editor.c src/ct-organize.c src/ct-people.c
@@ -524,10 +523,9 @@ msgstr "Opslaan in"
 msgid "Text copied"
 msgstr "Tekst gekopieerd"
 
-# android: Contacts editor_uneditable_section_title
 #: src/ct-editor.c
 msgid "Can’t update this info"
-msgstr "U kunt deze informatie niet updaten"
+msgstr "Je kunt deze informatie niet updaten"
 
 # android: Contacts contactSavedErrorToast
 #: src/ct-editor.c
@@ -546,10 +544,9 @@ msgstr "%s opgeslagen"
 msgid "Contact saved"
 msgstr "Contact opgeslagen"
 
-# android: Contacts cancel_confirmation_dialog_message
 #: src/ct-editor.c
 msgid "Discard changes?"
-msgstr "Wijzigingen annuleren?"
+msgstr "Wijzigingen weggooien?"
 
 # android: Contacts cancel_confirmation_dialog_cancel_editing_button
 #: src/ct-editor.c
@@ -589,24 +586,24 @@ msgstr "(Geen naam)"
 
 #: src/ct-highlights.c
 msgid "Add favorites"
-msgstr ""
+msgstr "Favorieten toevoegen"
 
 #: src/ct-highlights.c
 msgid "Clear recents"
-msgstr ""
+msgstr "Recente wissen"
 
 #: src/ct-highlights.c
 msgid "Birthday today"
-msgstr ""
+msgstr "Vandaag jarig"
 
 #: src/ct-highlights.c
 msgid "Birthday tomorrow"
-msgstr ""
+msgstr "Morgen jarig"
 
 #: src/ct-highlights.c
 #, c-format
 msgid "Birthday on %s"
-msgstr ""
+msgstr "Jarig op %s"
 
 # android: Contacts menu_add_contacts
 #: src/ct-highlights.c src/ct-picker.c
@@ -621,15 +618,15 @@ msgstr "Meer opties"
 # android: Contacts contactsFavoritesLabel (several translations, short)
 #: src/ct-highlights.c src/ct-list.c
 msgid "Favorites"
-msgstr "Favoriet"
+msgstr "Favorieten"
 
 #: src/ct-highlights.c
 msgid "Add favorites to see them here"
-msgstr ""
+msgstr "Voeg favorieten toe om ze hier te zien"
 
 #: src/ct-highlights.c
 msgid "For you"
-msgstr ""
+msgstr "Voor jou"
 
 # android: Settings navbar_recent_button (other app, short)
 #: src/ct-highlights.c
@@ -650,35 +647,35 @@ msgstr "Een contact kiezen"
 #. the address books, each with how many it has; a tap shows only its people
 #: src/ct-organize.c src/ct-people.c
 msgid "Address books"
-msgstr ""
+msgstr "Adresboeken"
 
 #. what can be done with them
 #: src/ct-organize.c
 msgid "Manage contacts"
-msgstr ""
+msgstr "Contacten beheren"
 
 #: src/ct-organize.c
 msgid "Import from file"
-msgstr ""
+msgstr "Importeren uit bestand"
 
 #: src/ct-organize.c
 msgid "Add contacts from a .vcf file"
-msgstr ""
+msgstr "Contacten toevoegen uit een VCF-bestand"
 
 #: src/ct-organize.c
 msgid "Export to file"
-msgstr ""
+msgstr "Exporteren naar bestand"
 
 #: src/ct-organize.c
 msgid "Save your contacts as a .vcf file"
-msgstr ""
+msgstr "Je contacten opslaan als VCF-bestand"
 
 #: src/ct-organize.c
 #, c-format
 msgid "%u label"
 msgid_plural "%u labels"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u label"
+msgstr[1] "%u labels"
 
 # android: Settings zen_mode_from_contacts_settings (other app, short)
 #: src/ct-organize.c src/ct-people.c
@@ -687,7 +684,7 @@ msgstr "Instellingen voor contacten"
 
 #: src/ct-people.c
 msgid "Create contact"
-msgstr ""
+msgstr "Contact maken"
 
 # android: Contacts emptyGroup
 #: src/ct-people.c
@@ -701,11 +698,11 @@ msgstr "Contacten toevoegen"
 
 #: src/ct-people.c
 msgid "No contacts here"
-msgstr ""
+msgstr "Geen contacten hier"
 
 #: src/ct-people.c
 msgid "No contacts yet"
-msgstr ""
+msgstr "Nog geen contacten"
 
 # android: Contacts menu_editGroup
 #: src/ct-people.c
@@ -724,7 +721,7 @@ msgstr "Je profiel instellen"
 
 #: src/ct-people.c
 msgid "Your info"
-msgstr ""
+msgstr "Jouw info"
 
 # android: Contacts contacts_unavailable_import_contacts
 #: src/ct-people.c src/ct-settings.c
@@ -733,7 +730,7 @@ msgstr "Importeren"
 
 #: src/ct-people.c
 msgid "From a .vcf file"
-msgstr ""
+msgstr "Uit een VCF-bestand"
 
 # android: Contacts menu_export
 #: src/ct-people.c src/ct-settings.c
@@ -742,15 +739,15 @@ msgstr "Exporteren"
 
 #: src/ct-people.c
 msgid "To a .vcf file"
-msgstr ""
+msgstr "Naar een VCF-bestand"
 
 #: src/ct-people.c src/ct-quick.c
 msgid "About"
-msgstr ""
+msgstr "Over"
 
 #: src/ct-people.c
 msgid "Contacts to show"
-msgstr ""
+msgstr "Zichtbare contacten"
 
 # android: Contacts title_share_via
 #: src/ct-people.c src/ct-quick.c
@@ -771,23 +768,23 @@ msgstr "Contacten zoeken"
 
 #: src/ct-people.c
 msgid "Account and settings"
-msgstr ""
+msgstr "Account en instellingen"
 
 #: src/ct-people.c
 msgid "View labels"
-msgstr ""
+msgstr "Labels bekijken"
 
 #: src/ct-people.c
 msgid "Show list filters"
-msgstr ""
+msgstr "Lijstfilters tonen"
 
 #: src/ct-people.c
 msgid "Phone contacts"
-msgstr ""
+msgstr "Contacten met telefoonnummer"
 
 #: src/ct-people.c
 msgid "Email contacts"
-msgstr ""
+msgstr "Contacten met e-mailadres"
 
 # android: SystemUI clear_all_notifications_text (other app, short)
 #: src/ct-people.c
@@ -796,11 +793,11 @@ msgstr "Alles wissen"
 
 #: src/ct-people.c
 msgid "Recent contacts"
-msgstr ""
+msgstr "Recente contacten"
 
 #: src/ct-people.c
 msgid "No contacts found"
-msgstr ""
+msgstr "Geen contacten gevonden"
 
 # android: Contacts contacts_deleted_toast
 #: src/ct-people.c
@@ -863,7 +860,7 @@ msgstr "Ongedaan maken"
 #: src/ct-people.c
 #, c-format
 msgid "Delete the label \"%s\"? (Contacts themselves will not be deleted.)"
-msgstr "Het label %s verwijderen? (Contacten zelf worden niet verwijderd.)"
+msgstr "Het label “%s” verwijderen? (Contacten zelf worden niet verwijderd.)"
 
 # android: Contacts groupMembersRemovedToast
 #: src/ct-people.c
@@ -1060,7 +1057,7 @@ msgstr "Fonetische naam"
 
 #: src/ct-settings.c
 msgid "vCard"
-msgstr ""
+msgstr "vCard"
 
 # android: Contacts dialog_new_contact_account
 #: src/ct-settings.c
@@ -1112,10 +1109,9 @@ msgstr "Zichtbare contacten"
 msgid "About Contacts"
 msgstr "Over Contacten"
 
-# android: Contacts leave_customize_confirmation_dialog_message
 #: src/ct-settings.c
 msgid "Discard customizations?"
-msgstr "Wijzigingen opslaan?"
+msgstr "Aanpassingen weggooien?"
 
 # android: Contacts custom_list_filter
 #: src/ct-settings.c
@@ -1169,14 +1165,14 @@ msgstr "Er zijn geen contacten om te delen."
 
 #: src/ct-store.c
 msgid "The address book is not available"
-msgstr ""
+msgstr "Het adresboek is niet beschikbaar"
 
 #: src/ct-ui.c
 #, c-format
 msgid "%u contact · %s"
 msgid_plural "%u contacts · %s"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u contact · %s"
+msgstr[1] "%u contacten · %s"
 
 # android: Contacts contacts_count
 #: src/ct-ui.c
@@ -1198,11 +1194,11 @@ msgstr "Hoogtepunten"
 
 #: src/ct-window.c
 msgid "Organize"
-msgstr ""
+msgstr "Ordenen"
 
 #: src/ct-window.c
 msgid "Pick a contact to see it here"
-msgstr ""
+msgstr "Kies een contact om het hier te zien"
 
 # android: Dialer private_num_non_verizon (short)
 #: ../dialer/src/phone-number.c

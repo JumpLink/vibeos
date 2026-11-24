@@ -1448,7 +1448,7 @@ msgstr "Keine Ergebnisse gefunden"
 
 #: src/cal-window.c
 msgid "About Calendar"
-msgstr "Info zu Kalender"
+msgstr "Info zu „Kalender“"
 
 # android: Etar goto_date
 #: src/cal-window.c src/event-editor.c

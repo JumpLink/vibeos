@@ -24,11 +24,11 @@ msgstr "Kontakte"
 
 #: data/vibeos.Contacts.desktop.in
 msgid "Keep the people you know in one list"
-msgstr ""
+msgstr "Alle Menschen, die du kennst, in einer Liste"
 
 #: data/vibeos.Contacts.desktop.in
 msgid "Contacts;People;Address;Book;vCard;Friends;"
-msgstr ""
+msgstr "Kontakte;Personen;Adressbuch;Adresse;vCard;Freunde;"
 
 # android: Framework phoneTypes[1] (short)
 #. the Device account's spinner
@@ -259,15 +259,15 @@ msgstr "NetMeeting"
 
 #: src/ct-contact.c
 msgid "Gadu-Gadu"
-msgstr ""
+msgstr "Gadu-Gadu"
 
 #: src/ct-contact.c
 msgid "GroupWise"
-msgstr ""
+msgstr "GroupWise"
 
 #: src/ct-contact.c
 msgid "Matrix"
-msgstr ""
+msgstr "Matrix"
 
 # android: Contacts cancel_button_content_description
 #. the toolbar: ✕ "Cancel", the title, SAVE flush with the end
@@ -283,7 +283,7 @@ msgstr "OK"
 #. Translators: the order of the date picker's wheels: M month, D day, Y year (German: DMY)
 #: src/ct-dialogs.c
 msgid "MDY"
-msgstr ""
+msgstr "DMY"
 
 # android: Contacts date_year_toggle
 #: src/ct-dialogs.c
@@ -358,7 +358,7 @@ msgstr "Notizen"
 # android: Contacts menu_title_groups
 #: src/ct-editor.c src/ct-organize.c src/ct-people.c
 msgid "Labels"
-msgstr "Label"
+msgstr "Labels"
 
 # android: Contacts event_edit_field_hint_text
 #: src/ct-editor.c
@@ -443,10 +443,9 @@ msgstr "Zweiter Vorname (phonetisch)"
 msgid "Phonetic first name"
 msgstr "Vorname (phonetisch)"
 
-# android: Settings sim_onboarding_label_sim_dialog_label (other app, several translations, short)
 #: src/ct-editor.c
 msgid "Label"
-msgstr "Name"
+msgstr "Label"
 
 # android: Contacts groupExistsErrorMessage
 #: src/ct-editor.c src/ct-people.c
@@ -589,24 +588,24 @@ msgstr "(Kein Name)"
 
 #: src/ct-highlights.c
 msgid "Add favorites"
-msgstr ""
+msgstr "Favoriten hinzufügen"
 
 #: src/ct-highlights.c
 msgid "Clear recents"
-msgstr ""
+msgstr "Verlauf löschen"
 
 #: src/ct-highlights.c
 msgid "Birthday today"
-msgstr ""
+msgstr "Hat heute Geburtstag"
 
 #: src/ct-highlights.c
 msgid "Birthday tomorrow"
-msgstr ""
+msgstr "Hat morgen Geburtstag"
 
 #: src/ct-highlights.c
 #, c-format
 msgid "Birthday on %s"
-msgstr ""
+msgstr "Hat am %s Geburtstag"
 
 # android: Contacts menu_add_contacts
 #: src/ct-highlights.c src/ct-picker.c
@@ -625,11 +624,11 @@ msgstr "Favoriten"
 
 #: src/ct-highlights.c
 msgid "Add favorites to see them here"
-msgstr ""
+msgstr "Füge Favoriten hinzu, um sie hier zu sehen"
 
 #: src/ct-highlights.c
 msgid "For you"
-msgstr ""
+msgstr "Für dich"
 
 # android: Settings navbar_recent_button (other app, several translations, short)
 #: src/ct-highlights.c
@@ -650,35 +649,35 @@ msgstr "Kontakt auswählen"
 #. the address books, each with how many it has; a tap shows only its people
 #: src/ct-organize.c src/ct-people.c
 msgid "Address books"
-msgstr ""
+msgstr "Adressbücher"
 
 #. what can be done with them
 #: src/ct-organize.c
 msgid "Manage contacts"
-msgstr ""
+msgstr "Kontakte verwalten"
 
 #: src/ct-organize.c
 msgid "Import from file"
-msgstr ""
+msgstr "Aus Datei importieren"
 
 #: src/ct-organize.c
 msgid "Add contacts from a .vcf file"
-msgstr ""
+msgstr "Kontakte aus einer VCF-Datei hinzufügen"
 
 #: src/ct-organize.c
 msgid "Export to file"
-msgstr ""
+msgstr "In Datei exportieren"
 
 #: src/ct-organize.c
 msgid "Save your contacts as a .vcf file"
-msgstr ""
+msgstr "Deine Kontakte als VCF-Datei speichern"
 
 #: src/ct-organize.c
 #, c-format
 msgid "%u label"
 msgid_plural "%u labels"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u Label"
+msgstr[1] "%u Labels"
 
 # android: Settings zen_mode_from_contacts_settings (other app, short)
 #: src/ct-organize.c src/ct-people.c
@@ -687,7 +686,7 @@ msgstr "Kontakteinstellungen"
 
 #: src/ct-people.c
 msgid "Create contact"
-msgstr ""
+msgstr "Kontakt erstellen"
 
 # android: Contacts emptyGroup
 #: src/ct-people.c
@@ -701,11 +700,11 @@ msgstr "Kontakte hinzufügen"
 
 #: src/ct-people.c
 msgid "No contacts here"
-msgstr ""
+msgstr "Hier sind keine Kontakte"
 
 #: src/ct-people.c
 msgid "No contacts yet"
-msgstr ""
+msgstr "Noch keine Kontakte"
 
 # android: Contacts menu_editGroup
 #: src/ct-people.c
@@ -724,7 +723,7 @@ msgstr "Profil einrichten"
 
 #: src/ct-people.c
 msgid "Your info"
-msgstr ""
+msgstr "Deine Daten"
 
 # android: Contacts contacts_unavailable_import_contacts
 #: src/ct-people.c src/ct-settings.c
@@ -733,7 +732,7 @@ msgstr "Importieren"
 
 #: src/ct-people.c
 msgid "From a .vcf file"
-msgstr ""
+msgstr "Aus einer VCF-Datei"
 
 # android: Contacts menu_export
 #: src/ct-people.c src/ct-settings.c
@@ -742,15 +741,15 @@ msgstr "Exportieren"
 
 #: src/ct-people.c
 msgid "To a .vcf file"
-msgstr ""
+msgstr "In eine VCF-Datei"
 
 #: src/ct-people.c src/ct-quick.c
 msgid "About"
-msgstr ""
+msgstr "Info"
 
 #: src/ct-people.c
 msgid "Contacts to show"
-msgstr ""
+msgstr "Anzuzeigende Kontakte"
 
 # android: Contacts title_share_via
 #: src/ct-people.c src/ct-quick.c
@@ -771,23 +770,23 @@ msgstr "In Kontakten suchen"
 
 #: src/ct-people.c
 msgid "Account and settings"
-msgstr ""
+msgstr "Konto und Einstellungen"
 
 #: src/ct-people.c
 msgid "View labels"
-msgstr ""
+msgstr "Labels ansehen"
 
 #: src/ct-people.c
 msgid "Show list filters"
-msgstr ""
+msgstr "Listenfilter anzeigen"
 
 #: src/ct-people.c
 msgid "Phone contacts"
-msgstr ""
+msgstr "Kontakte mit Telefonnummer"
 
 #: src/ct-people.c
 msgid "Email contacts"
-msgstr ""
+msgstr "Kontakte mit E-Mail-Adresse"
 
 # android: SystemUI clear_all_notifications_text (other app, several translations, short)
 #: src/ct-people.c
@@ -796,11 +795,11 @@ msgstr "Alle löschen"
 
 #: src/ct-people.c
 msgid "Recent contacts"
-msgstr ""
+msgstr "Letzte Kontakte"
 
 #: src/ct-people.c
 msgid "No contacts found"
-msgstr ""
+msgstr "Keine Kontakte gefunden"
 
 # android: Contacts contacts_deleted_toast
 #: src/ct-people.c
@@ -863,7 +862,9 @@ msgstr "Rückgängig machen"
 #: src/ct-people.c
 #, c-format
 msgid "Delete the label \"%s\"? (Contacts themselves will not be deleted.)"
-msgstr "Soll das Label \"%s\" gelöscht werden? (Die Kontakte selbst werden nicht gelöscht.)"
+msgstr ""
+"Soll das Label „%s“ gelöscht werden? (Die Kontakte selbst werden nicht "
+"gelöscht.)"
 
 # android: Contacts groupMembersRemovedToast
 #: src/ct-people.c
@@ -915,10 +916,9 @@ msgstr "Zurück"
 msgid "stop searching"
 msgstr "Suche beenden"
 
-# android: Contacts description_clear_search (several translations, short)
 #: src/ct-picker.c
 msgid "Clear search"
-msgstr "Suche zurücksetzen"
+msgstr "Suche löschen"
 
 # android: Contacts action_menu_back_from_edit_select
 #: src/ct-picker.c
@@ -1060,7 +1060,7 @@ msgstr "Phonetischer Name"
 
 #: src/ct-settings.c
 msgid "vCard"
-msgstr ""
+msgstr "vCard"
 
 # android: Contacts dialog_new_contact_account
 #: src/ct-settings.c
@@ -1107,10 +1107,9 @@ msgstr "Konten"
 msgid "Contacts to display"
 msgstr "Anzuzeigende Kontakte"
 
-# android: Contacts setting_about (quotes added)
 #: src/ct-settings.c
 msgid "About Contacts"
-msgstr "Über \"Kontakte\""
+msgstr "Info zu „Kontakte“"
 
 # android: Contacts leave_customize_confirmation_dialog_message
 #: src/ct-settings.c
@@ -1169,14 +1168,14 @@ msgstr "Keine Kontakte zum Teilen vorhanden."
 
 #: src/ct-store.c
 msgid "The address book is not available"
-msgstr ""
+msgstr "Das Adressbuch ist nicht verfügbar"
 
 #: src/ct-ui.c
 #, c-format
 msgid "%u contact · %s"
 msgid_plural "%u contacts · %s"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u Kontakt · %s"
+msgstr[1] "%u Kontakte · %s"
 
 # android: Contacts contacts_count
 #: src/ct-ui.c
@@ -1198,11 +1197,11 @@ msgstr "Highlights"
 
 #: src/ct-window.c
 msgid "Organize"
-msgstr ""
+msgstr "Verwalten"
 
 #: src/ct-window.c
 msgid "Pick a contact to see it here"
-msgstr ""
+msgstr "Wähle einen Kontakt aus, um ihn hier zu sehen"
 
 # android: Dialer private_num_non_verizon (short)
 #: ../dialer/src/phone-number.c
