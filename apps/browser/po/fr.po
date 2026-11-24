@@ -22,11 +22,11 @@ msgstr "Navigateur"
 
 #: data/vibeos.Browser.desktop.in
 msgid "Web Browser"
-msgstr ""
+msgstr "Navigateur Web"
 
 #: data/vibeos.Browser.desktop.in
 msgid "Browse the web"
-msgstr ""
+msgstr "Naviguer sur le Web"
 
 # android: Jelly shortcut_new_incognito_tab
 #: data/vibeos.Browser.desktop.in src/nb-switcher.c
@@ -35,30 +35,30 @@ msgstr "Nouvel onglet de navigation privée"
 
 #: src/main.c
 msgid "Open an incognito tab"
-msgstr ""
+msgstr "Ouvrir un onglet de navigation privée"
 
 #: src/main.c
 msgid "Open a home-screen shortcut"
-msgstr ""
+msgstr "Ouvrir un raccourci de l'écran d'accueil"
 
 #: src/main.c
 msgid "ID"
-msgstr ""
+msgstr "ID"
 
 #: src/main.c
 msgid "URL…"
-msgstr ""
+msgstr "URL…"
 
 #: src/nb-app.c
 msgid "Download complete"
-msgstr ""
+msgstr "Téléchargement terminé"
 
 #. TRANSLATORS: keep the link's markup as it is
 #: src/nb-menu.c
 msgid ""
 "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, "
 "under the GNU LGPL 2.1 and BSD licences."
-msgstr ""
+msgstr "Les pages Web sont affichées par <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, sous licences GNU LGPL 2.1 et BSD."
 
 # android: Jelly menu_desktop_mode
 #: src/nb-menu.c
@@ -131,10 +131,9 @@ msgstr "Rechercher dans la page"
 msgid "Print"
 msgstr "Imprimer"
 
-# android: Jelly menu_desktop_shortcuts
 #: src/nb-menu.c src/nb-pages.c
 msgid "Desktop shortcuts"
-msgstr "Raccourcis du bureau"
+msgstr "Raccourcis sur l'écran d'accueil"
 
 # android: Jelly menu_settings
 #. the pinned toolbar: the up arrow, and the collapsed title
@@ -144,7 +143,7 @@ msgstr "Paramètres"
 
 #: src/nb-menu.c
 msgid "About"
-msgstr ""
+msgstr "À propos"
 
 # android: Jelly menu_in_new_tab
 #: src/nb-menu.c
@@ -158,11 +157,11 @@ msgstr "Télécharger"
 
 #: src/nb-menu.c
 msgid "Link copied"
-msgstr ""
+msgstr "Lien copié"
 
 #: src/nb-menu.c
 msgid "Copy link"
-msgstr ""
+msgstr "Copier le lien"
 
 # android: Jelly share_title
 #: src/nb-menu.c
@@ -171,11 +170,11 @@ msgstr "Envoyer à"
 
 #: src/nb-menu.c
 msgid "Shortcut not added"
-msgstr ""
+msgstr "Raccourci non ajouté"
 
 #: src/nb-menu.c
 msgid "Touch & hold the shortcut to move it around the home screen"
-msgstr ""
+msgstr "Appuyez de manière prolongée sur le raccourci pour le déplacer sur l'écran d'accueil"
 
 # android: Framework cancel (short)
 #: src/nb-menu.c src/nb-pages.c src/nb-settings.c src/nb-tab.c src/nb-widgets.c
@@ -260,12 +259,12 @@ msgstr "Il n’y a rien ici, ajoutez des favoris pour les voir ici"
 
 #: src/nb-pages.c
 msgid "Download failed"
-msgstr ""
+msgstr "Échec du téléchargement"
 
 #: src/nb-pages.c
 #, c-format
 msgid "Downloading… %d%%"
-msgstr ""
+msgstr "Téléchargement… %d %%"
 
 # android: Framework mime_type_generic (short)
 #: src/nb-pages.c
@@ -359,10 +358,9 @@ msgstr "Raccourcis en plein écran"
 msgid "Force shortcuts to open in fullscreen mode"
 msgstr "Forcer l'ouverture des raccourcis en mode plein écran"
 
-# android: Jelly pref_privacy_security
 #: src/nb-settings.c
 msgid "Privacy & security"
-msgstr "Vie privée & sécurité"
+msgstr "Confidentialité et sécurité"
 
 # android: Jelly pref_dynamic_popup_title
 #: src/nb-settings.c
@@ -397,7 +395,7 @@ msgstr "Ne pas me pister"
 # android: Jelly pref_do_not_track_summary (quotes added)
 #: src/nb-settings.c
 msgid "Send a Do Not Track request to websites you visit"
-msgstr "Envoyer une requête \"ne pas me pister\" aux sites web que vous visitez"
+msgstr "Envoyer une requête « Ne pas me pister » aux sites Web que vous visitez"
 
 # android: Jelly pref_cookie_title
 #: src/nb-settings.c
@@ -422,28 +420,28 @@ msgstr "Aucun"
 #: src/nb-switcher.c
 #, c-format
 msgid "Close %s"
-msgstr ""
+msgstr "Fermer %s"
 
 #. TRANSLATORS: a screen reader's name for the tab card of the tab that was shown; %s is the tab's title
 #: src/nb-switcher.c
 #, c-format
 msgid "%s, current tab"
-msgstr ""
+msgstr "%s, onglet actuel"
 
 #: src/nb-switcher.c
 #, c-format
 msgid "%u tab"
 msgid_plural "%u tabs"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "%u onglet"
+msgstr[1] "%u onglets"
 
 #: src/nb-switcher.c
 msgid "Tabs"
-msgstr ""
+msgstr "Onglets"
 
 #: src/nb-switcher.c
 msgid "No open tabs"
-msgstr ""
+msgstr "Aucun onglet ouvert"
 
 # android: Jelly favorite_added
 #: src/nb-tab.c
@@ -497,17 +495,17 @@ msgstr "Accorder"
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your camera and microphone."
-msgstr ""
+msgstr "%s souhaite utiliser votre caméra et votre micro."
 
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your camera."
-msgstr ""
+msgstr "%s souhaite utiliser votre caméra."
 
 #: src/nb-tab.c
 #, c-format
 msgid "%s wants to use your microphone."
-msgstr ""
+msgstr "%s souhaite utiliser votre micro."
 
 # android: Jelly auth_dialog_title
 #: src/nb-tab.c
@@ -645,7 +643,7 @@ msgstr "Aucune application ne peut gérer ce lien"
 
 #: src/nb-tab.c
 msgid "Playing full screen"
-msgstr ""
+msgstr "Lecture en plein écran"
 
 # android: Framework input_method_nav_back_button_desc (several translations, short)
 #. the shell's back gesture clicks the showing button named "Back"
@@ -657,8 +655,8 @@ msgstr "Retour"
 #, c-format
 msgid "Switch tabs, %u open tab"
 msgid_plural "Switch tabs, %u open tabs"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Changer d'onglet, %u onglet ouvert"
+msgstr[1] "Changer d'onglet, %u onglets ouverts"
 
 # android: Jelly url_bar_auto_complete_hint
 #: src/nb-urlbar.c
@@ -698,8 +696,8 @@ msgstr "Suivant"
 #. TRANSLATORS: a screen reader's name for a radio mark and a check mark
 #: src/nb-widgets.c
 msgid "radio"
-msgstr ""
+msgstr "bouton radio"
 
 #: src/nb-widgets.c
 msgid "check"
-msgstr ""
+msgstr "case à cocher"
