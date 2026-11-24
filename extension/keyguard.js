@@ -577,9 +577,10 @@ export class Keyguard extends Signals.EventEmitter {
             this._carrier.setText(carrier);
             placeText(this._carrier, {left: CARRIER_LEFT, inkTop: CARRIER_INK_TOP});
         }
-        // the charging line, with how fast (One UI's names for the speeds)
-        let indication = '';
-        if (battery.present && battery.plugged)
+        // the charging line, with how fast (One UI's names for the speeds); in its place what waits on the unlock
+        // (setNotice), but not after a lockdown
+        let indication = !this._lockedDown && this._notice ? this._notice : '';
+        if (!indication && battery.present && battery.plugged)
             indication = battery.level >= 100 ? 'Charged'
                 : `${battery.level}% • ${chargingText(battery.speed, battery.amps)}`;
         if (indication !== this._indicationText) {
@@ -661,6 +662,17 @@ export class Keyguard extends Signals.EventEmitter {
         this._lockedDown = true;
         this.lock();
         this._syncPill();
+        this._syncState();
+    }
+
+    // A line on the lock screen, where the charging one is, for something that waits on the unlock (pairdialog.js: a
+    // Bluetooth device asking to pair); null takes it away
+    setNotice(text) {
+        text = text || null;
+        if (text === (this._notice ?? null))
+            return;
+        this._notice = text;
+        this._syncState();
     }
 
     // --- occluded: an app's window over the lock screen (whenlocked.js)

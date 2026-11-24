@@ -210,6 +210,9 @@ export default class VibeosExtension extends Extension {
         // the screen off, the AOD or black, over everything: the power key, the double tap, the timeout
         this._power = new Power(this._keyguard, this._state, this._powerMenu, this._chord);
         Main.layoutManager.addTopChrome(this._power.layer);
+        // ... which a Bluetooth question turns on
+        if (this._pairing)
+            this._pairing.power = this._power;
         overWindows(this._power.layer);
         this._service.setPower(this._power);
         // ... and while it is off, the volume keys do nothing (an app that took them still gets them: a call)

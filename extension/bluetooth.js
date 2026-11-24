@@ -54,6 +54,10 @@ const REASON_WAIT_MS = 1500;
 // a disconnect with these reasons is retried; Local (this phone ended it), Authentication and Suspend are not
 const RETRY_REASONS = new Set(['org.bluez.Reason.Timeout', 'org.bluez.Reason.Remote', 'org.bluez.Reason.Unknown',
     'unknown']);
+// the questions of a pairing, which can be started again from the phone when BlueZ gives up on one (pairAgain)
+const PAIRING_KINDS = new Set(['pin', 'passkey', 'confirm', 'authorize', 'display']);
+// a pairing started from the phone waits this long for its question to be answered
+const PAIR_TIMEOUT_MS = 120000;
 
 const AGENT_XML = `<node>
   <interface name="org.bluez.Agent1">
@@ -249,8 +253,10 @@ function errorName(e) {
 
 export class Bluetooth {
     // bus: where BlueZ is (the system bus); sessionBus: where vibeos.BluetoothAgent is owned (null: nowhere);
-    // ui: the questions (pairdialog.js's PairingUI or a test's), ui.ask(request) -> {answer: Promise, close(),
-    // update(entered)}; answer resolves to the reply (a string, a number, true) or null for no
+    // ui: the questions (pairdialog.js's PairingUI or a test's), ui.ask(request) -> {answer: Promise, close(reason),
+    // update(entered)}; answer resolves to the reply (a string, a number, true) or null for no; close's reason is
+    // 'canceled' when BlueZ gave up on the question (the other device's time ran out, or it stopped), else null.
+    // A pairing's question has retry() -> false when the device is gone: the pairing started again from the phone.
     // timing: the waits, in ms, in place of the constants (the tests)
     constructor({bus = Gio.DBus.system, sessionBus = Gio.DBus.session, ui, autoConnect = true, timing = {}} = {}) {
         this._t = {
@@ -378,20 +384,38 @@ export class Bluetooth {
         });
     }
 
-    // the request in progress ends without an answer: BlueZ cancelled it, or went
-    _endRequest(error) {
+    // the request in progress ends without an answer: BlueZ cancelled it (@reason 'canceled'), or went
+    _endRequest(error, reason = null) {
         const request = this._request;
         this._request = null;
         if (!request)
             return;
-        request.handle.close();
+        request.handle.close(reason);
         if (error)
             request.invocation.return_dbus_error(error, 'Canceled');
     }
 
     _question(kind, devicePath, extra = {}) {
         const props = this._props(devicePath);
-        return {kind, device: devicePath, name: deviceName(props), icon: props.Icon ?? '', ...extra};
+        const question = {kind, device: devicePath, name: deviceName(props), icon: props.Icon ?? '', ...extra};
+        if (PAIRING_KINDS.has(kind))
+            question.retry = () => this.pairAgain(devicePath);
+        return question;
+    }
+
+    // A pairing BlueZ gave up on (a car's PIN asked while the phone was locked: 30 s), started again from the phone:
+    // BlueZ asks this agent the question again, and the device is connected once paired, as Settings' Pair does.
+    // False: BlueZ has forgotten the device (an unpaired one goes soon after its connection), nothing started.
+    pairAgain(path) {
+        const props = this._bluez.device(path);
+        if (!props)
+            return false;
+        if (props.Paired)
+            return true;
+        this._bluez.call(path, 'org.bluez.Device1', 'Pair', null, PAIR_TIMEOUT_MS)
+            .then(() => this._bluez.call(path, 'org.bluez.Device1', 'Connect', null, this._t.connect))
+            .catch(e => console.log(`vibeos: Bluetooth: pairing again did not finish: ${errorName(e)}`));
+        return true;
     }
 
     ReleaseAsync(_params, invocation) {
@@ -461,8 +485,8 @@ export class Bluetooth {
     }
 
     CancelAsync(_params, invocation) {
-        this._endRequest(CANCELED);
-        this._closeShown();
+        this._endRequest(CANCELED, 'canceled');
+        this._closeShown('canceled');
         invocation.return_value(null);
     }
 
@@ -490,10 +514,10 @@ export class Bluetooth {
         }).catch(() => {});
     }
 
-    _closeShown() {
+    _closeShown(reason = null) {
         const shown = this._showing;
         this._showing = null;
-        shown?.handle.close();
+        shown?.handle.close(reason);
     }
 
     // ---- BlueZ's events -------------------------------------------------------------------------------------

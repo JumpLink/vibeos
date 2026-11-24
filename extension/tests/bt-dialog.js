@@ -7,6 +7,9 @@
 //   C  asked while locked: a notification and no dialog; unlocked, the dialog and no notification; Pair: yes
 //   D  a code shown, locked over it: behind a notification again, back on unlock; close() takes it away
 //   E  a notification swiped away while locked answers no
+//   G  asked with the screen off and locked: the screen turned on, an urgent notification, the lock screen's line
+//   H  BlueZ gives up on it while locked: the line says so; unlocked, a notification whose tap pairs again; given up
+//      on while unlocked, the notification at once
 //   F  a service question; the agent made and taken down where no BlueZ is
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -82,13 +85,37 @@ class Keyguard extends Signals.EventEmitter {
     constructor() {
         super();
         this.showing = false;
+        this.notice = null;
+        this.dismissals = 0;
     }
 
     set(showing) {
         this.showing = showing;
         this.emit('changed');
     }
+
+    setNotice(text) {
+        this.notice = text;
+    }
+
+    // the bouncer, and the secret right
+    dismissThen(then) {
+        this.dismissals++;
+        if (this.showing)
+            this.set(false);
+        then();
+    }
 }
+
+// power.js's Power: the screen off until a wake
+const power = {
+    interactive: false,
+    wakes: [],
+    wakeUp(reason) {
+        this.wakes.push(reason);
+        this.interactive = true;
+    },
+};
 
 // every actor under @root
 function* actors(root) {
@@ -228,6 +255,52 @@ export async function run() {
     keyguard.set(false);
     await sleep(200);
     check('E: ... and no dialog after unlock', !ui.showing && !dialogLayer());
+
+    // G: asked with the screen off, locked
+    ui.power = power;
+    keyguard.set(true);
+    let retried = 0;
+    const pinQuestion = {kind: 'pin', device: '/test/dev_6', name: 'Car', retry: () => ++retried > 0};
+    h = ui.ask(pinQuestion);
+    await sleep(200);
+    check('G: the screen turned on', power.wakes.length === 1 && power.interactive, power.wakes.join());
+    notes = ourNotifications();
+    check('G: an urgent notification', notes.length === 1 && notes[0].urgency === MessageTray.Urgency.CRITICAL,
+        notes.map(n => n.urgency).join());
+    check('G: the lock screen says what to do', keyguard.notice === 'Unlock to pair with Car', `${keyguard.notice}`);
+
+    // H: BlueZ gives up on it, still locked (the car's 30 s)
+    h.close('canceled');
+    answer = await Promise.race([h.answer, sleep(2000).then(() => 'none')]);
+    check('H: given up: no answer', answer === null, `${answer}`);
+    await sleep(100);
+    check('H: the lock screen says it did not pair', keyguard.notice === "Couldn't pair with Car", `${keyguard.notice}`);
+    check('H: no notification while locked', ourNotifications().length === 0);
+    keyguard.set(false);
+    await sleep(200);
+    notes = ourNotifications();
+    check('H: unlocked, a notification to pair again',
+        notes.length === 1 && notes[0].title === "Couldn't pair with Car" && notes[0].body === 'Tap to try again.',
+        notes.map(n => `${n.title}/${n.body}`).join());
+    check('H: ... and no line left', keyguard.notice === null, `${keyguard.notice}`);
+    await shot('retry');
+    notes[0]?.activate();
+    await sleep(200);
+    check('H: its tap pairs again', retried === 1 && keyguard.dismissals === 1, `${retried} ${keyguard.dismissals}`);
+    check('H: ... and it goes', ourNotifications().length === 0);
+    // given up on while unlocked, the dialog up: the notification at once; a question for it takes it away
+    h = ui.ask(pinQuestion);
+    await until(() => ui.showing, 3000);
+    h.close('canceled');
+    await sleep(200);
+    check('H: unlocked: the notification at once', ourNotifications().length === 1 && !ui.showing);
+    h = ui.ask(pinQuestion);
+    await until(() => ui.showing, 3000);
+    check('H: a new question takes it away', ourNotifications().length === 0);
+    h.close(null);
+    await sleep(200);
+    check('H: closed by the pairing itself: nothing to pair again', ourNotifications().length === 0);
+    ui.power = null;
 
     // F: a service question; the agent on a bus with no BlueZ
     h = ui.ask({kind: 'service', device: '/test/dev_5', name: 'Phone of someone', uuid: '0000111e'});
