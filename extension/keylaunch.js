@@ -9,8 +9,9 @@
 // is unlocked, as KeyguardManager.requestDismissKeyguard has it.
 //
 // Holding the power key (vibeos.Shell power-hold-agent, on by default) talks to Agent, as Android's "press and hold
-// for the assistant": Agent listens from the long press until the key is let go, then answers. Agent is told through
-// its GApplication action "hold" ((bb): held, locked), which D-Bus activation queues for it while it starts. On an
+// for the assistant": Agent listens from the long press, through any pause while the key is held, and once it is let
+// go until the speaker pauses, as Android's assistant listens on; then it answers. Agent is told through its
+// GApplication action "hold" ((bb): held, locked), which D-Bus activation queues for it while it starts. On an
 // unlocked phone its window opens as an app a key opens; on a locked one nothing is unlocked and no window shows:
 // Agent listens and answers aloud, and only reads (no alarm set, no call, no message) until the phone is unlocked.
 import Gio from 'gi://Gio';
@@ -68,7 +69,8 @@ export class KeyLaunch {
         return this._flag(HOLD_KEY, false) && !!this._app(AGENT);
     }
 
-    // the power key held long enough (held), and let go (!held): Agent listens in between
+    // the power key held long enough (held), and let go (!held): Agent listens from the one until the speaker pauses
+    // after the other
     hold(held) {
         if (held) {
             // the phone as it is at the hold's start: a hold begun locked stays a locked one to its end
