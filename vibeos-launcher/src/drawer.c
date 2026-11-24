@@ -330,6 +330,16 @@ search_filter (void)
   list_sync ();
 }
 
+void
+drawer_language_changed (void)
+{
+  if (!D.hint)
+    return;
+  text_layout_free (D.hint);
+  D.hint = text_layout (D.search_font, _("Search apps"), 0, 1, TEXT_LEFT);
+  search_filter ();
+}
+
 static void
 query_changed (void)
 {

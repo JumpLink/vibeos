@@ -16,7 +16,7 @@ deps = [
   dependency('json-glib-1.0'),
   dependency('xkbcommon'),
   dependency('threads'),
-  # the home clock's date in the user's language (libvibeos's vibeos-locale.c, built in)
+  # the home clock's date in the user's language, and a new language followed (libvibeos's vibeos-locale.c, built in)
   dependency('icu-i18n'),
   dependency('icu-uc'),
   libm,
