@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Settings
-Comment=Phone settings
+Comment=Wi-Fi, sound, display, apps and more
 Exec=vibeos-settings
 Icon=vibeos.Settings
 Terminal=false
