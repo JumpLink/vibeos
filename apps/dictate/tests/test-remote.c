@@ -19,6 +19,7 @@ typedef struct {
   guint empty;     /* the first this many get a reply with nothing in it */
   char *roles;     /* the last question's messages, by role: "system,user" */
   char *last;      /* and what its last one says */
+  GString *tooled; /* each question's tools, in turn: "+" with some, "-" without */
 } Server;
 
 static const char NOTHING[] = "data: {\"choices\":[{\"delta\":{}}]}\n\n"
@@ -52,6 +53,8 @@ on_chat (SoupServer *server, SoupServerMessage *msg, const char *path, GHashTabl
     g_string_append_printf (roles, "%s%s", i ? "," : "",
                             json_object_get_string_member (json_array_get_object_element (messages, i), "role"));
   g_mutex_lock (&s->lock);
+  g_string_append_c (s->tooled, json_object_has_member (json_node_get_object (json_parser_get_root (parser)), "tools")
+                                ? '+' : '-');
   g_free (s->roles);
   s->roles = g_strdup (roles->str);
   g_free (s->last);
@@ -96,6 +99,7 @@ server_start (Server *s, guint empty)
   g_mutex_init (&s->lock);
   g_cond_init (&s->ready);
   s->empty = empty;
+  s->tooled = g_string_new (NULL);
   thread = g_thread_new ("model", server_thread, s);
   g_mutex_lock (&s->lock);
   while (!s->loop)
@@ -112,21 +116,31 @@ server_stop (Server *s, GThread *thread)
   g_main_loop_unref (s->loop);
   g_free (s->roles);
   g_free (s->last);
+  g_string_free (s->tooled, TRUE);
   g_mutex_clear (&s->lock);
   g_cond_clear (&s->ready);
 }
 
+static const char TOOLS[] = "[{\"type\":\"function\",\"function\":{\"name\":\"place_call\",\"description\":\"Calls.\","
+                            "\"parameters\":{\"type\":\"object\",\"properties\":{}}}}]";
+
 static char *
-ask (DictateRemote *remote, const char *text)
+ask_with (DictateRemote *remote, const char *text, const char *tools)
 {
   g_autoptr (GPtrArray) calls = NULL;
   g_autoptr (GError) error = NULL;
-  char *reply = dictate_remote_step (remote, text, NULL, NULL, NULL, &calls, NULL, &error);
+  char *reply = dictate_remote_step (remote, text, tools, NULL, NULL, &calls, NULL, &error);
 
   g_assert_no_error (error);
   g_assert_nonnull (reply);
   g_assert_true (!calls || calls->len == 0);
   return reply;
+}
+
+static char *
+ask (DictateRemote *remote, const char *text)
+{
+  return ask_with (remote, text, NULL);
 }
 
 /* nothing twice: asked once more, and "" then; the next question follows an assistant turn, not a user one */
@@ -152,7 +166,7 @@ test_empty_twice (void)
   server_stop (&s, thread);
 }
 
-/* nothing once: the second asking answers, and the user's question is in the conversation once */
+/* nothing once: asked again without the tools, it answers, and the user's question is in the conversation once */
 static void
 test_empty_once (void)
 {
@@ -163,9 +177,10 @@ test_empty_once (void)
   g_autofree char *asked = NULL;
 
   dictate_remote_reset (remote, "You are a test.");
-  asked = ask (remote, "Call him.");
+  asked = ask_with (remote, "Call him.", TOOLS);
   g_assert_cmpstr (asked, ==, "Who would you like to call?");
   g_assert_cmpuint (s.chats, ==, 2);
+  g_assert_cmpstr (s.tooled->str, ==, "+-");
   g_assert_cmpstr (s.roles, ==, "system,user");
   g_assert_cmpstr (s.last, ==, "Call him.");
   dictate_remote_free (remote);

@@ -597,6 +597,9 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
   g_autoptr (GString) reply = g_string_new (NULL);
   gboolean usage = FALSE;
   int prompt_tokens = 0, completion_tokens = 0, pieces = 0;
+  /* the stream's events by their kind, for when nothing came of them (the numbers only, never what they hold) */
+  guint events = 0, call_events = 0, thought_events = 0, nameless = 0;
+  const char *finish = "none";
 
   self->read = self->written = 0;
   self->read_ms = self->first_ms = self->total_ms = -1;
@@ -656,6 +659,18 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
         continue;
       if (g_str_equal (g_strstrip (line + 5), "[DONE]"))
         break;
+      events++;
+      call_events += strstr (line, "\"tool_calls\"") != NULL;
+      /* thinking with some text in it: a key with null in it is in every event of some servers */
+      thought_events += (strstr (line, "\"reasoning_content\":\"") && !strstr (line, "\"reasoning_content\":\"\""))
+                        || (strstr (line, "\"reasoning\":\"") && !strstr (line, "\"reasoning\":\"\""));
+      call_events -= strstr (line, "\"tool_calls\":null") || strstr (line, "\"tool_calls\":[]");
+      if (strstr (line, "\"finish_reason\":\"length\""))
+        finish = "length";
+      else if (strstr (line, "\"finish_reason\":\"stop\""))
+        finish = "stop";
+      else if (strstr (line, "\"finish_reason\":\"tool_calls\""))
+        finish = "tool_calls";
       part = event_piece (line + 5, &usage, &prompt_tokens, &completion_tokens, calls);
       if (!*part)
         continue;
@@ -676,29 +691,34 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
     {
       DictateBrainCall *c = calls->pdata[i - 1];
       if (!c->name || !*c->name)
-        g_ptr_array_remove_index (calls, i - 1);
+        nameless++, g_ptr_array_remove_index (calls, i - 1);
       else if (!c->id || !*c->id)
         g_free (c->id), c->id = g_strdup_printf ("call-%u", i - 1);
     }
   dictate_debuglog_response (reply->str, calls, usage ? prompt_tokens : -1, usage ? completion_tokens : -1,
                              self->first_ms, self->total_ms);
   /* nothing came of it, no reply and no call: the model wrote to its length in what the stream does not pass on (a
-   * call the server could not read, seen with "Call him." and nobody named). Asked once more, the same request: it
-   * nearly always answers then. The user saw nothing of the first, so nothing is taken back */
+   * call the server could not read, seen with "Call him." and nobody named). Asked once more, without tools: it
+   * has to answer in words then. The user saw nothing of the first, so nothing is taken back */
   if (reply->len == 0 && calls->len == 0 && !g_cancellable_is_cancelled (cancellable))
     {
-      /* numbers only: which side gave nothing (the server's status, how much the model wrote, when) */
-      g_autofree char *why = g_strdup_printf ("an empty reply: HTTP %u, %d written, first piece at %.0f ms, %.0f ms "
-                                              "in all", soup_message_get_status (msg), self->written, self->first_ms,
+      /* numbers only: which side gave nothing (the server's status, how much the model wrote and of what kind, how
+       * it ended, when) */
+      g_autofree char *why = g_strdup_printf ("an empty reply: HTTP %u, %d written, %u events (%u of a call, %u of "
+                                              "thinking, %u calls without a name), finished by %s, first piece at "
+                                              "%.0f ms, %.0f ms in all", soup_message_get_status (msg), self->written,
+                                              events, call_events, thought_events, nameless, finish, self->first_ms,
                                               self->total_ms);
-      g_message ("agent: %s%s", why, self->again ? ", the second time" : ", asked again");
+      g_message ("agent: %s%s", why, self->again ? ", the second time" : ", asked again without tools");
       dictate_debuglog_note (self->again ? "empty" : "retry", why);
       if (!self->again)
         {
           char *again;
 
+          /* asked the same way, it nearly always goes the same way again (5 times in 5 with "Call him."): without
+           * tools the model has to answer in words, and can still ask what was missing */
           self->again = TRUE;
-          again = dictate_remote_step (self, NULL, tools, piece, data, calls_out, cancellable, error);
+          again = dictate_remote_step (self, NULL, NULL, piece, data, calls_out, cancellable, error);
           self->again = FALSE;
           return again;
         }
