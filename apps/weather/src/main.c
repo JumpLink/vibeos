@@ -15,7 +15,9 @@
  * show the same place.
  * What: one Open-Meteo forecast (no key) with yesterday in it (past_days=1), fetched in curl and kept in
  * ~/.cache/vibeos-launcher/forecast.json; the page shows that at once and asks again when it is 15 minutes old. */
+#include <glib/gi18n.h>
 #include <json-glib/json-glib.h>
+#include <locale.h>
 #include <math.h>
 #include <stdarg.h>
 #include <spongy-gtk.h>
@@ -76,15 +78,16 @@ static const char *
 wx_name (int code)
 {
   static const struct { int upto; const char *name; } names[] = {
-    { 0, "Clear" }, { 1, "Mostly clear" }, { 2, "Partly cloudy" }, { 3, "Cloudy" }, { 48, "Fog" },
-    { 55, "Drizzle" }, { 57, "Freezing drizzle" }, { 63, "Rain" }, { 65, "Heavy rain" }, { 67, "Freezing rain" },
-    { 75, "Snow" }, { 77, "Snow grains" }, { 81, "Showers" }, { 82, "Heavy showers" }, { 86, "Snow showers" },
-    { 99, "Thunderstorm" },
+    /* TRANSLATORS: the sky, as the page names it under the temperature */
+    { 0, NC_("sky", "Clear") }, { 1, N_("Mostly clear") }, { 2, N_("Partly cloudy") }, { 3, N_("Cloudy") },
+    { 48, N_("Fog") }, { 55, N_("Drizzle") }, { 57, N_("Freezing drizzle") }, { 63, N_("Rain") },
+    { 65, N_("Heavy rain") }, { 67, N_("Freezing rain") }, { 75, N_("Snow") }, { 77, N_("Snow grains") },
+    { 81, N_("Showers") }, { 82, N_("Heavy showers") }, { 86, N_("Snow showers") }, { 99, N_("Thunderstorm") },
   };
   for (guint i = 0; i < G_N_ELEMENTS (names); i++)
     if (code <= names[i].upto)
-      return names[i].name;
-  return "Cloudy";
+      return i == 0 ? g_dpgettext2 (NULL, "sky", names[i].name) : _(names[i].name);
+  return _("Cloudy");
 }
 
 /* The sky behind the page, top to bottom: four colours and where each sits (0..1). Each colour is a stop of one of
@@ -349,8 +352,8 @@ hourly_strip (JsonObject *hourly, guint first, JsonArray *sunrise, JsonArray *su
   g_autoptr (GPtrArray) kinds = g_ptr_array_new ();
   for (guint d = 0; sunrise && d < json_array_get_length (sunrise); d++) {
     GDateTime *r = parse_local (str (sunrise, d)), *s = parse_local (str (sunset, d));
-    if (r) { g_ptr_array_add (events, r); g_ptr_array_add (kinds, "Sunrise"); }
-    if (s) { g_ptr_array_add (events, s); g_ptr_array_add (kinds, "Sunset"); }
+    if (r) { g_ptr_array_add (events, r); g_ptr_array_add (kinds, N_("Sunrise")); }
+    if (s) { g_ptr_array_add (events, s); g_ptr_array_add (kinds, N_("Sunset")); }
   }
 
   for (guint i = first; time && i < first + HOURS && i < json_array_get_length (time); i++) {
@@ -358,7 +361,7 @@ hourly_strip (JsonObject *hourly, guint first, JsonArray *sunrise, JsonArray *su
     if (!t)
       continue;
     double tc = num (temp, i);
-    g_autofree char *hl = g_date_time_format (t, "%H:%M");
+    g_autofree char *hl = vibeos_format_time (t);
     g_autofree char *value = fmt_temp (tc);
     add_slot (&st, hl, wx_icon ((int) num (code, i), num (isday, i) != 0), value, TRUE, tc, num (pop, i), TRUE);
     /* a sunrise or sunset within this hour follows it */
@@ -366,10 +369,10 @@ hourly_strip (JsonObject *hourly, guint first, JsonArray *sunrise, JsonArray *su
     for (guint e = 0; e < events->len; e++) {
       GDateTime *at = events->pdata[e];
       if (g_date_time_compare (at, t) > 0 && g_date_time_compare (at, next) < 0) {
-        g_autofree char *el = g_date_time_format (at, "%H:%M");
+        g_autofree char *el = vibeos_format_time (at);
         double frac = g_date_time_difference (at, t) / (double) G_TIME_SPAN_HOUR, tn = num (temp, i + 1);
         gboolean rise = !g_strcmp0 (kinds->pdata[e], "Sunrise");
-        add_slot (&st, el, rise ? "daytime-sunrise-symbolic" : "daytime-sunset-symbolic", kinds->pdata[e], FALSE,
+        add_slot (&st, el, rise ? "daytime-sunrise-symbolic" : "daytime-sunset-symbolic", _(kinds->pdata[e]), FALSE,
                   isnan (tn) ? tc : tc + (tn - tc) * frac, NAN, FALSE);
       }
     }
@@ -410,7 +413,9 @@ card (void)
 static const char *
 uv_word (double uv)
 {
-  return uv < 3 ? "Low" : uv < 6 ? "Moderate" : uv < 8 ? "High" : uv < 11 ? "Very high" : "Extreme";
+  /* TRANSLATORS: the UV index's levels */
+  return uv < 3 ? C_("uv", "Low") : uv < 6 ? C_("uv", "Moderate") : uv < 8 ? C_("uv", "High")
+       : uv < 11 ? C_("uv", "Very high") : C_("uv", "Extreme");
 }
 
 static GtkWidget *
@@ -615,7 +620,8 @@ fill (Page *p, JsonObject *o)
   gtk_box_append (GTK_BOX (head), label (wx_name (code), "wx-cond", 0));
   g_autofree char *hi = fmt_temp (num (dmax, 1)), *lo = fmt_temp (num (dmin, 1));
   g_autofree char *feels = fmt_temp (cur (c, "apparent_temperature"));
-  g_autofree char *range = g_strdup_printf ("↑%s / ↓%s\nFeels like %s", hi, lo, feels);
+  /* TRANSLATORS: today's highest and lowest temperatures, then what it feels like now */
+  g_autofree char *range = g_strdup_printf (_("↑%s / ↓%s\nFeels like %s"), hi, lo, feels);
   GtkWidget *rl = label (range, "wx-range", 0);
   gtk_widget_set_margin_top (rl, 70);
   gtk_box_append (GTK_BOX (head), rl);
@@ -623,7 +629,8 @@ fill (Page *p, JsonObject *o)
 
   /* the next 24 hours */
   GtkWidget *hours = card ();
-  g_autofree char *summary = g_strdup_printf ("%s. High %s, low %s.", wx_name ((int) num (dcode, 1)), hi, lo);
+  /* TRANSLATORS: today's sky ("Partly cloudy"), then its highest and lowest temperatures ("12°") */
+  g_autofree char *summary = g_strdup_printf (_("%s. High %s, low %s."), wx_name ((int) num (dcode, 1)), hi, lo);
   gtk_box_append (GTK_BOX (hours), label (summary, "wx-summary", 0));
   gtk_box_append (GTK_BOX (hours), gtk_separator_new (GTK_ORIENTATION_HORIZONTAL));
   JsonArray *htime = arr (h, "time");
@@ -645,14 +652,14 @@ fill (Page *p, JsonObject *o)
     GtkWidget *cmp = card ();
     GtkWidget *t = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 6);
     gtk_box_append (GTK_BOX (t), gtk_image_new_from_icon_name ("temperature-symbolic"));
-    gtk_box_append (GTK_BOX (t), label ("Today's temperature", "wx-dim", 0));
+    gtk_box_append (GTK_BOX (t), label (_("Today's temperature"), "wx-dim", 0));
     gtk_box_append (GTK_BOX (cmp), t);
     GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
-    const char *say = fabs (diff) < 1 ? "About the same as yesterday"
-                    : diff < 0 ? (diff > -4 ? "Temperatures a little lower than yesterday"
-                                            : "Much colder than yesterday")
-                               : (diff < 4 ? "Temperatures a little higher than yesterday"
-                                           : "Much warmer than yesterday");
+    const char *say = fabs (diff) < 1 ? _("About the same as yesterday")
+                    : diff < 0 ? (diff > -4 ? _("Temperatures a little lower than yesterday")
+                                            : _("Much colder than yesterday"))
+                               : (diff < 4 ? _("Temperatures a little higher than yesterday")
+                                           : _("Much warmer than yesterday"));
     GtkWidget *sl = label (say, "wx-big", 0);
     gtk_widget_set_hexpand (sl, TRUE);
     gtk_box_append (GTK_BOX (row), sl);
@@ -675,8 +682,8 @@ fill (Page *p, JsonObject *o)
   for (guint i = 0; dtime && i < json_array_get_length (dtime); i++) {
     g_autofree char *noon = g_strconcat (str (dtime, i) ? str (dtime, i) : "", "T12:00", NULL);
     g_autoptr (GDateTime) dt = parse_local (noon);
-    g_autofree char *name = i == 0 ? g_strdup ("Yesterday") : i == 1 ? g_strdup ("Today")
-                          : dt ? g_date_time_format (dt, "%a") : g_strdup ("");
+    g_autofree char *name = i == 0 ? g_strdup (_("Yesterday")) : i == 1 ? g_strdup (_("Today"))
+                          : dt ? vibeos_format_date (dt, "EEE") : g_strdup ("");
     g_autofree char *mx = fmt_temp (num (dmax, i)), *mn = fmt_temp (num (dmin, i));
     g_autofree char *temps = g_strdup_printf ("%s  %s", mx, mn);
     const char *cls = i == 0 ? "wx-yesterday" : "wx-day";
@@ -716,24 +723,27 @@ fill (Page *p, JsonObject *o)
   gtk_grid_set_column_homogeneous (GTK_GRID (dg), TRUE);
   g_autoptr (GDateTime) r = parse_local (str (rise, 1));
   g_autoptr (GDateTime) s = parse_local (str (set, 1));
-  g_autofree char *rs = r ? g_date_time_format (r, "%H:%M") : g_strdup ("–");
-  g_autofree char *ss = s ? g_date_time_format (s, "%H:%M") : g_strdup ("–");
-  g_autofree char *ssub = g_strdup_printf ("Sunset %s", ss);
+  g_autofree char *rs = r ? vibeos_format_time (r) : g_strdup ("–");
+  g_autofree char *ss = s ? vibeos_format_time (s) : g_strdup ("–");
+  /* TRANSLATORS: under the sunrise's time; %s is the sunset's */
+  g_autofree char *ssub = g_strdup_printf (_("Sunset %s"), ss);
   double u = num (uv, 1);
   g_autofree char *uvs = isnan (u) ? g_strdup ("–") : g_strdup_printf ("%.0f", u);
   g_autofree char *hum = g_strdup_printf ("%.0f%%", cur (c, "relative_humidity_2m"));
-  g_autofree char *wind = g_strdup_printf ("%.0f km/h", cur (c, "wind_speed_10m"));
-  g_autofree char *pres = g_strdup_printf ("%.0f hPa", cur (c, "pressure_msl"));
-  gtk_grid_attach (GTK_GRID (dg), detail ("Sunrise", rs, ssub), 0, 0, 1, 1);
-  gtk_grid_attach (GTK_GRID (dg), detail ("UV index", uvs, isnan (u) ? NULL : uv_word (u)), 1, 0, 1, 1);
-  gtk_grid_attach (GTK_GRID (dg), detail ("Humidity", hum, NULL), 0, 1, 1, 1);
-  gtk_grid_attach (GTK_GRID (dg), detail ("Wind", wind, NULL), 1, 1, 1, 1);
-  gtk_grid_attach (GTK_GRID (dg), detail ("Pressure", pres, NULL), 0, 2, 1, 1);
-  gtk_box_append (GTK_BOX (dl), detail ("Sunrise", rs, ssub));
-  gtk_box_append (GTK_BOX (dl), detail ("UV index", uvs, isnan (u) ? NULL : uv_word (u)));
-  gtk_box_append (GTK_BOX (dl), detail ("Humidity", hum, NULL));
-  gtk_box_append (GTK_BOX (dl), detail ("Wind", wind, NULL));
-  gtk_box_append (GTK_BOX (dl), detail ("Pressure", pres, NULL));
+  /* TRANSLATORS: the wind's speed in kilometres an hour */
+  g_autofree char *wind = g_strdup_printf (_("%.0f km/h"), cur (c, "wind_speed_10m"));
+  /* TRANSLATORS: the air pressure in hectopascals */
+  g_autofree char *pres = g_strdup_printf (_("%.0f hPa"), cur (c, "pressure_msl"));
+  gtk_grid_attach (GTK_GRID (dg), detail (_("Sunrise"), rs, ssub), 0, 0, 1, 1);
+  gtk_grid_attach (GTK_GRID (dg), detail (_("UV index"), uvs, isnan (u) ? NULL : uv_word (u)), 1, 0, 1, 1);
+  gtk_grid_attach (GTK_GRID (dg), detail (_("Humidity"), hum, NULL), 0, 1, 1, 1);
+  gtk_grid_attach (GTK_GRID (dg), detail (_("Wind"), wind, NULL), 1, 1, 1, 1);
+  gtk_grid_attach (GTK_GRID (dg), detail (_("Pressure"), pres, NULL), 0, 2, 1, 1);
+  gtk_box_append (GTK_BOX (dl), detail (_("Sunrise"), rs, ssub));
+  gtk_box_append (GTK_BOX (dl), detail (_("UV index"), uvs, isnan (u) ? NULL : uv_word (u)));
+  gtk_box_append (GTK_BOX (dl), detail (_("Humidity"), hum, NULL));
+  gtk_box_append (GTK_BOX (dl), detail (_("Wind"), wind, NULL));
+  gtk_box_append (GTK_BOX (dl), detail (_("Pressure"), pres, NULL));
   gtk_box_append (GTK_BOX (more), wx_fit_new (dg, dl, NULL));
   gtk_box_append (GTK_BOX (col_b), more);
 
@@ -783,7 +793,7 @@ fetched (GObject *src, GAsyncResult *res, gpointer data)
     g_message ("Open-Meteo gave no answer");
     /* a forecast shown stays; a page waiting for one says it is not coming */
     if (!p->shown)
-      waiting (p, "No forecast: Open-Meteo did not answer. Tap reload to try again.");
+      waiting (p, _("No forecast: Open-Meteo did not answer. Tap reload to try again."));
     return;
   }
   g_autofree char *path = cache_path ("forecast.json");
@@ -903,7 +913,7 @@ nowhere (Page *p)
   gtk_spinner_stop (GTK_SPINNER (p->spinner));
   if (p->have_place)
     return;
-  waiting (p, "No location. Turn on Location in Settings, then tap reload, or set a city in the ⋮ menu.");
+  waiting (p, _("No location. Turn on Location in Settings, then tap reload, or set a city in the ⋮ menu."));
 }
 
 typedef struct {
@@ -1183,7 +1193,7 @@ choose_city (Page *p, const char *name, double lat, double lon)
     g_settings_set (p->settings, "city", "(sdd)", name, lat, lon);
   /* another place's forecast does not stay up while this one's comes */
   if (far) {
-    g_autofree char *text = g_strdup_printf ("Getting the weather for %s…", name);
+    g_autofree char *text = g_strdup_printf (_("Getting the weather for %s…"), name);
     waiting (p, text);
   }
   use_place (p, lat, lon, name);
@@ -1353,8 +1363,9 @@ show_idle (CitySearch *s)
   clear_rows (s);
   show_status (s, NULL);
   if (s->p->city) {
-    g_autofree char *now = g_strdup_printf ("Instead of %s", s->p->city);
-    GtkWidget *row = vibeos_list_row_new ("Use my location", now);
+    /* TRANSLATORS: under "Use my location"; %s is the city chosen now */
+    g_autofree char *now = g_strdup_printf (_("Instead of %s"), s->p->city);
+    GtkWidget *row = vibeos_list_row_new (_("Use my location"), now);
     vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "find-location-symbolic");
     g_signal_connect (row, "clicked", G_CALLBACK (on_here_row), s);
     vibeos_card_list_append (VIBEOS_CARD_LIST (s->list), row);
@@ -1385,7 +1396,7 @@ show_cities (CitySearch *s, JsonObject *answer)
 
   clear_rows (s);
   if (!answer) {
-    show_status (s, "No answer. Check the connection, then type again.");
+    show_status (s, _("No answer. Check the connection, then type again."));
     return;
   }
   for (guint i = 0; results && i < json_array_get_length (results); i++) {
@@ -1404,7 +1415,7 @@ show_cities (CitySearch *s, JsonObject *answer)
     g_signal_connect (row, "clicked", G_CALLBACK (on_city_row), s);
     vibeos_card_list_append (VIBEOS_CARD_LIST (s->list), row);
   }
-  show_status (s, s->cities->len ? NULL : "No cities found");
+  show_status (s, s->cities->len ? NULL : _("No cities found"));
 }
 
 static void
@@ -1508,7 +1519,7 @@ set_city (gpointer data)
   s->scroll = scroll;
   s->cities = g_array_new (FALSE, TRUE, sizeof (City));
   g_array_set_clear_func (s->cities, city_clear);
-  s->sheet = vibeos_sheet_new ("Set City");
+  s->sheet = vibeos_sheet_new (_("Set City"));
   g_object_set_data_full (G_OBJECT (s->sheet), "wx-city-search", s, search_release);
   g_signal_connect (s->sheet, "destroy", G_CALLBACK (on_search_destroy), s);
 
@@ -1521,15 +1532,15 @@ set_city (gpointer data)
   gtk_widget_add_css_class (s->text, "vibeos-search-entry");
   gtk_widget_set_hexpand (s->text, TRUE);
   gtk_widget_set_valign (s->text, GTK_ALIGN_CENTER);
-  gtk_text_set_placeholder_text (GTK_TEXT (s->text), "City name");
+  gtk_text_set_placeholder_text (GTK_TEXT (s->text), _("City name"));
   gtk_text_set_input_hints (GTK_TEXT (s->text),
                             GTK_INPUT_HINT_UPPERCASE_WORDS | GTK_INPUT_HINT_NO_SPELLCHECK | GTK_INPUT_HINT_NO_EMOJI);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (s->text), GTK_ACCESSIBLE_PROPERTY_LABEL, "City name", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (s->text), GTK_ACCESSIBLE_PROPERTY_LABEL, _("City name"), -1);
   g_signal_connect (s->text, "changed", G_CALLBACK (on_typed), s);
   g_signal_connect (s->text, "activate", G_CALLBACK (on_enter), s);
   gtk_box_append (GTK_BOX (field), s->text);
   s->clear = vibeos_icon_button_new ("edit-clear-symbolic");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (s->clear), GTK_ACCESSIBLE_PROPERTY_LABEL, "Clear", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (s->clear), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Clear"), -1);
   gtk_widget_set_visible (s->clear, FALSE);
   g_signal_connect (s->clear, "clicked", G_CALLBACK (on_clear), s);
   gtk_box_append (GTK_BOX (field), s->clear);
@@ -1559,16 +1570,17 @@ set_city (gpointer data)
 
 /* where the page's data comes from, and on what terms (the About sheet's Legal page) */
 static const VibeosAboutSection wx_legal[] = {
+  /* TRANSLATORS: keep the links' markup as it is */
   { "Open-Meteo",
-    "Weather forecasts by <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, under "
-    "<a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n\n"
-    "Set City finds cities with Open-Meteo's geocoding, on data from "
-    "<a href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0." },
+    N_("Weather forecasts by <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, under "
+       "<a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n\n"
+       "Set City finds cities with Open-Meteo's geocoding, on data from "
+       "<a href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0.") },
   { "OpenStreetMap",
-    "The place's name, where the phone is, from OpenStreetMap's "
-    "<a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a>. Data © "
-    "<a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the "
-    "<a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)." },
+    N_("The place's name, where the phone is, from OpenStreetMap's "
+       "<a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a>. Data © "
+       "<a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the "
+       "<a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL).") },
   { NULL },
 };
 
@@ -1576,7 +1588,7 @@ static void
 about (gpointer data)
 {
   Page *p = data;
-  const VibeosAboutInfo info = { .name = "Weather", .icon_name = "vibeos.Weather", .legal = wx_legal };
+  const VibeosAboutInfo info = { .name = N_("Weather"), .icon_name = "vibeos.Weather", .legal = wx_legal };
 
   vibeos_about_present (p->win, &info);
 }
@@ -1726,8 +1738,8 @@ more_clicked (GtkWidget *button, Page *p)
 {
   WxMenu *menu = wx_menu_new ();
 
-  wx_menu_append (menu, "Set City", set_city, p);
-  wx_menu_append (menu, "About", about, p);
+  wx_menu_append (menu, _("Set City"), set_city, p);
+  wx_menu_append (menu, _("About"), about, p);
   wx_menu_present (menu, button);
 }
 
@@ -1763,7 +1775,7 @@ activate (GtkApplication *app, gpointer data)
   p->settings = schema ? g_settings_new_full (schema, NULL, NULL) : NULL;
   GtkWidget *win = p->win = vibeos_window_new (app);
   g_object_set_data_full (G_OBJECT (win), "page", p, (GDestroyNotify) page_free);
-  gtk_window_set_title (GTK_WINDOW (win), "Weather");
+  gtk_window_set_title (GTK_WINDOW (win), _("Weather"));
   gtk_widget_add_css_class (win, "wx");
   add_back (win);
 
@@ -1790,10 +1802,10 @@ activate (GtkApplication *app, gpointer data)
   p->spinner = gtk_spinner_new ();
   gtk_widget_add_css_class (p->spinner, "wx-spinner");
   GtkWidget *reload = vibeos_icon_button_new ("view-refresh-symbolic");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (reload), GTK_ACCESSIBLE_PROPERTY_LABEL, "Reload", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (reload), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Reload"), -1);
   g_signal_connect (reload, "clicked", G_CALLBACK (refresh_clicked), p);
   GtkWidget *more = vibeos_icon_button_new ("view-more-symbolic");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, "More options", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
   g_signal_connect (more, "clicked", G_CALLBACK (more_clicked), p);
   gtk_box_append (GTK_BOX (bar), p->spinner);
   gtk_box_append (GTK_BOX (bar), reload);
@@ -1814,7 +1826,7 @@ activate (GtkApplication *app, gpointer data)
     if (!load_cache (p))
       fetch (p);
   } else
-    waiting (p, "Finding where you are…");
+    waiting (p, _("Finding where you are…"));
   where (p);
 }
 
@@ -1829,6 +1841,10 @@ startup (GApplication *app, gpointer data)
 int
 main (int argc, char **argv)
 {
+  setlocale (LC_ALL, "");
+  bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+  textdomain (GETTEXT_PACKAGE);
   g_autoptr (GtkApplication) app = gtk_application_new ("vibeos.Weather", G_APPLICATION_DEFAULT_FLAGS);
   g_signal_connect (app, "startup", G_CALLBACK (startup), NULL);
   g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
