@@ -38,6 +38,10 @@
  * a test display (pictures of it with the test set's made-up data, nothing of a real phone's).
  * --real: the phone's own data, for the acceptance run: nothing a tool returned is printed, and in what is
  * printed (the arguments, the reply) every name, number and text a tool gave is replaced by <field>.
+ * --fixtures --debug-log: each turn is also recorded whole in the private phone's debug log (dictate-debuglog.h),
+ * as the app records it with its "Debug log" switch on; the directory is printed at the end.
+ *
+ * Instead of "phone", CASES.json may have "phone_from": a file beside it whose "phone" the cases use.
  *
  * The server allows a phone 30 requests a minute (a burst of 10); a turn is one request per step of the model.
  * --rate (requests a minute, 20) paces the turns below that. A turn the server turned away (429) is the harness's
@@ -46,6 +50,7 @@
 #include "dictate-access.h"
 #include "dictate-actions.h"
 #include "dictate-calls.h"
+#include "dictate-debuglog.h"
 #include "dictate-talk.h"
 #include "dictate-tools.h"
 
@@ -1024,12 +1029,13 @@ int
 main (int argc, char **argv)
 {
   Eval e = { 0 };
-  gboolean fixtures = FALSE, serve = FALSE;
+  gboolean fixtures = FALSE, serve = FALSE, debug_log = FALSE;
   char *only = NULL, *out = NULL, *label = NULL, *mock_phone = NULL, *dialer = NULL;
   double rate = 20;
   g_autoptr (GError) error = NULL;
   g_autoptr (GOptionContext) options = g_option_context_new ("CASES.json");
   g_autoptr (JsonParser) parser = json_parser_new ();
+  g_autoptr (JsonParser) phone_parser = json_parser_new ();
   g_autofree char *reason = NULL;
   JsonObject *root;
   GOptionEntry entries[] = {
@@ -1040,6 +1046,8 @@ main (int argc, char **argv)
     { "out", 0, 0, G_OPTION_ARG_FILENAME, &out, "each turn as a line of JSON", "FILE" },
     { "rate", 0, 0, G_OPTION_ARG_DOUBLE, &rate, "requests a minute at most (20)", "N" },
     { "serve", 0, 0, G_OPTION_ARG_NONE, &serve, "with --fixtures: only the private phone, until killed", NULL },
+    { "debug-log", 0, 0, G_OPTION_ARG_NONE, &debug_log,
+      "with --fixtures: each turn recorded whole in the private phone's debug log", NULL },
     { "mock-phone", 0, 0, G_OPTION_ARG_FILENAME, &mock_phone,
       "the Dialer's mock phone (mock-phone.py; beside CASES.json)", "FILE" },
     { "dialer", 0, 0, G_OPTION_ARG_FILENAME, &dialer,
@@ -1050,7 +1058,7 @@ main (int argc, char **argv)
   gst_init (&argc, &argv);
   g_option_context_add_main_entries (options, entries, NULL);
   if (!g_option_context_parse (options, &argc, &argv, &error) || argc != 2 || fixtures == e.real
-      || (serve && !fixtures))
+      || ((serve || debug_log) && !fixtures))
     {
       g_printerr ("%s\n", error ? error->message : "agent-eval (--fixtures | --real) CASES.json");
       return 2;
@@ -1068,7 +1076,24 @@ main (int argc, char **argv)
           g_printerr ("--fixtures runs only in a private environment (run.sh eval)\n");
           return 2;
         }
-      mock_fixtures_write (json_object_get_object_member (root, "phone"));
+      JsonObject *phone = json_object_has_member (root, "phone") ? json_object_get_object_member (root, "phone")
+                                                                 : NULL;
+
+      /* the fixtures of another test set, beside this one */
+      if (!phone && json_object_has_member (root, "phone_from"))
+        {
+          g_autofree char *dir = g_path_get_dirname (argv[1]);
+          g_autofree char *from = g_build_filename (dir, json_object_get_string_member (root, "phone_from"), NULL);
+
+          if (!json_parser_load_from_file (phone_parser, from, &error)
+              || !JSON_NODE_HOLDS_OBJECT (json_parser_get_root (phone_parser)))
+            {
+              g_printerr ("%s: %s\n", from, error ? error->message : "not a test set");
+              return 2;
+            }
+          phone = json_object_get_object_member (json_node_get_object (json_parser_get_root (phone_parser)), "phone");
+        }
+      mock_fixtures_write (phone);
       mock_services_start ();
       {
         g_autofree char *dir = g_path_get_dirname (argv[1]);
@@ -1094,6 +1119,7 @@ main (int argc, char **argv)
   e.loop = g_main_loop_new (NULL, FALSE);
   e.talk = dictate_talk_new ();
   e.settings = g_settings_new ("vibeos.Dictate");
+  g_settings_set_boolean (e.settings, "debug-log", debug_log);
   e.brain = g_settings_get_string (e.settings, "talk-brain");
   e.english_voice = english_voice ();
   if (e.rig)
@@ -1147,6 +1173,13 @@ main (int argc, char **argv)
     while (g_hash_table_iter_next (&iter, &k, &v))
       printf ("     %-18s %u\n", (char *) k, GPOINTER_TO_UINT (v));
   }
+  if (debug_log)
+    {
+      g_autofree char *dir = dictate_debuglog_dir ();
+      g_autoptr (GPtrArray) kept = dictate_debuglog_list ();
+
+      printf ("     debug log: %u turns in %s\n", kept->len, dir);
+    }
   if (e.out)
     fclose (e.out);
   return e.turns && e.passed == e.turns ? 0 : 1;
