@@ -54,8 +54,8 @@ refresh (Page *p)
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->outward), down ? _("Countdown") : _("Wait"));
   if (!p->wait)
     return;
-  vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->wait), down ? NULL : _("In use"));
-  vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->countdown), down ? _("In use") : NULL);
+  vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->wait), down ? NULL : C_("how Vibe asks before it acts", "In use"));
+  vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->countdown), down ? C_("how Vibe asks before it acts", "In use") : NULL);
   gtk_accessible_update_state (GTK_ACCESSIBLE (p->wait), GTK_ACCESSIBLE_STATE_CHECKED,
                                down ? GTK_ACCESSIBLE_TRISTATE_FALSE : GTK_ACCESSIBLE_TRISTATE_TRUE, -1);
   gtk_accessible_update_state (GTK_ACCESSIBLE (p->countdown), GTK_ACCESSIBLE_STATE_CHECKED,

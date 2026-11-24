@@ -854,7 +854,9 @@ dictate_voice_enroll_save (DictateVoiceEnroll *self, GError **error)
   if (self->count < DICTATE_VOICE_MATCH_PHRASES || !self->n_models)
     {
       g_set_error (error, DICTATE_VOICE_MATCH_ERROR, DICTATE_VOICE_MATCH_ERROR_TOO_SHORT,
-                   _("A voice sample needs %d recordings"), DICTATE_VOICE_MATCH_PHRASES);
+                   g_dngettext (GETTEXT_PACKAGE, "A voice sample needs %d recording",
+                                "A voice sample needs %d recordings", DICTATE_VOICE_MATCH_PHRASES),
+                   DICTATE_VOICE_MATCH_PHRASES);
       return FALSE;
     }
   g_key_file_set_integer (file, "sample", "version", SAMPLE_VERSION);

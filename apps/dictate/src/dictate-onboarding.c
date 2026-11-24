@@ -73,6 +73,13 @@ vibe (Intro *in, const char *msgid)
   return dictate_l10n (in->language, msgid);
 }
 
+/* the same for a message that has a context */
+static const char *
+vibe_c (Intro *in, const char *context, const char *msgid)
+{
+  return dictate_l10n_c (in->language, context, msgid);
+}
+
 static DictateStage *
 stage (Intro *in)
 {
@@ -692,20 +699,20 @@ show_step (Intro *in)
       break;
     case PACE:
       {
-        static const char *const LABELS[] = { N_("Slower"), N_("Normal"), "1.25×", "1.5×", "2×", "2.5×", "3×" };
+        static const char *const LABELS[] = { NC_("speech speed", "Slower"), NC_("speech speed", "Normal"), "1.25×", "1.5×", "2×", "2.5×", "3×" };
         guint i = rate_index (in);
         GtkWidget *b;
 
         /* TRANSLATORS: over the pace step; %s is the speech rate: 1.25× */
-        who = g_strdup_printf (vibe (in, N_("Vibe says · at %s")), i < 2 ? vibe (in, LABELS[i]) : LABELS[i]);
+        who = g_strdup_printf (vibe (in, N_("Vibe says · at %s")), i < 2 ? vibe_c (in, "speech speed", LABELS[i]) : LABELS[i]);
         headline = vibe (in, N_("Is this speed comfortable?"));
         sub = vibe (in, N_("I can go up to three times faster."));
         dictate_orb_set_small (orb, TRUE);
-        b = dictate_stage_add_button (s, vibe (in, N_("Slower")), DICTATE_STAGE_BUTTON);
+        b = dictate_stage_add_button (s, vibe_c (in, "button: speak slower", NC_("button: speak slower", "Slower")), DICTATE_STAGE_BUTTON);
         g_signal_connect (b, "clicked", G_CALLBACK (on_slower), in);
         b = dictate_stage_add_button (s, vibe (in, N_("That's good")), DICTATE_STAGE_BUTTON_PRIMARY);
         g_signal_connect (b, "clicked", G_CALLBACK (on_good), in);
-        b = dictate_stage_add_button (s, vibe (in, N_("Faster")), DICTATE_STAGE_BUTTON);
+        b = dictate_stage_add_button (s, vibe_c (in, "button: speak faster", NC_("button: speak faster", "Faster")), DICTATE_STAGE_BUTTON);
         g_signal_connect (b, "clicked", G_CALLBACK (on_faster), in);
         hint (in, vibe (in, N_("Say “slower”, “faster” or “that's good”")), vibe (in, N_("Tap a choice")));
       }

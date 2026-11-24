@@ -76,7 +76,7 @@ refresh (Page *p)
           vibeos_list_row_set_end_widget (row, get);
         }
       else
-        vibeos_list_row_set_value (row, used ? _("In use") : NULL);
+        vibeos_list_row_set_value (row, used ? C_("a language Vibe speaks", "In use") : NULL);
       /* a tap downloads what it lacks, or removes what was downloaded (not of the language in use) */
       vibeos_list_row_set_activatable (row, lacks || (downloaded && !used));
     }
@@ -102,8 +102,8 @@ dictate_settings_page_refresh (GtkWidget *page)
 
 /* how fast Vibe speaks (talk-speed): up to three times its voice's pace, for people used to fast speech */
 static const struct { double speed; const char *label; } RATES[] = {
-  { 0.75, N_("Slower") }, { 1.0, N_("Normal") }, { 1.25, "1.25×" }, { 1.5, "1.5×" }, { 2.0, "2×" }, { 2.5, "2.5×" },
-  { 3.0, "3×" },
+  { 0.75, NC_("speech speed", "Slower") }, { 1.0, NC_("speech speed", "Normal") }, { 1.25, "1.25×" },
+  { 1.5, "1.5×" }, { 2.0, "2×" }, { 2.5, "2.5×" }, { 3.0, "3×" },
 };
 
 /* who speaks (talk-voice-gender), where the voice has a man and a woman */
@@ -129,9 +129,9 @@ gender_index (GSettings *settings)
 
 /* how much Vibe says (talk-verbosity) */
 static const struct { const char *value, *label, *summary; } VERBOSITY[] = {
-  { "short", N_("Short"), N_("A sentence") },
-  { "normal", N_("Normal"), N_("One to three sentences") },
-  { "detailed", N_("Detailed"), N_("More, when the question needs it") },
+  { "short", NC_("reply length", "Short"), N_("A sentence") },
+  { "normal", NC_("reply length", "Normal"), N_("One to three sentences") },
+  { "detailed", NC_("reply length", "Detailed"), N_("More, when the question needs it") },
 };
 
 /* when Vibe says nothing on its own (quiet-hours) */
@@ -181,10 +181,11 @@ show_choices (Page *p)
   int quiet = quiet_index (p->hooks.settings);
   g_autofree char *range = quiet < 0 ? g_settings_get_string (p->hooks.settings, "quiet-hours") : NULL;
 
-  vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->rate), _(RATES[rate_index (p->hooks.settings)].label));
+  vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->rate),
+                             g_dpgettext2 (NULL, "speech speed", RATES[rate_index (p->hooks.settings)].label));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->gender), gender_label (gender_index (p->hooks.settings)));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->verbosity),
-                             _(VERBOSITY[verbosity_index (p->hooks.settings)].label));
+                             g_dpgettext2 (NULL, "reply length", VERBOSITY[verbosity_index (p->hooks.settings)].label));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->quiet), quiet < 0 ? range : _(QUIET[quiet].label));
 }
 
@@ -275,7 +276,7 @@ on_rate (VibeosListRow *row, Page *p)
   const char *labels[G_N_ELEMENTS (RATES)];
 
   for (guint i = 0; i < G_N_ELEMENTS (RATES); i++)
-    labels[i] = _(RATES[i].label);
+    labels[i] = g_dpgettext2 (NULL, "speech speed", RATES[i].label);
   choose (p, _("Speech rate"), labels, NULL, G_N_ELEMENTS (RATES), rate_index (p->hooks.settings),
           G_CALLBACK (on_rate_chosen));
 }
@@ -319,7 +320,10 @@ on_verbosity (VibeosListRow *row, Page *p)
   const char *labels[G_N_ELEMENTS (VERBOSITY)], *summaries[G_N_ELEMENTS (VERBOSITY)];
 
   for (guint i = 0; i < G_N_ELEMENTS (VERBOSITY); i++)
-    labels[i] = _(VERBOSITY[i].label), summaries[i] = _(VERBOSITY[i].summary);
+    {
+      labels[i] = g_dpgettext2 (NULL, "reply length", VERBOSITY[i].label);
+      summaries[i] = _(VERBOSITY[i].summary);
+    }
   choose (p, _("Answers"), labels, summaries, G_N_ELEMENTS (VERBOSITY), verbosity_index (p->hooks.settings),
           G_CALLBACK (on_verbosity_chosen));
 }

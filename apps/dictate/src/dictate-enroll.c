@@ -459,9 +459,22 @@ dictate_enroll_new (GSettings *settings, DictateTalk *talk, DictateEngine *engin
                     const char *corner, DictateEnrollDone done, gpointer data)
 {
   Enroll *e = enroll_new (settings, talk, engine, language, corner, done, data);
+  guint n = DICTATE_VOICE_MATCH_PHRASES;
+  g_autofree char *intro = NULL;
 
-  show_part (e, vibe (e, N_("I'll learn your voice from 4 short phrases, so I only take commands from you. "
-                             "The sample stays on this phone.")), FALSE);
+  /* TRANSLATORS: Vibe's first words of Voice match, said aloud; %u is how many short phrases it will ask for (4) */
+  (void) sizeof (ngettext ("I'll learn your voice from %u short phrase, so I only take commands from you. "
+                           "The sample stays on this phone.",
+                           "I'll learn your voice from %u short phrases, so I only take commands from you. "
+                           "The sample stays on this phone.", 1));
+  /* said in `language`, by its plural form for the count: dictate_l10n_n looks the pair up in that language's
+   * catalogue; the ngettext above is only where xgettext reads the pair from, and is never run */
+  intro = g_strdup_printf (dictate_l10n_n (e->language,
+                                           "I'll learn your voice from %u short phrase, so I only take commands from "
+                                           "you. The sample stays on this phone.",
+                                           "I'll learn your voice from %u short phrases, so I only take commands from "
+                                           "you. The sample stays on this phone.", n), n);
+  show_part (e, intro, FALSE);
   return e->stage;
 }
 

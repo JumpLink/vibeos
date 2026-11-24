@@ -132,6 +132,12 @@ test('voicematch', executable('test-voicematch', 'tests/test-voicematch.c', 'src
                                              onnxruntime]))
 test('text', executable('test-text', 'tests/test-text.c', include_directories: 'src', link_with: text,
                         dependencies: dependency('glib-2.0')))
+# Vibe's spoken lines from a language's catalogue: a message, one with a context, a plural (catalogues written by the
+# test, in a directory of the build)
+test('l10n', executable('test-l10n', 'tests/test-l10n.c', 'src/dictate-l10n.c', include_directories: 'src',
+                        c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"',
+                                 '-DLOCALEDIR="@0@"'.format(meson.current_build_dir() / 'test-locale')],
+                        dependencies: dependency('glib-2.0')))
 # what a download unpacks and removes (archives made by the test, nothing fetched), and the table of packs
 test('download', executable('test-download', 'tests/test-download.c', 'src/dictate-download.c',
                             include_directories: 'src', c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"',

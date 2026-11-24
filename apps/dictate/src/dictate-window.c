@@ -828,11 +828,12 @@ countdown_tick (gpointer data)
     }
   words = countdown_words ((guint) ((left + G_USEC_PER_SEC - 1) / G_USEC_PER_SEC));
   go = dictate_action_get_button (card->action);
-  /* the action's own verb where it has one: "Sending in three…", "Calling in three…" */
+  /* the action's own verb where it has one: "Sending in three…", "Calling in three…" (`go` is the button's label, so
+   * it is compared with the same string in the same context) */
   if (!g_strcmp0 (go, _("Send")))
     /* TRANSLATORS: over a message that is sent by itself when the countdown ends; %s is "three" */
     who = g_strdup_printf (_("Sending in %s…"), words);
-  else if (!g_strcmp0 (go, _("Call")))
+  else if (!g_strcmp0 (go, C_("button: place a call", "Call")))
     /* TRANSLATORS: over a call that is placed by itself when the countdown ends; %s is "three" */
     who = g_strdup_printf (_("Calling in %s…"), words);
   else
@@ -1114,7 +1115,7 @@ on_talk_propose (DictateTalk *talk, DictateAction *action, Window *self)
     {
       /* K5: it goes by itself; the button does it now, with the action's own verb where it has one */
       button = dictate_stage_add_button (stage, !g_strcmp0 (go, _("Send")) ? _("Send now")
-                                                : !g_strcmp0 (go, _("Call")) ? _("Call now") : _("Do it now"),
+                                                : !g_strcmp0 (go, C_("button: place a call", "Call")) ? _("Call now") : _("Do it now"),
                                          DICTATE_STAGE_BUTTON_PRIMARY);
     }
   else
@@ -1866,7 +1867,8 @@ call_banner_update (Window *self)
   self->call_banner_key = g_steal_pointer (&key);
   banner = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
   gtk_widget_add_css_class (banner, "dictate-call-banner");
-  name = gtk_label_new (info.name ? info.name : _("Call"));
+  /* TRANSLATORS: over a call whose person has no name to show (a noun) */
+  name = gtk_label_new (info.name ? info.name : C_("name of a call with no contact", "Call"));
   gtk_widget_add_css_class (name, "dictate-call-banner-name");
   gtk_label_set_xalign (GTK_LABEL (name), 0);
   gtk_label_set_ellipsize (GTK_LABEL (name), PANGO_ELLIPSIZE_END);
@@ -2767,8 +2769,8 @@ dictate_window_calls_changed (GtkWidget *window, GPtrArray *calls)
   if (on->id != self->call_on)
     g_clear_pointer (&self->call_info, g_free);
   self->call_on = on->id;
-  /* in a call, the bar says so, over the call's stage and over what is asked in it */
-  dictate_stage_set_title (DICTATE_STAGE (self->stage), _("Call"));
+  /* TRANSLATORS: in a call, the bar says so (a noun), over the call's stage and over what is asked in it */
+  dictate_stage_set_title (DICTATE_STAGE (self->stage), C_("screen title: a call in progress", "Call"));
   self->call_connected = on->connected;
   self->call_state = on->state;
   if (!self->call_tick_id)

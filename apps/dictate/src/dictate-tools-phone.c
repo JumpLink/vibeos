@@ -1029,11 +1029,15 @@ propose_call (JsonObject *args, ToolRun *run, GError **error)
   {
     const char *lines[] = { line, NULL };
     about = g_strdup_printf ("the call to %s", named);
-    action = dictate_action_new ("place a call", _("Call"), lines, _("Call"), _("Calling…"), about, place_call,
+    /* TRANSLATORS: the card's title, a call to place (a noun) */
+    action = dictate_action_new ("place a call", C_("title of the card that proposes a call", "Call"), lines,
+                                 /* TRANSLATORS: the card's button, which places the call (a verb) */
+                                 C_("button: place a call", "Call"), _("Calling…"), about, place_call,
                                  number, NULL);
     dictate_action_set_log (action, "propose_call", "a phone call, over the mobile network");
     dictate_action_set_outward (action, certain);
-    card_person (action, _("Call"), line);
+    /* TRANSLATORS: a row of the card, over the name of the person to call */
+    card_person (action, C_("card row: whom to call", "Call"), line);
     show_person (run, action);
   }
   tool_run_propose (run, action);
@@ -1145,7 +1149,10 @@ get_messages (JsonObject *args, ToolRun *run, GError **error)
       /* what a tap can ask next (B6): "Read them", "Answer Kim" */
       if (unread_total)
         {
-          g_autofree char *reply = answer ? g_strdup_printf (_("Answer %s"), answer) : NULL;
+          /* TRANSLATORS: a suggestion under the messages just read out: reply to the text message of the person
+           * named, not answer a phone call; %s is their name: Kim */
+          g_autofree char *reply = answer ? g_strdup_printf (C_("suggestion: reply to a text message", "Answer %s"),
+                                                             answer) : NULL;
           const char *next[] = { _("Read them"), reply, NULL };
 
           tool_run_show (run, "suggestions", next);
@@ -2859,11 +2866,31 @@ get_mobile_network (JsonObject *args, ToolRun *run, GError **error)
     }
   {
     int bars = quality >= 75 ? 4 : quality >= 50 ? 3 : quality >= 25 ? 2 : quality > 0 ? 1 : 0;
-    g_autofree char *fact = state >= 8 ? g_strdup_printf (_("%s, %d of 4%s%s"),
-                                                          bars >= 3 ? _("Good") : bars == 2 ? _("Fair") : _("Weak"),
-                                                          bars, generation (tech) ? " · " : "",
-                                                          generation (tech) ? generation (tech) : "")
-                            : g_strdup (state == 2 ? _("SIM locked") : state < 6 ? _("Off") : _("No network"));
+    const char *type = generation (tech);
+    g_autofree char *fact = NULL;
+
+    if (state >= 8)
+      {
+        /* a whole sentence for each strength, with and without the network's type, so a translation agrees the word
+         * with it and may put the parts in another order */
+        if (bars >= 3)
+          /* TRANSLATORS: the phone's signal; %1$d is the bars of four (3 or 4), %2$s the network type: 4G */
+          fact = type ? g_strdup_printf (_("Good, %1$d of 4 · %2$s"), bars, type)
+                      /* TRANSLATORS: the phone's signal; %d is the bars of four (3 or 4) */
+                      : g_strdup_printf (_("Good, %d of 4"), bars);
+        else if (bars == 2)
+          /* TRANSLATORS: the phone's signal, a middling one; %1$d is the bars of four (2), %2$s the network type: 4G */
+          fact = type ? g_strdup_printf (_("Fair, %1$d of 4 · %2$s"), bars, type)
+                      /* TRANSLATORS: the phone's signal, a middling one; %d is the bars of four (2) */
+                      : g_strdup_printf (_("Fair, %d of 4"), bars);
+        else
+          /* TRANSLATORS: the phone's signal, a poor one; %1$d is the bars of four (0 or 1), %2$s the network type: 4G */
+          fact = type ? g_strdup_printf (_("Weak, %1$d of 4 · %2$s"), bars, type)
+                      /* TRANSLATORS: the phone's signal, a poor one; %d is the bars of four (0 or 1) */
+                      : g_strdup_printf (_("Weak, %d of 4"), bars);
+      }
+    else
+      fact = g_strdup (state == 2 ? _("SIM locked") : state < 6 ? _("Off") : _("No network"));
     tool_run_fact (run, _("Signal"), fact);
   }
   nm = dbus_properties (G_BUS_TYPE_SYSTEM, NM, NM_PATH, NM, run, NULL);
