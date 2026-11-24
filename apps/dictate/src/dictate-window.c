@@ -1115,7 +1115,8 @@ on_talk_propose (DictateTalk *talk, DictateAction *action, Window *self)
     {
       /* K5: it goes by itself; the button does it now, with the action's own verb where it has one */
       button = dictate_stage_add_button (stage, !g_strcmp0 (go, _("Send")) ? _("Send now")
-                                                : !g_strcmp0 (go, C_("button: place a call", "Call")) ? _("Call now") : _("Do it now"),
+                                                : !g_strcmp0 (go, C_("button: place a call", "Call")) ? _("Call now")
+                                                : _("Do it now"),
                                          DICTATE_STAGE_BUTTON_PRIMARY);
     }
   else

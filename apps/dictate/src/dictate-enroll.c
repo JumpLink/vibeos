@@ -460,20 +460,18 @@ dictate_enroll_new (GSettings *settings, DictateTalk *talk, DictateEngine *engin
 {
   Enroll *e = enroll_new (settings, talk, engine, language, corner, done, data);
   guint n = DICTATE_VOICE_MATCH_PHRASES;
+  const char *format;
   g_autofree char *intro = NULL;
 
-  /* TRANSLATORS: Vibe's first words of Voice match, said aloud; %u is how many short phrases it will ask for (4) */
-  (void) sizeof (ngettext ("I'll learn your voice from %u short phrase, so I only take commands from you. "
+  /* said in `language`, in its plural form for the count: dictate_l10n_n looks the pair up in that language's
+   * catalogue (po/meson.build names it to xgettext) */
+  format = dictate_l10n_n (e->language,
+                           /* TRANSLATORS: Voice match's first words, said aloud; %u: how many phrases it asks (4) */
+                           "I'll learn your voice from %u short phrase, so I only take commands from you. "
                            "The sample stays on this phone.",
                            "I'll learn your voice from %u short phrases, so I only take commands from you. "
-                           "The sample stays on this phone.", 1));
-  /* said in `language`, by its plural form for the count: dictate_l10n_n looks the pair up in that language's
-   * catalogue; the ngettext above is only where xgettext reads the pair from, and is never run */
-  intro = g_strdup_printf (dictate_l10n_n (e->language,
-                                           "I'll learn your voice from %u short phrase, so I only take commands from "
-                                           "you. The sample stays on this phone.",
-                                           "I'll learn your voice from %u short phrases, so I only take commands from "
-                                           "you. The sample stays on this phone.", n), n);
+                           "The sample stays on this phone.", n);
+  intro = g_strdup_printf (format, n);
   show_part (e, intro, FALSE);
   return e->stage;
 }

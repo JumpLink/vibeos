@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-dictate\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 19:39+0100\n"
+"POT-Creation-Date: 2026-11-24 20:19+0100\n"
 "PO-Revision-Date: 2026-11-24 16:47+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -822,7 +822,7 @@ msgstr "Non ho sentito niente."
 msgid "I couldn't listen."
 msgstr "Non ho potuto ascoltare."
 
-#. TRANSLATORS: Vibe's first words of Voice match, said aloud; %u is how many short phrases it will ask for (4)
+#. TRANSLATORS: Voice match's first words, said aloud; %u: how many phrases it asks (4)
 #: src/dictate-enroll.c
 #, c-format
 msgid ""
