@@ -39,6 +39,9 @@ void           dictate_engine_stop         (DictateEngine *self);
 DictateState   dictate_engine_get_state    (DictateEngine *self);
 /* how loud the microphone is just now: 0 (quiet room) .. 1 (speech up close) */
 double         dictate_engine_get_level    (DictateEngine *self);
+/* taking turns: the last turn's speech as the recogniser had it (16 kHz mono float32, at most 30 s), for the voice
+ * match; once the state is idle, until the next start. The caller owns it; NULL for none, or once taken */
+GBytes        *dictate_engine_take_turn_audio (DictateEngine *self);
 
 /* Signals, all on the main thread:
  *   "text" (GStrv finished, const char *partial): the sentences the speaker finished since the last "text", in
