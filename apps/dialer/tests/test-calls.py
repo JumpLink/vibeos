@@ -316,6 +316,12 @@ def main():
                    XDG_DATA_HOME=os.path.join(tmp, 'data'), XDG_STATE_HOME=os.path.join(tmp, 'state'),
                    XDG_CONFIG_HOME=os.path.join(tmp, 'config'), GSETTINGS_BACKEND='memory',
                    GSETTINGS_SCHEMA_DIR=tmp, PULSE_SERVER='unix:' + os.path.join(tmp, 'no-sound'))
+        # GStreamer's registry, made before the service starts: in a package build's empty HOME the first ring would
+        # scan every plugin first, the service answering nothing meanwhile (sid's 277 plugins: 25 s and more under
+        # arm64 emulation). libgstreamer1.0-dev brings GStreamer's typelib; without it the first ring scans as before.
+        env['GST_REGISTRY'] = os.path.join(tmp, 'gst-registry.bin')
+        subprocess.run([sys.executable, '-c', 'import gi; gi.require_version("Gst", "1.0"); '
+                        'from gi.repository import Gst; Gst.init(None)'], env=env, timeout=120)
         mock = subprocess.Popen([sys.executable, os.path.join(source, 'tests', 'mock-phone.py'), system_address],
                                 env=env, stdout=subprocess.PIPE, text=True)
         procs.append(mock)
