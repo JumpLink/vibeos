@@ -94,6 +94,8 @@ if [ -z "$UPP" ]; then
 	tar -C $W/upp -cf $UPP logo.jpg svb_orange.jpg booting_warning.jpg other.jpg
 fi
 sudo -n dd if=$UPP of=$(p 5) bs=1M status=none conv=fsync
+UPB=$W/up_param-before.img UPA=$W/up_param-after.img
+sudo -n dd if=$(p 5) of=$UPB bs=1M status=none
 sumof() { sudo -n dd if=$1 bs=1M count=${2:-8} status=none | sha256sum | cut -d' ' -f1; }
 declare -A BEFORE
 for n in $(seq 1 32); do [ -b $(p $n) ] && BEFORE[$n]=$(sumof $(p $n)); done
@@ -292,7 +294,22 @@ if [ "$DRC" = 0 ]; then
 		same $(p 15) uboot.img 4194304 && ok "recovery = U-Boot" || bad "recovery"
 		if [ $MODE = whole ] || [ $PRE = wholed ]; then same $(p 14) uboot.img 4194304 && ok "boot = U-Boot (no Android)" || bad "boot"
 		else [ "$(sumof $(p 14))" = "${BEFORE[14]}" ] && ok "boot (Android's) untouched" || bad "boot changed"; fi
-		[ "$(sumof $(p 5))" != "${BEFORE[5]}" ] && ok "up_param: the logo written" || bad "up_param unchanged" ;;
+		# up_param, byte for byte: the zip's three pictures in, every other one, the order and the last KiB as before;
+		# an up_param that had them already is not written at all
+		sudo -n dd if=$(p 5) of=$UPA bs=1M status=none
+		pics() { local k=0 j; for j in logo.jpg svb_orange.jpg booting_warning.jpg; do
+			[ "$(tar -xOf $1 $j 2>/dev/null | sha256sum)" = "$(unzip -p $DEVZIP boot-logo/$j | sha256sum)" ] && k=$((k + 1)); done; echo $k; }
+		if [ "$(pics $UPB)" = 3 ]; then
+			cmp -s $UPB $UPA && ok "up_param: Debian's pictures already, nothing written" || bad "up_param written although it had them"
+		else
+			[ "$(pics $UPA)" = 3 ] && ok "up_param: logo.jpg, svb_orange.jpg and booting_warning.jpg are the zip's" ||
+				bad "up_param: $(pics $UPA) of the zip's 3 pictures"
+			o=$(tar -tf $UPB | grep -v -x -e logo.jpg -e svb_orange.jpg -e booting_warning.jpg | while read -r m; do
+				[ "$(tar -xOf $UPB "$m" | sha256sum)" = "$(tar -xOf $UPA "$m" | sha256sum)" ] || echo "$m"; done | wc -l)
+			[ "$o" = 0 ] && [ "$(tar -tf $UPB)" = "$(tar -tf $UPA)" ] &&
+				ok "up_param: the other $(($(tar -tf $UPB | wc -l) - 3)) pictures and the order kept" || bad "up_param: $o other pictures changed, or the order"
+			[ "$(tail -c 1024 $UPB | sha256sum)" = "$(tail -c 1024 $UPA | sha256sum)" ] && ok "up_param: its last KiB kept" || bad "up_param: its last KiB changed"
+		fi ;;
 	s5e)
 		RB=$(unzip -p $DEVZIP recovery.img | wc -c)
 		same $(p 15) recovery.img $RB && ok "recovery = U-Boot + LineageOS recovery + Linux ($RB bytes)" || bad "recovery"
