@@ -1,6 +1,7 @@
 /* Shared pieces of the Files screens (fm-ui.h). */
 #include "fm-ui.h"
 
+#include <glib/gi18n.h>
 #include <math.h>
 #include <vibeos.h>
 #include <spongy-gtk.h>
@@ -482,7 +483,7 @@ fm_popup_show_icons (GtkWidget *anchor, const char *const *labels, const char *c
   gtk_widget_add_controller (layer, keys);
   gtk_widget_set_focusable (layer, TRUE);
   /* a dialog to the shell's back gesture, which then sends Escape */
-  gtk_accessible_update_property (GTK_ACCESSIBLE (layer), GTK_ACCESSIBLE_PROPERTY_LABEL, "Menu", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (layer), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Menu"), -1);
 
   list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   for (int i = 0; i < n_labels; i++)

@@ -3,6 +3,7 @@
 
 #include <glib/gi18n.h>
 #include <string.h>
+#include <vibeos-locale.h>
 
 char *
 fm_format_size (guint64 size)
@@ -18,7 +19,8 @@ fm_format_date (gint64 unix_time)
 {
   g_autoptr(GDateTime) date = g_date_time_new_from_unix_local (unix_time);
 
-  return date ? g_date_time_format (date, "%x") : g_strdup ("");
+  /* the language's short date: "11/24/26", "24.11.26" */
+  return date ? vibeos_format_date (date, "yMd") : g_strdup ("");
 }
 
 char *
@@ -26,7 +28,8 @@ fm_format_date_time (gint64 unix_time)
 {
   g_autoptr(GDateTime) date = g_date_time_new_from_unix_local (unix_time);
 
-  return date ? g_date_time_format (date, "%x %X") : g_strdup ("");
+  /* with the time by the clock setting: "11/24/26, 2:05:09 PM" */
+  return date ? vibeos_format_date (date, "yMdjms") : g_strdup ("");
 }
 
 char *

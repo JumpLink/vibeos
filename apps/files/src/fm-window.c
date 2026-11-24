@@ -1153,7 +1153,7 @@ typedef enum {
 } OverflowChoice;
 
 /* About: VibeOS's About sheet, as every VibeOS app has it */
-static const VibeosAboutInfo fm_about = { .name = "Files", .icon_name = "vibeos.Files" };
+static const VibeosAboutInfo fm_about = { .name = N_("Files"), .icon_name = "vibeos.Files" };
 
 static void
 on_overflow_chosen (int index, gpointer data)

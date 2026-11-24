@@ -1,0 +1,16 @@
+# the files with translatable strings
+data/vibeos.Files.desktop.in
+src/fm-browser.c
+src/fm-dialogs.c
+src/fm-drawer.c
+src/fm-home.c
+src/fm-jobs.c
+src/fm-main.c
+src/fm-mount.c
+src/fm-places.c
+src/fm-remote-page.c
+src/fm-settings.c
+src/fm-share.c
+src/fm-ui.c
+src/fm-util.c
+src/fm-window.c
