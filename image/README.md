@@ -16,6 +16,7 @@ same session, with `adb sideload`.
 | `zip/` | the installers that run in recovery: `system-install.sh`, `device-install.sh`, `vibeos-lib.sh` (shared), the updater-scripts |
 | `rootfs/` | what every system image starts with: `vibeos-growroot`, `vibeos-device-setup`, the SSH host-key and snakeoil-certificate units, `vibeos-usb-net` (USB network 172.16.42.1 on the gadget port: developer images only, `VIBEOS_DEV=1`) |
 | `kit/` | the home screen (`home-layout.json`, `90-rom-home.gschema.override`), the GNOME apps removed, the shell drop-in |
+| `s20/` | the Galaxy S20 FE's initramfs, built into its kernel: `init`, `build-initramfs.sh`, `reboot2.c` |
 | `src/` | `s10e-part` (the zips' GPT tool, `vibeos-part` in the zip) and `s10e-logo` (the S10e's power-on logo): `make -C image/src` |
 | `get-update-binary.sh` | LineageOS's updater out of a LineageOS build zip (not in this repository: it is LineageOS's) |
 | `test/` | `usbnet-test.sh`: `vibeos-usb-net` against a fake configfs on the host; `zip-test.sh`: the zips run by LineageOS's real updater on fake disks; `setup-test.sh`: the first boot's device setup in a chroot; `compare-rootfs.sh`: two system images' packages, /etc and /opt side by side; `qemu-boot.sh`: a system image booted in qemu (virt) up to the session; `device-audit.sh`: what a device folder would publish of the build machine, kernels decompressed first |
@@ -215,7 +216,11 @@ for everything that touches hardware (`test/init-case.py` runs one case). A norm
 died (a leftover boot-attempt marker or pstore record) must reach Mobian, the rescue entry must stay. On the S5e's
 image layout a list that holds and maps an ext4 file system that fits it must start; no list (`INIT_RECOVERY_TAIL`:
 the tail `zip-test.sh` kept), a list past the end of userdata and a list that maps no file system must stay, say to
-install the device zip, and never check, mount or grow anything.
+install the device zip, and never check, mount or grow anything. The S20 FE's initramfs is built into its kernel:
+`s20/build-initramfs.sh OUT` makes it (`s20/init`, static busybox, dropbear, kexec, e2fsprogs; no SSH key unless
+`DEV=1`), and `init-test.sh OUT` runs that tree: the normal entry must start the partition named `vibeos` with no
+shell, `r8s.debug` (U-Boot's "Rescue shell (USB)") must bring up telnet and SSH, and every start that stays must say
+how to get a shell rather than open one.
 
 `test/compare-rootfs.sh NEW.img REF.img OUTDIR` mounts two system images read-only and writes what differs to
 OUTDIR: the packages and their versions, the manually installed ones, `/etc` and `/opt/gnome-mobile` file by file

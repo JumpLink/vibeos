@@ -17,6 +17,14 @@
 #   stale    a list that holds, mapping blocks with no file system (the old file's, now Android's)
 #   Blocks no list vouches for may be Android's: these three must stay, say to install the device zip, and never
 #   check (e2fsck), mount or grow anything; outside must not even map
+# The Galaxy S20 FE's initramfs is built into its kernel: its tree (s20/build-initramfs.sh's OUT, with root/init) is
+# tested here, the same tree the kernel builds in. Its cases (s20/init; U-Boot's entries as in its environment):
+#   plain     VibeOS: it must start VibeOS's root (r8s.root=vibeos), and start no shell
+#   debugroot the same with r8s.debug: the shells start, then the root
+#   rescue    "Rescue shell (USB)", which passes r8s.debug: it must stay, with the shells up
+#   oldrescue that entry without r8s.debug (a U-Boot from before it): it must stay, start no shell, and say how to
+#             get one
+#   noroot    VibeOS with no partition named vibeos: it must stay, start no shell, and say so
 # Any other folder is skipped: the POCO's initramfs is initramfs-tools', the k22 ROM's byte for byte. Exit 1 on
 # any failure. Work files in TMPDIR.
 set -u
@@ -28,6 +36,10 @@ S10E_NORMAL='console=tty0 quiet splash loglevel=3 vt.global_cursor_default=0 sys
 S10E_RESCUE='console=tty0 loglevel=7 phy_exynos5_usbdrd.exynos9820_ss=0 panic=0 s10e.root=PARTLABEL=linux s10e.stay'
 S5E_NORMAL='console=tty0 fbcon=vc:2-63 logo.nologo vt.global_cursor_default=0 splash quiet loglevel=3 systemd.show_status=auto rd.udev.log_level=3 printk.devkmsg=on clk_ignore_unused regulator_ignore_unused fw_devlink.sync_state=timeout panic=10'
 S5E_RESCUE="$S5E_NORMAL gts4lv.stay gts4lv.debug"
+# the S20's U-Boot (ub13): r8s_args, and r8s_args_rescue with the public image's r8s.debug
+S20_NORMAL='console=tty0 quiet loglevel=3 fbcon=vc:2-63 vt.global_cursor_default=0 splash systemd.show_status=error rd.udev.log_level=3 udev.log_level=3 r8s.root=vibeos clk_ignore_unused pd_ignore_unused panic=5 printk.devkmsg=on s3c2410_wdt.tmr_atboot=1 s3c2410_wdt.tmr_margin=60 sysctl.kernel.panic_on_rcu_stall=1 spidev.bufsiz=131072 r8s.uboot'
+S20_OLDRESCUE='console=tty0 loglevel=7 ignore_loglevel fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused panic=5 printk.devkmsg=on s3c2410_wdt.tmr_atboot=1 s3c2410_wdt.tmr_margin=60 sysctl.kernel.panic_on_rcu_stall=1 r8s.uboot'
+S20_RESCUE="$S20_OLDRESCUE r8s.debug"
 
 # stubs DIR EXTRA...: DIR/stubs.sh (sourced before the init): mount binds fakedisk for an ext4 mount and logs the
 # rest; every command named after it only logs
@@ -106,6 +118,53 @@ prep_s5e() {	# DIR CASE
 	fi
 	case $2 in plain|imgok|nolist|outside|stale) ;; *) false ;; esac || printf 'gts4lv-init: up\ngts4lv-init: GTS4LV-SWITCHROOT\n' > "$1/sys/fs/pstore/console-ramoops-0"
 }
+prep_s20() {	# DIR CASE
+	# devmem (PMU registers), blockdev (the read-only guard), watchdog and killall (which would reach this user's
+	# own processes of those names) only log here
+	stubs "$1" resize2fs dumpe2fs telnetd dropbear udhcpd watchdog devmem blockdev killall
+	mkdir -p "$1/sys/class/udc/10e00000.dwc3" "$1/sys/class/block/sda32" "$1/fakedisk/sbin"
+	printf '#!/bin/sh\n' > "$1/fakedisk/sbin/init"; chmod 755 "$1/fakedisk/sbin/init"
+	echo "5.00 5.00" > "$1/proc/uptime"
+	printf 'MAJOR=8\nMINOR=32\nDEVNAME=sda32\nDEVTYPE=partition\nPARTN=32\nPARTNAME=userdata\n' > "$1/sys/class/block/sda32/uevent"
+	echo 1048576 > "$1/sys/class/block/sda32/size"
+	if [ $2 != noroot ]; then
+		mkdir -p "$1/sys/class/block/sda30"
+		printf 'MAJOR=8\nMINOR=30\nDEVNAME=sda30\nDEVTYPE=partition\nPARTN=30\nPARTNAME=vibeos\n' > "$1/sys/class/block/sda30/uevent"
+		echo 2097152 > "$1/sys/class/block/sda30/size"; : > "$1/dev/sda30"
+	fi
+}
+# verdict_s20 JSON CASE: plain and debugroot must start VibeOS, the rest stay; shells only with r8s.debug
+verdict_s20() {
+	python3 -I - "$1" "$2" <<'EOF'
+import json, sys
+d = json.load(open(sys.argv[1])); case = sys.argv[2]
+moved = [l for l in d['stublog'] if l.startswith('mount --move ') and '/newroot/' in l]
+booted = d.get('init_exit') is not None and moved and not d['left_running']
+stayed = d.get('init_exit') is None and d['running_at_end'] and any('staying' in l for l in d['kmsg'])
+shells = sorted({l.split()[0] for l in d['stublog'] if l.split()[:1] in (['telnetd'], ['dropbear'])})
+nologin = any('no login here' in l for l in d['kmsg'])
+last = (d['kmsg'] or ['(no kernel log)'])[-1].strip()
+want_boot = case in ('plain', 'debugroot')
+want_shells = case in ('debugroot', 'rescue')
+bad = []
+if want_boot and not booted:
+    bad.append('did not start VibeOS: ' + last)
+if not want_boot and not stayed:
+    bad.append('did not stay: ' + last)
+if want_shells and shells != ['dropbear', 'telnetd']:
+    bad.append('shells: %s, not telnetd and dropbear' % (' '.join(shells) or 'none'))
+if not want_shells and shells:
+    bad.append('started %s without r8s.debug' % ' '.join(shells))
+if not want_boot and not want_shells and not nologin:
+    bad.append('stays without a word of how to get a shell')
+if bad:
+    print('bad', '; '.join(bad))
+elif want_boot:
+    print('ok', '%sstarts VibeOS (%s)' % ('telnet + ssh up, then ' if want_shells else 'no shell, ', moved[-1]))
+else:
+    print('ok', 'stays, ' + ('telnet + ssh up' if want_shells else 'no shell, says how to get one'))
+EOF
+}
 # verdict JSON CASE: plain and marker must start Mobian, rescue must stay
 verdict() {
 	python3 -I - "$1" "$2" <<'EOF'
@@ -150,19 +209,30 @@ o = ps + -(-ks // ps) * ps
 open(sys.argv[2], 'wb').write(b[o:o + rs])
 EOF
 		gzip -dc < "$T/ramdisk" 2> /dev/null | (cd "$T/rd" && cpio -idm --quiet --no-absolute-filenames 2> /dev/null)
+	elif [ -f "$DD/root/init" ] && head -n 2 "$DD/root/init" | grep -q 'Galaxy S20 FE (r8s)'; then
+		DEV=s20
+		cp -a "$DD/root/." "$T/rd/"
 	else
-		echo "== $DD: no S10e or S5e initramfs, skipped"; rm -rf "${T:?}"; continue
+		echo "== $DD: no S10e, S5e or S20 initramfs, skipped"; rm -rf "${T:?}"; continue
 	fi
 	echo "== $DEV ($DD): /init $(sha256sum < "$T/rd/init" | cut -c1-16)"
 	[ -x "$T/rd/bin/busybox" ] || { bad "no busybox in the initramfs"; rm -rf "${T:?}"; continue; }
-	CASES="plain marker rescue"; [ $DEV = s10e ] || CASES="$CASES imgok nolist outside stale"
+	CASES="plain marker rescue"; [ $DEV != s5e ] || CASES="$CASES imgok nolist outside stale"
+	[ $DEV != s20 ] || CASES="plain debugroot rescue oldrescue noroot"
 	for c in $CASES; do
 		D=$T/$c; cp -a "$T/rd" "$D"
 		prep_$DEV "$D" $c
-		if [ $DEV = s10e ]; then CL=$S10E_NORMAL; [ $c != rescue ] || CL=$S10E_RESCUE; else CL=$S5E_NORMAL; [ $c != rescue ] || CL=$S5E_RESCUE; fi
-		unshare -rmn --propagation private python3 -I "$H/init-case.py" "$D" "$CL" 12 "$T/$c.json" 2> "$T/$c.err" ||
+		case $DEV-$c in
+		s10e-rescue) CL=$S10E_RESCUE ;; s10e-*) CL=$S10E_NORMAL ;;
+		s5e-rescue) CL=$S5E_RESCUE ;; s5e-*) CL=$S5E_NORMAL ;;
+		s20-debugroot) CL="$S20_NORMAL r8s.debug" ;; s20-rescue) CL=$S20_RESCUE ;; s20-oldrescue) CL=$S20_OLDRESCUE ;;
+		s20-*) CL=$S20_NORMAL ;;
+		esac
+		# the S20's init looks for its root partition for 10 s before it gives up (noroot)
+		WT=12; [ $DEV != s20 ] || WT=25
+		unshare -rmn --propagation private python3 -I "$H/init-case.py" "$D" "$CL" $WT "$T/$c.json" 2> "$T/$c.err" ||
 			{ bad "$c: the case did not run: $(tail -n 2 "$T/$c.err" | tr '\n' ' ')"; continue; }
-		R=$(verdict "$T/$c.json" $c)
+		if [ $DEV = s20 ]; then R=$(verdict_s20 "$T/$c.json" $c); else R=$(verdict "$T/$c.json" $c); fi
 		if [ "${R%% *}" = ok ]; then ok "$c: ${R#* }"; else bad "$c: ${R#* }"; fi
 	done
 	rm -rf "${T:?}"
