@@ -130,6 +130,9 @@ static const DictateFile PIPER_IT[] = {
                        "aa7086b3b6522f5a5d8cadb11cc5c8b3fde98784/src/tiny_voca_ru/frontend/data/"
 
 /* the models last, the voice's own last of all (dictate-voice.h finds it when all are there) */
+static const char *const DENIS[] = { "voices/ru/ru_RU-denis-medium.onnx", "voices/ru/ru_RU-denis-medium.onnx.json",
+                                     NULL };
+
 static const DictateFile TINY_VOCA_RU[] = {
   { "model.json", 930, "e7697b94c2b6632c2b5d574fb6a02b00ea145dc3633717c4693f3b659174e751" },
   { "NOTICE", 1167, "b4aa174906ece3851ad63e42f219e00ea289a30ffc37b8d11b812de15b60e3dd", TINY_VOCA "/NOTICE" },
@@ -171,10 +174,10 @@ static const DictatePack PACKS[] = {
               "fr/fr_FR/siwis/medium", PIPER_FR),
   PIPER_PACK ("it", "Piper voice Paola", "MIT; recordings CC0; trained from Hi-Fi TTS, CC BY 4.0",
               "it/it_IT/paola/medium", PIPER_IT),
-  /* Russian's voice was Piper's Denis (ru/ru_RU/denis/medium): its files stay where they were downloaded, unused */
+  /* Russian's voice was Piper's Denis (ru/ru_RU/denis/medium), unused now: its files go once this one is there */
   { "ru", DICTATE_PACK_VOICE, 0, "tiny-voca-ru voice, with ruaccent stress data",
     "Apache-2.0; stress data MIT; trained on synthetic speech (Qwen3-TTS), CC BY 4.0", TINY_VOCA "/onnx",
-    "voices/ru/tiny-voca", NULL, TINY_VOCA_RU, "stress-" },
+    "voices/ru/tiny-voca", NULL, TINY_VOCA_RU, "stress-", DENIS },
 };
 
 const DictatePack *
@@ -777,6 +780,32 @@ install_voice (const DictatePack *pack, const char *from, const char *dest, GErr
   return TRUE;
 }
 
+/* the files of the voice `pack` replaces, under `root`, removed (the model first, as a voice is found by it): TRUE
+ * when none is left; with no `error` asked for, one that cannot go is only told of, and stays */
+static gboolean
+remove_replaced (const DictatePack *pack, const char *root, GError **error)
+{
+  for (guint last = 0; last < 2; last++)
+    for (const char *const *old = pack->replaces; old && *old; old++)
+      if (g_str_has_suffix (*old, ".onnx") == (last == 0))
+        {
+          g_autofree char *path = g_build_filename (root, *old, NULL);
+
+          if (unlink (path) == 0)
+            g_debug ("download: %s, replaced, removed", path);
+          else if (errno != ENOENT)
+            {
+              if (!error)
+                {
+                  g_message ("download: %s, replaced, stays: %s", path, g_strerror (errno));
+                  continue;
+                }
+              return install_error (error, path);
+            }
+        }
+  return TRUE;
+}
+
 static void
 install_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancellable)
 {
@@ -819,7 +848,7 @@ install_thread (GTask *task, gpointer source, gpointer data, GCancellable *cance
       gboolean ok;
 
       if (pack->kind == DICTATE_PACK_VOICE)
-        ok = install_voice (pack, from, dest, &error);
+        ok = install_voice (pack, from, dest, &error) && remove_replaced (pack, install->root, NULL);
       else if (pack->archive_top)
         {
           g_autofree char *top = g_build_filename (from, "unpacked", pack->archive_top, NULL);
@@ -1331,6 +1360,11 @@ dictate_download_downloaded_size (const char *language)
               g_autofree char *path = g_build_filename (dest, made->pdata[i], NULL);
               size += size_at (AT_FDCWD, path);
             }
+          for (const char *const *old = pack->replaces; old && *old; old++)
+            {
+              g_autofree char *path = g_build_filename (root, *old, NULL);
+              size += size_at (AT_FDCWD, path);
+            }
         }
     }
   return size;
@@ -1390,6 +1424,8 @@ dictate_download_remove (const char *language, GError **error)
       /* its directory, if nothing else is in it */
       if (rmdir (dest) == 0)
         g_debug ("download: %s removed", dest);
+      if (!remove_replaced (voice, root, error))
+        return FALSE;
     }
   return TRUE;
 }
