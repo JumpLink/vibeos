@@ -1152,8 +1152,14 @@ on_talk_refused (DictateTalk *talk, guint reason, double score, double needed, c
       card_hint (self);
       return;
     }
+  /* nothing more comes for this turn: what it showed so far goes */
   self->ex_refused = TRUE;
   self->refusals++;
+  self->ex_choices = self->ex_opened = FALSE;
+  g_clear_pointer (&self->ex_suggestions, g_strfreev);
+  g_clear_pointer (&self->ex_person, g_free);
+  dictate_stage_set_middle (DICTATE_STAGE (self->stage), NULL);
+  dictate_stage_set_written (DICTATE_STAGE (self->stage), NULL);
   g_free (self->ex_note);
   self->ex_note = g_strdup (_("Not carried out"));
   g_string_assign (self->ex_reply, line ? line : "");
@@ -1996,7 +2002,7 @@ vibe_show (Window *self)
       return;
     }
   dictate_stage_clear_buttons (stage);
-  if (self->ex_refused && self->refusals >= 3)
+  if (self->ex_refused && self->refusals >= 3 && dictate_voice_match_ready ())
     {
       /* G3: three in a row; the voice may have changed (a cold, another microphone) */
       dictate_orb_set_look (orb, DICTATE_ORB_REFUSED, NULL);

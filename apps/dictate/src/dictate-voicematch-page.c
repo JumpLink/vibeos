@@ -36,7 +36,7 @@ dictate_voicematch_summary (GSettings *settings)
   int strictness = g_settings_get_int (settings, "voice-match-strictness");
 
   if (!dictate_voice_match_enrolled ())
-    return g_strdup (_("Off · no voice sample yet"));
+    return g_strdup (dictate_voice_match_ready () ? _("Off · no voice sample yet") : _("Not on this phone yet"));
   if (!g_settings_get_boolean (settings, "voice-match"))
     return g_strdup (_("Off · voice sample saved"));
   /* TRANSLATORS: Settings › Voice match's summary; the %s is how close: lenient, balanced or strict */
@@ -291,16 +291,34 @@ static void
 build (Page *p)
 {
   GtkWidget *child, *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+  gboolean coming;
 
   while ((child = gtk_widget_get_first_child (p->body)))
     gtk_box_remove (GTK_BOX (p->body), child);
   p->only = p->strict_label = p->strict_needed = p->strict_note = NULL;
   p->strictness = NULL;
 
+  /* the voice check does not run on this phone yet: nothing to record a sample for */
+  coming = !dictate_voice_match_enrolled () && !dictate_voice_match_ready ();
   gtk_box_append (GTK_BOX (box),
-                  label_new ("dictate-vm-intro", _("Vibe learns your voice and won't carry out commands from anyone "
-                                                   "who doesn't sound like you. The sample never leaves this phone.")));
-  if (!dictate_voice_match_enrolled ())
+                  label_new ("dictate-vm-intro",
+                             coming ? _("Vibe can't tell voices apart on this phone yet, so it answers anyone who "
+                                        "speaks to it.")
+                                    : _("Vibe learns your voice and won't carry out commands from anyone who doesn't "
+                                        "sound like you. The sample never leaves this phone.")));
+  if (coming)
+    {
+      GtkWidget *card = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+
+      gtk_widget_add_css_class (card, "dictate-vm-card");
+      gtk_box_append (GTK_BOX (card), label_new ("dictate-vm-card-title", _("Voice match is coming")));
+      gtk_box_append (GTK_BOX (card), label_new ("dictate-vm-card-sub",
+                                                 _("Then Vibe learns your voice and won't carry out commands from "
+                                                   "anyone who doesn't sound like you. Recording your voice will be "
+                                                   "offered here.")));
+      gtk_box_append (GTK_BOX (box), card);
+    }
+  else if (!dictate_voice_match_enrolled ())
     {
       GtkWidget *card = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *button;
       guint n = DICTATE_VOICE_MATCH_PHRASES;

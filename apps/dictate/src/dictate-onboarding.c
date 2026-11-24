@@ -727,8 +727,9 @@ show_step (Intro *in)
 static void
 go (Intro *in, Step step)
 {
-  /* no sample can be recorded with no microphone; one recorded already is kept */
-  if (step == VOICE && (!can_listen (in) || dictate_voice_match_enrolled ()))
+  /* no sample can be recorded with no microphone, or before Voice match runs on this phone; one recorded already is
+   * kept */
+  if (step == VOICE && (!can_listen (in) || !dictate_voice_match_ready () || dictate_voice_match_enrolled ()))
     step = in->step < VOICE ? READY : ACCESS;
   if (in->listening)
     {
