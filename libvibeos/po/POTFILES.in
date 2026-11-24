@@ -1,0 +1,7 @@
+# the files with translatable strings
+vibeos-about.c
+vibeos-menu.c
+vibeos-search.c
+vibeos-sheet.c
+vibeos-time-picker.c
+vibeos-top-bar.c

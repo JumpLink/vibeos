@@ -1,0 +1,100 @@
+# Spanish translations of libvibeos-1.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: libvibeos-1\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: vibeos-about.c
+msgid "Developed by"
+msgstr ""
+
+#. TRANSLATORS: keep the link's markup as it is
+#: vibeos-about.c
+msgid ""
+"The VibeOS Project\n"
+"<a href=\"https://github.com/pulpoff/vibeos\">github.com/pulpoff/vibeos</a>"
+msgstr ""
+
+#: vibeos-about.c
+msgid "Built on"
+msgstr ""
+
+#: vibeos-about.c
+msgid "Debian, GNOME and GTK."
+msgstr ""
+
+#. TRANSLATORS: keep the markup (the link and the line breaks) as it is
+#: vibeos-about.c
+msgid ""
+"© 2026 pulpoff\n"
+"\n"
+"VibeOS is free software under the <a href=\"https://github.com/pulpoff/"
+"vibeos/blob/main/LICENSE\">MIT License</a>. It comes with absolutely no "
+"warranty.\n"
+"\n"
+"Some of its icons and images come from the Android Open Source Project and "
+"LineageOS, under the Apache License 2.0, and so do many of its translations."
+msgstr ""
+
+#: vibeos-about.c
+msgid "Credits"
+msgstr ""
+
+#: vibeos-about.c
+msgid "Legal"
+msgstr ""
+
+# android: Contacts header_website_entry (other app, several translations, short)
+#: vibeos-about.c
+msgid "Website"
+msgstr "Sitio web"
+
+#: vibeos-about.c
+msgid "Report an Issue"
+msgstr ""
+
+#. TRANSLATORS: the About sheet's name for a screen reader; %s is the app's name
+#: vibeos-about.c
+#, c-format
+msgid "About %s"
+msgstr ""
+
+#: vibeos-menu.c
+msgid "About"
+msgstr ""
+
+# android: Framework input_method_nav_back_button_desc (several translations, short)
+#: vibeos-search.c vibeos-top-bar.c
+msgid "Back"
+msgstr "Atrás"
+
+# android: Settings proxy_clear_text (short)
+#: vibeos-search.c
+msgid "Clear"
+msgstr "Borrar"
+
+# android: Framework aerr_close
+#: vibeos-sheet.c vibeos-top-bar.c
+msgid "Close"
+msgstr "Cerrar"
+
+# android: Framework cancel
+#: vibeos-time-picker.c
+msgid "Cancel"
+msgstr "Cancelar"
+
+# android: Framework httpErrorOk (several translations, short)
+#: vibeos-time-picker.c
+msgid "OK"
+msgstr "Aceptar"

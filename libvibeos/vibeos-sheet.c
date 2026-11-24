@@ -8,6 +8,8 @@
  * The pages are laid out where they rest; the rise only moves the picture (a frame's translation in the snapshot),
  * so a frame of it lays nothing out. The slide moves the page it slides, as allocated. */
 #include "vibeos-sheet.h"
+
+#include <glib/gi18n-lib.h>
 #include "vibeos-pressable.h"
 #include "vibeos-style.h"
 #include "vibeos-top-bar.h"
@@ -432,7 +434,7 @@ page_new (VibeosSheet *self, const char *title, gboolean back, GtkWidget *conten
   /* the theme's colour as it is when it draws: taken once, a sheet open while an app turned dark kept the light
    * circle (and a light one, the dark circle) under an X in the new theme's colour */
   vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (close), VIBEOS_SURFACE_CONTAINER_HIGHEST, FALSE);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (close), GTK_ACCESSIBLE_PROPERTY_LABEL, "Close", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (close), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Close"), -1);
   g_signal_connect (close, "clicked", G_CALLBACK (on_close_clicked), self);
   gtk_box_append (GTK_BOX (page), bar);
   if (content)

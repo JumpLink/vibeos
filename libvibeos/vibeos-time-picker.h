@@ -16,6 +16,8 @@
 
 #include <gtk/gtk.h>
 
+#include "vibeos-locale.h"
+
 G_BEGIN_DECLS
 
 #define VIBEOS_TYPE_TIME_PICKER (vibeos_time_picker_get_type ())
@@ -29,8 +31,5 @@ void       vibeos_time_picker_get_time (VibeosTimePicker *self, int *hour, int *
 typedef void (*VibeosTimeChosen) (int hour, int minute, gpointer data);
 void       vibeos_time_picker_dialog   (GtkWidget *parent, int hour, int minute, VibeosTimeChosen chosen, gpointer data,
                                      GDestroyNotify destroy);
-
-/* the 24-hour setting the system clock uses (org.gnome.desktop.interface clock-format) */
-gboolean   vibeos_clock_uses_24h       (void);
 
 G_END_DECLS

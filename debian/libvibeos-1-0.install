@@ -1,2 +1,3 @@
 usr/lib/*/libvibeos-1.so.*
+usr/share/locale/*/LC_MESSAGES/libvibeos-1.mo
 usr/share/glib-2.0/schemas/vibeos.Interface.gschema.xml

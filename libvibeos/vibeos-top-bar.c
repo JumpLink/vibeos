@@ -1,5 +1,7 @@
 /* VibeosTopBar: see vibeos-top-bar.h. */
 #include "vibeos-top-bar.h"
+
+#include <glib/gi18n-lib.h>
 #include "vibeos-layout.h"
 #include "vibeos-pressable.h"
 #include "vibeos-style.h"
@@ -387,12 +389,12 @@ vibeos_top_bar_init (VibeosTopBar *self)
   self->back = vibeos_pressable_new (arrow);
   gtk_widget_add_css_class (self->back, "vibeos-top-bar-back");
   vibeos_pressable_set_fill_role (VIBEOS_PRESSABLE (self->back), VIBEOS_SURFACE_CONTAINER_HIGHEST, FALSE);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_LABEL, "Back", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Back"), -1);
   g_signal_connect (self->back, "clicked", G_CALLBACK (on_back_clicked), self);
   gtk_widget_set_parent (self->back, widget);
 
   self->close = vibeos_icon_button_new ("window-close-symbolic");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->close), GTK_ACCESSIBLE_PROPERTY_LABEL, "Close", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->close), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Close"), -1);
   g_signal_connect (self->close, "clicked", G_CALLBACK (on_close_clicked), self);
   gtk_widget_set_parent (self->close, widget);
 
