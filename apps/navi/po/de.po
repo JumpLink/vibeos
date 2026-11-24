@@ -232,7 +232,7 @@ msgstr "+%d Min."
 
 #: src/navi-panels.c
 msgid "Getting ready…"
-msgstr "Wird vorbereitet …"
+msgstr "Wird vorbereitet…"
 
 #: src/navi-panels.c
 msgid "Say where to go"
@@ -318,7 +318,7 @@ msgstr "Aus"
 
 #: src/navi-panels.c
 msgid "As the system"
-msgstr "Wie das System"
+msgstr "Systemstandard"
 
 #: src/navi-panels.c
 msgid "Only at night"
@@ -618,11 +618,11 @@ msgstr "Fertig"
 
 #: src/navi-panels.c
 msgid "Your destination is on the right"
-msgstr "Ihr Ziel befindet sich rechts"
+msgstr "Dein Ziel ist rechts"
 
 #: src/navi-panels.c
 msgid "Your destination is on the left"
-msgstr "Ihr Ziel befindet sich links"
+msgstr "Dein Ziel ist links"
 
 #: src/navi-panels.c
 msgid "Lanes"
@@ -654,7 +654,7 @@ msgstr "Deine Arbeit"
 
 #: src/navi-panels.c
 msgid "Finding the best routes…"
-msgstr "Die besten Routen werden gesucht …"
+msgstr "Die besten Routen werden gesucht…"
 
 #: src/navi-panels.c
 msgid "The map's centre"
@@ -662,11 +662,11 @@ msgstr "Kartenmitte"
 
 #: src/navi-panels.c
 msgid "Finding a new route…"
-msgstr "Neue Route wird gesucht …"
+msgstr "Neue Route wird gesucht…"
 
 #: src/navi-panels.c
 msgid "No route from here yet. Trying again…"
-msgstr "Von hier noch keine Route. Neuer Versuch …"
+msgstr "Von hier noch keine Route. Neuer Versuch…"
 
 #: src/navi-panels.c
 msgid "Your destination"
@@ -715,7 +715,7 @@ msgstr "Jetzt losfahren: %s"
 
 #: src/navi-plan.c
 msgid "Tap for the routes from where you are."
-msgstr "Tippen für die Routen von Ihrem Standort aus."
+msgstr "Tippe für die Routen von deinem Standort aus."
 
 #. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"
 #: src/navi-plan.c
@@ -844,11 +844,11 @@ msgstr "%s von %s"
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "Unpacking and installing…"
-msgstr "Entpacken und installieren …"
+msgstr "Wird entpackt und installiert…"
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "Installing…"
-msgstr "Installieren …"
+msgstr "Wird installiert…"
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "Voice"
@@ -902,18 +902,19 @@ msgstr "Um %s zu sprechen, braucht %s dies auf dem Telefon:"
 #, c-format
 msgid "To hear and speak %s, Agent needs these on the phone:"
 msgstr ""
+"Um %s zu hören und zu sprechen, braucht Agent Folgendes auf dem Telefon:"
 
 #. TRANSLATORS: %s is the language's name for itself (Deutsch)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "To hear %s, Dictate needs these on the phone:"
-msgstr ""
+msgstr "Um %s zu hören, braucht Dictate Folgendes auf dem Telefon:"
 
 #. TRANSLATORS: under it; %s is its Debian package (vibeos-dictate-vosk)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "the %s package from the VibeOS archive"
-msgstr ""
+msgstr "das Paket %s aus dem VibeOS-Archiv"
 
 #. TRANSLATORS: under what is downloaded: what it is, its licence and where it comes from
 #: ../dictate/src/dictate-download-dialog.c
@@ -940,6 +941,8 @@ msgid ""
 "%s is heard by %s, which is not installed on this phone. Install the %s "
 "package, then choose %s again."
 msgstr ""
+"%s wird von %s erkannt, das auf diesem Telefon nicht installiert ist. "
+"Installiere das Paket %s und wähle dann noch einmal %s."
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "There is nothing to download for it."
