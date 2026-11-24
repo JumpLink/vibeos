@@ -31,7 +31,8 @@ void           dictate_engine_set_turns    (DictateEngine *self, gboolean turns)
  * it ends as it would have: at the speaker's next pause, at once if they have paused already, and with nothing said
  * yet, after the usual wait from then */
 void           dictate_engine_set_held     (DictateEngine *self, gboolean held);
-/* FALSE, with the reason for the user, when the language's model or its recogniser is not installed */
+/* FALSE, with the reason for the user (unless `reason` is NULL), when the language's model or its recogniser is not
+ * installed. The language is the one last set (dictate_engine_set_language ()) */
 gboolean       dictate_engine_available    (DictateEngine *self, char **reason);
 void           dictate_engine_start        (DictateEngine *self);
 /* the microphone closes at once; the words already heard still come, then the state goes back to idle */

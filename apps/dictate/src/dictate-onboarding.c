@@ -173,9 +173,12 @@ on_talk_state (DictateTalk *talk, Intro *in)
     }
 }
 
+/* the introduction's language has a speech model: its engine is asked in that language, which it is given here, as
+ * listen () gives it before a start */
 static gboolean
 can_listen (Intro *in)
 {
+  dictate_engine_set_language (in->engine, in->language);
   return dictate_engine_available (in->engine, NULL);
 }
 

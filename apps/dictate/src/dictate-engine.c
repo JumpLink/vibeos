@@ -114,6 +114,8 @@ dictate_engine_available (DictateEngine *self, char **reason)
     {
       g_autofree char *package = language ? g_strconcat ("vibeos-dictate-", language->code, NULL) : NULL;
 
+      if (!reason)
+        return FALSE;
       if (language)
         /* TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second the package's name
          * (vibeos-dictate-de) */
@@ -127,9 +129,10 @@ dictate_engine_available (DictateEngine *self, char **reason)
   recogniser = dictate_recogniser_class (model->kind);
   if (!recogniser->installed ())
     {
-      /* TRANSLATORS: %s is the package's name (vibeos-dictate-moonshine) */
-      *reason = g_strdup_printf (_("Speech recognition is not installed. Install the %s package."),
-                                 recogniser->package);
+      if (reason)
+        /* TRANSLATORS: %s is the package's name (vibeos-dictate-moonshine) */
+        *reason = g_strdup_printf (_("Speech recognition is not installed. Install the %s package."),
+                                   recogniser->package);
       return FALSE;
     }
   return TRUE;
