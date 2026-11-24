@@ -22,11 +22,11 @@ msgstr "Calculatrice"
 
 #: data/vibeos.Calculator.desktop.in
 msgid "Exact arithmetic, with its history"
-msgstr ""
+msgstr "Des calculs exacts, avec leur historique"
 
 #: data/vibeos.Calculator.desktop.in
 msgid "Calculator;Math;Arithmetic;"
-msgstr ""
+msgstr "Calculatrice;Maths;Mathématiques;Arithmétique;Calcul;"
 
 # android: Framework action_menu_overflow_description (several translations, short)
 #: src/calc-display.c src/calc-history.c
@@ -60,8 +60,8 @@ msgstr[1] "Il y a %d jours"
 #, c-format
 msgid "In %d day"
 msgid_plural "In %d days"
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Dans %d jour"
+msgstr[1] "Dans %d jours"
 
 # android: ExactCalculator no_history
 #: src/calc-history.c
@@ -161,11 +161,11 @@ msgid ""
 "(com.hp.creals, as Android's Calculator uses them): copyright 1999 Silicon "
 "Graphics, Inc., 2001-2004 Hewlett-Packard Development Company, L.P., under "
 "its own permissive licence (Open source licenses in the ⋮ menu)."
-msgstr ""
+msgstr "L'arithmétique réelle exacte repose sur les réels constructifs de Hans-J. Boehm (com.hp.creals, comme dans la Calculatrice d'Android) : copyright 1999 Silicon Graphics, Inc., 2001-2004 Hewlett-Packard Development Company, L.P., sous sa propre licence permissive (Licences Open Source dans le menu ⋮)."
 
 #: src/calc-window.c
 msgid "About"
-msgstr ""
+msgstr "À propos"
 
 # android: ExactCalculator desc_del
 #: src/calc-window.c
