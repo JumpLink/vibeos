@@ -25,6 +25,8 @@ G_DECLARE_FINAL_TYPE (InstView, inst_view, INST, VIEW, GtkWidget)
 
 GtkWidget *inst_view_new     (InstJob *job, InstViewMode mode);
 InstJob   *inst_view_get_job (InstView *self);
+/* a page's `title` (its top bar's large title) at the top of what scrolls; returns the scrolling's adjustment */
+GtkAdjustment *inst_view_put_title (InstView *self, GtkWidget *title);
 
 /* the app's icon at `size` px: the job's (a theme name, a file, the bytes from the .deb) or the generic package */
 GtkWidget *inst_view_icon_new (GIcon *icon, int size);

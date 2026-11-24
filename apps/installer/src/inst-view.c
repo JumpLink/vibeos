@@ -769,6 +769,14 @@ inst_view_init (InstView *self)
                                   GTK_ORIENTATION_VERTICAL);
 }
 
+GtkAdjustment *
+inst_view_put_title (InstView *self, GtkWidget *title)
+{
+  g_return_val_if_fail (self->mode == INST_VIEW_PAGE, NULL);
+  gtk_box_prepend (GTK_BOX (gtk_widget_get_parent (self->content)), title);
+  return spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (self->scroll));
+}
+
 GtkWidget *
 inst_view_new (InstJob *job, InstViewMode mode)
 {
@@ -783,8 +791,12 @@ inst_view_new (InstJob *job, InstViewMode mode)
   gtk_widget_add_css_class (self->actions, "inst-actions");
   if (mode == INST_VIEW_PAGE)
     {
+      GtkWidget *column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+
+      /* the content in a column of its own, which a page's large title can go at the top of (inst_view_put_title) */
+      gtk_box_append (GTK_BOX (column), self->content);
       self->scroll = spongy_scroll_view_new ();
-      spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroll), self->content);
+      spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (self->scroll), column);
       gtk_widget_set_vexpand (self->scroll, TRUE);
       gtk_widget_set_parent (self->scroll, GTK_WIDGET (self));
       /* the bar under the content, full width, with the buttons at its end */

@@ -191,6 +191,19 @@ bar_back (VibeosTopBar *bar, gpointer data)
     gtk_window_close (GTK_WINDOW (root));
 }
 
+/* the vertical adjustment of a scroller ns_scroller_new made */
+static GtkAdjustment *
+scroller_adjustment (GtkWidget *sc)
+{
+#ifdef HAVE_SPONGY
+  return spongy_scroll_view_get_vadjustment (SPONGY_SCROLL_VIEW (sc));
+#else
+  return gtk_scrolled_window_get_vadjustment (GTK_SCROLLED_WINDOW (sc));
+#endif
+}
+
+/* A page that scrolls has Android Settings' collapsing title: large at the top of the content, then, scrolled under
+ * the bar, the bar's own. One that does not (a PIN's keypad) keeps the small title. */
 static NsPage *
 page_with (const char *title, GtkWidget *child, gboolean scroll)
 {
@@ -201,7 +214,15 @@ page_with (const char *title, GtkWidget *child, gboolean scroll)
   vibeos_top_bar_set_back (VIBEOS_TOP_BAR (bar), TRUE);
   g_signal_connect (bar, "back", G_CALLBACK (bar_back), NULL);
   gtk_box_append (GTK_BOX (page), bar);
-  GtkWidget *sc = scroll ? ns_scroller_new (child) : child;
+  GtkWidget *sc = child;
+  if (scroll) {
+    GtkWidget *content = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+    gtk_box_append (GTK_BOX (content), vibeos_top_bar_get_large_title (VIBEOS_TOP_BAR (bar)));
+    gtk_box_append (GTK_BOX (content), child);
+    sc = ns_scroller_new (content);
+    vibeos_top_bar_set_large (VIBEOS_TOP_BAR (bar), TRUE);
+    vibeos_top_bar_set_scroll (VIBEOS_TOP_BAR (bar), scroller_adjustment (sc));
+  }
   gtk_widget_set_vexpand (sc, TRUE);
   gtk_box_append (GTK_BOX (page), sc);
   g_object_set_data (G_OBJECT (page), "ns-is-page", GINT_TO_POINTER (1));
