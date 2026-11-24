@@ -1736,6 +1736,18 @@ tool_place_search (JsonParser *parser, const char *query, const char *language, 
   features = root && json_object_has_member (root, "features")
              && JSON_NODE_HOLDS_ARRAY (json_object_get_member (root, "features"))
              ? json_object_get_array_member (root, "features") : NULL;
+  /* Navi covers no place in Russia, and neither does Vibe: those are left out, as Navi's search leaves them out */
+  for (guint i = features ? json_array_get_length (features) : 0; i > 0; i--)
+    {
+      JsonNode *node = json_array_get_element (features, i - 1);
+      JsonObject *f = JSON_NODE_HOLDS_OBJECT (node) ? json_node_get_object (node) : NULL;
+      JsonObject *props = f && json_object_has_member (f, "properties")
+                          && JSON_NODE_HOLDS_OBJECT (json_object_get_member (f, "properties"))
+                          ? json_object_get_object_member (f, "properties") : NULL;
+
+      if (props && !g_ascii_strcasecmp (json_object_get_string_member_with_default (props, "countrycode", ""), "RU"))
+        json_array_remove_element (features, i - 1);
+    }
   return features && json_array_get_length (features) ? features : NULL;
 }
 

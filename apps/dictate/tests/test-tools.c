@@ -526,6 +526,9 @@ on_photon (SoupServer *server, SoupServerMessage *msg, const char *path, GHashTa
     answer = "{\"features\":[" FEATURE ("N", "88", "Karachi Cafe") "]}";
   else if (q && strstr (q, "Busy"))
     answer = "{\"features\":[" FEATURE ("N", "99", "Busy Shop") "]}";
+  else if (q && strstr (q, "Moscow"))
+    answer = "{\"features\":[{\"type\":\"Feature\",\"properties\":{\"osm_type\":\"N\",\"osm_id\":5,"
+             "\"name\":\"Moscow Museum\",\"city\":\"Moscow\",\"countrycode\":\"RU\"}}]}";
 #undef FEATURE
   soup_server_message_set_status (msg, 200, NULL);
   soup_server_message_set_response (msg, "application/json", SOUP_MEMORY_STATIC, answer, strlen (answer));
@@ -651,7 +654,7 @@ test_place_hours (void)
   Search s = { 0 };
   GThread *thread;
   g_autofree char *base = NULL, *url = NULL, *bode = NULL, *closed = NULL, *karachi = NULL, *kiosk = NULL;
-  g_autofree char *nowhere = NULL, *busy = NULL, *empty = NULL;
+  g_autofree char *nowhere = NULL, *moscow = NULL, *busy = NULL, *empty = NULL;
 
   g_mutex_init (&s.lock);
   g_cond_init (&s.ready);
@@ -688,6 +691,8 @@ test_place_hours (void)
   g_assert_nonnull (strstr (kiosk, "web_search"));
   nowhere = dictate_tools_run ("get_place_hours", "{\"place\":\"Nowhere\"}", &ctx, 10000);
   g_assert_nonnull (strstr (nowhere, "No place called"));
+  moscow = dictate_tools_run ("get_place_hours", "{\"place\":\"Moscow Museum\"}", &ctx, 10000);
+  g_assert_nonnull (strstr (moscow, "No place called"));
   busy = dictate_tools_run ("get_place_hours", "{\"place\":\"Busy Shop\"}", &ctx, 10000);
   g_assert_nonnull (strstr (busy, "Too many questions"));
   empty = dictate_tools_run ("get_place_hours", "{}", &ctx, 10000);
