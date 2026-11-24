@@ -25,6 +25,12 @@ if gjs.found() and dbus_run_session.found()
   test('power-keys', find_program('tests/power-keys.sh'), args: [meson.current_source_dir()], timeout: 120)
 endif
 
+# the Bluetooth agent, trust after pairing and reconnection against a BlueZ stand-in (tests/bt-agent.sh); needs gjs and a
+# D-Bus daemon
+if gjs.found() and dbus_run_session.found()
+  test('bt-agent', find_program('tests/bt-agent.sh'), args: [meson.current_source_dir()], timeout: 120)
+endif
+
 # Home's rule and a window asking for attention, with GNOME Shell's stand-ins (tests/home-attention.sh); needs gjs
 if gjs.found()
   test('home-attention', find_program('tests/home-attention.sh'), args: [meson.current_source_dir()], timeout: 60)

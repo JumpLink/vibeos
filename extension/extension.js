@@ -5,6 +5,7 @@ import GLib from 'gi://GLib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
+import {Bluetooth} from './bluetooth.js';
 import {ScreenshotChord} from './chord.js';
 import {CollectWhenStill} from './gc.js';
 import {Cutout, CutoutBand} from './cutout.js';
@@ -25,6 +26,7 @@ import {NoWindowMipmaps} from './mipmaps.js';
 import {ModalWatch} from './modalwatch.js';
 import {AndroidKeyboard} from './osk.js';
 import {TouchFocusKeyboard} from './oskfocus.js';
+import {PairingUI} from './pairdialog.js';
 import {overWindows, restoreUnredirect} from './scanout.js';
 import {Power} from './power.js';
 import {PowerMenu} from './powermenu.js';
@@ -195,6 +197,16 @@ export default class VibeosExtension extends Extension {
         });
         Main.layoutManager.addTopChrome(this._powerMenu.layer);
         overWindows(this._powerMenu.layer);
+        // Bluetooth as on a phone: the system's pairing agent, whose questions are dialogs (behind a notification
+        // while locked), trust for what was paired, and the paired car or headset connected again by itself
+        // (bluetooth.js, pairdialog.js). Without it the rest still comes up.
+        try {
+            this._pairing = new PairingUI(this._keyguard);
+            this._bluetooth = new Bluetooth({ui: this._pairing});
+        } catch (e) {
+            logError(e, 'vibeos: Bluetooth');
+            this._destroyBluetooth();
+        }
         // the screen off, the AOD or black, over everything: the power key, the double tap, the timeout
         this._power = new Power(this._keyguard, this._state, this._powerMenu, this._chord);
         Main.layoutManager.addTopChrome(this._power.layer);
@@ -213,7 +225,8 @@ export default class VibeosExtension extends Extension {
         // a modal grab still up with the shell at rest on the home screen goes to the journal
         const nav = this._service.navigation;
         this._modalWatch = new ModalWatch(() => this._power.interactive && !this._keyguard.showing &&
-            !nav.recentsShown && !this._shade?.isOpen && !this._powerMenu?.showing && nav._atHome());
+            !nav.recentsShown && !this._shade?.isOpen && !this._powerMenu?.showing && !this._pairing?.showing &&
+            nav._atHome());
         // ... and over them all, the end of uiGroup
         this._endMark = new EndMark();
         // GNOME's on-screen keyboard's keys tick under the finger (paused while VibeOS's keyboard is in use)
@@ -261,6 +274,21 @@ export default class VibeosExtension extends Extension {
         this._startupHold = null;
     }
 
+    _destroyBluetooth() {
+        try {
+            this._bluetooth?.destroy();
+        } catch (e) {
+            logError(e, 'vibeos: Bluetooth');
+        }
+        this._bluetooth = null;
+        try {
+            this._pairing?.destroy();
+        } catch (e) {
+            logError(e, 'vibeos: Bluetooth');
+        }
+        this._pairing = null;
+    }
+
     disable() {
         this._frameLog?.destroy();
         this._frameLog = null;
@@ -297,6 +325,7 @@ export default class VibeosExtension extends Extension {
         this._modalWatch = null;
         this._power?.destroy();
         this._power = null;
+        this._destroyBluetooth();
         this._powerMenu?.destroy();
         this._powerMenu = null;
         this._volume?.destroy();
