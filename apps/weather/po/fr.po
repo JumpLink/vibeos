@@ -17,90 +17,89 @@ msgstr ""
 
 #: data/vibeos.Weather.desktop.in src/main.c
 msgid "Weather"
-msgstr ""
+msgstr "Météo"
 
 #: data/vibeos.Weather.desktop.in
 msgid "The weather where you are"
-msgstr ""
+msgstr "La météo là où vous êtes"
 
 #: data/vibeos.Weather.desktop.in
 msgid "forecast;temperature;rain;"
-msgstr ""
+msgstr "prévisions;température;pluie;météo;"
 
-# android: Settings proxy_clear_text (short)
 #. TRANSLATORS: the sky, as the page names it under the temperature
 #: src/main.c
 msgctxt "sky"
 msgid "Clear"
-msgstr "Effacer"
+msgstr "Dégagé"
 
 #: src/main.c
 msgid "Mostly clear"
-msgstr ""
+msgstr "Généralement dégagé"
 
 #: src/main.c
 msgid "Partly cloudy"
-msgstr ""
+msgstr "Partiellement nuageux"
 
 #: src/main.c
 msgid "Cloudy"
-msgstr ""
+msgstr "Nuageux"
 
 #: src/main.c
 msgid "Fog"
-msgstr ""
+msgstr "Brouillard"
 
 #: src/main.c
 msgid "Drizzle"
-msgstr ""
+msgstr "Bruine"
 
 #: src/main.c
 msgid "Freezing drizzle"
-msgstr ""
+msgstr "Bruine verglaçante"
 
 #: src/main.c
 msgid "Rain"
-msgstr ""
+msgstr "Pluie"
 
 #: src/main.c
 msgid "Heavy rain"
-msgstr ""
+msgstr "Forte pluie"
 
 #: src/main.c
 msgid "Freezing rain"
-msgstr ""
+msgstr "Pluie verglaçante"
 
 #: src/main.c
 msgid "Snow"
-msgstr ""
+msgstr "Neige"
 
 #: src/main.c
 msgid "Snow grains"
-msgstr ""
+msgstr "Neige en grains"
 
 #: src/main.c
 msgid "Showers"
-msgstr ""
+msgstr "Averses"
 
 #: src/main.c
 msgid "Heavy showers"
-msgstr ""
+msgstr "Fortes averses"
 
 #: src/main.c
 msgid "Snow showers"
-msgstr ""
+msgstr "Averses de neige"
 
 #: src/main.c
 msgid "Thunderstorm"
-msgstr ""
+msgstr "Orage"
 
 #: src/main.c
 msgid "Sunrise"
-msgstr ""
+msgstr "Lever du soleil"
 
 #: src/main.c
 msgid "Sunset"
-msgstr ""
+msgstr "Coucher du soleil"
 
 # android: Settings ram_states[2] (several translations, short)
 #. TRANSLATORS: the UV index's levels
@@ -109,28 +108,25 @@ msgctxt "uv"
 msgid "Low"
 msgstr "Faible"
 
-# android: Settings ram_states[1] (short)
 #: src/main.c
 msgctxt "uv"
 msgid "Moderate"
-msgstr "Moyenne"
+msgstr "Modéré"
 
-# android: Settings high_label (several translations, short)
 #: src/main.c
 msgctxt "uv"
 msgid "High"
-msgstr "Élevée"
+msgstr "Élevé"
 
 #: src/main.c
 msgctxt "uv"
 msgid "Very high"
-msgstr ""
+msgstr "Très élevé"
 
-# android: SystemUI extreme_battery_saver_text (short)
 #: src/main.c
 msgctxt "uv"
 msgid "Extreme"
-msgstr "Ultra"
+msgstr "Extrême"
 
 #. TRANSLATORS: today's highest and lowest temperatures, then what it feels like now
 #: src/main.c
@@ -139,36 +135,38 @@ msgid ""
 "↑%s / ↓%s\n"
 "Feels like %s"
 msgstr ""
+"↑%s / ↓%s\n"
+"Ressenti %s"
 
 #. TRANSLATORS: today's sky ("Partly cloudy"), then its highest and lowest temperatures ("12°")
 #: src/main.c
 #, c-format
 msgid "%s. High %s, low %s."
-msgstr ""
+msgstr "%s. Max. %s, min. %s."
 
 #: src/main.c
 msgid "Today's temperature"
-msgstr ""
+msgstr "Température du jour"
 
 #: src/main.c
 msgid "About the same as yesterday"
-msgstr ""
+msgstr "À peu près comme hier"
 
 #: src/main.c
 msgid "Temperatures a little lower than yesterday"
-msgstr ""
+msgstr "Températures un peu plus basses qu'hier"
 
 #: src/main.c
 msgid "Much colder than yesterday"
-msgstr ""
+msgstr "Bien plus froid qu'hier"
 
 #: src/main.c
 msgid "Temperatures a little higher than yesterday"
-msgstr ""
+msgstr "Températures un peu plus élevées qu'hier"
 
 #: src/main.c
 msgid "Much warmer than yesterday"
-msgstr ""
+msgstr "Bien plus chaud qu'hier"
 
 # android: DocumentsUI search_last_modified_2_days (short)
 #: src/main.c
@@ -184,76 +182,76 @@ msgstr "Aujourd’hui"
 #: src/main.c
 #, c-format
 msgid "Sunset %s"
-msgstr ""
+msgstr "Coucher : %s"
 
 #. TRANSLATORS: the wind's speed in kilometres an hour
 #: src/main.c
 #, c-format
 msgid "%.0f km/h"
-msgstr ""
+msgstr "%.0f km/h"
 
 #. TRANSLATORS: the air pressure in hectopascals
 #: src/main.c
 #, c-format
 msgid "%.0f hPa"
-msgstr ""
+msgstr "%.0f hPa"
 
 #: src/main.c
 msgid "UV index"
-msgstr ""
+msgstr "Indice UV"
 
 #: src/main.c
 msgid "Humidity"
-msgstr ""
+msgstr "Humidité"
 
 #: src/main.c
 msgid "Wind"
-msgstr ""
+msgstr "Vent"
 
 #: src/main.c
 msgid "Pressure"
-msgstr ""
+msgstr "Pression"
 
 #: src/main.c
 msgid "No forecast: Open-Meteo did not answer. Tap reload to try again."
-msgstr ""
+msgstr "Aucune prévision : Open-Meteo n'a pas répondu. Appuyez sur Actualiser pour réessayer."
 
 #: src/main.c
 msgid ""
 "No location. Turn on Location in Settings, then tap reload, or set a city in "
 "the ⋮ menu."
-msgstr ""
+msgstr "Position inconnue. Activez la localisation dans Paramètres, puis appuyez sur Actualiser, ou choisissez une ville dans le menu ⋮."
 
 #: src/main.c
 #, c-format
 msgid "Getting the weather for %s…"
-msgstr ""
+msgstr "Récupération de la météo pour %s…"
 
 #. TRANSLATORS: under "Use my location"; %s is the city chosen now
 #: src/main.c
 #, c-format
 msgid "Instead of %s"
-msgstr ""
+msgstr "Au lieu de %s"
 
 #: src/main.c
 msgid "Use my location"
-msgstr ""
+msgstr "Utiliser ma position"
 
 #: src/main.c
 msgid "No answer. Check the connection, then type again."
-msgstr ""
+msgstr "Aucune réponse. Vérifiez la connexion, puis réessayez de saisir le nom."
 
 #: src/main.c
 msgid "No cities found"
-msgstr ""
+msgstr "Aucune ville trouvée"
 
 #: src/main.c
 msgid "Set City"
-msgstr ""
+msgstr "Choisir la ville"
 
 #: src/main.c
 msgid "City name"
-msgstr ""
+msgstr "Nom de la ville"
 
 # android: Settings proxy_clear_text (short)
 #: src/main.c
@@ -269,6 +267,9 @@ msgid ""
 "Set City finds cities with Open-Meteo's geocoding, on data from <a "
 "href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0."
 msgstr ""
+"Prévisions météo fournies par <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, sous licence <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n"
+"\n"
+"« Choisir la ville » trouve les villes grâce au géocodage d'Open-Meteo, à partir des données de <a href=\"https://www.geonames.org/\">GeoNames</a>, sous licence CC BY 4.0."
 
 #: src/main.c
 msgid ""
@@ -277,15 +278,15 @@ msgid ""
 "www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the "
 "<a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database "
 "License</a> (ODbL)."
-msgstr ""
+msgstr "Le nom du lieu où se trouve le téléphone provient de <a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a>, d'OpenStreetMap. Données © <a href=\"https://www.openstreetmap.org/copyright\">contributeurs d'OpenStreetMap</a>, sous licence <a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)."
 
 #: src/main.c
 msgid "About"
-msgstr ""
+msgstr "À propos"
 
 #: src/main.c
 msgid "Reload"
-msgstr ""
+msgstr "Actualiser"
 
 # android: Framework action_menu_overflow_description (several translations, short)
 #: src/main.c
@@ -294,4 +295,4 @@ msgstr "Plus d'options"
 
 #: src/main.c
 msgid "Finding where you are…"
-msgstr ""
+msgstr "Localisation en cours…"
