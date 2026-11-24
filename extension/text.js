@@ -9,7 +9,9 @@ import {Canvas} from './icons.js';
 import {setSource} from './palette.js';
 import {SCALE, screenPixels, sp} from './units.js';
 
-const FAMILY = 'Google Sans Flex';
+// Google Sans Flex, and for the letters it has none of (Cyrillic) VibeOS Roboto, as Android's system UI falls back
+// to Roboto
+const FAMILY = 'Google Sans Flex, VibeOS Roboto';
 
 // Skia's fake bold: the outline stroked at 1/24 of the size up to 9 px, 1/32 from 36 px (kStdFakeBoldInterpKeys)
 export function fakeBoldWidth(sizePx) {
