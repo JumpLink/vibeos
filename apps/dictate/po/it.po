@@ -1,0 +1,2978 @@
+# Italian translations of vibeos-dictate.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-dictate\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 20:19+0100\n"
+"PO-Revision-Date: 2026-11-24 16:47+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Italian\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: data/vibeos.Agent.desktop.in src/dictate-stage.c src/dictate-window.c
+msgid "Vibe"
+msgstr "Vibe"
+
+#: data/vibeos.Agent.desktop.in
+msgid "Talk with your phone: an assistant that runs it by voice"
+msgstr "Parla con il tuo telefono: un assistente che lo gestisce a voce"
+
+#: data/vibeos.Agent.desktop.in
+msgid "Vibe;Agent;Assistant;AI;Voice;Talk;Conversation;Chat;Speech;"
+msgstr "Vibe;Agent;Assistente;IA;Voce;Parlare;Conversazione;Chat;Parlato;"
+
+#. the app bar
+#: data/vibeos.Dictate.desktop.in src/dictate-window.c
+msgid "Dictate"
+msgstr "Dettatura"
+
+#: data/vibeos.Dictate.desktop.in
+msgid "Speech to text, recognised on the phone"
+msgstr "Dal parlato al testo, riconosciuto sul telefono"
+
+#: data/vibeos.Dictate.desktop.in
+msgid "Dictation;Speech;Voice;Transcribe;Microphone;Text;"
+msgstr "Dettatura;Parlato;Voce;Trascrivere;Trascrizione;Microfono;Testo;"
+
+#: src/dictate-access.c
+msgid "Phone calls"
+msgstr "Chiamate"
+
+#: src/dictate-access.c
+msgid "Messages"
+msgstr "Messaggi"
+
+#: src/dictate-access.c
+msgid "Contacts"
+msgstr "Contatti"
+
+#: src/dictate-access.c
+msgid "Calendar"
+msgstr "Calendario"
+
+#: src/dictate-access.c
+msgid "Alarms and timers"
+msgstr "Sveglie e timer"
+
+# android: Framework global_action_settings (short)
+#: src/dictate-access.c src/dictate-settings.c src/dictate-stage.c
+msgid "Settings"
+msgstr "Impostazioni"
+
+#: src/dictate-access.c
+msgid "Apps"
+msgstr "App"
+
+#: src/dictate-access.c
+msgid "Files"
+msgstr "File"
+
+#: src/dictate-access.c
+msgid "Camera"
+msgstr "Fotocamera"
+
+#: src/dictate-access.c
+msgid "Location and maps"
+msgstr "Posizione e mappe"
+
+#: src/dictate-access.c
+msgid "Web"
+msgstr "Web"
+
+#: src/dictate-confirm-page.c
+msgid "Texts and calls: a countdown"
+msgstr "Messaggi e chiamate: conto alla rovescia"
+
+#: src/dictate-confirm-page.c
+msgid "Texts and calls: wait for “send”"
+msgstr "Messaggi e chiamate: attendi «invia»"
+
+#: src/dictate-confirm-page.c
+msgid "Countdown"
+msgstr "Conto alla rovescia"
+
+#: src/dictate-confirm-page.c
+msgid "Wait"
+msgstr "Attesa"
+
+#: src/dictate-confirm-page.c
+msgctxt "how Vibe asks before it acts"
+msgid "In use"
+msgstr "In uso"
+
+#: src/dictate-confirm-page.c src/dictate-settings.c
+msgid "Confirmations"
+msgstr "Conferme"
+
+#: src/dictate-confirm-page.c
+msgid "How sure Vibe must be before it acts."
+msgstr "Quanta certezza serve a Vibe prima di agire."
+
+#. the kinds the tools are sorted in (dictate-tools.h's tiers), each with what is done before it
+#: src/dictate-confirm-page.c
+msgid "Read"
+msgstr "Lettura"
+
+#: src/dictate-confirm-page.c
+msgid "Messages, battery, next appointment"
+msgstr "Messaggi, batteria, prossimo appuntamento"
+
+#: src/dictate-confirm-page.c
+msgid "At once"
+msgstr "Subito"
+
+#: src/dictate-confirm-page.c
+msgid "Reversible"
+msgstr "Reversibile"
+
+#: src/dictate-confirm-page.c
+msgid "Alarms, timers, Wi-Fi, volume"
+msgstr "Sveglie, timer, Wi-Fi, volume"
+
+#: src/dictate-confirm-page.c
+msgid "Do, offer undo"
+msgstr "Esegui, offri di annullare"
+
+#: src/dictate-confirm-page.c
+msgid "Outward"
+msgstr "In uscita"
+
+#: src/dictate-confirm-page.c
+msgid "Texts and calls"
+msgstr "Messaggi e chiamate"
+
+#: src/dictate-confirm-page.c
+msgid "Outward actions"
+msgstr "Azioni in uscita"
+
+#: src/dictate-confirm-page.c
+msgid "Wait for “send”"
+msgstr "Attendi «invia»"
+
+#: src/dictate-confirm-page.c
+msgid "Nothing goes until you say or tap it"
+msgstr "Non parte nulla finché non lo dici o lo tocchi"
+
+#: src/dictate-confirm-page.c
+msgid "Count down three seconds"
+msgstr "Conto alla rovescia di tre secondi"
+
+#: src/dictate-confirm-page.c
+msgid "Sends unless you say or tap “cancel”"
+msgstr "Parte, a meno che tu non dica o tocchi «annulla»"
+
+#. TRANSLATORS: a time in the debug log; %d is milliseconds
+#: src/dictate-debuglog-page.c
+#, c-format
+msgid "%d ms"
+msgstr "%d ms"
+
+#. TRANSLATORS: a time in the debug log; %.1f is seconds
+#: src/dictate-debuglog-page.c
+#, c-format
+msgid "%.1f s"
+msgstr "%.1f s"
+
+#: src/dictate-debuglog-page.c
+msgid "Answered"
+msgstr "Risposto"
+
+#: src/dictate-debuglog-page.c
+msgid "Offline"
+msgstr "Offline"
+
+#: src/dictate-debuglog-page.c
+msgid "Error"
+msgstr "Errore"
+
+#: src/dictate-debuglog-page.c
+msgid "Stopped"
+msgstr "Interrotto"
+
+#: src/dictate-debuglog-page.c
+msgid "Request"
+msgstr "Richiesta"
+
+#: src/dictate-debuglog-page.c
+msgid "HTTP"
+msgstr "HTTP"
+
+#: src/dictate-debuglog-page.c
+msgid "Response"
+msgstr "Risposta"
+
+#: src/dictate-debuglog-page.c
+msgid "Tool"
+msgstr "Strumento"
+
+# android: Settings retry (short)
+#: src/dictate-debuglog-page.c src/dictate-download-dialog.c
+msgid "Retry"
+msgstr "Riprova"
+
+#: src/dictate-debuglog-page.c
+msgid "Cut off"
+msgstr "Troncato"
+
+#: src/dictate-debuglog-page.c
+msgid "Step"
+msgstr "Passaggio"
+
+#: src/dictate-debuglog-page.c
+msgid "no answer"
+msgstr "nessuna risposta"
+
+#: src/dictate-debuglog-page.c
+msgid "worked"
+msgstr "riuscito"
+
+#: src/dictate-debuglog-page.c
+msgid "failed"
+msgstr "non riuscito"
+
+#. TRANSLATORS: a model's answer in the debug log that only calls tools; %s is their names
+#: src/dictate-debuglog-page.c
+#, c-format
+msgid "Calls %s"
+msgstr "Chiama %s"
+
+#. TRANSLATORS: a request to the model in the debug log; %u is how many messages of the conversation it sent
+#: src/dictate-debuglog-page.c src/dictate-tools-phone.c
+#, c-format
+msgid "%u message"
+msgid_plural "%u messages"
+msgstr[0] "%u messaggio"
+msgstr[1] "%u messaggi"
+
+#: src/dictate-debuglog-page.c
+msgid "Turn copied"
+msgstr "Turno copiato"
+
+#. the turn: what was said and answered, and how
+#: src/dictate-debuglog-page.c
+msgid "Turn"
+msgstr "Turno"
+
+#: src/dictate-debuglog-page.c
+msgid "Said"
+msgstr "Detto"
+
+#: src/dictate-debuglog-page.c
+msgid "Reply"
+msgstr "Risposta"
+
+#: src/dictate-debuglog-page.c
+msgid "Outcome"
+msgstr "Esito"
+
+#. how Vibe talks
+#: src/dictate-debuglog-page.c src/dictate-settings.c src/dictate-window.c
+msgid "Language"
+msgstr "Lingua"
+
+#: src/dictate-debuglog-page.c
+msgid "Model"
+msgstr "Modello"
+
+#: src/dictate-debuglog-page.c
+msgid "Time"
+msgstr "Tempo"
+
+#: src/dictate-debuglog-page.c
+msgid "Phone"
+msgstr "Telefono"
+
+#: src/dictate-debuglog-page.c
+msgid "Locked"
+msgstr "Bloccato"
+
+#: src/dictate-debuglog-page.c src/dictate-settings.c
+msgid "Private mode"
+msgstr "Modalità privata"
+
+#: src/dictate-debuglog-page.c src/dictate-tools-device.c
+#: src/dictate-tools-phone.c
+msgid "On"
+msgstr "Attivo"
+
+#: src/dictate-debuglog-page.c
+msgid "Steps"
+msgstr "Passaggi"
+
+#: src/dictate-debuglog-page.c
+msgid "Copy turn"
+msgstr "Copia turno"
+
+#. TRANSLATORS: when a turn in the debug log began, a g_date_time_format () string: "24 Nov, 08:12".
+#: src/dictate-debuglog-page.c
+#, no-c-format
+msgid "%e %b, %H:%M"
+msgstr "%e %b, %H:%M"
+
+#. TRANSLATORS: a turn in the debug log; %u is how many tools it called
+#: src/dictate-debuglog-page.c
+#, c-format
+msgid "%u tool"
+msgid_plural "%u tools"
+msgstr[0] "%u strumento"
+msgstr[1] "%u strumenti"
+
+#: src/dictate-debuglog-page.c
+msgid "(nothing said)"
+msgstr "(non è stato detto nulla)"
+
+#: src/dictate-debuglog-page.c
+msgid "No turns recorded"
+msgstr "Nessun turno registrato"
+
+#: src/dictate-debuglog-page.c
+msgid "Turn on Debug log in Settings, then talk to Vibe"
+msgstr "Attiva «Registro di debug» nelle Impostazioni, poi parla con Vibe"
+
+#: src/dictate-debuglog-page.c
+msgid "Clear the debug log?"
+msgstr "Cancellare il registro di debug?"
+
+#: src/dictate-debuglog-page.c
+msgid "Every recorded turn is deleted from the phone."
+msgstr "Tutti i turni registrati vengono eliminati dal telefono."
+
+# android: Framework cancel (short)
+#: src/dictate-debuglog-page.c src/dictate-download-dialog.c
+#: src/dictate-settings.c src/dictate-voicematch-page.c src/dictate-window.c
+msgid "Cancel"
+msgstr "Annulla"
+
+#: src/dictate-debuglog-page.c src/dictate-window.c
+msgid "Clear"
+msgstr "Cancella"
+
+#: src/dictate-debuglog-page.c src/dictate-settings.c
+msgid "Debug log"
+msgstr "Registro di debug"
+
+#: src/dictate-debuglog-page.c
+msgid "Clear log"
+msgstr "Cancella registro"
+
+#. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "Needs %s, which is not installed"
+msgstr "Richiede %s, che non è installato"
+
+#: src/dictate-download-dialog.c
+msgid "Not available on this phone"
+msgstr "Non disponibile su questo telefono"
+
+#. TRANSLATORS: under a language in the list; the first %s is a speech recogniser (Vosk), the second a size
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s and %s to download"
+msgstr "%s e %s da scaricare"
+
+#. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s to install"
+msgstr "%s da installare"
+
+#. TRANSLATORS: under a language in the list; %s is a size: 90.4 MB
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s to download"
+msgstr "%s da scaricare"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s was not downloaded"
+msgstr "%s non è stato scaricato"
+
+#. TRANSLATORS: the first %s is what went wrong, the second a speech recogniser (Vosk)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s. %s was installed, but none of the files were kept on the phone."
+msgstr ""
+"%s. %s è stato installato, ma nessuno dei file è stato conservato sul "
+"telefono."
+
+#. TRANSLATORS: %s is what went wrong
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s. Nothing of it was kept on the phone."
+msgstr "%s. Non è stato conservato nulla sul telefono."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: a quarter done."
+msgstr "Sto scaricando %s: siamo a un quarto."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: half done."
+msgstr "Sto scaricando %s: siamo a metà."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: three quarters done."
+msgstr "Sto scaricando %s: siamo a tre quarti."
+
+# android: SystemUI screen_record_video_preview_elapsed_time_a11y_template
+#. TRANSLATORS: the progress, two sizes: 12.3 MB of 90.4 MB
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s of %s"
+msgstr "%s di %s"
+
+#: src/dictate-download-dialog.c
+msgid "Unpacking and installing…"
+msgstr "Estrazione e installazione…"
+
+# android: PackageInstaller installing (short)
+#: src/dictate-download-dialog.c
+msgid "Installing…"
+msgstr "Installazione…"
+
+# android: Framework serviceClassVoice (short)
+#. TRANSLATORS: the dialog choosing whether a man or a woman speaks for Vibe
+#. TRANSLATORS: a row in Vibe's settings, under Speech rate; its summary says what it chooses
+#: src/dictate-download-dialog.c src/dictate-settings.c
+msgid "Voice"
+msgstr "Voce"
+
+#: src/dictate-download-dialog.c
+msgid "Speech recognition"
+msgstr "Riconoscimento vocale"
+
+#: src/dictate-download-dialog.c
+msgid "The files came, but the language is still not ready"
+msgstr "I file sono arrivati, ma la lingua non è ancora pronta"
+
+#. TRANSLATORS: in the progress dialog; %s is a speech recogniser (Vosk)
+#. TRANSLATORS: what is installed, in the download dialog; %s is a speech recogniser (Vosk)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s speech recogniser"
+msgstr "Riconoscimento vocale %s"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s"
+msgstr "Download di %s"
+
+#: src/dictate-download-dialog.c
+msgid "The package was installed, but the language is still not ready"
+msgstr "Il pacchetto è stato installato, ma la lingua non è ancora pronta"
+
+#. TRANSLATORS: the sum of the sizes in the download dialog; %s is a size: 90.4 MB
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s in all"
+msgstr "%s in totale"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "Download %s?"
+msgstr "Scaricare %s?"
+
+#. TRANSLATORS: under the title "Download Deutsch?"; %s is an app's name (Navi)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "To speak this language, %s needs this on the phone:"
+msgstr "Per parlare questa lingua, %s ha bisogno di questo sul telefono:"
+
+#. TRANSLATORS: under the title "Download Deutsch?"
+#: src/dictate-download-dialog.c
+msgid "To hear and speak this language, Vibe needs these on the phone:"
+msgstr ""
+"Per capire e parlare questa lingua, Vibe ha bisogno di questi sul telefono:"
+
+#. TRANSLATORS: under the title "Download Deutsch?"
+#: src/dictate-download-dialog.c
+msgid "To hear this language, Dictate needs these on the phone:"
+msgstr "Per capire questa lingua, Dettatura ha bisogno di questi sul telefono:"
+
+#. TRANSLATORS: under it; %s is its Debian package (vibeos-dictate-vosk)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "the %s package from the VibeOS archive"
+msgstr "il pacchetto %s dall'archivio VibeOS"
+
+#. TRANSLATORS: under what is downloaded: what it is, its licence and where it comes from
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s · %s · from %s"
+msgstr "%s · %s · da %s"
+
+# android: Messaging action_download (short)
+#: src/dictate-download-dialog.c
+msgid "Download"
+msgstr "Scarica"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Français)
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s is not available"
+msgstr "%s non è disponibile"
+
+#. TRANSLATORS: the first %s is the language's name for itself, the second a speech recogniser (Vosk), the
+#. * third its Debian package (vibeos-dictate-vosk)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid ""
+"%s is heard by %s, which is not installed on this phone. Install the %s "
+"package, then choose %s again."
+msgstr ""
+"%s viene riconosciuto da %s, che non è installato su questo telefono. "
+"Installa il pacchetto %s, poi scegli di nuovo %s."
+
+# android: Framework httpErrorOk (several translations, short)
+#: src/dictate-download-dialog.c
+msgid "OK"
+msgstr "OK"
+
+#: src/dictate-download-dialog.c
+msgid "There is nothing to download for it."
+msgstr "Non c'è niente da scaricare per questa lingua."
+
+#. TRANSLATORS: %s is what went wrong, from the network or the file system
+#: src/dictate-download.c
+#, c-format
+msgid "The download failed: %s"
+msgstr "Download non riuscito: %s"
+
+#. TRANSLATORS: %s is what went wrong
+#: src/dictate-download.c
+#, c-format
+msgid "The files could not be put in place: %s"
+msgstr "Impossibile sistemare i file: %s"
+
+#. TRANSLATORS: %s is a file's name
+#: src/dictate-download.c
+#, c-format
+msgid "%s did not come whole"
+msgstr "%s non è arrivato completo"
+
+#. TRANSLATORS: %s is a file's name
+#: src/dictate-download.c
+#, c-format
+msgid "%s is not the file it should be: its checksum does not match"
+msgstr "%s non è il file previsto: il checksum non corrisponde"
+
+#. TRANSLATORS: %s is a file's name
+#: src/dictate-download.c
+#, c-format
+msgid "%s is larger than it should be"
+msgstr "%s è più grande del previsto"
+
+#. TRANSLATORS: %s is a file's name, %u and the last %s the server's answer (404, Not Found)
+#: src/dictate-download.c
+#, c-format
+msgid "The server did not give %s: %u %s"
+msgstr "Il server non ha fornito %s: %u %s"
+
+#. TRANSLATORS: %s is a file's name
+#: src/dictate-download.c
+#, c-format
+msgid "%s is not the size it should be: it has changed on the server"
+msgstr "%s non ha la dimensione prevista: è cambiato sul server"
+
+#. TRANSLATORS: the %s are sizes: 90.4 MB
+#: src/dictate-download.c
+#, c-format
+msgid "There is not enough space on the phone: %s are needed, %s are free"
+msgstr "Spazio insufficiente sul telefono: servono %s, liberi %s"
+
+#. TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second the package's name
+#. * (vibeos-dictate-de)
+#: src/dictate-engine.c
+#, c-format
+msgid "There is no speech model for %s. Install the %s package."
+msgstr ""
+"Non c'è un modello di riconoscimento vocale per la lingua %s. Installa il "
+"pacchetto %s."
+
+#: src/dictate-engine.c
+msgid ""
+"There is no speech model. Install a vibeos-dictate language package, such as "
+"vibeos-dictate-en."
+msgstr ""
+"Non c'è nessun modello di riconoscimento vocale. Installa un pacchetto "
+"lingua vibeos-dictate, ad esempio vibeos-dictate-en."
+
+#. TRANSLATORS: %s is the package's name (vibeos-dictate-moonshine)
+#: src/dictate-engine.c
+#, c-format
+msgid "Speech recognition is not installed. Install the %s package."
+msgstr "Il riconoscimento vocale non è installato. Installa il pacchetto %s."
+
+#: src/dictate-engine.c
+msgid "The speech model could not be loaded."
+msgstr "Impossibile caricare il modello di riconoscimento vocale."
+
+#: src/dictate-engine.c
+msgid "Speech recognition could not be started."
+msgstr "Impossibile avviare il riconoscimento vocale."
+
+#: src/dictate-engine.c
+msgid "The microphone could not be opened."
+msgstr "Impossibile aprire il microfono."
+
+#: src/dictate-enroll.c
+msgid ""
+"Vibe, what time is it now? I'm teaching you how my voice sounds, so that you "
+"only listen to me."
+msgstr ""
+"Vibe, che ore sono adesso? Ti sto insegnando com'è la mia voce, così ascolti "
+"solo me."
+
+#: src/dictate-enroll.c
+msgid ""
+"Read my new messages out loud, then tell me what is on my calendar for "
+"tomorrow morning."
+msgstr ""
+"Leggi ad alta voce i miei nuovi messaggi, poi dimmi cosa c'è nel mio "
+"calendario domani mattina."
+
+#: src/dictate-enroll.c
+msgid ""
+"Call my sister on her mobile, and set an alarm for seven thirty tomorrow."
+msgstr ""
+"Chiama mia sorella sul cellulare e metti una sveglia per domani alle sette e "
+"mezza."
+
+#: src/dictate-enroll.c
+msgid "What's the time? Call Anna. Set a timer."
+msgstr "Che ore sono? Chiama Anna. Imposta un timer."
+
+#. TRANSLATORS: a phrase to read aloud, in quotation marks
+#. TRANSLATORS: a thing to say to Vibe, in quotation marks
+#: src/dictate-enroll.c src/dictate-onboarding.c
+#, c-format
+msgid "“%s”"
+msgstr "«%s»"
+
+#: src/dictate-enroll.c
+msgid "Vibe says · repeat after me"
+msgstr "Vibe dice · ripeti dopo di me"
+
+#. while Vibe says it, the microphone opens when it is done
+#: src/dictate-enroll.c
+msgid "Tap anywhere and read it again"
+msgstr "Tocca ovunque e rileggila"
+
+#: src/dictate-enroll.c
+msgid "Tap anywhere, then read the phrase"
+msgstr "Tocca ovunque, poi leggi la frase"
+
+#: src/dictate-enroll.c src/dictate-onboarding.c src/dictate-stage.c
+#: src/dictate-window.c
+msgid "Vibe says"
+msgstr "Vibe dice"
+
+#: src/dictate-enroll.c
+msgid "I can't listen right now."
+msgstr "Al momento non posso ascoltare."
+
+#: src/dictate-enroll.c
+msgid "Tap anywhere to go back"
+msgstr "Tocca ovunque per tornare indietro"
+
+#: src/dictate-enroll.c src/dictate-window.c
+msgid "Listening"
+msgstr "In ascolto"
+
+#: src/dictate-enroll.c
+msgid "Go ahead…"
+msgstr "Dimmi…"
+
+#: src/dictate-enroll.c
+msgid "Say any command."
+msgstr "Di' un comando qualsiasi."
+
+#. TRANSLATORS: over the phrase being read: listening to phrase 2 of 4
+#: src/dictate-enroll.c
+#, c-format
+msgid "Listening · phrase %u of %u"
+msgstr "In ascolto · frase %u di %u"
+
+#: src/dictate-enroll.c
+msgid "Read the phrase at your normal pace"
+msgstr "Leggi la frase al tuo ritmo normale"
+
+#: src/dictate-enroll.c
+msgid "Tap anywhere, or just start talking"
+msgstr "Tocca ovunque o inizia semplicemente a parlare"
+
+#: src/dictate-enroll.c
+msgid "Voice Match is not ready yet."
+msgstr "L'identificazione vocale non è ancora pronta."
+
+#: src/dictate-enroll.c
+msgid "Your recordings were not kept, and nothing changed on the phone."
+msgstr ""
+"Le tue registrazioni non sono state conservate e sul telefono non è cambiato "
+"nulla."
+
+#: src/dictate-enroll.c
+msgid "I couldn't keep your voice sample."
+msgstr "Non ho potuto salvare il tuo campione vocale."
+
+#: src/dictate-enroll.c
+msgid "Done"
+msgstr "Fatto"
+
+#: src/dictate-enroll.c
+msgid "That's all I need."
+msgstr "È tutto quello che mi serve."
+
+#: src/dictate-enroll.c
+msgid "Voice match is on. Say any command to test it. Nothing is carried out."
+msgstr ""
+"L'identificazione vocale è attiva. Di' un comando qualsiasi per provarla. "
+"Non verrà eseguito nulla."
+
+#: src/dictate-enroll.c
+msgid "Tap anywhere, then speak"
+msgstr "Tocca ovunque, poi parla"
+
+#: src/dictate-enroll.c src/dictate-window.c
+msgid "Tap anywhere to try again"
+msgstr "Tocca ovunque per riprovare"
+
+#: src/dictate-enroll.c
+msgid "Say a bit more."
+msgstr "Di' qualcosa in più."
+
+#: src/dictate-enroll.c
+msgid "That was too short to tell whose voice it is."
+msgstr "Era troppo breve per capire di chi è la voce."
+
+#: src/dictate-enroll.c
+msgid "I couldn't check that."
+msgstr "Non ho potuto verificarlo."
+
+#. TRANSLATORS: a voice check's result: 88% match, 75% needed
+#: src/dictate-enroll.c
+#, c-format
+msgid "%.0f%% match, %.0f%% needed. Vibe would carry out the command."
+msgstr ""
+"Corrispondenza del %.0f%%, richiesto il %.0f%%. Vibe eseguirebbe il comando."
+
+#: src/dictate-enroll.c
+msgid "That's you."
+msgstr "Sei tu."
+
+#. TRANSLATORS: a voice check's result: 41% match, 75% needed
+#: src/dictate-enroll.c
+#, c-format
+msgid "%.0f%% match, %.0f%% needed. Vibe would not carry out the command."
+msgstr ""
+"Corrispondenza del %.0f%%, richiesto il %.0f%%. Vibe non eseguirebbe il "
+"comando."
+
+#: src/dictate-enroll.c
+msgid "That didn't sound like you."
+msgstr "Non sembrava la tua voce."
+
+#. TRANSLATORS: under a phrase to read aloud: phrase 2 of 4
+#: src/dictate-enroll.c
+#, c-format
+msgid "Phrase %u of %u."
+msgstr "Frase %u di %u."
+
+#: src/dictate-enroll.c
+msgid "I couldn't check that recording."
+msgstr "Non ho potuto verificare questa registrazione."
+
+#: src/dictate-enroll.c
+msgid "Got it."
+msgstr "Perfetto."
+
+#: src/dictate-enroll.c
+msgid "That was too short. Please read all of the phrase."
+msgstr "Era troppo breve. Leggi tutta la frase, per favore."
+
+#: src/dictate-enroll.c
+msgid "That was too quiet. Read it again, a little closer to the phone."
+msgstr "Era troppo piano. Rileggila un po' più vicino al telefono."
+
+#: src/dictate-enroll.c
+msgid "There was too much noise. Read it again somewhere quieter."
+msgstr "C'era troppo rumore. Rileggila in un posto più tranquillo."
+
+#: src/dictate-enroll.c src/dictate-window.c
+msgid "I didn't hear anything."
+msgstr "Non ho sentito niente."
+
+#: src/dictate-enroll.c
+msgid "I couldn't listen."
+msgstr "Non ho potuto ascoltare."
+
+#. TRANSLATORS: Voice match's first words, said aloud; %u: how many phrases it asks (4)
+#: src/dictate-enroll.c
+#, c-format
+msgid ""
+"I'll learn your voice from %u short phrase, so I only take commands from "
+"you. The sample stays on this phone."
+msgid_plural ""
+"I'll learn your voice from %u short phrases, so I only take commands from "
+"you. The sample stays on this phone."
+msgstr[0] ""
+"Imparerò la tua voce da %u frase breve, così accetterò comandi solo da te. "
+"Il campione resta su questo telefono."
+msgstr[1] ""
+"Imparerò la tua voce da %u frasi brevi, così accetterò comandi solo da te. "
+"Il campione resta su questo telefono."
+
+#: src/dictate-enroll.c src/dictate-voicematch-page.c
+msgid "Test voice match"
+msgstr "Prova identificazione vocale"
+
+#: src/dictate-enroll.c
+msgid ""
+"For example “Vibe, what's the weather?” Nothing is carried out during a test."
+msgstr ""
+"Per esempio «Vibe, che tempo fa?» Durante un test non viene eseguito nulla."
+
+# android: Framework lockscreen_transport_stop_description (several translations, short)
+#: src/dictate-mic.c
+msgid "Stop"
+msgstr "Interrompi"
+
+#: src/dictate-mic.c
+msgid "Start dictating"
+msgstr "Inizia a dettare"
+
+#: src/dictate-onboarding.c
+msgid "English"
+msgstr "Inglese"
+
+#: src/dictate-onboarding.c
+msgid "German"
+msgstr "Tedesco"
+
+#: src/dictate-onboarding.c
+msgid "Spanish"
+msgstr "Spagnolo"
+
+#: src/dictate-onboarding.c
+msgid "French"
+msgstr "Francese"
+
+#: src/dictate-onboarding.c
+msgid "Italian"
+msgstr "Italiano"
+
+#: src/dictate-onboarding.c
+msgid "Russian"
+msgstr "Russo"
+
+#: src/dictate-onboarding.c
+msgid "Dutch"
+msgstr "Olandese"
+
+#. the words each step listens for, in the language spoken: alternatives between "|"
+#. TRANSLATORS: words that go on to the next step of Vibe's introduction, alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "continue|next|go on|okay|ok|yes|done"
+msgstr ""
+"continua|continuare|avanti|vai avanti|prosegui|ok|okay|sì|va bene|fatto"
+
+#. TRANSLATORS: words that go back a step in Vibe's introduction, alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "back|go back"
+msgstr "indietro|torna indietro|tornare indietro"
+
+#. TRANSLATORS: words that skip the rest of Vibe's introduction, alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "skip"
+msgstr "salta|saltare|ignora"
+
+#. TRANSLATORS: words for "speak slower" in Vibe's introduction, alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "slower|slow down"
+msgstr "più lento|più piano|più lentamente|rallenta"
+
+#. TRANSLATORS: words for "speak faster" in Vibe's introduction, alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "faster|speed up|quicker"
+msgstr "più veloce|più velocemente|più in fretta|accelera"
+
+#. TRANSLATORS: words for "this speed is fine" in Vibe's introduction, alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "that's good|good|fine|perfect|that's fine"
+msgstr "va bene così|va bene|bene|perfetto|così va bene"
+
+#. TRANSLATORS: words that turn something off ("turn off files"), alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "off|turn off|switch off|disable"
+msgstr "spegni|spegnere|disattiva|disattivare|togli"
+
+#. TRANSLATORS: words that turn something on ("turn on files"), alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "on|turn on|switch on|enable"
+msgstr "accendi|accendere|attiva|attivare|riattiva"
+
+#: src/dictate-onboarding.c src/dictate-settings.c
+msgid "On the phone"
+msgstr "Sul telefono"
+
+#. TRANSLATORS: a switched-off area in Vibe's introduction: "Files · off"
+#: src/dictate-onboarding.c
+#, c-format
+msgid "%s · off"
+msgstr "%s · disattivato"
+
+#: src/dictate-onboarding.c
+msgid "What time is it?"
+msgstr "Che ore sono?"
+
+#: src/dictate-onboarding.c
+msgid "Wake me at six thirty."
+msgstr "Svegliami alle sei e mezza."
+
+#: src/dictate-onboarding.c
+msgid "Do I have new messages?"
+msgstr "Ho nuovi messaggi?"
+
+#: src/dictate-onboarding.c
+msgid "What's the weather tomorrow?"
+msgstr "Che tempo farà domani?"
+
+#: src/dictate-onboarding.c
+msgid "Try saying"
+msgstr "Prova a dire"
+
+#: src/dictate-onboarding.c
+msgid ""
+"Before I call or send anything, I read it back, and it goes after three "
+"seconds unless you cancel it. Nothing is deleted until you tap to confirm."
+msgstr ""
+"Prima di chiamare o inviare qualcosa, te lo rileggo, e parte dopo tre "
+"secondi a meno che tu non annulli. Non elimino nulla finché non tocchi per "
+"confermare."
+
+#: src/dictate-onboarding.c
+msgid ""
+"Before I call, send or delete anything, I show you exactly what will happen, "
+"and nothing happens until you confirm it."
+msgstr ""
+"Prima di chiamare, inviare o eliminare qualcosa, ti mostro esattamente cosa "
+"succederà, e non succede nulla finché non confermi."
+
+#: src/dictate-onboarding.c
+msgid "Skip"
+msgstr "Salta"
+
+#: src/dictate-onboarding.c
+msgid "Back"
+msgstr "Indietro"
+
+#: src/dictate-onboarding.c
+msgid "Hello. I'm Vibe."
+msgstr "Ciao. Sono Vibe."
+
+#: src/dictate-onboarding.c
+msgid ""
+"I run this phone by voice. Everything I say is also written here, and "
+"everything can be tapped."
+msgstr ""
+"Gestisco questo telefono con la voce. Tutto quello che dico è scritto anche "
+"qui, e puoi toccare tutto."
+
+#: src/dictate-onboarding.c
+msgid "Tap anywhere, or say “continue”"
+msgstr "Tocca ovunque o di' «continua»"
+
+#: src/dictate-onboarding.c
+msgid "Tap anywhere to go on"
+msgstr "Tocca ovunque per continuare"
+
+#: src/dictate-onboarding.c
+msgid "Which language shall we speak?"
+msgstr "Che lingua parliamo?"
+
+#. TRANSLATORS: the language step's hint; %s is the language spoken now: English
+#: src/dictate-onboarding.c
+#, c-format
+msgid "Say a language, or “continue” for %s"
+msgstr "Di' una lingua o «continua» per %s"
+
+#: src/dictate-onboarding.c
+msgid "Tap a language"
+msgstr "Tocca una lingua"
+
+#: src/dictate-onboarding.c src/dictate-settings.c
+msgctxt "speech speed"
+msgid "Slower"
+msgstr "Più lenta"
+
+#: src/dictate-onboarding.c src/dictate-settings.c
+msgctxt "speech speed"
+msgid "Normal"
+msgstr "Normale"
+
+#. TRANSLATORS: over the pace step; %s is the speech rate: 1.25×
+#: src/dictate-onboarding.c
+#, c-format
+msgid "Vibe says · at %s"
+msgstr "Vibe dice · velocità %s"
+
+#: src/dictate-onboarding.c
+msgid "Is this speed comfortable?"
+msgstr "Questa velocità ti va bene?"
+
+#: src/dictate-onboarding.c
+msgid "I can go up to three times faster."
+msgstr "Posso parlare fino a tre volte più veloce."
+
+#: src/dictate-onboarding.c
+msgctxt "button: speak slower"
+msgid "Slower"
+msgstr "Più lentamente"
+
+#: src/dictate-onboarding.c
+msgid "That's good"
+msgstr "Va bene così"
+
+#: src/dictate-onboarding.c
+msgctxt "button: speak faster"
+msgid "Faster"
+msgstr "Più velocemente"
+
+#: src/dictate-onboarding.c
+msgid "Say “slower”, “faster” or “that's good”"
+msgstr "Di' «più lento», «più veloce» o «va bene così»"
+
+#: src/dictate-onboarding.c
+msgid "Tap a choice"
+msgstr "Tocca una scelta"
+
+#: src/dictate-onboarding.c
+msgid "What may I use on this phone?"
+msgstr "Cosa posso usare su questo telefono?"
+
+#: src/dictate-onboarding.c
+msgid ""
+"What I read goes only to VibeOS's own model server, never to anyone else. "
+"For the weather, the town's rough position goes to Open-Meteo."
+msgstr ""
+"Quello che leggo va solo al server dei modelli di VibeOS, mai a nessun "
+"altro. Per il meteo, la posizione approssimativa della città va a Open-Meteo."
+
+#: src/dictate-onboarding.c
+msgid "Say “turn off files”, or “continue”"
+msgstr "Di' «disattiva i file» o «continua»"
+
+#: src/dictate-onboarding.c
+msgid "Tap one to turn it off or on, or anywhere else to go on"
+msgstr "Toccane uno per attivarlo o disattivarlo, o altrove per continuare"
+
+#: src/dictate-onboarding.c
+msgid "I'm ready. One rule:"
+msgstr "Tutto pronto. Una regola:"
+
+#: src/dictate-onboarding.c src/dictate-window.c
+msgid "Tap anywhere and speak"
+msgstr "Tocca ovunque e parla"
+
+#: src/dictate-package.c
+msgid "Software cannot be installed on this phone: PackageKit is not there"
+msgstr ""
+"Non si può installare software su questo telefono: PackageKit non è presente"
+
+#: src/dictate-package.c
+msgid "The password was not given"
+msgstr "La password non è stata inserita"
+
+#: src/dictate-package.c
+msgid "The installation was cancelled"
+msgstr "L'installazione è stata annullata"
+
+#: src/dictate-package.c
+msgid "The VibeOS archive could not be reached. Is the phone online?"
+msgstr "Impossibile raggiungere l'archivio VibeOS. Il telefono è online?"
+
+#. TRANSLATORS: %s is a package's name (vibeos-dictate-vosk)
+#: src/dictate-package.c
+#, c-format
+msgid "%s is not in the archives this phone uses"
+msgstr "%s non è negli archivi usati da questo telefono"
+
+#: src/dictate-package.c
+msgid "The package's signature could not be checked, so it was not installed"
+msgstr ""
+"Non è stato possibile verificare la firma del pacchetto, quindi non è stato "
+"installato"
+
+#: src/dictate-package.c
+msgid "Another installation is running. Try again when it is done"
+msgstr "Un'altra installazione è in corso. Riprova quando ha finito"
+
+#: src/dictate-package.c
+msgid "There is not enough space on the phone"
+msgstr "Spazio insufficiente sul telefono"
+
+#: src/dictate-package.c
+msgid "What the package needs cannot be installed with it"
+msgstr "Ciò che serve al pacchetto non può essere installato insieme a esso"
+
+#. TRANSLATORS: %s is PackageKit's own explanation
+#: src/dictate-package.c
+#, c-format
+msgid "The package could not be installed: %s"
+msgstr "Impossibile installare il pacchetto: %s"
+
+#: src/dictate-package.c
+msgid "The package could not be installed"
+msgstr "Impossibile installare il pacchetto"
+
+#: src/dictate-package.c
+msgid "Waiting for the password"
+msgstr "In attesa della password"
+
+#: src/dictate-package.c
+msgid "Waiting for another installation to finish"
+msgstr "In attesa che finisca un'altra installazione"
+
+#: src/dictate-package.c
+msgid "Updating the package lists"
+msgstr "Aggiornamento degli elenchi dei pacchetti"
+
+#: src/dictate-package.c
+msgid "Downloading"
+msgstr "Download in corso"
+
+#: src/dictate-package.c
+msgid "Checking the signature"
+msgstr "Verifica della firma"
+
+#: src/dictate-package.c
+msgid "Installing"
+msgstr "Installazione in corso"
+
+#: src/dictate-package.c
+msgid "Getting ready"
+msgstr "Preparazione"
+
+#: src/dictate-remote.c
+msgid "The assistant cannot be reached. Is the phone online?"
+msgstr "Impossibile raggiungere l'assistente. Il telefono è online?"
+
+#: src/dictate-remote.c
+msgid "Too many questions at once. Wait a minute, then ask again."
+msgstr ""
+"Troppe domande tutte insieme. Aspetta un minuto, poi riprova a chiedere."
+
+#: src/dictate-remote.c
+msgid "This phone may not use the assistant."
+msgstr "Questo telefono non può usare l'assistente."
+
+#: src/dictate-remote.c
+msgid "I'm getting too many requests, give me a moment."
+msgstr "Ricevo troppe richieste, dammi un momento."
+
+#: src/dictate-remote.c
+msgid "The assistant is not working right now. Try again later."
+msgstr "L'assistente al momento non funziona. Riprova più tardi."
+
+#. TRANSLATORS: a language in Vibe's settings; %s is a size: 90.4 MB
+#: src/dictate-settings.c
+#, c-format
+msgid "Downloaded, %s"
+msgstr "Scaricata, %s"
+
+#. what it lacks is downloaded with a tap
+#: src/dictate-settings.c
+msgid "Get"
+msgstr "Scarica"
+
+#: src/dictate-settings.c
+msgctxt "a language Vibe speaks"
+msgid "In use"
+msgstr "In uso"
+
+#. TRANSLATORS: Vibe's voice in Settings: a woman speaks (Russian's voice has a man's and a woman's)
+#: src/dictate-settings.c
+msgctxt "voice gender"
+msgid "Female"
+msgstr "Femminile"
+
+#. TRANSLATORS: Vibe's voice in Settings: a man speaks (Russian's voice has a man's and a woman's)
+#: src/dictate-settings.c
+msgctxt "voice gender"
+msgid "Male"
+msgstr "Maschile"
+
+#: src/dictate-settings.c
+msgctxt "reply length"
+msgid "Short"
+msgstr "Brevi"
+
+#: src/dictate-settings.c
+msgid "A sentence"
+msgstr "Una frase"
+
+#: src/dictate-settings.c
+msgctxt "reply length"
+msgid "Normal"
+msgstr "Normali"
+
+#: src/dictate-settings.c
+msgid "One to three sentences"
+msgstr "Da una a tre frasi"
+
+#: src/dictate-settings.c
+msgctxt "reply length"
+msgid "Detailed"
+msgstr "Dettagliate"
+
+#: src/dictate-settings.c
+msgid "More, when the question needs it"
+msgstr "Di più, quando la domanda lo richiede"
+
+# android: Framework wifi_calling_off_summary (several translations, short)
+#: src/dictate-settings.c src/dictate-tools-device.c src/dictate-tools-phone.c
+msgid "Off"
+msgstr "Off"
+
+#: src/dictate-settings.c
+msgid "Speech rate"
+msgstr "Velocità della voce"
+
+#: src/dictate-settings.c
+msgid "Answers"
+msgstr "Risposte"
+
+#: src/dictate-settings.c
+msgid "Quiet hours"
+msgstr "Ore di silenzio"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: src/dictate-settings.c
+#, c-format
+msgid "Remove %s?"
+msgstr "Rimuovere la lingua %s?"
+
+#. TRANSLATORS: %s is a size: 90.4 MB
+#: src/dictate-settings.c
+#, c-format
+msgid ""
+"Its speech recognition and voice are removed from the phone, which frees %s. "
+"You can download them again."
+msgstr ""
+"Il riconoscimento vocale e la voce di questa lingua vengono rimossi dal "
+"telefono, liberando %s. Puoi scaricarli di nuovo."
+
+# android: Framework kg_reordering_delete_drop_target_text (short)
+#: src/dictate-settings.c
+msgid "Remove"
+msgstr "Rimuovi"
+
+#: src/dictate-settings.c
+msgid "What Vibe hears and speaks"
+msgstr "La lingua che Vibe sente e parla"
+
+#: src/dictate-settings.c
+msgid "Speak the replies"
+msgstr "Pronuncia le risposte"
+
+#: src/dictate-settings.c
+msgid "Off, they are only written"
+msgstr "Disattivato, vengono solo scritte"
+
+#: src/dictate-settings.c
+msgid "How fast Vibe speaks"
+msgstr "Quanto velocemente parla Vibe"
+
+#: src/dictate-settings.c
+msgid "Whether a man or a woman speaks"
+msgstr "Voce maschile o femminile"
+
+#: src/dictate-settings.c
+msgid "How much Vibe says"
+msgstr "Quanto parla Vibe"
+
+#: src/dictate-settings.c
+msgid "Listen after a reply"
+msgstr "Ascolta dopo una risposta"
+
+#: src/dictate-settings.c
+msgid "Once a reply has been spoken, Vibe listens for your answer"
+msgstr "Dopo aver detto una risposta, Vibe ascolta la tua"
+
+#: src/dictate-settings.c
+msgid "Sounds"
+msgstr "Suoni"
+
+#: src/dictate-settings.c
+msgid "A short sound when Vibe listens, works, is done or fails"
+msgstr "Un breve suono quando Vibe ascolta, lavora, finisce o non riesce"
+
+#: src/dictate-settings.c
+msgid "Vibration"
+msgstr "Vibrazione"
+
+#: src/dictate-settings.c
+msgid "A short vibration at the same moments"
+msgstr "Una breve vibrazione negli stessi momenti"
+
+#. Voice match, a page of its own
+#: src/dictate-settings.c
+msgid "Your voice"
+msgstr "La tua voce"
+
+#: src/dictate-settings.c src/dictate-voicematch-page.c
+msgid "Voice match"
+msgstr "Identificazione vocale"
+
+#. calls, and when and where it speaks
+#: src/dictate-settings.c
+msgid "Calls and privacy"
+msgstr "Chiamate e privacy"
+
+#: src/dictate-settings.c
+msgid "Announce calls"
+msgstr "Annuncia le chiamate"
+
+#: src/dictate-settings.c
+msgid ""
+"Vibe says who is calling and listens for answer or decline, also when it is "
+"closed"
+msgstr ""
+"Vibe dice chi chiama e aspetta «rispondi» o «rifiuta», anche quando l'app è "
+"chiusa"
+
+#: src/dictate-settings.c
+msgid ""
+"Replies only in headphones; on the speaker short, with no names or messages "
+"read out"
+msgstr ""
+"Risposte solo in cuffia; sull'altoparlante brevi, senza leggere nomi o "
+"messaggi"
+
+#: src/dictate-settings.c
+msgid "Vibe says nothing and plays no sound on its own"
+msgstr "Vibe non dice nulla e non riproduce suoni di sua iniziativa"
+
+#: src/dictate-settings.c
+msgid "Calls in quiet hours"
+msgstr "Chiamate nelle ore di silenzio"
+
+#: src/dictate-settings.c
+msgid "Calls are still announced"
+msgstr "Le chiamate vengono comunque annunciate"
+
+#. what it can use
+#: src/dictate-settings.c
+msgid "What Vibe can use"
+msgstr "Cosa può usare Vibe"
+
+#. where what it reads goes, before the switches
+#: src/dictate-settings.c
+msgid "Only to VibeOS"
+msgstr "Solo a VibeOS"
+
+#: src/dictate-settings.c
+msgid ""
+"What Vibe reads on the phone goes only to VibeOS's own model server, never "
+"to anyone else. For the weather, the town's rough position goes to Open-"
+"Meteo, as from the Weather app"
+msgstr ""
+"Quello che Vibe legge sul telefono va solo al server dei modelli di VibeOS, "
+"mai a nessun altro. Per il meteo, la posizione approssimativa della città va "
+"a Open-Meteo, come dall'app Meteo"
+
+#. the conversation kept on the screen, which is what Vibe remembers
+#: src/dictate-settings.c
+msgid "Conversation"
+msgstr "Conversazione"
+
+#: src/dictate-settings.c
+msgid "Clear conversation"
+msgstr "Cancella conversazione"
+
+#: src/dictate-settings.c
+msgid "Deletes it from the phone, and Vibe forgets it"
+msgstr "La elimina dal telefono e Vibe la dimentica"
+
+#. the languages, and what of each is on the phone
+#: src/dictate-settings.c
+msgid "Languages"
+msgstr "Lingue"
+
+#: src/dictate-settings.c
+msgid "Tap a downloaded language to remove it."
+msgstr "Tocca una lingua scaricata per rimuoverla."
+
+#. finding what went wrong, and About
+#: src/dictate-settings.c
+msgid "Help"
+msgstr "Aiuto"
+
+#: src/dictate-settings.c
+msgid ""
+"Each turn is recorded on the phone, and only there, to find what went wrong"
+msgstr ""
+"Ogni turno viene registrato sul telefono, e solo lì, per capire cosa è "
+"andato storto"
+
+#: src/dictate-settings.c
+msgid "View debug log"
+msgstr "Visualizza registro di debug"
+
+#: src/dictate-settings.c
+msgid "About Vibe"
+msgstr "Informazioni su Vibe"
+
+#. TRANSLATORS: a bubble's name for screen readers; %s is what the user said
+#: src/dictate-stage.c
+#, c-format
+msgid "You: %s"
+msgstr "Tu: %s"
+
+#. TRANSLATORS: a reply's name for screen readers; %s is what Vibe answered
+#: src/dictate-stage.c
+#, c-format
+msgid "Vibe: %s"
+msgstr "Vibe: %s"
+
+#. TRANSLATORS: the steps' dots for screen readers: step 2 of 6
+#: src/dictate-stage.c
+#, c-format
+msgid "Step %u of %u"
+msgstr "Passaggio %u di %u"
+
+#: src/dictate-talk.c
+msgid "Vibe needs a language model, and none is installed"
+msgstr ""
+"Vibe ha bisogno di un modello linguistico, e non ce n'è nessuno installato"
+
+#: src/dictate-talk.c
+msgid "Vibe has no voice for this language yet"
+msgstr "Vibe non ha ancora una voce per questa lingua"
+
+#: src/dictate-talk.c
+msgid "The answer could not be played"
+msgstr "Impossibile riprodurre la risposta"
+
+#: src/dictate-talk.c
+msgid "The voice could not be loaded"
+msgstr "Impossibile caricare la voce"
+
+#: src/dictate-talk.c
+msgid "The language model could not be loaded"
+msgstr "Impossibile caricare il modello linguistico"
+
+#: src/dictate-talk.c
+msgid "That is too long to answer"
+msgstr "È troppo lungo per rispondere"
+
+#: src/dictate-talk.c
+msgid "The language model could not answer"
+msgstr "Il modello linguistico non ha potuto rispondere"
+
+#: src/dictate-tools-device.c
+msgid "Do Not Disturb"
+msgstr "Non disturbare"
+
+#: src/dictate-tools-device.c
+msgid "Airplane mode"
+msgstr "Modalità aereo"
+
+#: src/dictate-tools-device.c
+msgid "Mobile data"
+msgstr "Dati mobili"
+
+#: src/dictate-tools-device.c
+msgid "Battery saver"
+msgstr "Risparmio energetico"
+
+#: src/dictate-tools-device.c
+msgid "Media volume"
+msgstr "Volume contenuti multimediali"
+
+#. the Phone's and the Clock's 7 steps
+#: src/dictate-tools-device.c
+msgid "Ring volume"
+msgstr "Volume suoneria"
+
+#: src/dictate-tools-device.c
+msgid "Alarm volume"
+msgstr "Volume sveglia"
+
+#: src/dictate-tools-device.c
+msgid "Flashlight"
+msgstr "Torcia"
+
+#: src/dictate-tools-device.c
+msgid "Muted"
+msgstr "Silenziato"
+
+#: src/dictate-tools-device.c src/dictate-tools-phone.c
+#, c-format
+msgid "%d %%"
+msgstr "%d%%"
+
+#: src/dictate-tools-device.c
+msgid "Brightness"
+msgstr "Luminosità"
+
+#: src/dictate-tools-device.c
+msgid "Opening hours not known"
+msgstr "Orari non noti"
+
+#: src/dictate-tools-device.c
+msgid "Opening hours as written by the map"
+msgstr "Orari come riportati dalla mappa"
+
+#: src/dictate-tools-device.c
+#, c-format
+msgid "Open until %s"
+msgstr "Aperto fino alle %s"
+
+#: src/dictate-tools-device.c
+msgid "Open"
+msgstr "Aperto"
+
+#: src/dictate-tools-device.c
+#, c-format
+msgid "Closed · opens %s"
+msgstr "Chiuso · apre alle %s"
+
+#: src/dictate-tools-device.c
+msgid "Closed this week"
+msgstr "Chiuso questa settimana"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d %%, full"
+msgstr "%d%%, piena"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d %%, charging"
+msgstr "%d%%, in carica"
+
+#. TRANSLATORS: the battery's level, and the time it lasts on it: "40 %, about 3 h left"
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d %%, about %s left"
+msgstr "%d%%, ancora circa %s"
+
+#: src/dictate-tools-phone.c
+msgid "Battery"
+msgstr "Batteria"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d h"
+msgstr "%d h"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d h %d min"
+msgstr "%d h %d min"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d min"
+msgstr "%d min"
+
+#. TRANSLATORS: the storage's fact in the debug log: the space free, of all there is
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%.0f GB free of %.0f GB"
+msgstr "%.0f GB liberi su %.0f GB"
+
+#: src/dictate-tools-phone.c
+msgid "Storage"
+msgstr "Memoria"
+
+#: src/dictate-tools-phone.c
+msgid "Call back"
+msgstr "Richiama"
+
+#: src/dictate-tools-phone.c
+msgid "Text back"
+msgstr "Rispondi con SMS"
+
+#: src/dictate-tools-phone.c
+msgid "That number cannot get messages"
+msgstr "Questo numero non può ricevere messaggi"
+
+#: src/dictate-tools-phone.c
+msgid "Number"
+msgstr "Numero"
+
+#. TRANSLATORS: the card's title, a call to place (a noun)
+#: src/dictate-tools-phone.c
+msgctxt "title of the card that proposes a call"
+msgid "Call"
+msgstr "Chiamata"
+
+#. TRANSLATORS: the card's button, which places the call (a verb)
+#: src/dictate-tools-phone.c src/dictate-window.c
+msgctxt "button: place a call"
+msgid "Call"
+msgstr "Chiama"
+
+#: src/dictate-tools-phone.c src/dictate-window.c
+msgid "Calling…"
+msgstr "Chiamata in corso…"
+
+#. TRANSLATORS: a row of the card, over the name of the person to call
+#: src/dictate-tools-phone.c
+msgctxt "card row: whom to call"
+msgid "Call"
+msgstr "Chiamata a"
+
+#. TRANSLATORS: a suggestion under the messages just read out: reply to the text message of the person
+#. * named, not answer a phone call; %s is their name: Kim
+#: src/dictate-tools-phone.c
+#, c-format
+msgctxt "suggestion: reply to a text message"
+msgid "Answer %s"
+msgstr "Rispondi a %s"
+
+#: src/dictate-tools-phone.c
+msgid "Read them"
+msgstr "Leggili"
+
+#: src/dictate-tools-phone.c
+msgid "Send a message"
+msgstr "Invia un messaggio"
+
+#. the action's own verb where it has one: "Sending in three…", "Calling in three…" (`go` is the button's label, so
+#. * it is compared with the same string in the same context)
+#. K5: it goes by itself; the button does it now, with the action's own verb where it has one
+#: src/dictate-tools-phone.c src/dictate-window.c
+msgid "Send"
+msgstr "Invia"
+
+#: src/dictate-tools-phone.c
+msgid "Sent"
+msgstr "Inviato"
+
+#: src/dictate-tools-phone.c
+msgid "Message to"
+msgstr "Messaggio a"
+
+#: src/dictate-tools-phone.c
+msgid "Text"
+msgstr "Testo"
+
+#: src/dictate-tools-phone.c
+msgid "Wi-Fi"
+msgstr "Wi-Fi"
+
+#: src/dictate-tools-phone.c
+msgid "On, not connected"
+msgstr "Attivo, non connesso"
+
+#: src/dictate-tools-phone.c
+msgid "Bluetooth"
+msgstr "Bluetooth"
+
+#. TRANSLATORS: the phone's signal; %1$d is the bars of four (3 or 4), %2$s the network type: 4G
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Good, %1$d of 4 · %2$s"
+msgstr "Buono, %1$d su 4 · %2$s"
+
+#. TRANSLATORS: the phone's signal; %d is the bars of four (3 or 4)
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Good, %d of 4"
+msgstr "Buono, %d su 4"
+
+#. TRANSLATORS: the phone's signal, a middling one; %1$d is the bars of four (2), %2$s the network type: 4G
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Fair, %1$d of 4 · %2$s"
+msgstr "Discreto, %1$d su 4 · %2$s"
+
+#. TRANSLATORS: the phone's signal, a middling one; %d is the bars of four (2)
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Fair, %d of 4"
+msgstr "Discreto, %d su 4"
+
+#. TRANSLATORS: the phone's signal, a poor one; %1$d is the bars of four (0 or 1), %2$s the network type: 4G
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Weak, %1$d of 4 · %2$s"
+msgstr "Debole, %1$d su 4 · %2$s"
+
+#. TRANSLATORS: the phone's signal, a poor one; %d is the bars of four (0 or 1)
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Weak, %d of 4"
+msgstr "Debole, %d su 4"
+
+#: src/dictate-tools-phone.c
+msgid "SIM locked"
+msgstr "SIM bloccata"
+
+#: src/dictate-tools-phone.c
+msgid "No network"
+msgstr "Nessuna rete"
+
+#: src/dictate-tools-phone.c
+msgid "Signal"
+msgstr "Segnale"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%u missed call"
+msgid_plural "%u missed calls"
+msgstr[0] "%u chiamata persa"
+msgstr[1] "%u chiamate perse"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%u notification"
+msgid_plural "%u notifications"
+msgstr[0] "%u notifica"
+msgstr[1] "%u notifiche"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Call %s"
+msgstr "Chiama %s"
+
+#: src/dictate-tools-phone.c
+msgid "Details"
+msgstr "Dettagli"
+
+#: src/dictate-tools-phone.c
+msgid "There is nowhere to keep it"
+msgstr "Non c'è nessun posto dove salvarlo"
+
+#: src/dictate-tools-phone.c
+msgid "Add a contact"
+msgstr "Aggiungi un contatto"
+
+#: src/dictate-tools-phone.c
+msgid "Add"
+msgstr "Aggiungi"
+
+#: src/dictate-tools-phone.c
+msgid "Added"
+msgstr "Aggiunto"
+
+#: src/dictate-tools-phone.c
+msgid "Name"
+msgstr "Nome"
+
+#: src/dictate-tools-phone.c
+msgid "Email"
+msgstr "Email"
+
+#: src/dictate-tools-phone.c
+msgid "The event could not be made"
+msgstr "Impossibile creare l'evento"
+
+#: src/dictate-tools-phone.c
+msgid "A reminder at the time"
+msgstr "Un promemoria all'ora dell'evento"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "A reminder %d minute before"
+msgid_plural "A reminder %d minutes before"
+msgstr[0] "Un promemoria %d minuto prima"
+msgstr[1] "Un promemoria %d minuti prima"
+
+#: src/dictate-tools-phone.c
+msgid "Add to the calendar"
+msgstr "Aggiungi al calendario"
+
+#: src/dictate-tools-phone.c
+msgid "Event"
+msgstr "Evento"
+
+#: src/dictate-tools-phone.c
+msgid "When"
+msgstr "Quando"
+
+#: src/dictate-tools-phone.c
+msgid "Where"
+msgstr "Dove"
+
+#: src/dictate-tools-phone.c
+msgid "Reminder"
+msgstr "Promemoria"
+
+#: src/dictate-tools-phone.c
+msgid "At the time"
+msgstr "All'ora dell'evento"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d minute before"
+msgid_plural "%d minutes before"
+msgstr[0] "%d minuto prima"
+msgstr[1] "%d minuti prima"
+
+#: src/dictate-tools-phone.c
+msgid "told the time"
+msgstr "ha detto l'ora"
+
+#: src/dictate-tools-phone.c
+msgid "Checking the battery…"
+msgstr "Controllo la batteria…"
+
+#: src/dictate-tools-phone.c
+msgid "read the battery"
+msgstr "ha letto lo stato della batteria"
+
+#: src/dictate-tools-phone.c
+msgid "Checking the storage…"
+msgstr "Controllo la memoria…"
+
+#: src/dictate-tools-phone.c
+msgid "read the storage"
+msgstr "ha letto lo stato della memoria"
+
+#: src/dictate-tools-phone.c
+msgid "Checking your calls…"
+msgstr "Controllo le tue chiamate…"
+
+#: src/dictate-tools-phone.c
+msgid "read the call history"
+msgstr "ha letto la cronologia delle chiamate"
+
+#: src/dictate-tools-phone.c
+msgid "Getting the call ready…"
+msgstr "Preparo la chiamata…"
+
+#: src/dictate-tools-phone.c
+msgid "a phone call, on a card"
+msgstr "una chiamata, su una scheda"
+
+#: src/dictate-tools-phone.c
+msgid "Looking in your contacts…"
+msgstr "Cerco nei tuoi contatti…"
+
+#: src/dictate-tools-phone.c
+msgid "looked in the contacts"
+msgstr "ha cercato nei contatti"
+
+#: src/dictate-tools-phone.c
+msgid "Checking your messages…"
+msgstr "Controllo i tuoi messaggi…"
+
+#: src/dictate-tools-phone.c
+msgid "read the messages"
+msgstr "ha letto i messaggi"
+
+#: src/dictate-tools-phone.c
+msgid "Writing the message…"
+msgstr "Scrivo il messaggio…"
+
+#: src/dictate-tools-phone.c
+msgid "a text message, on a card"
+msgstr "un SMS, su una scheda"
+
+#: src/dictate-tools-phone.c
+msgid "Checking your calendar…"
+msgstr "Controllo il tuo calendario…"
+
+#: src/dictate-tools-phone.c
+msgid "read the calendar"
+msgstr "ha letto il calendario"
+
+#: src/dictate-tools-phone.c
+msgid "Checking your alarms…"
+msgstr "Controllo le tue sveglie…"
+
+#: src/dictate-tools-phone.c
+msgid "read the alarms"
+msgstr "ha letto le sveglie"
+
+#: src/dictate-tools-phone.c
+msgid "Setting the alarm…"
+msgstr "Imposto la sveglia…"
+
+#: src/dictate-tools-phone.c
+msgid "set an alarm"
+msgstr "ha impostato una sveglia"
+
+#: src/dictate-tools-phone.c
+msgid "Starting the timer…"
+msgstr "Avvio il timer…"
+
+#: src/dictate-tools-phone.c
+msgid "started a timer"
+msgstr "ha avviato un timer"
+
+#: src/dictate-tools-phone.c
+msgid "Checking Wi-Fi and Bluetooth…"
+msgstr "Controllo Wi-Fi e Bluetooth…"
+
+#: src/dictate-tools-phone.c
+msgid "read Wi-Fi and Bluetooth"
+msgstr "ha letto lo stato di Wi-Fi e Bluetooth"
+
+#: src/dictate-tools-phone.c
+msgid "Changing the setting…"
+msgstr "Cambio l'impostazione…"
+
+#: src/dictate-tools-phone.c
+msgid "changed a setting"
+msgstr "ha cambiato un'impostazione"
+
+#: src/dictate-tools-phone.c
+msgid "Switching the flashlight…"
+msgstr "Cambio lo stato della torcia…"
+
+#: src/dictate-tools-phone.c
+msgid "switched the flashlight"
+msgstr "ha cambiato lo stato della torcia"
+
+#: src/dictate-tools-phone.c
+msgid "Checking the phone's settings…"
+msgstr "Controllo le impostazioni del telefono…"
+
+#: src/dictate-tools-phone.c
+msgid "read the phone's settings"
+msgstr "ha letto le impostazioni del telefono"
+
+#: src/dictate-tools-phone.c
+msgid "Changing the volume…"
+msgstr "Cambio il volume…"
+
+#: src/dictate-tools-phone.c
+msgid "changed the volume"
+msgstr "ha cambiato il volume"
+
+#: src/dictate-tools-phone.c
+msgid "Changing the brightness…"
+msgstr "Cambio la luminosità…"
+
+#: src/dictate-tools-phone.c
+msgid "changed the brightness"
+msgstr "ha cambiato la luminosità"
+
+#: src/dictate-tools-phone.c
+msgid "Controlling what plays…"
+msgstr "Controllo la riproduzione…"
+
+#: src/dictate-tools-phone.c
+msgid "controlled what plays"
+msgstr "ha controllato la riproduzione"
+
+#: src/dictate-tools-phone.c
+msgid "offered to turn on an area"
+msgstr "ha proposto di attivare un'area"
+
+#: src/dictate-tools-phone.c
+msgid "Searching the web…"
+msgstr "Cerco sul web…"
+
+#: src/dictate-tools-phone.c
+msgid "searched the web"
+msgstr "ha cercato sul web"
+
+#: src/dictate-tools-phone.c
+msgid "Checking your apps…"
+msgstr "Controllo le tue app…"
+
+#: src/dictate-tools-phone.c
+msgid "read the open apps"
+msgstr "ha letto le app aperte"
+
+#: src/dictate-tools-phone.c
+msgid "Opening the app…"
+msgstr "Apro l'app…"
+
+#: src/dictate-tools-phone.c
+msgid "opened an app"
+msgstr "ha aperto un'app"
+
+#: src/dictate-tools-phone.c
+msgid "Looking up the opening hours…"
+msgstr "Cerco gli orari di apertura…"
+
+#: src/dictate-tools-phone.c
+msgid "looked up opening hours"
+msgstr "ha cercato gli orari di apertura"
+
+#: src/dictate-tools-phone.c
+msgid "Finding the way…"
+msgstr "Cerco la strada…"
+
+#: src/dictate-tools-phone.c
+msgid "opened Navi with routes"
+msgstr "ha aperto Navi con dei percorsi"
+
+#: src/dictate-tools-phone.c
+msgid "Removing the alarm…"
+msgstr "Rimuovo la sveglia…"
+
+#: src/dictate-tools-phone.c
+msgid "removed an alarm"
+msgstr "ha rimosso una sveglia"
+
+#: src/dictate-tools-phone.c
+msgid "Stopping the timer…"
+msgstr "Fermo il timer…"
+
+#: src/dictate-tools-phone.c
+msgid "stopped a timer"
+msgstr "ha fermato un timer"
+
+#: src/dictate-tools-phone.c
+msgid "Undoing it…"
+msgstr "Annullo…"
+
+#: src/dictate-tools-phone.c
+msgid "undid the last action"
+msgstr "ha annullato l'ultima azione"
+
+#: src/dictate-tools-phone.c
+msgid "Checking what I did…"
+msgstr "Controllo cosa ho fatto…"
+
+#: src/dictate-tools-phone.c
+msgid "read Vibe's log"
+msgstr "ha letto il registro di Vibe"
+
+#: src/dictate-tools-phone.c
+msgid "Checking the mobile network…"
+msgstr "Controllo la rete mobile…"
+
+#: src/dictate-tools-phone.c
+msgid "read the mobile network"
+msgstr "ha letto lo stato della rete mobile"
+
+#: src/dictate-tools-phone.c
+msgid "Checking the weather…"
+msgstr "Controllo il meteo…"
+
+#: src/dictate-tools-phone.c
+msgid "looked up the weather"
+msgstr "ha cercato il meteo"
+
+#: src/dictate-tools-phone.c
+msgid "Finding where you are…"
+msgstr "Cerco dove ti trovi…"
+
+#: src/dictate-tools-phone.c
+msgid "read where the phone is"
+msgstr "ha letto dove si trova il telefono"
+
+#: src/dictate-tools-phone.c
+msgid "Looking through your files…"
+msgstr "Cerco tra i tuoi file…"
+
+#: src/dictate-tools-phone.c
+msgid "looked through the files"
+msgstr "ha cercato tra i file"
+
+#: src/dictate-tools-phone.c
+msgid "Opening the file…"
+msgstr "Apro il file…"
+
+#: src/dictate-tools-phone.c
+msgid "opened a file"
+msgstr "ha aperto un file"
+
+#: src/dictate-tools-phone.c
+msgid "Checking what you missed…"
+msgstr "Controllo cosa ti sei perso…"
+
+#: src/dictate-tools-phone.c
+msgid "read what was missed"
+msgstr "ha letto cosa è stato perso"
+
+#: src/dictate-tools-phone.c
+msgid "Getting the contact ready…"
+msgstr "Preparo il contatto…"
+
+#: src/dictate-tools-phone.c
+msgid "a new contact, on a card"
+msgstr "un nuovo contatto, su una scheda"
+
+#: src/dictate-tools-phone.c
+msgid "Getting the event ready…"
+msgstr "Preparo l'evento…"
+
+#: src/dictate-tools-phone.c
+msgid "a calendar event, on a card"
+msgstr "un evento del calendario, su una scheda"
+
+#: src/dictate-tools-phone.c
+msgid "Checking the call…"
+msgstr "Controllo la chiamata…"
+
+#: src/dictate-tools-phone.c
+msgid "checked the call"
+msgstr "ha controllato la chiamata"
+
+#: src/dictate-tools-phone.c
+msgid "Changing the call…"
+msgstr "Modifico la chiamata…"
+
+#: src/dictate-tools-phone.c
+msgid "changed the call"
+msgstr "ha modificato la chiamata"
+
+#: src/dictate-tools-phone.c
+msgid "Answering…"
+msgstr "Rispondo…"
+
+#: src/dictate-tools-phone.c
+msgid "answered a call"
+msgstr "ha risposto a una chiamata"
+
+#: src/dictate-tools-phone.c
+msgid "Declining…"
+msgstr "Rifiuto…"
+
+#: src/dictate-tools-phone.c
+msgid "declined a call"
+msgstr "ha rifiutato una chiamata"
+
+#: src/dictate-tools.c
+msgid "That was already done"
+msgstr "Era già stato fatto"
+
+#: src/dictate-voicematch-page.c
+msgid "Lenient"
+msgstr "Tollerante"
+
+#: src/dictate-voicematch-page.c
+msgid "Balanced"
+msgstr "Bilanciato"
+
+#: src/dictate-voicematch-page.c
+msgid "Strict"
+msgstr "Rigoroso"
+
+#: src/dictate-voicematch-page.c
+msgid "Off · no voice sample yet"
+msgstr "Disattivato · ancora nessun campione vocale"
+
+#: src/dictate-voicematch-page.c
+msgid "Not on this phone yet"
+msgstr "Non ancora su questo telefono"
+
+#: src/dictate-voicematch-page.c
+msgid "Voices can't be checked · the voice model is not installed"
+msgstr ""
+"Le voci non possono essere verificate · il modello vocale non è installato"
+
+#: src/dictate-voicematch-page.c
+msgid "Off · the voice model is not installed"
+msgstr "Disattivata · il modello vocale non è installato"
+
+#: src/dictate-voicematch-page.c
+msgid "Record your voice again"
+msgstr "Registra di nuovo la tua voce"
+
+#: src/dictate-voicematch-page.c
+msgid "Off · voice sample saved"
+msgstr "Disattivato · campione vocale salvato"
+
+#. TRANSLATORS: Settings › Voice match's summary; the %s is how close: lenient, balanced or strict
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "On · %s match"
+msgstr "Attivo · corrispondenza %s"
+
+#: src/dictate-voicematch-page.c
+msgid "lenient"
+msgstr "tollerante"
+
+#: src/dictate-voicematch-page.c
+msgid "balanced"
+msgstr "bilanciata"
+
+#: src/dictate-voicematch-page.c
+msgid "strict"
+msgstr "rigorosa"
+
+#: src/dictate-voicematch-page.c
+msgid "Delete voice sample?"
+msgstr "Eliminare il campione vocale?"
+
+#: src/dictate-voicematch-page.c
+msgid ""
+"Voice match turns off and Vibe takes commands from any voice until you "
+"record a new sample."
+msgstr ""
+"L'identificazione vocale si disattiva e Vibe accetta comandi da qualsiasi "
+"voce finché non registri un nuovo campione."
+
+#: src/dictate-voicematch-page.c
+msgid "Delete"
+msgstr "Elimina"
+
+#. TRANSLATORS: under Voice match's slider: 75% match needed
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "%.0f%% match needed"
+msgstr "Corrispondenza richiesta: %.0f%%"
+
+#: src/dictate-voicematch-page.c
+msgid "Works with a cold or in noise, but a similar voice may get through."
+msgstr ""
+"Funziona anche con il raffreddore o nel rumore, ma una voce simile potrebbe "
+"passare."
+
+#: src/dictate-voicematch-page.c
+msgid "Right for most people and rooms."
+msgstr "Adatto alla maggior parte delle persone e degli ambienti."
+
+#: src/dictate-voicematch-page.c
+msgid "Hardest to imitate. You may need to repeat yourself in noise."
+msgstr "Il più difficile da imitare. Nel rumore potresti dover ripetere."
+
+#: src/dictate-voicematch-page.c
+msgid "Off, Vibe answers anyone"
+msgstr "Disattivato, Vibe risponde a chiunque"
+
+#. on, and nothing to check a voice with: what asks for it is refused, as for
+#. * too little speech (dictate-talk.c)
+#: src/dictate-voicematch-page.c
+msgid ""
+"Voices can't be checked now: personal and action commands that ask for my "
+"voice are not carried out"
+msgstr ""
+"Ora le voci non possono essere verificate: i comandi personali e le azioni "
+"che richiedono la mia voce non vengono eseguiti"
+
+#: src/dictate-voicematch-page.c
+msgid "Other voices can't give Vibe commands"
+msgstr "Altre voci non possono dare comandi a Vibe"
+
+#. TRANSLATORS: Voice match's sample: 4 phrases
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "%u phrase"
+msgid_plural "%u phrases"
+msgstr[0] "%u frase"
+msgstr[1] "%u frasi"
+
+#. TRANSLATORS: Voice match's sample: 4 phrases · recorded today
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "%u phrase · recorded today"
+msgid_plural "%u phrases · recorded today"
+msgstr[0] "%u frase · registrata oggi"
+msgstr[1] "%u frasi · registrate oggi"
+
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "%u phrase · recorded yesterday"
+msgid_plural "%u phrases · recorded yesterday"
+msgstr[0] "%u frase · registrata ieri"
+msgstr[1] "%u frasi · registrate ieri"
+
+#. TRANSLATORS: a date, as in "recorded on 3 March 2026" (strftime)
+#: src/dictate-voicematch-page.c
+msgid "%e %B %Y"
+msgstr "%e %B %Y"
+
+#. TRANSLATORS: Voice match's sample: 4 phrases · recorded on 3 March 2026
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "%u phrase · recorded on %s"
+msgid_plural "%u phrases · recorded on %s"
+msgstr[0] "%u frase · registrata il %s"
+msgstr[1] "%u frasi · registrate il %s"
+
+#: src/dictate-voicematch-page.c
+msgid ""
+"Vibe can't tell voices apart on this phone yet, so it answers anyone who "
+"speaks to it."
+msgstr ""
+"Vibe non sa ancora distinguere le voci su questo telefono, quindi risponde a "
+"chiunque gli parli."
+
+#: src/dictate-voicematch-page.c
+msgid ""
+"Vibe learns your voice and won't carry out commands from anyone who doesn't "
+"sound like you. The sample never leaves this phone."
+msgstr ""
+"Vibe impara la tua voce e non esegue comandi di chi non ha la tua voce. Il "
+"campione non lascia mai questo telefono."
+
+#: src/dictate-voicematch-page.c
+msgid "Voice match is coming"
+msgstr "L’identificazione vocale arriverà presto"
+
+#: src/dictate-voicematch-page.c
+msgid ""
+"Then Vibe learns your voice and won't carry out commands from anyone who "
+"doesn't sound like you. Recording your voice will be offered here."
+msgstr ""
+"Allora Vibe imparerà la tua voce e non eseguirà i comandi di chi non ha la "
+"tua voce. La registrazione della tua voce verrà proposta qui."
+
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "Read %u short phrase aloud. About a minute, somewhere quiet."
+msgid_plural "Read %u short phrases aloud. About a minute, somewhere quiet."
+msgstr[0] ""
+"Leggi ad alta voce %u frase breve. Circa un minuto, in un posto tranquillo."
+msgstr[1] ""
+"Leggi ad alta voce %u frasi brevi. Circa un minuto, in un posto tranquillo."
+
+#: src/dictate-voicematch-page.c
+msgid "No voice sample yet"
+msgstr "Ancora nessun campione vocale"
+
+#: src/dictate-voicematch-page.c
+msgid "Record my voice"
+msgstr "Registra la mia voce"
+
+#: src/dictate-voicematch-page.c
+msgid "The voice model is not installed"
+msgstr "Il modello vocale non è installato"
+
+#: src/dictate-voicematch-page.c
+msgid ""
+"Your voice sample is kept, but Vibe can't check voices until the model is "
+"installed again."
+msgstr ""
+"Il tuo campione vocale viene conservato, ma Vibe non può verificare le voci "
+"finché il modello non viene reinstallato."
+
+#: src/dictate-voicematch-page.c
+msgid ""
+"Voice match was updated, and your sample was made for the earlier version. "
+"Vibe can't check voices with it."
+msgstr ""
+"L’identificazione vocale è stata aggiornata e il tuo campione è stato creato "
+"per la versione precedente. Vibe non può verificare le voci con esso."
+
+#: src/dictate-voicematch-page.c src/dictate-window.c
+msgid "Record again"
+msgstr "Registra di nuovo"
+
+#: src/dictate-voicematch-page.c
+msgid "Only answer my voice"
+msgstr "Rispondi solo alla mia voce"
+
+#: src/dictate-voicematch-page.c
+msgid "Voice sample"
+msgstr "Campione vocale"
+
+#: src/dictate-voicematch-page.c
+msgid "Re-record"
+msgstr "Registra di nuovo"
+
+#: src/dictate-voicematch-page.c
+msgid "Delete voice sample"
+msgstr "Elimina campione vocale"
+
+#: src/dictate-voicematch-page.c
+msgid "Vibe will answer anyone again"
+msgstr "Vibe tornerà a rispondere a chiunque"
+
+#. how close a match: the slider on a card of its own
+#: src/dictate-voicematch-page.c
+msgid "How close a match"
+msgstr "Grado di corrispondenza"
+
+#. what the owner's voice is asked for (dictate_tools_risk ())
+#: src/dictate-voicematch-page.c
+msgid "Ask for my voice on"
+msgstr "Chiedi la mia voce per"
+
+#: src/dictate-voicematch-page.c
+msgid "Everyday questions"
+msgstr "Domande quotidiane"
+
+#: src/dictate-voicematch-page.c
+msgid "Time, weather, alarms, timers"
+msgstr "Ora, meteo, sveglie, timer"
+
+#: src/dictate-voicematch-page.c
+msgid "Personal information"
+msgstr "Informazioni personali"
+
+#: src/dictate-voicematch-page.c
+msgid "Reading messages, calendar, contacts"
+msgstr "Lettura di messaggi, calendario, contatti"
+
+#: src/dictate-voicematch-page.c
+msgid "Actions"
+msgstr "Azioni"
+
+#: src/dictate-voicematch-page.c
+msgid "Calling, sending, deleting, changing settings"
+msgstr "Chiamare, inviare, eliminare, cambiare impostazioni"
+
+#: src/dictate-voicematch.c
+msgid "Voice Match is not installed"
+msgstr "L'identificazione vocale non è installata"
+
+#: src/dictate-voicematch.c
+#, c-format
+msgid "The voice sample could not be removed: %s"
+msgstr "Impossibile rimuovere il campione vocale: %s"
+
+#: src/dictate-voicematch.c
+msgid "No voice sample"
+msgstr "Nessun campione vocale"
+
+#: src/dictate-voicematch.c
+msgid "Too little speech to tell whose voice it is"
+msgstr "Troppo poco parlato per capire di chi sia la voce"
+
+#: src/dictate-voicematch.c
+msgid ""
+"The voice sample was made for another Voice Match model: record it again"
+msgstr ""
+"Il campione vocale è stato creato per un altro modello di identificazione "
+"vocale: registralo di nuovo"
+
+#: src/dictate-voicematch.c
+#, c-format
+msgid "A voice sample needs %d recording"
+msgid_plural "A voice sample needs %d recordings"
+msgstr[0] "Un campione vocale richiede %d registrazione"
+msgstr[1] "Un campione vocale richiede %d registrazioni"
+
+#: src/dictate-voicematch.c
+#, c-format
+msgid "The voice sample could not be saved: %s"
+msgstr "Impossibile salvare il campione vocale: %s"
+
+#: src/dictate-window.c
+msgid "Listening…"
+msgstr "In ascolto…"
+
+#: src/dictate-window.c
+msgid "Tap the microphone and start talking"
+msgstr "Tocca il microfono e inizia a parlare"
+
+#. TRANSLATORS: the language button's name for screen readers; %s is the language's name for itself
+#: src/dictate-window.c
+#, c-format
+msgid "Language: %s"
+msgstr "Lingua: %s"
+
+#: src/dictate-window.c
+msgid "Dictating"
+msgstr "Dettatura in corso"
+
+#: src/dictate-window.c
+msgid "Not carried out"
+msgstr "Non eseguito"
+
+#: src/dictate-window.c
+msgid "Listening while you hold"
+msgstr "In ascolto finché tieni premuto"
+
+#: src/dictate-window.c
+msgid "Vibe writes"
+msgstr "Vibe scrive"
+
+#: src/dictate-window.c
+msgid "Vibe says · on the speaker"
+msgstr "Vibe dice · in vivavoce"
+
+#. TRANSLATORS: the seconds left of a countdown, in "Sending in %s…"
+#: src/dictate-window.c
+msgid "one"
+msgstr "uno"
+
+#: src/dictate-window.c
+msgid "two"
+msgstr "due"
+
+#: src/dictate-window.c
+msgid "three"
+msgstr "tre"
+
+#: src/dictate-window.c
+msgid "four"
+msgstr "quattro"
+
+#: src/dictate-window.c
+msgid "five"
+msgstr "cinque"
+
+#: src/dictate-window.c
+msgid "six"
+msgstr "sei"
+
+#: src/dictate-window.c
+msgid "seven"
+msgstr "sette"
+
+#: src/dictate-window.c
+msgid "eight"
+msgstr "otto"
+
+#: src/dictate-window.c
+msgid "nine"
+msgstr "nove"
+
+#: src/dictate-window.c
+msgid "ten"
+msgstr "dieci"
+
+#. TRANSLATORS: over a message that is sent by itself when the countdown ends; %s is "three"
+#: src/dictate-window.c
+#, c-format
+msgid "Sending in %s…"
+msgstr "Invio tra %s…"
+
+#. TRANSLATORS: over a call that is placed by itself when the countdown ends; %s is "three"
+#: src/dictate-window.c
+#, c-format
+msgid "Calling in %s…"
+msgstr "Chiamata tra %s…"
+
+#. TRANSLATORS: over an action that goes ahead by itself when the countdown ends; %s is "three"
+#: src/dictate-window.c
+#, c-format
+msgid "Going ahead in %s…"
+msgstr "Esecuzione tra %s…"
+
+#: src/dictate-window.c
+msgid "Say “cancel” to stop"
+msgstr "Di' «annulla» per fermare"
+
+#: src/dictate-window.c
+msgid "Tap Cancel to stop it"
+msgstr "Tocca «Annulla» per fermarlo"
+
+#: src/dictate-window.c
+msgid "Say “send” or “cancel”"
+msgstr "Di' «invia» o «annulla»"
+
+#. TRANSLATORS: under a proposed action; %s is its button's label ("Send")
+#: src/dictate-window.c
+#, c-format
+msgid "Nothing happens until you tap “%s”"
+msgstr "Non succede nulla finché non tocchi «%s»"
+
+#: src/dictate-window.c
+msgid "Cancelled"
+msgstr "Annullato"
+
+#: src/dictate-window.c
+msgid "Send now"
+msgstr "Invia ora"
+
+#: src/dictate-window.c
+msgid "Call now"
+msgstr "Chiama ora"
+
+#: src/dictate-window.c
+msgid "Do it now"
+msgstr "Fallo ora"
+
+#. TRANSLATORS: what the Undo button asks Vibe, as if said; Vibe's undo tool answers it
+#: src/dictate-window.c
+msgctxt "vibe asked"
+msgid "Undo that."
+msgstr "Annulla quello."
+
+#: src/dictate-window.c
+msgid "Calls and messages"
+msgstr "Chiamate e messaggi"
+
+#: src/dictate-window.c
+msgid "“Call Kim” · “Read my messages”"
+msgstr "«Chiama Kim» · «Leggi i miei messaggi»"
+
+#: src/dictate-window.c
+msgid "Time and alarms"
+msgstr "Ora e sveglie"
+
+#: src/dictate-window.c
+msgid "“Wake me at 6:30” · “Timer, ten minutes”"
+msgstr "«Svegliami alle 6:30» · «Timer di dieci minuti»"
+
+#: src/dictate-window.c
+msgid "This phone"
+msgstr "Questo telefono"
+
+#: src/dictate-window.c
+msgid "“Turn on Wi-Fi” · “How's the battery?”"
+msgstr "«Attiva il Wi-Fi» · «Quanta batteria c'è?»"
+
+#: src/dictate-window.c
+msgid "Around me"
+msgstr "Intorno a me"
+
+#: src/dictate-window.c
+msgid "“Take me home” · “What's the weather?”"
+msgstr "«Portami a casa» · «Che tempo fa?»"
+
+#: src/dictate-window.c
+msgid "“What time is it?” · “Timer, ten minutes”"
+msgstr "«Che ore sono?» · «Timer di dieci minuti»"
+
+#: src/dictate-window.c
+msgid "What I just did"
+msgstr "Quello che ho appena fatto"
+
+#: src/dictate-window.c
+msgid "“Undo” · “What did you just do?”"
+msgstr "«Annulla» · «Cosa hai appena fatto?»"
+
+#: src/dictate-window.c
+msgid "No connection · basic commands only"
+msgstr "Nessuna connessione · solo comandi di base"
+
+#: src/dictate-window.c
+msgid "Tap anywhere and speak, or just try a command"
+msgstr "Tocca ovunque e parla, o prova un comando"
+
+#: src/dictate-window.c
+msgid "Without my model, these still work."
+msgstr "Senza il mio modello, questi funzionano comunque."
+
+#: src/dictate-window.c
+msgid "Here are some things you can say."
+msgstr "Ecco alcune cose che puoi dire."
+
+#. TRANSLATORS: what the button asks Vibe, as if said
+#: src/dictate-window.c
+msgctxt "vibe asked"
+msgid "What can I do?"
+msgstr "Cosa posso fare?"
+
+#. TRANSLATORS: what a user says to hear what Vibe can do, alternatives separated by "|", lower case, without
+#. * punctuation; only the whole sentence counts
+#: src/dictate-window.c
+msgid "what can i say|what can you do|what can i ask|help"
+msgstr ""
+"cosa posso dire|che cosa posso dire|cosa sai fare|cosa puoi fare|cosa posso "
+"chiedere|aiuto"
+
+#: src/dictate-window.c
+msgid "Private number"
+msgstr "Numero privato"
+
+#: src/dictate-window.c
+msgid "Unknown number"
+msgstr "Numero sconosciuto"
+
+#: src/dictate-window.c
+msgid "On hold"
+msgstr "In attesa"
+
+#. TRANSLATORS: over the name of whom the call is with; %s is how long it has gone on: 02:41 or 1:02:41
+#: src/dictate-window.c
+#, c-format
+msgid "On a call · %s"
+msgstr "In chiamata · %s"
+
+#: src/dictate-window.c
+msgid "On a call"
+msgstr "In chiamata"
+
+#: src/dictate-window.c
+msgid "Speaker is on."
+msgstr "Il vivavoce è attivo."
+
+#: src/dictate-window.c
+msgid "Unmute"
+msgstr "Riattiva"
+
+#: src/dictate-window.c
+msgid "Mute"
+msgstr "Muto"
+
+#: src/dictate-window.c
+msgid "Resume"
+msgstr "Riprendi"
+
+#: src/dictate-window.c
+msgid "Hold"
+msgstr "Attesa"
+
+#: src/dictate-window.c
+msgid "Hang up"
+msgstr "Riaggancia"
+
+#: src/dictate-window.c
+msgid "Tap anywhere and say “mute”, “hold”, “speaker” or “hang up”"
+msgstr "Tocca ovunque e di' «muto», «attesa», «vivavoce» o «riaggancia»"
+
+#: src/dictate-window.c
+msgid "Tap anywhere and say “mute”, “speaker” or “hang up”"
+msgstr "Tocca ovunque e di' «muto», «vivavoce» o «riaggancia»"
+
+#. TRANSLATORS: over a call whose person has no name to show (a noun)
+#: src/dictate-window.c
+msgctxt "name of a call with no contact"
+msgid "Call"
+msgstr "Chiamata"
+
+#. TRANSLATORS: the date under Vibe's greeting, a g_date_time_format () string: "Tuesday 24 November"
+#: src/dictate-window.c
+msgid "%A %e %B"
+msgstr "%A %e %B"
+
+#. TRANSLATORS: over "I'm keeping quiet."; %s is when the quiet hours end: 07:00
+#: src/dictate-window.c
+#, c-format
+msgid "Quiet hours · until %s"
+msgstr "Ore di silenzio · fino alle %s"
+
+#: src/dictate-window.c
+msgid "I'm keeping quiet."
+msgstr "Resto in silenzio."
+
+#: src/dictate-window.c
+msgid ""
+"I won't speak or play sounds on my own. Calls are still announced. Ask me "
+"anything and I'll answer."
+msgstr ""
+"Non parlerò né riprodurrò suoni di mia iniziativa. Le chiamate vengono "
+"comunque annunciate. Chiedimi qualsiasi cosa e ti risponderò."
+
+#: src/dictate-window.c
+msgid ""
+"I won't speak or play sounds on my own. Ask me anything and I'll answer."
+msgstr ""
+"Non parlerò né riprodurrò suoni di mia iniziativa. Chiedimi qualsiasi cosa e "
+"ti risponderò."
+
+#: src/dictate-window.c
+msgid "Good evening."
+msgstr "Buonasera."
+
+#: src/dictate-window.c
+msgid "Good morning."
+msgstr "Buongiorno."
+
+#: src/dictate-window.c
+msgid "Good afternoon."
+msgstr "Buon pomeriggio."
+
+#: src/dictate-window.c
+msgid "Say “answer” or “decline”"
+msgstr "Di' «rispondi» o «rifiuta»"
+
+#: src/dictate-window.c
+msgid "Release the side button when you have finished"
+msgstr "Rilascia il tasto laterale quando hai finito"
+
+#: src/dictate-window.c
+msgid "Listening for your answer…"
+msgstr "In attesa della tua risposta…"
+
+#: src/dictate-window.c
+msgid "Tap to stop"
+msgstr "Tocca per fermare"
+
+#: src/dictate-window.c
+msgid "Hold the phone a little closer, or speak up."
+msgstr "Avvicina un po' il telefono o parla più forte."
+
+#: src/dictate-window.c
+msgid "I can't check your voice right now."
+msgstr "Al momento non posso verificare la tua voce."
+
+#: src/dictate-window.c
+msgid ""
+"Voice match was updated since your voice was recorded. Record it again and I "
+"can check it."
+msgstr ""
+"L’identificazione vocale è stata aggiornata dopo la registrazione della tua "
+"voce. Registrala di nuovo e potrò verificarla."
+
+#: src/dictate-window.c
+msgid ""
+"The voice model is not installed any more, so I can't tell your voice from "
+"anyone else's."
+msgstr ""
+"Il modello vocale non è più installato, quindi non posso distinguere la tua "
+"voce da quella degli altri."
+
+#. the model is there and the sample made for it, and the check failed to run
+#: src/dictate-window.c
+msgid ""
+"Voice match couldn't run just now, so I can't tell your voice from anyone "
+"else's."
+msgstr ""
+"L’identificazione vocale non è riuscita a funzionare ora, quindi non posso "
+"distinguere la tua voce da quella degli altri."
+
+#: src/dictate-window.c
+msgid "Use PIN instead"
+msgstr "Usa il PIN"
+
+#: src/dictate-window.c
+msgid "Unlock with PIN instead"
+msgstr "Sblocca con il PIN"
+
+#: src/dictate-window.c
+msgid "Until voices can be checked, commands like this one need your PIN"
+msgstr ""
+"Finché le voci non possono essere verificate, i comandi come questo "
+"richiedono il tuo PIN"
+
+#: src/dictate-window.c
+msgid "Until voices can be checked, commands like this one are not carried out"
+msgstr ""
+"Finché le voci non possono essere verificate, i comandi come questo non "
+"vengono eseguiti"
+
+#: src/dictate-window.c
+msgid "Third try not recognised"
+msgstr "Terzo tentativo non riconosciuto"
+
+#: src/dictate-window.c
+msgid "Has your voice changed?"
+msgstr "La tua voce è cambiata?"
+
+#: src/dictate-window.c
+msgid ""
+"A cold or a new microphone can do that. Enter your PIN and I'll learn it "
+"again."
+msgstr ""
+"Un raffreddore o un nuovo microfono possono causarlo. Inserisci il PIN e la "
+"imparerò di nuovo."
+
+#: src/dictate-window.c
+msgid ""
+"A cold or a new microphone can do that. Record your voice again and I'll "
+"learn it."
+msgstr ""
+"Un raffreddore o un nuovo microfono possono causarlo. Registra di nuovo la "
+"tua voce e la imparerò."
+
+#: src/dictate-window.c
+msgid "Not now"
+msgstr "Non ora"
+
+#: src/dictate-window.c
+msgid "Enter PIN"
+msgstr "Inserisci PIN"
+
+#: src/dictate-window.c
+msgid "Until then, commands in this voice are not carried out"
+msgstr "Fino ad allora, i comandi con questa voce non vengono eseguiti"
+
+#: src/dictate-window.c
+msgid "That didn't sound like my owner."
+msgstr "Non riconosco questa voce."
+
+#: src/dictate-window.c
+msgid ""
+"I only take commands from the voice I was taught. Try again, closer to the "
+"phone."
+msgstr ""
+"Accetto comandi solo dalla voce che ho imparato. Riprova più vicino al "
+"telefono."
+
+#: src/dictate-window.c
+msgid "Leave it off"
+msgstr "Lascia disattivato"
+
+#: src/dictate-window.c
+msgid "Turn on"
+msgstr "Attiva"
+
+#: src/dictate-window.c
+msgid "Try again"
+msgstr "Riprova"
+
+#: src/dictate-window.c
+msgid "What can I do?"
+msgstr "Cosa posso fare?"
+
+#: src/dictate-window.c
+msgid "Undo"
+msgstr "Annulla"
+
+#: src/dictate-window.c
+msgid "Say “undo” to take it back"
+msgstr "Di' «annulla» per tornare indietro"
+
+#: src/dictate-window.c
+msgid "Say which one, or tap it"
+msgstr "Di' quale, o toccalo"
+
+#: src/dictate-window.c
+msgid "Hold the side button to come back"
+msgstr "Tieni premuto il tasto laterale per tornare"
+
+#: src/dictate-window.c
+msgid "Private mode is on"
+msgstr "La modalità privata è attiva"
+
+#. J5: Speak the replies is off
+#: src/dictate-window.c
+msgid "Speech is off · replies are only written"
+msgstr "Voce disattivata · risposte solo scritte"
+
+#: src/dictate-window.c
+msgid "Clear the conversation?"
+msgstr "Cancellare la conversazione?"
+
+#: src/dictate-window.c
+msgid "All of the conversation is deleted from the phone, and Vibe forgets it."
+msgstr ""
+"L'intera conversazione viene eliminata dal telefono e Vibe la dimentica."
+
+#: src/dictate-window.c
+msgid "Incoming call"
+msgstr "Chiamata in arrivo"
+
+#: src/dictate-window.c
+msgid "Decline"
+msgstr "Rifiuta"
+
+#: src/dictate-window.c
+msgid "Answer"
+msgstr "Rispondi"
+
+#. TRANSLATORS: in a call, the bar says so (a noun), over the call's stage and over what is asked in it
+#: src/dictate-window.c
+msgctxt "screen title: a call in progress"
+msgid "Call"
+msgstr "Chiamata"
+
+#: src/dictate-window.c
+msgid "Text copied"
+msgstr "Testo copiato"
+
+#: src/dictate-window.c
+msgid "Clear the text?"
+msgstr "Cancellare il testo?"
+
+#: src/dictate-window.c
+msgid "All of the text is deleted."
+msgstr "Tutto il testo viene eliminato."
+
+#: src/dictate-window.c
+msgid "Copy"
+msgstr "Copia"
+
+#: src/dictate-window.c
+msgid "Select all"
+msgstr "Seleziona tutto"
+
+# android: Framework action_menu_overflow_description (several translations, short)
+#. Material's ⋮, as the other actions' glyphs (Adwaita's view-more is a size larger beside them)
+#: src/dictate-window.c
+msgid "More options"
+msgstr "Altre opzioni"

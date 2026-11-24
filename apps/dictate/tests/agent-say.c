@@ -2,7 +2,10 @@
  * conversation; the reply comes from Agent's model (the talk-brain setting, VibeOS's server by default) and is
  * spoken as the app speaks it, to the default output (-o: into PREFIX-N.wav instead).
  *
- *   agent-say [-l LANGUAGE] [-o PREFIX] [-w SECONDS] TEXT…
+ *   agent-say [-l LANGUAGE] [-o PREFIX] [-w SECONDS] [-a] TEXT…
+ *
+ * -a: each TEXT is spoken as it is, as Agent's line, the model not asked (dictate_talk_announce ()): with -o, the
+ * questions of a test as Agent's voice says them, for talk-bench.
  *
  * A TEXT that starts with "[xx] " switches the language to xx from that turn on, as choosing it in the app does.
  *
@@ -25,6 +28,7 @@ typedef struct {
   char *switched;               /* the language a turn switched to */
   char **texts;
   guint next;
+  gboolean announce;
   /* this turn's */
   gint64 asked, written, sounded;
   char *reply;
@@ -133,7 +137,10 @@ ask_next (Say *s)
   s->waiting = TRUE;
   s->asked = g_get_monotonic_time ();
   s->limit = g_timeout_add_seconds (TURN_LIMIT_S, too_long, s);
-  dictate_talk_ask (s->talk, s->language, text);
+  if (s->announce)
+    dictate_talk_announce (s->talk, s->language, text);
+  else
+    dictate_talk_ask (s->talk, s->language, text);
 }
 
 static gboolean
@@ -158,6 +165,7 @@ main (int argc, char **argv)
     { "language", 'l', 0, G_OPTION_ARG_STRING, &language, "the turns' language (en)", "CODE" },
     { "output", 'o', 0, G_OPTION_ARG_STRING, &prefix, "the replies into PREFIX-N.wav, not to the speaker", "PREFIX" },
     { "wait", 'w', 0, G_OPTION_ARG_INT, &wait_s, "seconds given to loading the model and the voice (8)", "S" },
+    { "announce", 'a', 0, G_OPTION_ARG_NONE, &s.announce, "each TEXT spoken as it is, the model not asked", NULL },
     { NULL },
   };
 

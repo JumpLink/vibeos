@@ -35,6 +35,13 @@ void          dictate_brain_reset       (DictateBrain *self, const char *system)
 /* the conversation goes on under another system prompt (NULL: none): on the phone the model reads all of it again at
  * the next reply */
 void          dictate_brain_set_system  (DictateBrain *self, const char *system);
+/* the last question and all that followed it gone from the conversation, as if never asked (a refused turn, one the
+ * model gave no reply to) */
+void          dictate_brain_forget_turn (DictateBrain *self);
+/* an earlier conversation goes on (`n` questions and their replies, oldest first), after the system prompt; a model on
+ * the phone starts afresh instead */
+void          dictate_brain_restore     (DictateBrain *self, const char *const *said, const char *const *replies,
+                                         guint n);
 /* the model's reply to `text`, streamed to `piece` as it comes, and the whole of it returned. Cancelled (or stopped
  * by `piece`), the reply so far is returned and kept in the conversation. */
 char         *dictate_brain_reply       (DictateBrain *self, const char *text, DictateBrainPiece piece, gpointer data,

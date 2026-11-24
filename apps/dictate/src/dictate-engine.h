@@ -31,7 +31,8 @@ void           dictate_engine_set_turns    (DictateEngine *self, gboolean turns)
  * it ends as it would have: at the speaker's next pause, at once if they have paused already, and with nothing said
  * yet, after the usual wait from then */
 void           dictate_engine_set_held     (DictateEngine *self, gboolean held);
-/* FALSE, with the reason for the user, when the language's model or its recogniser is not installed */
+/* FALSE, with the reason for the user (unless `reason` is NULL), when the language's model or its recogniser is not
+ * installed. The language is the one last set (dictate_engine_set_language ()) */
 gboolean       dictate_engine_available    (DictateEngine *self, char **reason);
 void           dictate_engine_start        (DictateEngine *self);
 /* the microphone closes at once; the words already heard still come, then the state goes back to idle */
@@ -39,6 +40,9 @@ void           dictate_engine_stop         (DictateEngine *self);
 DictateState   dictate_engine_get_state    (DictateEngine *self);
 /* how loud the microphone is just now: 0 (quiet room) .. 1 (speech up close) */
 double         dictate_engine_get_level    (DictateEngine *self);
+/* taking turns: the last turn's speech as the recogniser had it (16 kHz mono float32, at most 30 s), for the voice
+ * match; once the state is idle, until the next start. The caller owns it; NULL for none, or once taken */
+GBytes        *dictate_engine_take_turn_audio (DictateEngine *self);
 
 /* Signals, all on the main thread:
  *   "text" (GStrv finished, const char *partial): the sentences the speaker finished since the last "text", in

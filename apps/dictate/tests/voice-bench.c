@@ -1,6 +1,6 @@
 /* voice-bench: how fast a voice (dictate-voice.h) speaks on this device.
  *
- *   voice-bench MODEL [-v VOICE] [-t THREADS] [-s SPEED] [-o DIR] [-r REPEATS] [TEXT…]
+ *   voice-bench MODEL [-v VOICE] [-g GENDER] [-t THREADS] [-s SPEED] [-o DIR] [-r REPEATS] [TEXT…]
  *
  * Loads MODEL, says a warm-up sentence, then each TEXT (or a set of an assistant's typical answers): for each, the
  * phonemes' count, the time it took, the audio's length and their ratio (RTF: under 1 is faster than real time).
@@ -52,13 +52,15 @@ write_wav (const char *path, const float *samples, gsize n, guint rate)
 int
 main (int argc, char **argv)
 {
-  g_autofree char *voice = NULL, *out = NULL;
+  g_autofree char *voice = NULL, *gender = NULL, *out = NULL;
   int threads = 0, repeats = 1;
   double speed = 1.0;
   g_autoptr (GError) error = NULL;
   g_autoptr (GOptionContext) context = g_option_context_new ("MODEL [TEXT…]");
   GOptionEntry entries[] = {
     { "voice", 'v', 0, G_OPTION_ARG_STRING, &voice, "Kokoro's voice", "NAME" },
+    { "gender", 'g', 0, G_OPTION_ARG_STRING, &gender, "who speaks, where the voice has both (tiny-voca)",
+      "male|female" },
     { "threads", 't', 0, G_OPTION_ARG_INT, &threads, "onnxruntime's threads (0: its choice)", "N" },
     { "speed", 's', 0, G_OPTION_ARG_DOUBLE, &speed, "speed (1 normal)", "X" },
     { "out", 'o', 0, G_OPTION_ARG_FILENAME, &out, "write the audio as DIR/NN.wav", "DIR" },
@@ -87,6 +89,8 @@ main (int argc, char **argv)
     }
   printf ("load %.0f ms, rate %u Hz, threads %d\n", (g_get_monotonic_time () - t0) / 1000.0,
           dictate_voice_get_rate (v), threads);
+  if (gender && !dictate_voice_set_gender (v, gender))
+    g_printerr ("this voice has no %s speaker\n", gender);
 
   t0 = g_get_monotonic_time ();
   samples = dictate_voice_speak (v, "Hello there.", speed, &n, &error);

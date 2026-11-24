@@ -18,6 +18,7 @@
 #include <libebook/libebook.h>
 #include <time.h>
 #include <libecal/libecal.h>
+#include <libsoup/soup.h>
 #include <signal.h>
 #include <sqlite3.h>
 #include <string.h>
@@ -490,6 +491,221 @@ days_of (JsonArray *days)
   return bits;
 }
 
+/* VibeOS's web search (POST {"query", "language", "count"}), stood in for: the fixtures' "web" maps search words to
+ * results ({"Pergamon museum": [{"title", "snippet", "site", "url"}]}); a query holding all of an entry's words gets
+ * its results, any other nothing */
+static void
+on_search (SoupServer *server, SoupServerMessage *msg, const char *path, GHashTable *query, gpointer data)
+{
+  SoupMessageBody *request = soup_server_message_get_request_body (msg);
+  g_autoptr (GBytes) bytes = soup_message_body_flatten (request);
+  g_autoptr (JsonParser) parser = json_parser_new ();
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autoptr (JsonNode) root = NULL;
+  g_autofree char *said = NULL, *body = NULL;
+  JsonObject *web = member_object (fixture, "web");
+  JsonArray *found = NULL;
+
+  if (strcmp (soup_server_message_get_method (msg), "POST")
+      || !json_parser_load_from_data (parser, g_bytes_get_data (bytes, NULL), g_bytes_get_size (bytes), NULL)
+      || !JSON_NODE_HOLDS_OBJECT (json_parser_get_root (parser)))
+    {
+      soup_server_message_set_status (msg, 422, NULL);
+      return;
+    }
+  said = g_utf8_strdown (member_string (json_node_get_object (json_parser_get_root (parser)), "query", ""), -1);
+  if (web)
+    {
+      g_autoptr (GList) keys = json_object_get_members (web);
+
+      for (GList *l = keys; l && !found; l = l->next)
+        {
+          g_autofree char *low = g_utf8_strdown (l->data, -1);
+          g_auto (GStrv) words = g_strsplit (low, " ", -1);
+          gboolean all = TRUE;
+
+          for (guint i = 0; words[i] && all; i++)
+            all = !*words[i] || strstr (said, words[i]) != NULL;
+          if (all)
+            found = member_array (web, l->data);
+        }
+    }
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "data");
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "results");
+  if (found)
+    json_builder_add_value (b, json_node_init_array (json_node_alloc (), found));
+  else
+    {
+      json_builder_begin_array (b);
+      json_builder_end_array (b);
+    }
+  json_builder_set_member_name (b, "answer");
+  json_builder_add_null_value (b);
+  json_builder_end_object (b);
+  json_builder_end_object (b);
+  root = json_builder_get_root (b);
+  body = json_to_string (root, FALSE);
+  soup_server_message_set_status (msg, 200, NULL);
+  soup_server_message_set_response (msg, "application/json", SOUP_MEMORY_COPY, body, strlen (body));
+}
+
+/* the fixtures' place whose "match" words are all in `said` (lower case), or NULL */
+static JsonObject *
+place_matching (const char *said)
+{
+  JsonArray *places = fixture && json_object_has_member (fixture, "places")
+                      ? json_object_get_array_member (fixture, "places") : NULL;
+
+  for (guint i = 0; places && i < json_array_get_length (places); i++)
+    {
+      JsonObject *place = json_array_get_object_element (places, i);
+      g_auto (GStrv) words = g_strsplit (member_string (place, "match", ""), " ", -1);
+      gboolean all = TRUE;
+
+      for (guint j = 0; words[j] && all; j++)
+        all = !*words[j] || strstr (said, words[j]) != NULL;
+      if (all)
+        return place;
+    }
+  return NULL;
+}
+
+/* Navi's place search (GET /photon/api?q=…), stood in for: the fixtures' "places" ({"match", "osm": "R4211594",
+ * "name", "street", "district", "city", "hours"}) by their words; any other query is a made-up place of its name in
+ * Berlin, so that a route to it can be asked for */
+static void
+on_photon (SoupServer *server, SoupServerMessage *msg, const char *path, GHashTable *query, gpointer data)
+{
+  const char *q = query ? g_hash_table_lookup (query, "q") : NULL;
+  g_autofree char *said = g_utf8_strdown (q ? q : "", -1);
+  JsonObject *place = place_matching (said);
+  const char *osm = place ? member_string (place, "osm", "N1") : "N1";
+  const char *keys[] = { "name", "street", "district", "city" };
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autoptr (JsonNode) root = NULL;
+  g_autofree char *body = NULL;
+
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "features");
+  json_builder_begin_array (b);
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "type");
+  json_builder_add_string_value (b, "Feature");
+  json_builder_set_member_name (b, "geometry");
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "type");
+  json_builder_add_string_value (b, "Point");
+  json_builder_set_member_name (b, "coordinates");
+  json_builder_begin_array (b);
+  json_builder_add_double_value (b, 13.405);
+  json_builder_add_double_value (b, 52.52);
+  json_builder_end_array (b);
+  json_builder_end_object (b);
+  json_builder_set_member_name (b, "properties");
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "osm_type");
+  json_builder_add_string_value (b, (char[]) { osm[0], '\0' });
+  json_builder_set_member_name (b, "osm_id");
+  json_builder_add_int_value (b, g_ascii_strtoll (osm + 1, NULL, 10));
+  for (guint i = 0; i < G_N_ELEMENTS (keys); i++)
+    {
+      const char *v = place ? member_string (place, keys[i], NULL) : i == 0 ? q : i == 3 ? "Berlin" : NULL;
+
+      if (!v)
+        continue;
+      json_builder_set_member_name (b, keys[i]);
+      json_builder_add_string_value (b, v);
+    }
+  json_builder_end_object (b);
+  json_builder_end_object (b);
+  json_builder_end_array (b);
+  json_builder_end_object (b);
+  root = json_builder_get_root (b);
+  body = json_to_string (root, FALSE);
+  soup_server_message_set_status (msg, 200, NULL);
+  soup_server_message_set_response (msg, "application/json", SOUP_MEMORY_COPY, body, strlen (body));
+}
+
+/* VibeOS's opening hours (POST {"osm"}), stood in for: the fixtures' place of that id gives its "hours" (the
+ * server's answer), any other none */
+static void
+on_place_hours (SoupServer *server, SoupServerMessage *msg, const char *path, GHashTable *query, gpointer data)
+{
+  SoupMessageBody *request = soup_server_message_get_request_body (msg);
+  g_autoptr (GBytes) bytes = soup_message_body_flatten (request);
+  g_autoptr (JsonParser) parser = json_parser_new ();
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autoptr (JsonNode) root = NULL;
+  g_autofree char *body = NULL;
+  JsonArray *places = fixture && json_object_has_member (fixture, "places")
+                      ? json_object_get_array_member (fixture, "places") : NULL;
+  JsonObject *hours = NULL;
+  const char *osm;
+
+  if (strcmp (soup_server_message_get_method (msg), "POST")
+      || !json_parser_load_from_data (parser, g_bytes_get_data (bytes, NULL), g_bytes_get_size (bytes), NULL)
+      || !JSON_NODE_HOLDS_OBJECT (json_parser_get_root (parser)))
+    {
+      soup_server_message_set_status (msg, 422, NULL);
+      return;
+    }
+  osm = member_string (json_node_get_object (json_parser_get_root (parser)), "osm", "");
+  for (guint i = 0; places && i < json_array_get_length (places) && !hours; i++)
+    {
+      JsonObject *place = json_array_get_object_element (places, i);
+
+      if (!strcmp (member_string (place, "osm", ""), osm))
+        hours = member_object (place, "hours");
+    }
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "data");
+  if (hours)
+    json_builder_add_value (b, json_node_init_object (json_node_alloc (), hours));
+  else
+    {
+      json_builder_begin_object (b);
+      json_builder_set_member_name (b, "found");
+      json_builder_add_boolean_value (b, FALSE);
+      json_builder_end_object (b);
+    }
+  json_builder_end_object (b);
+  root = json_builder_get_root (b);
+  body = json_to_string (root, FALSE);
+  soup_server_message_set_status (msg, 200, NULL);
+  soup_server_message_set_response (msg, "application/json", SOUP_MEMORY_COPY, body, strlen (body));
+}
+
+/* the search, the place search and the opening hours on the main loop, for the run: their addresses are the tools'
+ * (DICTATE_SEARCH_URL, NAVI_SERVER, DICTATE_PLACE_HOURS_URL) */
+static void
+search_start (void)
+{
+  SoupServer *server = soup_server_new (NULL, NULL);
+  g_autoptr (GError) error = NULL;
+  GSList *uris;
+  g_autofree char *url = NULL;
+
+  soup_server_add_handler (server, "/v1/search", on_search, NULL, NULL);
+  soup_server_add_handler (server, "/photon/api", on_photon, NULL, NULL);
+  soup_server_add_handler (server, "/v1/place-hours", on_place_hours, NULL, NULL);
+  if (!soup_server_listen_local (server, 0, SOUP_SERVER_LISTEN_IPV4_ONLY, &error))
+    g_error ("mock: no web search: %s", error->message);
+  uris = soup_server_get_uris (server);
+  url = g_strdup_printf ("http://127.0.0.1:%d", g_uri_get_port (uris->data));
+  g_slist_free_full (uris, (GDestroyNotify) g_uri_unref);
+  g_setenv ("NAVI_SERVER", url, TRUE);
+  {
+    g_autofree char *search = g_strconcat (url, "/v1/search", NULL);
+    g_autofree char *hours = g_strconcat (url, "/v1/place-hours", NULL);
+
+    g_setenv ("DICTATE_SEARCH_URL", search, TRUE);
+    g_setenv ("DICTATE_PLACE_HOURS_URL", hours, TRUE);
+  }
+  /* it serves for the rest of the run */
+}
+
 void
 mock_services_start (void)
 {
@@ -526,6 +742,7 @@ mock_services_start (void)
   own (system, "org.freedesktop.ModemManager1");
   own (session, "vibeos.Clock.Alarms");
   own (session, "vibeos.Shell");
+  search_start ();
   /* both connections stay open for the rest of the run */
   g_object_ref (session);
   g_object_ref (system);
@@ -942,6 +1159,33 @@ write_weather (JsonObject *weather)
   g_file_set_contents (at, forecast, -1, NULL);
 }
 
+/* the places saved in Navi ("navi": {"home": {"name", "lat", "lng"}, "work": …}), in Navi's settings file */
+static void
+write_navi (JsonObject *navi)
+{
+  g_autofree char *dir = g_build_filename (g_get_user_config_dir (), "vibeos-navi", NULL);
+  g_autofree char *path = g_build_filename (dir, "navi.ini", NULL);
+  g_autoptr (GKeyFile) kf = g_key_file_new ();
+  const char *groups[] = { "home", "work" };
+
+  if (!navi)
+    return;
+  for (guint i = 0; i < G_N_ELEMENTS (groups); i++)
+    {
+      JsonObject *place = json_object_has_member (navi, groups[i]) ? json_object_get_object_member (navi, groups[i])
+                                                                   : NULL;
+      if (!place)
+        continue;
+      g_key_file_set_integer (kf, groups[i], "kind", 0);
+      g_key_file_set_string (kf, groups[i], "name", json_object_get_string_member (place, "name"));
+      g_key_file_set_double (kf, groups[i], "lat", json_object_get_double_member (place, "lat"));
+      g_key_file_set_double (kf, groups[i], "lng", json_object_get_double_member (place, "lng"));
+    }
+  g_mkdir_with_parents (dir, 0700);
+  if (!g_key_file_save_to_file (kf, path, NULL))
+    g_error ("fixtures: Navi's settings could not be written");
+}
+
 void
 mock_fixtures_write (JsonObject *phone)
 {
@@ -957,6 +1201,7 @@ mock_fixtures_write (JsonObject *phone)
     g_error ("fixtures: EDS's registry: %s", error->message);
   write_contacts (registry, member_array (phone, "contacts"));
   write_events (registry, member_array (phone, "events"));
+  write_navi (json_object_has_member (phone, "navi") ? json_object_get_object_member (phone, "navi") : NULL);
 }
 
 guint

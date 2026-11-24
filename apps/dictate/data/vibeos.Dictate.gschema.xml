@@ -15,12 +15,21 @@
     <key name="talk-voice" type="s">
       <default>''</default>
       <summary>Agent's voice</summary>
-      <description>A Piper or Kokoro ONNX model's path. Empty, or a file that is not there: the first voice in vibeos-dictate/voices/LANGUAGE under the user's data directory or the system's.</description>
+      <description>A Piper, Kokoro or tiny-voca ONNX model's path. Empty, or a file that is not there: the voice in vibeos-dictate/voices/LANGUAGE under the user's data directory or the system's (for Russian tiny-voca, in its tiny-voca directory).</description>
     </key>
     <key name="talk-voice-name" type="s">
       <default>''</default>
       <summary>Kokoro's speaker</summary>
       <description>The voice file's name in the model's voices directory (af_heart). Empty: the first there is. Piper voices have one speaker each and ignore it.</description>
+    </key>
+    <key name="talk-voice-gender" type="s">
+      <choices>
+        <choice value="male"/>
+        <choice value="female"/>
+      </choices>
+      <default>"male"</default>
+      <summary>Whether a man or a woman speaks</summary>
+      <description>"Voice" in Agent's settings, for a voice that has both (Russian's tiny-voca); from the next sentence on. Voices with one speaker ignore it.</description>
     </key>
     <key name="talk-speed" type="d">
       <range min="0.5" max="3.0"/>
@@ -78,6 +87,20 @@
       <summary>Calls in quiet hours</summary>
       <description>Calls are still announced in the quiet hours.</description>
     </key>
+    <key name="debug-log" type="b">
+      <default>false</default>
+      <summary>Debug log</summary>
+      <description>Agent records each turn whole on the phone, and nowhere else: what it sent to the model, what came back, each tool's call with its arguments and result, the times and the errors. Its newest 100 turns are kept, 5 MB at most.</description>
+    </key>
+    <key name="outward-confirm" type="s">
+      <choices>
+        <choice value="countdown"/>
+        <choice value="wait"/>
+      </choices>
+      <default>'countdown'</default>
+      <summary>Sending a message or placing a call</summary>
+      <description>countdown: once Vibe has read back a message or a call to someone the user named, it goes after 3 seconds unless the user says or taps cancel. wait: it goes only when the user says or taps send. A recipient Vibe had to guess, a locked phone or a voice that is not the owner's always waits.</description>
+    </key>
     <key name="access-calls" type="b">
       <default>true</default>
       <summary>Agent can use calls</summary>
@@ -132,6 +155,37 @@
       <default>true</default>
       <summary>Agent can use the web</summary>
       <description>"Web" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
+    </key>
+    <key name="first-run" type="b">
+      <default>true</default>
+      <summary>Vibe's introduction is still to come</summary>
+      <description>While true, Vibe introduces itself the next time the session starts or the app opens (its language, speed, what it may use and the voice sample), and the key goes false once that is over or skipped.</description>
+    </key>
+    <key name="voice-match" type="b">
+      <default>false</default>
+      <summary>Vibe only answers the owner's voice</summary>
+      <description>"Only answer my voice" in Vibe's Voice match settings, turned on when a voice sample is saved. While it is on and a sample is on the phone, a command in another voice runs nothing the settings below ask the owner's voice for.</description>
+    </key>
+    <key name="voice-match-strictness" type="i">
+      <range min="0" max="100"/>
+      <default>50</default>
+      <summary>How close a voice must be to the owner's</summary>
+      <description>"How close a match", from 0 (lenient) to 100 (strict); 50, balanced, needs a 75 % match.</description>
+    </key>
+    <key name="voice-match-everyday" type="b">
+      <default>true</default>
+      <summary>The owner's voice for everyday questions</summary>
+      <description>The time, the weather, alarms and timers answered only to the owner's voice, while Voice match is on.</description>
+    </key>
+    <key name="voice-match-personal" type="b">
+      <default>true</default>
+      <summary>The owner's voice for personal information</summary>
+      <description>Messages, the calendar and contacts read out only to the owner's voice, while Voice match is on.</description>
+    </key>
+    <key name="voice-match-actions" type="b">
+      <default>true</default>
+      <summary>The owner's voice for actions</summary>
+      <description>Calling, sending, deleting and changing settings only for the owner's voice, while Voice match is on.</description>
     </key>
   </schema>
 </schemalist>

@@ -17,6 +17,11 @@
 #include <string.h>
 #include <vibeos.h>
 
+#ifndef DICTATE_WITHOUT_TALK
+#include "dictate-calls.h"
+#include "dictate-l10n.h"
+#endif
+
 /* what a language lacks */
 typedef struct {
   const DictatePack *packs[2];
@@ -38,7 +43,7 @@ talk_has_voice (DictateTalk *talk, const char *language)
 #endif
 }
 
-/* `voice_only`: an app that only speaks (Navi), which needs the language's Piper voice and nothing else */
+/* `voice_only`: an app that only speaks (Navi), which needs the language's voice and nothing else */
 static void
 find_needs (const char *language, DictateTalk *talk, gboolean voice_only, Needs *needs)
 {
@@ -49,7 +54,7 @@ find_needs (const char *language, DictateTalk *talk, gboolean voice_only, Needs 
   memset (needs, 0, sizeof *needs);
   if (voice_only)
     {
-      g_autofree char *voice = dictate_voice_find_piper (language);
+      g_autofree char *voice = dictate_voice_find (language);
       const DictatePack *pack = voice ? NULL : dictate_pack_find (language, DICTATE_PACK_VOICE);
 
       if (pack)
@@ -163,6 +168,7 @@ typedef struct {
   VibeosDialog *progress;       /* weak */
   GtkWidget *status, *percent, *bar, *sizes;
   GtkWidget *package_size, *total;      /* weak: the question's, filled in once the package is found */
+  guint quarters;               /* G5: of the download, the quarters said so far */
 } Offer;
 
 static void
@@ -277,6 +283,42 @@ show_failure (Offer *offer, const char *why)
 
 /* --- downloading */
 
+/* G5: in Agent, Vibe says how far the download is, at each quarter, in the language it speaks until then; not while it
+ * says something else, nor in the quiet hours, nor with the replies only written */
+static void
+say_quarter (Offer *offer, guint64 received, guint64 size)
+{
+#ifndef DICTATE_WITHOUT_TALK
+  static const char *const SAID[] = {
+    /* TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch) */
+    N_("Downloading %s: a quarter done."),
+    /* TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch) */
+    N_("Downloading %s: half done."),
+    /* TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch) */
+    N_("Downloading %s: three quarters done."),
+  };
+  guint quarter = size ? (guint) (received * 4 / size) : 0;
+  g_autoptr (GSettings) settings = NULL;
+  g_autofree char *speaking = NULL, *line = NULL;
+
+  if (!offer->talk || offer->app || quarter <= offer->quarters || quarter > G_N_ELEMENTS (SAID))
+    return;
+  offer->quarters = quarter;
+  settings = g_settings_new ("vibeos.Dictate");
+  if (!dictate_talk_get_speak (offer->talk) || dictate_talk_get_state (offer->talk) != DICTATE_TALK_IDLE
+      || dictate_calls_quiet_now (settings))
+    return;
+  speaking = g_settings_get_string (settings, "language");
+  if (!*speaking)
+    {
+      g_free (speaking);
+      speaking = dictate_language_default ();
+    }
+  line = g_strdup_printf (dictate_l10n (speaking, SAID[quarter - 1]), language_name (offer->language));
+  dictate_talk_announce (offer->talk, speaking, line);
+#endif
+}
+
 static void
 show_progress (DictateDownload *download, Offer *offer)
 {
@@ -290,6 +332,7 @@ show_progress (DictateDownload *download, Offer *offer)
 
   if (!offer->progress)
     return;
+  say_quarter (offer, received, size);
   if (dictate_download_get_state (download) == DICTATE_DOWNLOAD_INSTALLING)
     status = pack->archive_top ? _("Unpacking and installing…") : _("Installing…");
   else
@@ -416,6 +459,7 @@ start (Offer *offer)
       g_signal_handlers_disconnect_by_data (offer->download, offer);
       g_clear_object (&offer->download);
     }
+  offer->quarters = 0;
   dialog = vibeos_dialog_new (title);
   offer->status = gtk_label_new (NULL);
   offer->percent = gtk_label_new (NULL);
@@ -545,15 +589,16 @@ ask (Offer *offer)
   VibeosDialog *dialog = vibeos_dialog_new (title);
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *sum;
 
+  /* the title names the language, in its own name, which a sentence could not decline: the message refers to it */
   if (offer->app)
-    /* TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second an app's name (Navi) */
-    message = g_strdup_printf (_("To speak %s, %s needs this on the phone:"), name, offer->app);
+    /* TRANSLATORS: under the title "Download Deutsch?"; %s is an app's name (Navi) */
+    message = g_strdup_printf (_("To speak this language, %s needs this on the phone:"), offer->app);
   else if (offer->talk)
-    /* TRANSLATORS: %s is the language's name for itself (Deutsch) */
-    message = g_strdup_printf (_("To hear and speak %s, Vibe needs these on the phone:"), name);
+    /* TRANSLATORS: under the title "Download Deutsch?" */
+    message = g_strdup (_("To hear and speak this language, Vibe needs these on the phone:"));
   else
-    /* TRANSLATORS: %s is the language's name for itself (Deutsch) */
-    message = g_strdup_printf (_("To hear %s, Dictate needs these on the phone:"), name);
+    /* TRANSLATORS: under the title "Download Deutsch?" */
+    message = g_strdup (_("To hear this language, Dictate needs these on the phone:"));
   /* the recogniser's package: looked up now, for its size */
   if (offer->needs.package)
     {

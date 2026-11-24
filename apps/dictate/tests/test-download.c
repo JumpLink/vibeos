@@ -235,7 +235,8 @@ test_remove_tree (Fixture *f, gconstpointer data)
   g_assert_true (g_file_test (keep_file, G_FILE_TEST_IS_REGULAR));
 }
 
-/* every pack: HTTPS, a place in models/ or voices/LANGUAGE, plain names, sizes and sums */
+/* every pack: HTTPS, a place in models/ or voices/LANGUAGE (a voice's own directory in it, if it makes files), plain
+ * names, sizes and sums, a file from elsewhere by its own HTTPS address, under its name */
 static void
 test_table (void)
 {
@@ -253,7 +254,17 @@ test_table (void)
       if (pack->kind == DICTATE_PACK_VOICE)
         {
           g_autofree char *place = g_strconcat ("voices/", pack->language, NULL);
-          g_assert_cmpstr (pack->place, ==, place);
+          g_autofree char *own = g_strconcat (place, "/", NULL);
+
+          if (pack->made)
+            {
+              /* what it makes goes with it: only from a directory of its own */
+              g_assert_true (g_str_has_prefix (pack->place, own));
+              g_assert_null (strchr (pack->place + strlen (own), '/'));
+              g_assert_cmpuint (strlen (pack->made), >, 0);
+            }
+          else
+            g_assert_cmpstr (pack->place, ==, place);
         }
       else
         {
@@ -271,6 +282,14 @@ test_table (void)
           g_assert_cmpuint (strlen (f->sha256), ==, 64);
           for (const char *c = f->sha256; *c; c++)
             g_assert_true (g_ascii_isxdigit (*c) && !g_ascii_isupper (*c));
+          if (f->url)
+            {
+              g_autofree char *end = g_strconcat ("/", f->name, NULL);
+              g_assert_true (g_str_has_prefix (f->url, "https://"));
+              g_assert_true (g_str_has_suffix (f->url, end));
+            }
+          /* nothing it makes could be taken for one of its files */
+          g_assert_false (pack->made && g_str_has_prefix (f->name, pack->made));
         }
       g_assert_cmpuint (files, >, 0);
       if (pack->archive_top)
@@ -283,9 +302,57 @@ test_table (void)
     }
 }
 
+static void
+put_file (const char *dir, const char *name, gsize size)
+{
+  g_autofree char *path = g_build_filename (dir, name, NULL);
+  g_autofree char *data = g_malloc0 (size);
+
+  g_assert_true (g_file_set_contents (path, data, size, NULL));
+}
+
+/* a voice in a directory of its own (Russian's tiny-voca): its size and its removal take what it made there too, and
+ * leave another voice of the language (Piper's Denis, from before it) where it is */
+static void
+test_voice_dir (Fixture *f, gconstpointer data)
+{
+  const DictatePack *pack = dictate_pack_find ("ru", DICTATE_PACK_VOICE);
+  g_autofree char *root = g_build_filename (g_get_user_data_dir (), "vibeos-dictate", NULL);
+  g_autofree char *place = NULL, *language = NULL;
+  g_autoptr (GError) error = NULL;
+  guint64 size = 0;
+
+  g_assert_nonnull (pack);
+  g_assert_nonnull (pack->made);
+  place = g_build_filename (root, pack->place, NULL);
+  language = g_build_filename (root, "voices", "ru", NULL);
+  g_assert_cmpint (g_mkdir_with_parents (place, 0700), ==, 0);
+  for (const DictateFile *file = pack->files; file->name; file++, size += 3)
+    put_file (place, file->name, 3);
+  put_file (place, "stress-0123456789abcdef.sorted", 5);
+  put_file (language, "ru_RU-denis-medium.onnx", 7);
+  put_file (language, "ru_RU-denis-medium.onnx.json", 2);
+  g_assert_cmpuint (dictate_download_downloaded_size ("ru"), ==, size + 5);
+
+  g_assert_true (dictate_download_remove ("ru", &error));
+  g_assert_no_error (error);
+  g_assert_false (g_file_test (place, G_FILE_TEST_EXISTS));
+  g_assert_cmpuint (dictate_download_downloaded_size ("ru"), ==, 0);
+  {
+    g_autofree char *denis = g_build_filename (language, "ru_RU-denis-medium.onnx", NULL);
+    g_assert_true (g_file_test (denis, G_FILE_TEST_IS_REGULAR));
+  }
+  g_assert_true (dictate_download_remove_tree (root, &error));
+}
+
 int
 main (int argc, char **argv)
 {
+  g_autofree char *home = g_dir_make_tmp ("test-download-XXXXXX", NULL);
+
+  /* the user's data directory, read once by GLib: a private one, before anything asks */
+  g_assert_nonnull (home);
+  g_setenv ("XDG_DATA_HOME", home, TRUE);
   g_test_init (&argc, &argv, NULL);
   g_test_add_func ("/download/table", test_table);
   for (int zip = 0; zip < 2; zip++)
@@ -305,5 +372,10 @@ main (int argc, char **argv)
     }
   g_test_add ("/download/unpack/tar/hardlink", Fixture, NULL, setup, test_hardlink, teardown);
   g_test_add ("/download/remove-tree", Fixture, NULL, setup, test_remove_tree, teardown);
-  return g_test_run ();
+  g_test_add ("/download/voice-dir", Fixture, NULL, setup, test_voice_dir, teardown);
+  {
+    int result = g_test_run ();
+    g_rmdir (home);
+    return result;
+  }
 }

@@ -35,8 +35,15 @@ gboolean      tool_run_dry       (ToolRun *run);
 /* private mode with the answer on the speaker: no message or notification texts (DictateToolContext) */
 gboolean      tool_run_private   (ToolRun *run);
 GCancellable *tool_run_cancellable (ToolRun *run);
+/* the user's language ("en"), as the turn's (DictateToolContext) */
+const char   *tool_run_language  (ToolRun *run);
 /* hands a proposal to the window (once the model's turn may still use it) */
 void          tool_run_propose   (ToolRun *run, DictateAction *action);
+/* hands the window what it shows besides the reply (DictateToolContext.show): "facts" (a label and its value),
+ * "person" (a contact's name), "suggestions" (labels to tap), "choices" (label and detail, pairs), "written" (lines
+ * shown, not spoken). The user's own data: on the screen only, never to the model through these */
+void          tool_run_show      (ToolRun *run, const char *kind, const char *const *rows);
+void          tool_run_fact      (ToolRun *run, const char *label, const char *value);
 /* for the action log: what undoing this needs (a JSON object, taken), somewhere else something went besides the
  * model's server ("the town's rough position, to Open-Meteo"), and the entry it undid */
 void          tool_run_set_undo  (ToolRun *run, JsonNode *undo);
@@ -56,6 +63,35 @@ DictateAction *dictate_action_new (const char *kind, const char *title, const ch
 /* for the action log, once the user has decided: the tool that proposed it, and where its doing sends something
  * ("the message, by SMS to its recipient"; NULL: it stays on the phone) */
 void           dictate_action_set_log (DictateAction *action, const char *tool, const char *sent);
+
+/* a card's row, as the window lays it out (dictate_action_get_fields ()): its label translated */
+void      dictate_action_add_field       (DictateAction *self, const char *label, const char *value);
+/* the card deletes, or what it does cannot be undone */
+void      dictate_action_set_destructive (DictateAction *self);
+
+/* the phone's own tools (dictate-tools-device.c): the flashlight, the quick settings' switches, the volumes, the
+ * brightness, what plays, where the phone is, the user's files */
+JsonNode *tool_set_flashlight     (JsonObject *args, ToolRun *run, GError **error);
+JsonNode *tool_set_phone_switch   (JsonObject *args, ToolRun *run, GError **error);
+JsonNode *tool_get_phone_switches (JsonObject *args, ToolRun *run, GError **error);
+JsonNode *tool_set_volume         (JsonObject *args, ToolRun *run, GError **error);
+JsonNode *tool_set_brightness     (JsonObject *args, ToolRun *run, GError **error);
+JsonNode *tool_media_control      (JsonObject *args, ToolRun *run, GError **error);
+JsonNode *tool_get_location       (JsonObject *args, ToolRun *run, GError **error);
+JsonNode *tool_find_files         (JsonObject *args, ToolRun *run, GError **error);
+JsonNode *tool_open_file          (JsonObject *args, ToolRun *run, GError **error);
+JsonNode *tool_web_search         (JsonObject *args, ToolRun *run, GError **error);
+JsonNode *tool_get_place_hours    (JsonObject *args, ToolRun *run, GError **error);
+/* Navi's place search (our own Photon): the features found for `query`, at most `limit`, owned by `parser`, none in
+ * Russia (Navi covers none there); NULL for none, and `reached` FALSE when the search could not be asked */
+JsonArray *tool_place_search      (JsonParser *parser, const char *query, const char *language, guint limit,
+                                   ToolRun *run, gboolean *reached);
+/* the undo of one of them ("device" in `undo`): FALSE when it is not theirs; else `done` says what is so again, or
+ * `error` why not */
+gboolean  tool_device_undo        (JsonObject *undo, ToolRun *run, char **done, GError **error);
+
+/* `name` has its own risk class (dictate_tools_risk ()), for the tests */
+gboolean       dictate_tools_risk_known (const char *name);
 
 /* the tools' table entry called `name`, or NULL */
 const DictateTool *dictate_tools_find (const char *name);

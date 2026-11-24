@@ -123,9 +123,26 @@ static const DictateFile PIPER_IT[] = {
   { NULL }
 };
 
-static const DictateFile PIPER_RU[] = {
-  { "ru_RU-denis-medium.onnx", 63221984, "879bc365cb14d1380e3f5ed6044162ccf54c99f6161871569b7f830aec3ce841" },
-  { "ru_RU-denis-medium.onnx.json", 6196, "5891b94580ae739a8cdc5d17591db6800333f85164d13599aca893883d99b9eb" },
+/* tiny-voca-ru 0.2.1 (Apache-2.0): its ONNX model on Hugging Face, and its front end's stress data, ruaccent's (MIT),
+ * from its source on GitHub; each at one revision */
+#define TINY_VOCA "https://huggingface.co/egnch/tiny-voca-ru/resolve/2723b0e71fea216001bd4f6caf0866eb06879339"
+#define TINY_VOCA_DATA "https://raw.githubusercontent.com/yilbegan/tiny-voca-ru/" \
+                       "aa7086b3b6522f5a5d8cadb11cc5c8b3fde98784/src/tiny_voca_ru/frontend/data/"
+
+/* the models last, the voice's own last of all (dictate-voice.h finds it when all are there) */
+static const DictateFile TINY_VOCA_RU[] = {
+  { "model.json", 930, "e7697b94c2b6632c2b5d574fb6a02b00ea145dc3633717c4693f3b659174e751" },
+  { "NOTICE", 1167, "b4aa174906ece3851ad63e42f219e00ea289a30ffc37b8d11b812de15b60e3dd", TINY_VOCA "/NOTICE" },
+  { "LICENSE-ruaccent", 1584, "620b0f9b112f013b9856aabeac3a472f6531695ba7b76989951391da28515ea6",
+    TINY_VOCA_DATA "LICENSE-ruaccent" },
+  { "stress.txt.gz", 1436313, "5db248f5131abe59bf7b20a6ee1ffec8f946bfeb7e5bb69cbe6c6a6a1735e539",
+    TINY_VOCA_DATA "stress.txt.gz" },
+  { "omograph_vocab.txt.gz", 128594, "8c88fb8ff6a196a679f186d9a5e0820e170c8eae82f476a065dd0d7bb5f5bef5",
+    TINY_VOCA_DATA "omograph_vocab.txt.gz" },
+  { "accent.onnx", 803402, "4e393144e45626f6f1062a0784ef06f921b97321a8e7b87ac2a09a892286500a",
+    TINY_VOCA_DATA "accent.onnx" },
+  { "omograph.onnx", 10517401, "420bb1c83a5c3b5de01692fc7f73be333c6ffb181c30fe32b42294ebaa205b7d" },
+  { "model.onnx", 21374821, "71038073a97394273bb4879f8a44431d64f15d563af018f07aed3a9ea52b1cf4" },
   { NULL }
 };
 
@@ -154,7 +171,10 @@ static const DictatePack PACKS[] = {
               "fr/fr_FR/siwis/medium", PIPER_FR),
   PIPER_PACK ("it", "Piper voice Paola", "MIT; recordings CC0; trained from Hi-Fi TTS, CC BY 4.0",
               "it/it_IT/paola/medium", PIPER_IT),
-  PIPER_PACK ("ru", "Piper voice Denis", "MIT; recordings CC0", "ru/ru_RU/denis/medium", PIPER_RU),
+  /* Russian's voice was Piper's Denis (ru/ru_RU/denis/medium): its files stay where they were downloaded, unused */
+  { "ru", DICTATE_PACK_VOICE, 0, "tiny-voca-ru voice, with ruaccent stress data",
+    "Apache-2.0; stress data MIT; trained on synthetic speech (Qwen3-TTS), CC BY 4.0", TINY_VOCA "/onnx",
+    "voices/ru/tiny-voca", NULL, TINY_VOCA_RU, "stress-" },
 };
 
 const DictatePack *
@@ -183,12 +203,29 @@ dictate_pack_size (const DictatePack *pack)
   return size;
 }
 
+/* where a pack's file comes from */
+static char *
+file_url (const DictatePack *pack, const DictateFile *file)
+{
+  return file->url ? g_strdup (file->url) : g_strconcat (pack->source, "/", file->name, NULL);
+}
+
 char *
 dictate_pack_host (const DictatePack *pack)
 {
-  g_autoptr (GUri) uri = g_uri_parse (pack->source, G_URI_FLAGS_NONE, NULL);
+  g_autoptr (GPtrArray) hosts = g_ptr_array_new_with_free_func (g_free);
 
-  return g_strdup (uri ? g_uri_get_host (uri) : pack->source);
+  for (const DictateFile *f = pack->files; f->name; f++)
+    {
+      g_autofree char *url = file_url (pack, f);
+      g_autoptr (GUri) uri = g_uri_parse (url, G_URI_FLAGS_NONE, NULL);
+      const char *host = uri && g_uri_get_host (uri) ? g_uri_get_host (uri) : url;
+
+      if (!g_ptr_array_find_with_equal_func (hosts, host, g_str_equal, NULL))
+        g_ptr_array_add (hosts, g_strdup (host));
+    }
+  g_ptr_array_add (hosts, NULL);
+  return g_strjoinv (", ", (char **) hosts->pdata);
 }
 
 /* ---------------- removing a tree, unpacking an archive ---------------- */
@@ -1051,7 +1088,7 @@ next_file (DictateDownload *self)
       fail (self, g_strdup_printf (_("The download failed: %s"), g_strerror (saved)));
       return;
     }
-  url = g_strconcat (pack->source, "/", current_file (self)->name, NULL);
+  url = file_url (pack, current_file (self));
   self->message = soup_message_new (SOUP_METHOD_GET, url);
   if (!self->message)
     {
@@ -1249,6 +1286,20 @@ size_at (int dir, const char *name)
   return size;
 }
 
+/* the files the app made from a voice's in `dir` (pack->made): their names, sorted */
+static GPtrArray *
+made_files (const DictatePack *pack, const char *dir)
+{
+  GPtrArray *names = g_ptr_array_new_with_free_func (g_free);
+  g_autoptr (GDir) d = pack->made ? g_dir_open (dir, 0, NULL) : NULL;
+  const char *name;
+
+  while (d && (name = g_dir_read_name (d)))
+    if (g_str_has_prefix (name, pack->made))
+      g_ptr_array_add (names, g_strdup (name));
+  return names;
+}
+
 guint64
 dictate_download_downloaded_size (const char *language)
 {
@@ -1265,12 +1316,22 @@ dictate_download_downloaded_size (const char *language)
       if (kind == DICTATE_PACK_MODEL)
         size += size_at (AT_FDCWD, dest);
       else
-        /* a voice's directory may hold others the user put there: only the pack's files are its */
-        for (const DictateFile *f = pack->files; f->name; f++)
-          {
-            g_autofree char *path = g_build_filename (dest, f->name, NULL);
-            size += size_at (AT_FDCWD, path);
-          }
+        {
+          g_autoptr (GPtrArray) made = made_files (pack, dest);
+
+          /* a voice's directory may hold others the user put there: only the pack's files, and what was made from
+           * them, are its */
+          for (const DictateFile *f = pack->files; f->name; f++)
+            {
+              g_autofree char *path = g_build_filename (dest, f->name, NULL);
+              size += size_at (AT_FDCWD, path);
+            }
+          for (guint i = 0; i < made->len; i++)
+            {
+              g_autofree char *path = g_build_filename (dest, made->pdata[i], NULL);
+              size += size_at (AT_FDCWD, path);
+            }
+        }
     }
   return size;
 }
@@ -1307,6 +1368,7 @@ dictate_download_remove (const char *language, GError **error)
   if (voice)
     {
       g_autofree char *dest = g_build_filename (root, voice->place, NULL);
+      g_autoptr (GPtrArray) made = made_files (voice, dest);
 
       /* the model first: without it the voice is not found */
       for (guint last = 0; last < 2; last++)
@@ -1318,7 +1380,14 @@ dictate_download_remove (const char *language, GError **error)
               if (unlink (path) != 0 && errno != ENOENT)
                 return install_error (error, path);
             }
-      /* its language's directory, if nothing else is in it */
+      for (guint i = 0; i < made->len; i++)
+        {
+          g_autofree char *path = g_build_filename (dest, made->pdata[i], NULL);
+
+          if (unlink (path) != 0 && errno != ENOENT)
+            return install_error (error, path);
+        }
+      /* its directory, if nothing else is in it */
       if (rmdir (dest) == 0)
         g_debug ("download: %s removed", dest);
     }

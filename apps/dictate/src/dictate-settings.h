@@ -1,14 +1,17 @@
-/* dictate-settings: Agent's Settings page, from its ⋮ menu, over the conversation.
+/* dictate-settings: Vibe's Settings page, from "Settings" in the conversation's bar, over the conversation.
  *
  * Rows on cards, as the other VibeOS settings pages: the language listened in and spoken, the replies spoken or only
- * written (the bar's speaker button is the same setting), listening again after a reply; what Agent can use, a
- * switch each (dictate-access.h); and the languages, each with what is on the phone of it: one that lacks something
- * is downloaded from here (dictate-download-dialog.h), and what was downloaded can be removed again. */
+ * written, how fast and how much Vibe says, listening again after a reply; Voice match (dictate-voicematch-page.h);
+ * calls, private mode and quiet hours; what Vibe can use, a switch each for the areas it has tools for
+ * (dictate-access.h); the conversation kept, and clearing it; the languages, each with what is on the phone of it:
+ * one that lacks something is downloaded from here (dictate-download-dialog.h), and what was downloaded can be
+ * removed again; the debug log (dictate-debuglog-page.h), and About. */
 #pragma once
 
 #include "dictate-talk.h"
 
 #include <gtk/gtk.h>
+#include <vibeos.h>
 
 G_BEGIN_DECLS
 
@@ -21,6 +24,13 @@ typedef struct {
   void (*back) (gpointer data);
   /* what was downloaded for `language` has been removed (NULL: nothing to do) */
   void (*removed) (const char *language, gpointer data);
+  /* the window's pages, for the pages this one opens */
+  VibeosPageStack *pages;
+  /* the conversation: whether there is one, and clearing it (asked first) */
+  gboolean (*has_conversation) (gpointer data);
+  void (*clear_conversation) (gpointer data);
+  /* About Vibe */
+  void (*about) (gpointer data);
   gpointer data;
 } DictateSettingsHooks;
 

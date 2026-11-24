@@ -8,6 +8,7 @@
  * choices[0].delta.tool_calls, each by its index, its id and name first and its arguments in pieces. The calls
  * stay in the conversation as the assistant's message, and each one's result follows as a "tool" message. */
 #include "dictate-remote.h"
+#include "dictate-debuglog.h"
 #include "dictate-device.h"
 
 #include <glib/gi18n.h>
@@ -159,6 +160,57 @@ dictate_remote_reset (DictateRemote *self, const char *system)
 }
 
 void
+dictate_remote_restore (DictateRemote *self, const char *const *said, const char *const *replies, guint n)
+{
+  for (guint i = 0; i < n; i++)
+    if (said[i] && *said[i] && replies[i] && *replies[i])
+      {
+        add_message (self, "user", said[i]);
+        add_message (self, "assistant", replies[i]);
+      }
+}
+
+void
+dictate_remote_forget_turn (DictateRemote *self)
+{
+  while (self->messages->len > 0)
+    {
+      JsonNode *m = self->messages->pdata[self->messages->len - 1];
+      gboolean question = JSON_NODE_HOLDS_OBJECT (m)
+                          && !g_strcmp0 (json_object_get_string_member_with_default (json_node_get_object (m), "role",
+                                                                                     ""), "user");
+
+      g_ptr_array_remove_index (self->messages, self->messages->len - 1);
+      if (question)
+        break;
+    }
+}
+
+/* the conversation cut to its newest `exchanges` questions, each with what followed it (its tools, its reply): never
+ * between a question and its tools' results. The system prompt stays */
+static void
+keep_newest (DictateRemote *self, guint exchanges)
+{
+  guint first = self->messages->len, questions = 0, start;
+  JsonNode *head = self->messages->len ? self->messages->pdata[0] : NULL;
+  gboolean system = head && JSON_NODE_HOLDS_OBJECT (head)
+                    && !g_strcmp0 (json_object_get_string_member_with_default (json_node_get_object (head), "role",
+                                                                               ""), "system");
+
+  start = system ? 1 : 0;
+  while (first > start && questions < exchanges)
+    {
+      JsonNode *m = self->messages->pdata[--first];
+
+      if (JSON_NODE_HOLDS_OBJECT (m)
+          && !g_strcmp0 (json_object_get_string_member_with_default (json_node_get_object (m), "role", ""), "user"))
+        questions++;
+    }
+  if (questions == exchanges && first > start)
+    g_ptr_array_remove_range (self->messages, start, first - start);
+}
+
+void
 dictate_remote_set_system (DictateRemote *self, const char *system)
 {
   JsonNode *first = self->messages->len ? self->messages->pdata[0] : NULL;
@@ -215,6 +267,7 @@ network_error (GError **error, GError *cause)
       return;
     }
   g_warning ("agent: %s", cause->message);
+  dictate_debuglog_note ("error", cause->message);
   g_error_free (cause);
   g_set_error_literal (error, DICTATE_BRAIN_ERROR, DICTATE_BRAIN_ERROR_OFFLINE,
                        _("The assistant cannot be reached. Is the phone online?"));
@@ -253,7 +306,13 @@ enroll (DictateRemote *self, GCancellable *cancellable, GError **error)
   msg = soup_message_new ("POST", self->enroll);
   soup_message_headers_replace (soup_message_get_request_headers (msg), "Accept", "application/json");
   soup_message_set_request_body_from_bytes (msg, "application/json", body);
-  answer = soup_session_send_and_read (self->session, msg, cancellable, &failure);
+  {
+    gint64 t0 = g_get_monotonic_time ();
+
+    answer = soup_session_send_and_read (self->session, msg, cancellable, &failure);
+    dictate_debuglog_http ("POST", self->enroll, answer ? soup_message_get_status (msg) : 0,
+                           (g_get_monotonic_time () - t0) / 1000.0);
+  }
   if (!answer)
     {
       network_error (error, failure);
@@ -310,9 +369,13 @@ call (DictateRemote *self, SoupMessage **msg, const char *method, const char *ur
       GError *failure = NULL;
       GInputStream *in;
       guint status;
+      gint64 t0 = g_get_monotonic_time ();
 
       *msg = request (self, method, url, json);
       in = soup_session_send (self->session, *msg, cancellable, &failure);
+      /* the status only: the request's headers (the key) are never written */
+      dictate_debuglog_http (method, url, in ? soup_message_get_status (*msg) : 0,
+                             (g_get_monotonic_time () - t0) / 1000.0);
       if (!in)
         {
           network_error (error, failure);
@@ -534,6 +597,9 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
   g_autoptr (GString) reply = g_string_new (NULL);
   gboolean usage = FALSE;
   int prompt_tokens = 0, completion_tokens = 0, pieces = 0;
+  /* the stream's events by their kind, for when nothing came of them (the numbers only, never what they hold) */
+  guint events = 0, call_events = 0, thought_events = 0, nameless = 0;
+  const char *finish = "none";
 
   self->read = self->written = 0;
   self->read_ms = self->first_ms = self->total_ms = -1;
@@ -541,8 +607,17 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
   if (!self->model && !find_model (self, cancellable, error))
     return NULL;
   if (text)
-    add_message (self, "user", text);
+    {
+      add_message (self, "user", text);
+      keep_newest (self, DICTATE_REMOTE_HISTORY);
+    }
   body = chat_body (self, tool_list && JSON_NODE_HOLDS_ARRAY (tool_list) ? tool_list : NULL);
+  if (dictate_debuglog_active ())
+    {
+      gsize length;
+      const char *data = g_bytes_get_data (body, &length);
+      dictate_debuglog_request ("POST", url, data, length);
+    }
   in = call (self, &msg, "POST", url, body, cancellable, error);
   if (!in)
     {
@@ -574,6 +649,7 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
                   return NULL;
                 }
               g_warning ("agent: the reply was cut off: %s", failure->message);
+              dictate_debuglog_note ("cut-off", failure->message);
             }
           g_clear_error (&failure);
           break;
@@ -583,6 +659,18 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
         continue;
       if (g_str_equal (g_strstrip (line + 5), "[DONE]"))
         break;
+      events++;
+      call_events += strstr (line, "\"tool_calls\"") != NULL;
+      /* thinking with some text in it: a key with null in it is in every event of some servers */
+      thought_events += (strstr (line, "\"reasoning_content\":\"") && !strstr (line, "\"reasoning_content\":\"\""))
+                        || (strstr (line, "\"reasoning\":\"") && !strstr (line, "\"reasoning\":\"\""));
+      call_events -= strstr (line, "\"tool_calls\":null") || strstr (line, "\"tool_calls\":[]");
+      if (strstr (line, "\"finish_reason\":\"length\""))
+        finish = "length";
+      else if (strstr (line, "\"finish_reason\":\"stop\""))
+        finish = "stop";
+      else if (strstr (line, "\"finish_reason\":\"tool_calls\""))
+        finish = "tool_calls";
       part = event_piece (line + 5, &usage, &prompt_tokens, &completion_tokens, calls);
       if (!*part)
         continue;
@@ -603,22 +691,37 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
     {
       DictateBrainCall *c = calls->pdata[i - 1];
       if (!c->name || !*c->name)
-        g_ptr_array_remove_index (calls, i - 1);
+        nameless++, g_ptr_array_remove_index (calls, i - 1);
       else if (!c->id || !*c->id)
         g_free (c->id), c->id = g_strdup_printf ("call-%u", i - 1);
     }
+  dictate_debuglog_response (reply->str, calls, usage ? prompt_tokens : -1, usage ? completion_tokens : -1,
+                             self->first_ms, self->total_ms);
   /* nothing came of it, no reply and no call: the model wrote to its length in what the stream does not pass on (a
-   * call the server could not read, seen with "Call him." and nobody named). Asked once more, the same request: it
-   * nearly always answers then. The user saw nothing of the first, so nothing is taken back */
-  if (reply->len == 0 && calls->len == 0 && !self->again && !g_cancellable_is_cancelled (cancellable))
+   * call the server could not read, seen with "Call him." and nobody named). Asked once more, without tools: it
+   * has to answer in words then. The user saw nothing of the first, so nothing is taken back */
+  if (reply->len == 0 && calls->len == 0 && !g_cancellable_is_cancelled (cancellable))
     {
-      char *again;
+      /* numbers only: which side gave nothing (the server's status, how much the model wrote and of what kind, how
+       * it ended, when) */
+      g_autofree char *why = g_strdup_printf ("an empty reply: HTTP %u, %d written, %u events (%u of a call, %u of "
+                                              "thinking, %u calls without a name), finished by %s, first piece at "
+                                              "%.0f ms, %.0f ms in all", soup_message_get_status (msg), self->written,
+                                              events, call_events, thought_events, nameless, finish, self->first_ms,
+                                              self->total_ms);
+      g_message ("agent: %s%s", why, self->again ? ", the second time" : ", asked again without tools");
+      dictate_debuglog_note (self->again ? "empty" : "retry", why);
+      if (!self->again)
+        {
+          char *again;
 
-      g_debug ("agent: an empty reply (%d written), asked again", self->written);
-      self->again = TRUE;
-      again = dictate_remote_step (self, NULL, tools, piece, data, calls_out, cancellable, error);
-      self->again = FALSE;
-      return again;
+          /* asked the same way, it nearly always goes the same way again (5 times in 5 with "Call him."): without
+           * tools the model has to answer in words, and can still ask what was missing */
+          self->again = TRUE;
+          again = dictate_remote_step (self, NULL, NULL, piece, data, calls_out, cancellable, error);
+          self->again = FALSE;
+          return again;
+        }
     }
   if (calls->len)
     add_calls (self, reply->str, calls);

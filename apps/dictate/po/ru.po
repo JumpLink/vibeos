@@ -1,0 +1,2977 @@
+# Russian translations of vibeos-dictate.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-dictate\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 20:19+0100\n"
+"PO-Revision-Date: 2026-11-24 16:47+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Russian\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: data/vibeos.Agent.desktop.in src/dictate-stage.c src/dictate-window.c
+msgid "Vibe"
+msgstr "Vibe"
+
+#: data/vibeos.Agent.desktop.in
+msgid "Talk with your phone: an assistant that runs it by voice"
+msgstr "Говорите с телефоном: помощник, который управляет им голосом"
+
+#: data/vibeos.Agent.desktop.in
+msgid "Vibe;Agent;Assistant;AI;Voice;Talk;Conversation;Chat;Speech;"
+msgstr "Vibe;Агент;Помощник;ИИ;Голос;Разговор;Диалог;Чат;Речь;"
+
+#. the app bar
+#: data/vibeos.Dictate.desktop.in src/dictate-window.c
+msgid "Dictate"
+msgstr "Диктовка"
+
+#: data/vibeos.Dictate.desktop.in
+msgid "Speech to text, recognised on the phone"
+msgstr "Речь в текст, распознаётся на телефоне"
+
+#: data/vibeos.Dictate.desktop.in
+msgid "Dictation;Speech;Voice;Transcribe;Microphone;Text;"
+msgstr "Диктовка;Речь;Голос;Расшифровка;Микрофон;Текст;"
+
+#: src/dictate-access.c
+msgid "Phone calls"
+msgstr "Звонки"
+
+#: src/dictate-access.c
+msgid "Messages"
+msgstr "Сообщения"
+
+#: src/dictate-access.c
+msgid "Contacts"
+msgstr "Контакты"
+
+#: src/dictate-access.c
+msgid "Calendar"
+msgstr "Календарь"
+
+#: src/dictate-access.c
+msgid "Alarms and timers"
+msgstr "Будильники и таймеры"
+
+# android: Framework global_action_settings (several translations, short)
+#: src/dictate-access.c src/dictate-settings.c src/dictate-stage.c
+msgid "Settings"
+msgstr "Настройки"
+
+#: src/dictate-access.c
+msgid "Apps"
+msgstr "Приложения"
+
+#: src/dictate-access.c
+msgid "Files"
+msgstr "Файлы"
+
+#: src/dictate-access.c
+msgid "Camera"
+msgstr "Камера"
+
+#: src/dictate-access.c
+msgid "Location and maps"
+msgstr "Местоположение и карты"
+
+#: src/dictate-access.c
+msgid "Web"
+msgstr "Интернет"
+
+#: src/dictate-confirm-page.c
+msgid "Texts and calls: a countdown"
+msgstr "Сообщения и звонки: обратный отсчёт"
+
+#: src/dictate-confirm-page.c
+msgid "Texts and calls: wait for “send”"
+msgstr "Сообщения и звонки: ждать команды «отправить»"
+
+#: src/dictate-confirm-page.c
+msgid "Countdown"
+msgstr "Отсчёт"
+
+#: src/dictate-confirm-page.c
+msgid "Wait"
+msgstr "Ожидание"
+
+#: src/dictate-confirm-page.c
+msgctxt "how Vibe asks before it acts"
+msgid "In use"
+msgstr "Используется"
+
+#: src/dictate-confirm-page.c src/dictate-settings.c
+msgid "Confirmations"
+msgstr "Подтверждения"
+
+#: src/dictate-confirm-page.c
+msgid "How sure Vibe must be before it acts."
+msgstr "Какая уверенность нужна Vibe, прежде чем действовать."
+
+#. the kinds the tools are sorted in (dictate-tools.h's tiers), each with what is done before it
+#: src/dictate-confirm-page.c
+msgid "Read"
+msgstr "Чтение"
+
+#: src/dictate-confirm-page.c
+msgid "Messages, battery, next appointment"
+msgstr "Сообщения, батарея, ближайшая встреча"
+
+#: src/dictate-confirm-page.c
+msgid "At once"
+msgstr "Сразу"
+
+#: src/dictate-confirm-page.c
+msgid "Reversible"
+msgstr "Обратимое"
+
+#: src/dictate-confirm-page.c
+msgid "Alarms, timers, Wi-Fi, volume"
+msgstr "Будильники, таймеры, Wi-Fi, громкость"
+
+#: src/dictate-confirm-page.c
+msgid "Do, offer undo"
+msgstr "Выполнить, предложить отмену"
+
+#: src/dictate-confirm-page.c
+msgid "Outward"
+msgstr "Исходящее"
+
+#: src/dictate-confirm-page.c
+msgid "Texts and calls"
+msgstr "Сообщения и звонки"
+
+#: src/dictate-confirm-page.c
+msgid "Outward actions"
+msgstr "Исходящие действия"
+
+#: src/dictate-confirm-page.c
+msgid "Wait for “send”"
+msgstr "Ждать команды «отправить»"
+
+#: src/dictate-confirm-page.c
+msgid "Nothing goes until you say or tap it"
+msgstr "Ничего не уйдёт, пока вы не скажете или не нажмёте"
+
+#: src/dictate-confirm-page.c
+msgid "Count down three seconds"
+msgstr "Отсчитать три секунды"
+
+#: src/dictate-confirm-page.c
+msgid "Sends unless you say or tap “cancel”"
+msgstr "Уйдёт, если вы не скажете или не нажмёте «отменить»"
+
+#. TRANSLATORS: a time in the debug log; %d is milliseconds
+#: src/dictate-debuglog-page.c
+#, c-format
+msgid "%d ms"
+msgstr "%d мс"
+
+#. TRANSLATORS: a time in the debug log; %.1f is seconds
+#: src/dictate-debuglog-page.c
+#, c-format
+msgid "%.1f s"
+msgstr "%.1f с"
+
+#: src/dictate-debuglog-page.c
+msgid "Answered"
+msgstr "Отвечено"
+
+#: src/dictate-debuglog-page.c
+msgid "Offline"
+msgstr "Офлайн"
+
+#: src/dictate-debuglog-page.c
+msgid "Error"
+msgstr "Ошибка"
+
+#: src/dictate-debuglog-page.c
+msgid "Stopped"
+msgstr "Остановлено"
+
+#: src/dictate-debuglog-page.c
+msgid "Request"
+msgstr "Запрос"
+
+#: src/dictate-debuglog-page.c
+msgid "HTTP"
+msgstr "HTTP"
+
+#: src/dictate-debuglog-page.c
+msgid "Response"
+msgstr "Ответ"
+
+#: src/dictate-debuglog-page.c
+msgid "Tool"
+msgstr "Инструмент"
+
+# android: Settings retry (several translations, short)
+#: src/dictate-debuglog-page.c src/dictate-download-dialog.c
+msgid "Retry"
+msgstr "Повторить"
+
+#: src/dictate-debuglog-page.c
+msgid "Cut off"
+msgstr "Оборвано"
+
+#: src/dictate-debuglog-page.c
+msgid "Step"
+msgstr "Шаг"
+
+#: src/dictate-debuglog-page.c
+msgid "no answer"
+msgstr "нет ответа"
+
+#: src/dictate-debuglog-page.c
+msgid "worked"
+msgstr "успешно"
+
+#: src/dictate-debuglog-page.c
+msgid "failed"
+msgstr "не удалось"
+
+#. TRANSLATORS: a model's answer in the debug log that only calls tools; %s is their names
+#: src/dictate-debuglog-page.c
+#, c-format
+msgid "Calls %s"
+msgstr "Вызывает %s"
+
+#. TRANSLATORS: a request to the model in the debug log; %u is how many messages of the conversation it sent
+#: src/dictate-debuglog-page.c src/dictate-tools-phone.c
+#, c-format
+msgid "%u message"
+msgid_plural "%u messages"
+msgstr[0] "%u сообщение"
+msgstr[1] "%u сообщения"
+msgstr[2] "%u сообщений"
+
+#: src/dictate-debuglog-page.c
+msgid "Turn copied"
+msgstr "Обращение скопировано"
+
+#. the turn: what was said and answered, and how
+#: src/dictate-debuglog-page.c
+msgid "Turn"
+msgstr "Обращение"
+
+#: src/dictate-debuglog-page.c
+msgid "Said"
+msgstr "Сказано"
+
+#: src/dictate-debuglog-page.c
+msgid "Reply"
+msgstr "Ответ"
+
+#: src/dictate-debuglog-page.c
+msgid "Outcome"
+msgstr "Итог"
+
+#. how Vibe talks
+#: src/dictate-debuglog-page.c src/dictate-settings.c src/dictate-window.c
+msgid "Language"
+msgstr "Язык"
+
+#: src/dictate-debuglog-page.c
+msgid "Model"
+msgstr "Модель"
+
+#: src/dictate-debuglog-page.c
+msgid "Time"
+msgstr "Время"
+
+#: src/dictate-debuglog-page.c
+msgid "Phone"
+msgstr "Телефон"
+
+#: src/dictate-debuglog-page.c
+msgid "Locked"
+msgstr "Заблокирован"
+
+#: src/dictate-debuglog-page.c src/dictate-settings.c
+msgid "Private mode"
+msgstr "Приватный режим"
+
+#: src/dictate-debuglog-page.c src/dictate-tools-device.c
+#: src/dictate-tools-phone.c
+msgid "On"
+msgstr "Вкл."
+
+#: src/dictate-debuglog-page.c
+msgid "Steps"
+msgstr "Шаги"
+
+#: src/dictate-debuglog-page.c
+msgid "Copy turn"
+msgstr "Копировать обращение"
+
+#. TRANSLATORS: when a turn in the debug log began, a g_date_time_format () string: "24 Nov, 08:12".
+#: src/dictate-debuglog-page.c
+#, no-c-format
+msgid "%e %b, %H:%M"
+msgstr "%e %b, %H:%M"
+
+#. TRANSLATORS: a turn in the debug log; %u is how many tools it called
+#: src/dictate-debuglog-page.c
+#, c-format
+msgid "%u tool"
+msgid_plural "%u tools"
+msgstr[0] "%u инструмент"
+msgstr[1] "%u инструмента"
+msgstr[2] "%u инструментов"
+
+#: src/dictate-debuglog-page.c
+msgid "(nothing said)"
+msgstr "(ничего не сказано)"
+
+#: src/dictate-debuglog-page.c
+msgid "No turns recorded"
+msgstr "Нет записанных обращений"
+
+#: src/dictate-debuglog-page.c
+msgid "Turn on Debug log in Settings, then talk to Vibe"
+msgstr "Включите «Журнал отладки» в настройках и поговорите с Vibe"
+
+#: src/dictate-debuglog-page.c
+msgid "Clear the debug log?"
+msgstr "Очистить журнал отладки?"
+
+#: src/dictate-debuglog-page.c
+msgid "Every recorded turn is deleted from the phone."
+msgstr "Все записанные обращения будут удалены с телефона."
+
+# android: Framework cancel (several translations, short)
+#: src/dictate-debuglog-page.c src/dictate-download-dialog.c
+#: src/dictate-settings.c src/dictate-voicematch-page.c src/dictate-window.c
+msgid "Cancel"
+msgstr "Отмена"
+
+#: src/dictate-debuglog-page.c src/dictate-window.c
+msgid "Clear"
+msgstr "Очистить"
+
+#: src/dictate-debuglog-page.c src/dictate-settings.c
+msgid "Debug log"
+msgstr "Журнал отладки"
+
+#: src/dictate-debuglog-page.c
+msgid "Clear log"
+msgstr "Очистить журнал"
+
+#. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "Needs %s, which is not installed"
+msgstr "Требуется %s, но он не установлен"
+
+#: src/dictate-download-dialog.c
+msgid "Not available on this phone"
+msgstr "Недоступно на этом телефоне"
+
+#. TRANSLATORS: under a language in the list; the first %s is a speech recogniser (Vosk), the second a size
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s and %s to download"
+msgstr "%s и %s для скачивания"
+
+#. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s to install"
+msgstr "Нужно установить %s"
+
+#. TRANSLATORS: under a language in the list; %s is a size: 90.4 MB
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s to download"
+msgstr "%s для скачивания"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s was not downloaded"
+msgstr "Язык %s не скачан"
+
+#. TRANSLATORS: the first %s is what went wrong, the second a speech recogniser (Vosk)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s. %s was installed, but none of the files were kept on the phone."
+msgstr "%s. %s установлен, но ни один из файлов не сохранен на телефоне."
+
+#. TRANSLATORS: %s is what went wrong
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s. Nothing of it was kept on the phone."
+msgstr "%s. На телефоне ничего не сохранено."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: a quarter done."
+msgstr "Загружаю язык %s: готова четверть."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: half done."
+msgstr "Загружаю язык %s: готова половина."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: three quarters done."
+msgstr "Загружаю язык %s: готовы три четверти."
+
+# android: SystemUI screen_record_video_preview_elapsed_time_a11y_template
+#. TRANSLATORS: the progress, two sizes: 12.3 MB of 90.4 MB
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s of %s"
+msgstr "%s из %s"
+
+#: src/dictate-download-dialog.c
+msgid "Unpacking and installing…"
+msgstr "Распаковка и установка…"
+
+# android: PackageInstaller installing (short)
+#: src/dictate-download-dialog.c
+msgid "Installing…"
+msgstr "Установка…"
+
+#. TRANSLATORS: the dialog choosing whether a man or a woman speaks for Vibe
+#. TRANSLATORS: a row in Vibe's settings, under Speech rate; its summary says what it chooses
+#: src/dictate-download-dialog.c src/dictate-settings.c
+msgid "Voice"
+msgstr "Голос"
+
+#: src/dictate-download-dialog.c
+msgid "Speech recognition"
+msgstr "Распознавание речи"
+
+#: src/dictate-download-dialog.c
+msgid "The files came, but the language is still not ready"
+msgstr "Файлы получены, но язык еще не готов"
+
+#. TRANSLATORS: in the progress dialog; %s is a speech recogniser (Vosk)
+#. TRANSLATORS: what is installed, in the download dialog; %s is a speech recogniser (Vosk)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s speech recogniser"
+msgstr "Распознаватель речи %s"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s"
+msgstr "Скачивание: %s"
+
+#: src/dictate-download-dialog.c
+msgid "The package was installed, but the language is still not ready"
+msgstr "Пакет установлен, но язык еще не готов"
+
+#. TRANSLATORS: the sum of the sizes in the download dialog; %s is a size: 90.4 MB
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s in all"
+msgstr "Всего %s"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "Download %s?"
+msgstr "Скачать %s?"
+
+#. TRANSLATORS: under the title "Download Deutsch?"; %s is an app's name (Navi)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "To speak this language, %s needs this on the phone:"
+msgstr "Чтобы говорить на этом языке, приложению %s нужно на телефоне:"
+
+#. TRANSLATORS: under the title "Download Deutsch?"
+#: src/dictate-download-dialog.c
+msgid "To hear and speak this language, Vibe needs these on the phone:"
+msgstr ""
+"Чтобы слушать и говорить на этом языке, приложению Vibe нужно на телефоне:"
+
+#. TRANSLATORS: under the title "Download Deutsch?"
+#: src/dictate-download-dialog.c
+msgid "To hear this language, Dictate needs these on the phone:"
+msgstr "Чтобы распознавать этот язык, приложению «Диктовка» нужно на телефоне:"
+
+#. TRANSLATORS: under it; %s is its Debian package (vibeos-dictate-vosk)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "the %s package from the VibeOS archive"
+msgstr "пакет %s из архива VibeOS"
+
+#. TRANSLATORS: under what is downloaded: what it is, its licence and where it comes from
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s · %s · from %s"
+msgstr "%s · %s · источник: %s"
+
+# android: Messaging action_download (several translations, short)
+#: src/dictate-download-dialog.c
+msgid "Download"
+msgstr "Скачать"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Français)
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself
+#: src/dictate-download-dialog.c
+#, c-format
+msgid "%s is not available"
+msgstr "%s: недоступно"
+
+#. TRANSLATORS: the first %s is the language's name for itself, the second a speech recogniser (Vosk), the
+#. * third its Debian package (vibeos-dictate-vosk)
+#: src/dictate-download-dialog.c
+#, c-format
+msgid ""
+"%s is heard by %s, which is not installed on this phone. Install the %s "
+"package, then choose %s again."
+msgstr ""
+"Язык %s распознает %s, который не установлен на этом телефоне. Установите "
+"пакет %s и снова выберите %s."
+
+# android: Framework httpErrorOk (several translations, short)
+#: src/dictate-download-dialog.c
+msgid "OK"
+msgstr "ОК"
+
+#: src/dictate-download-dialog.c
+msgid "There is nothing to download for it."
+msgstr "Скачивать нечего."
+
+#. TRANSLATORS: %s is what went wrong, from the network or the file system
+#: src/dictate-download.c
+#, c-format
+msgid "The download failed: %s"
+msgstr "Ошибка скачивания: %s"
+
+#. TRANSLATORS: %s is what went wrong
+#: src/dictate-download.c
+#, c-format
+msgid "The files could not be put in place: %s"
+msgstr "Не удалось разместить файлы: %s"
+
+#. TRANSLATORS: %s is a file's name
+#: src/dictate-download.c
+#, c-format
+msgid "%s did not come whole"
+msgstr "Файл %s получен не полностью"
+
+#. TRANSLATORS: %s is a file's name
+#: src/dictate-download.c
+#, c-format
+msgid "%s is not the file it should be: its checksum does not match"
+msgstr "Файл %s не тот, что ожидался: контрольная сумма не совпадает"
+
+#. TRANSLATORS: %s is a file's name
+#: src/dictate-download.c
+#, c-format
+msgid "%s is larger than it should be"
+msgstr "Файл %s больше, чем должен быть"
+
+#. TRANSLATORS: %s is a file's name, %u and the last %s the server's answer (404, Not Found)
+#: src/dictate-download.c
+#, c-format
+msgid "The server did not give %s: %u %s"
+msgstr "Сервер не отдал файл %s: %u %s"
+
+#. TRANSLATORS: %s is a file's name
+#: src/dictate-download.c
+#, c-format
+msgid "%s is not the size it should be: it has changed on the server"
+msgstr "Размер файла %s не совпадает: он изменился на сервере"
+
+#. TRANSLATORS: the %s are sizes: 90.4 MB
+#: src/dictate-download.c
+#, c-format
+msgid "There is not enough space on the phone: %s are needed, %s are free"
+msgstr "На телефоне недостаточно места: нужно %s, свободно %s"
+
+#. TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second the package's name
+#. * (vibeos-dictate-de)
+#: src/dictate-engine.c
+#, c-format
+msgid "There is no speech model for %s. Install the %s package."
+msgstr "Для языка %s нет речевой модели. Установите пакет %s."
+
+#: src/dictate-engine.c
+msgid ""
+"There is no speech model. Install a vibeos-dictate language package, such as "
+"vibeos-dictate-en."
+msgstr ""
+"Нет речевой модели. Установите языковой пакет vibeos-dictate, например "
+"vibeos-dictate-en."
+
+#. TRANSLATORS: %s is the package's name (vibeos-dictate-moonshine)
+#: src/dictate-engine.c
+#, c-format
+msgid "Speech recognition is not installed. Install the %s package."
+msgstr "Распознавание речи не установлено. Установите пакет %s."
+
+#: src/dictate-engine.c
+msgid "The speech model could not be loaded."
+msgstr "Не удалось загрузить речевую модель."
+
+#: src/dictate-engine.c
+msgid "Speech recognition could not be started."
+msgstr "Не удалось запустить распознавание речи."
+
+#: src/dictate-engine.c
+msgid "The microphone could not be opened."
+msgstr "Не удалось открыть микрофон."
+
+#: src/dictate-enroll.c
+msgid ""
+"Vibe, what time is it now? I'm teaching you how my voice sounds, so that you "
+"only listen to me."
+msgstr ""
+"Vibe, который сейчас час? Я учу тебя узнавать мой голос, чтобы ты слушал "
+"только меня."
+
+#: src/dictate-enroll.c
+msgid ""
+"Read my new messages out loud, then tell me what is on my calendar for "
+"tomorrow morning."
+msgstr ""
+"Прочитай вслух мои новые сообщения, а потом скажи, что у меня в календаре на "
+"завтрашнее утро."
+
+#: src/dictate-enroll.c
+msgid ""
+"Call my sister on her mobile, and set an alarm for seven thirty tomorrow."
+msgstr ""
+"Позвони сестре на мобильный и поставь будильник на завтра на семь тридцать."
+
+#: src/dictate-enroll.c
+msgid "What's the time? Call Anna. Set a timer."
+msgstr "Который час? Позвони Анне. Поставь таймер."
+
+#. TRANSLATORS: a phrase to read aloud, in quotation marks
+#. TRANSLATORS: a thing to say to Vibe, in quotation marks
+#: src/dictate-enroll.c src/dictate-onboarding.c
+#, c-format
+msgid "“%s”"
+msgstr "«%s»"
+
+#: src/dictate-enroll.c
+msgid "Vibe says · repeat after me"
+msgstr "Vibe говорит · повторяйте за мной"
+
+#. while Vibe says it, the microphone opens when it is done
+#: src/dictate-enroll.c
+msgid "Tap anywhere and read it again"
+msgstr "Нажмите на экран и прочитайте её ещё раз"
+
+#: src/dictate-enroll.c
+msgid "Tap anywhere, then read the phrase"
+msgstr "Нажмите на экран и прочитайте фразу"
+
+#: src/dictate-enroll.c src/dictate-onboarding.c src/dictate-stage.c
+#: src/dictate-window.c
+msgid "Vibe says"
+msgstr "Vibe говорит"
+
+#: src/dictate-enroll.c
+msgid "I can't listen right now."
+msgstr "Сейчас я не могу слушать."
+
+#: src/dictate-enroll.c
+msgid "Tap anywhere to go back"
+msgstr "Нажмите на экран, чтобы вернуться"
+
+#: src/dictate-enroll.c src/dictate-window.c
+msgid "Listening"
+msgstr "Слушаю"
+
+#: src/dictate-enroll.c
+msgid "Go ahead…"
+msgstr "Говорите…"
+
+#: src/dictate-enroll.c
+msgid "Say any command."
+msgstr "Скажите любую команду."
+
+#. TRANSLATORS: over the phrase being read: listening to phrase 2 of 4
+#: src/dictate-enroll.c
+#, c-format
+msgid "Listening · phrase %u of %u"
+msgstr "Слушаю · фраза %u из %u"
+
+#: src/dictate-enroll.c
+msgid "Read the phrase at your normal pace"
+msgstr "Прочитайте фразу в обычном темпе"
+
+#: src/dictate-enroll.c
+msgid "Tap anywhere, or just start talking"
+msgstr "Нажмите на экран или просто начните говорить"
+
+#: src/dictate-enroll.c
+msgid "Voice Match is not ready yet."
+msgstr "Голосовая идентификация ещё не готова."
+
+#: src/dictate-enroll.c
+msgid "Your recordings were not kept, and nothing changed on the phone."
+msgstr "Ваши записи не сохранены, и на телефоне ничего не изменилось."
+
+#: src/dictate-enroll.c
+msgid "I couldn't keep your voice sample."
+msgstr "Не удалось сохранить образец вашего голоса."
+
+#: src/dictate-enroll.c
+msgid "Done"
+msgstr "Готово"
+
+#: src/dictate-enroll.c
+msgid "That's all I need."
+msgstr "Этого достаточно."
+
+#: src/dictate-enroll.c
+msgid "Voice match is on. Say any command to test it. Nothing is carried out."
+msgstr ""
+"Голосовая идентификация включена. Скажите любую команду, чтобы проверить. "
+"Ничего не будет выполнено."
+
+#: src/dictate-enroll.c
+msgid "Tap anywhere, then speak"
+msgstr "Нажмите на экран и говорите"
+
+#: src/dictate-enroll.c src/dictate-window.c
+msgid "Tap anywhere to try again"
+msgstr "Нажмите на экран, чтобы попробовать ещё раз"
+
+#: src/dictate-enroll.c
+msgid "Say a bit more."
+msgstr "Скажите чуть больше."
+
+#: src/dictate-enroll.c
+msgid "That was too short to tell whose voice it is."
+msgstr "Слишком коротко, чтобы понять, чей это голос."
+
+#: src/dictate-enroll.c
+msgid "I couldn't check that."
+msgstr "Не удалось это проверить."
+
+#. TRANSLATORS: a voice check's result: 88% match, 75% needed
+#: src/dictate-enroll.c
+#, c-format
+msgid "%.0f%% match, %.0f%% needed. Vibe would carry out the command."
+msgstr "Совпадение %.0f %%, нужно %.0f %%. Vibe выполнит команду."
+
+#: src/dictate-enroll.c
+msgid "That's you."
+msgstr "Это вы."
+
+#. TRANSLATORS: a voice check's result: 41% match, 75% needed
+#: src/dictate-enroll.c
+#, c-format
+msgid "%.0f%% match, %.0f%% needed. Vibe would not carry out the command."
+msgstr "Совпадение %.0f %%, нужно %.0f %%. Vibe не выполнит команду."
+
+#: src/dictate-enroll.c
+msgid "That didn't sound like you."
+msgstr "Это было не похоже на ваш голос."
+
+#. TRANSLATORS: under a phrase to read aloud: phrase 2 of 4
+#: src/dictate-enroll.c
+#, c-format
+msgid "Phrase %u of %u."
+msgstr "Фраза %u из %u."
+
+#: src/dictate-enroll.c
+msgid "I couldn't check that recording."
+msgstr "Не удалось проверить эту запись."
+
+#: src/dictate-enroll.c
+msgid "Got it."
+msgstr "Принято."
+
+#: src/dictate-enroll.c
+msgid "That was too short. Please read all of the phrase."
+msgstr "Слишком коротко. Пожалуйста, прочитайте фразу целиком."
+
+#: src/dictate-enroll.c
+msgid "That was too quiet. Read it again, a little closer to the phone."
+msgstr "Слишком тихо. Прочитайте ещё раз, чуть ближе к телефону."
+
+#: src/dictate-enroll.c
+msgid "There was too much noise. Read it again somewhere quieter."
+msgstr "Было слишком шумно. Прочитайте ещё раз там, где тише."
+
+#: src/dictate-enroll.c src/dictate-window.c
+msgid "I didn't hear anything."
+msgstr "Ничего не слышно."
+
+#: src/dictate-enroll.c
+msgid "I couldn't listen."
+msgstr "Не удалось начать слушать."
+
+#. TRANSLATORS: Voice match's first words, said aloud; %u: how many phrases it asks (4)
+#: src/dictate-enroll.c
+#, c-format
+msgid ""
+"I'll learn your voice from %u short phrase, so I only take commands from "
+"you. The sample stays on this phone."
+msgid_plural ""
+"I'll learn your voice from %u short phrases, so I only take commands from "
+"you. The sample stays on this phone."
+msgstr[0] ""
+"Я запомню ваш голос по %u короткой фразе и буду принимать команды только от "
+"вас. Образец останется на этом телефоне."
+msgstr[1] ""
+"Я запомню ваш голос по %u коротким фразам и буду принимать команды только от "
+"вас. Образец останется на этом телефоне."
+msgstr[2] ""
+"Я запомню ваш голос по %u коротким фразам и буду принимать команды только от "
+"вас. Образец останется на этом телефоне."
+
+#: src/dictate-enroll.c src/dictate-voicematch-page.c
+msgid "Test voice match"
+msgstr "Проверить голосовую идентификацию"
+
+#: src/dictate-enroll.c
+msgid ""
+"For example “Vibe, what's the weather?” Nothing is carried out during a test."
+msgstr ""
+"Например: «Vibe, какая погода?» Во время проверки ничего не выполняется."
+
+# android: Framework lockscreen_transport_stop_description (several translations, short)
+#: src/dictate-mic.c
+msgid "Stop"
+msgstr "Остановить"
+
+#: src/dictate-mic.c
+msgid "Start dictating"
+msgstr "Начать диктовку"
+
+#: src/dictate-onboarding.c
+msgid "English"
+msgstr "Английский"
+
+#: src/dictate-onboarding.c
+msgid "German"
+msgstr "Немецкий"
+
+#: src/dictate-onboarding.c
+msgid "Spanish"
+msgstr "Испанский"
+
+#: src/dictate-onboarding.c
+msgid "French"
+msgstr "Французский"
+
+#: src/dictate-onboarding.c
+msgid "Italian"
+msgstr "Итальянский"
+
+#: src/dictate-onboarding.c
+msgid "Russian"
+msgstr "Русский"
+
+#: src/dictate-onboarding.c
+msgid "Dutch"
+msgstr "Нидерландский"
+
+#. the words each step listens for, in the language spoken: alternatives between "|"
+#. TRANSLATORS: words that go on to the next step of Vibe's introduction, alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "continue|next|go on|okay|ok|yes|done"
+msgstr "дальше|далее|продолжить|продолжай|следующий|окей|ок|да|готово"
+
+#. TRANSLATORS: words that go back a step in Vibe's introduction, alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "back|go back"
+msgstr "назад|вернись|вернуться|обратно"
+
+#. TRANSLATORS: words that skip the rest of Vibe's introduction, alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "skip"
+msgstr "пропустить|пропусти"
+
+#. TRANSLATORS: words for "speak slower" in Vibe's introduction, alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "slower|slow down"
+msgstr "медленнее|помедленнее|говори медленнее"
+
+#. TRANSLATORS: words for "speak faster" in Vibe's introduction, alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "faster|speed up|quicker"
+msgstr "быстрее|побыстрее|говори быстрее|ускорься"
+
+#. TRANSLATORS: words for "this speed is fine" in Vibe's introduction, alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "that's good|good|fine|perfect|that's fine"
+msgstr "так хорошо|хорошо|нормально|отлично|идеально|подходит"
+
+#. TRANSLATORS: words that turn something off ("turn off files"), alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "off|turn off|switch off|disable"
+msgstr "выключи|выключить|отключи|отключить|выкл"
+
+#. TRANSLATORS: words that turn something on ("turn on files"), alternatives separated by "|", lower case
+#: src/dictate-onboarding.c
+msgid "on|turn on|switch on|enable"
+msgstr "включи|включить|вкл"
+
+#: src/dictate-onboarding.c src/dictate-settings.c
+msgid "On the phone"
+msgstr "На телефоне"
+
+#. TRANSLATORS: a switched-off area in Vibe's introduction: "Files · off"
+#: src/dictate-onboarding.c
+#, c-format
+msgid "%s · off"
+msgstr "%s · выкл."
+
+#: src/dictate-onboarding.c
+msgid "What time is it?"
+msgstr "Который час?"
+
+#: src/dictate-onboarding.c
+msgid "Wake me at six thirty."
+msgstr "Разбуди меня в шесть тридцать."
+
+#: src/dictate-onboarding.c
+msgid "Do I have new messages?"
+msgstr "У меня есть новые сообщения?"
+
+#: src/dictate-onboarding.c
+msgid "What's the weather tomorrow?"
+msgstr "Какая погода будет завтра?"
+
+#: src/dictate-onboarding.c
+msgid "Try saying"
+msgstr "Попробуйте сказать"
+
+#: src/dictate-onboarding.c
+msgid ""
+"Before I call or send anything, I read it back, and it goes after three "
+"seconds unless you cancel it. Nothing is deleted until you tap to confirm."
+msgstr ""
+"Прежде чем позвонить или что-то отправить, я зачитаю это вам, и через три "
+"секунды это уйдёт, если вы не отмените. Ничего не удаляется, пока вы не "
+"подтвердите нажатием."
+
+#: src/dictate-onboarding.c
+msgid ""
+"Before I call, send or delete anything, I show you exactly what will happen, "
+"and nothing happens until you confirm it."
+msgstr ""
+"Прежде чем позвонить, что-то отправить или удалить, я покажу вам, что именно "
+"произойдёт, и ничего не случится, пока вы не подтвердите."
+
+#: src/dictate-onboarding.c
+msgid "Skip"
+msgstr "Пропустить"
+
+#: src/dictate-onboarding.c
+msgid "Back"
+msgstr "Назад"
+
+#: src/dictate-onboarding.c
+msgid "Hello. I'm Vibe."
+msgstr "Здравствуйте. Я Vibe."
+
+#: src/dictate-onboarding.c
+msgid ""
+"I run this phone by voice. Everything I say is also written here, and "
+"everything can be tapped."
+msgstr ""
+"Я управляю этим телефоном голосом. Всё, что я говорю, также написано здесь, "
+"и на всё можно нажать."
+
+#: src/dictate-onboarding.c
+msgid "Tap anywhere, or say “continue”"
+msgstr "Нажмите на экран или скажите «дальше»"
+
+#: src/dictate-onboarding.c
+msgid "Tap anywhere to go on"
+msgstr "Нажмите на экран, чтобы продолжить"
+
+#: src/dictate-onboarding.c
+msgid "Which language shall we speak?"
+msgstr "На каком языке будем говорить?"
+
+#. TRANSLATORS: the language step's hint; %s is the language spoken now: English
+#: src/dictate-onboarding.c
+#, c-format
+msgid "Say a language, or “continue” for %s"
+msgstr "Назовите язык или скажите «дальше» — останется %s"
+
+#: src/dictate-onboarding.c
+msgid "Tap a language"
+msgstr "Выберите язык"
+
+#: src/dictate-onboarding.c src/dictate-settings.c
+msgctxt "speech speed"
+msgid "Slower"
+msgstr "Медленнее"
+
+#: src/dictate-onboarding.c src/dictate-settings.c
+msgctxt "speech speed"
+msgid "Normal"
+msgstr "Обычная"
+
+#. TRANSLATORS: over the pace step; %s is the speech rate: 1.25×
+#: src/dictate-onboarding.c
+#, c-format
+msgid "Vibe says · at %s"
+msgstr "Vibe говорит · скорость %s"
+
+#: src/dictate-onboarding.c
+msgid "Is this speed comfortable?"
+msgstr "Вам удобна такая скорость?"
+
+#: src/dictate-onboarding.c
+msgid "I can go up to three times faster."
+msgstr "Я могу говорить до трёх раз быстрее."
+
+#: src/dictate-onboarding.c
+msgctxt "button: speak slower"
+msgid "Slower"
+msgstr "Медленнее"
+
+#: src/dictate-onboarding.c
+msgid "That's good"
+msgstr "Так хорошо"
+
+#: src/dictate-onboarding.c
+msgctxt "button: speak faster"
+msgid "Faster"
+msgstr "Быстрее"
+
+#: src/dictate-onboarding.c
+msgid "Say “slower”, “faster” or “that's good”"
+msgstr "Скажите «медленнее», «быстрее» или «так хорошо»"
+
+#: src/dictate-onboarding.c
+msgid "Tap a choice"
+msgstr "Выберите вариант"
+
+#: src/dictate-onboarding.c
+msgid "What may I use on this phone?"
+msgstr "Что мне можно использовать на этом телефоне?"
+
+#: src/dictate-onboarding.c
+msgid ""
+"What I read goes only to VibeOS's own model server, never to anyone else. "
+"For the weather, the town's rough position goes to Open-Meteo."
+msgstr ""
+"То, что я читаю, отправляется только на собственный сервер моделей VibeOS и "
+"больше никому. Для прогноза погоды примерное расположение города передаётся "
+"в Open-Meteo."
+
+#: src/dictate-onboarding.c
+msgid "Say “turn off files”, or “continue”"
+msgstr "Скажите «отключи файлы» или «дальше»"
+
+#: src/dictate-onboarding.c
+msgid "Tap one to turn it off or on, or anywhere else to go on"
+msgstr ""
+"Нажмите на пункт, чтобы включить или выключить его, или в другом месте, "
+"чтобы продолжить"
+
+#: src/dictate-onboarding.c
+msgid "I'm ready. One rule:"
+msgstr "Всё готово. Одно правило:"
+
+#: src/dictate-onboarding.c src/dictate-window.c
+msgid "Tap anywhere and speak"
+msgstr "Нажмите на экран и говорите"
+
+#: src/dictate-package.c
+msgid "Software cannot be installed on this phone: PackageKit is not there"
+msgstr ""
+"На этом телефоне нельзя устанавливать программы: PackageKit отсутствует"
+
+#: src/dictate-package.c
+msgid "The password was not given"
+msgstr "Пароль не введён"
+
+#: src/dictate-package.c
+msgid "The installation was cancelled"
+msgstr "Установка отменена"
+
+#: src/dictate-package.c
+msgid "The VibeOS archive could not be reached. Is the phone online?"
+msgstr "Не удалось связаться с архивом VibeOS. Телефон подключён к интернету?"
+
+#. TRANSLATORS: %s is a package's name (vibeos-dictate-vosk)
+#: src/dictate-package.c
+#, c-format
+msgid "%s is not in the archives this phone uses"
+msgstr "%s нет в архивах, которые использует этот телефон"
+
+#: src/dictate-package.c
+msgid "The package's signature could not be checked, so it was not installed"
+msgstr "Не удалось проверить подпись пакета, поэтому он не установлен"
+
+#: src/dictate-package.c
+msgid "Another installation is running. Try again when it is done"
+msgstr "Выполняется другая установка. Повторите попытку, когда она завершится"
+
+#: src/dictate-package.c
+msgid "There is not enough space on the phone"
+msgstr "На телефоне недостаточно места"
+
+#: src/dictate-package.c
+msgid "What the package needs cannot be installed with it"
+msgstr "Необходимые пакету компоненты нельзя установить вместе с ним"
+
+#. TRANSLATORS: %s is PackageKit's own explanation
+#: src/dictate-package.c
+#, c-format
+msgid "The package could not be installed: %s"
+msgstr "Не удалось установить пакет: %s"
+
+#: src/dictate-package.c
+msgid "The package could not be installed"
+msgstr "Не удалось установить пакет"
+
+#: src/dictate-package.c
+msgid "Waiting for the password"
+msgstr "Ожидание пароля"
+
+#: src/dictate-package.c
+msgid "Waiting for another installation to finish"
+msgstr "Ожидание завершения другой установки"
+
+#: src/dictate-package.c
+msgid "Updating the package lists"
+msgstr "Обновление списков пакетов"
+
+#: src/dictate-package.c
+msgid "Downloading"
+msgstr "Скачивание"
+
+#: src/dictate-package.c
+msgid "Checking the signature"
+msgstr "Проверка подписи"
+
+#: src/dictate-package.c
+msgid "Installing"
+msgstr "Установка"
+
+#: src/dictate-package.c
+msgid "Getting ready"
+msgstr "Подготовка"
+
+#: src/dictate-remote.c
+msgid "The assistant cannot be reached. Is the phone online?"
+msgstr "Помощник недоступен. Телефон подключён к интернету?"
+
+#: src/dictate-remote.c
+msgid "Too many questions at once. Wait a minute, then ask again."
+msgstr "Слишком много вопросов сразу. Подождите минуту и спросите снова."
+
+#: src/dictate-remote.c
+msgid "This phone may not use the assistant."
+msgstr "Этому телефону нельзя пользоваться помощником."
+
+#: src/dictate-remote.c
+msgid "I'm getting too many requests, give me a moment."
+msgstr "Мне пришло слишком много запросов, подождите немного."
+
+#: src/dictate-remote.c
+msgid "The assistant is not working right now. Try again later."
+msgstr "Помощник сейчас не работает. Попробуйте позже."
+
+#. TRANSLATORS: a language in Vibe's settings; %s is a size: 90.4 MB
+#: src/dictate-settings.c
+#, c-format
+msgid "Downloaded, %s"
+msgstr "Скачано, %s"
+
+#. what it lacks is downloaded with a tap
+#: src/dictate-settings.c
+msgid "Get"
+msgstr "Скачать"
+
+#: src/dictate-settings.c
+msgctxt "a language Vibe speaks"
+msgid "In use"
+msgstr "Используется"
+
+#. TRANSLATORS: Vibe's voice in Settings: a woman speaks (Russian's voice has a man's and a woman's)
+#: src/dictate-settings.c
+msgctxt "voice gender"
+msgid "Female"
+msgstr "Женский"
+
+#. TRANSLATORS: Vibe's voice in Settings: a man speaks (Russian's voice has a man's and a woman's)
+#: src/dictate-settings.c
+msgctxt "voice gender"
+msgid "Male"
+msgstr "Мужской"
+
+#: src/dictate-settings.c
+msgctxt "reply length"
+msgid "Short"
+msgstr "Кратко"
+
+#: src/dictate-settings.c
+msgid "A sentence"
+msgstr "Одно предложение"
+
+#: src/dictate-settings.c
+msgctxt "reply length"
+msgid "Normal"
+msgstr "Обычно"
+
+#: src/dictate-settings.c
+msgid "One to three sentences"
+msgstr "От одного до трёх предложений"
+
+#: src/dictate-settings.c
+msgctxt "reply length"
+msgid "Detailed"
+msgstr "Подробно"
+
+#: src/dictate-settings.c
+msgid "More, when the question needs it"
+msgstr "Больше, если вопрос этого требует"
+
+# android: Framework wifi_calling_off_summary (several translations, short)
+#: src/dictate-settings.c src/dictate-tools-device.c src/dictate-tools-phone.c
+msgid "Off"
+msgstr "Отключено"
+
+#: src/dictate-settings.c
+msgid "Speech rate"
+msgstr "Скорость речи"
+
+#: src/dictate-settings.c
+msgid "Answers"
+msgstr "Ответы"
+
+#: src/dictate-settings.c
+msgid "Quiet hours"
+msgstr "Тихие часы"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: src/dictate-settings.c
+#, c-format
+msgid "Remove %s?"
+msgstr "Удалить язык %s?"
+
+#. TRANSLATORS: %s is a size: 90.4 MB
+#: src/dictate-settings.c
+#, c-format
+msgid ""
+"Its speech recognition and voice are removed from the phone, which frees %s. "
+"You can download them again."
+msgstr ""
+"Распознавание речи и голос этого языка будут удалены с телефона, это "
+"освободит %s. Их можно скачать снова."
+
+# android: Framework kg_reordering_delete_drop_target_text (several translations, short)
+#: src/dictate-settings.c
+msgid "Remove"
+msgstr "Удалить"
+
+#: src/dictate-settings.c
+msgid "What Vibe hears and speaks"
+msgstr "Язык, который Vibe слышит и на котором говорит"
+
+#: src/dictate-settings.c
+msgid "Speak the replies"
+msgstr "Озвучивать ответы"
+
+#: src/dictate-settings.c
+msgid "Off, they are only written"
+msgstr "Выкл., ответы только текстом"
+
+#: src/dictate-settings.c
+msgid "How fast Vibe speaks"
+msgstr "Как быстро говорит Vibe"
+
+#: src/dictate-settings.c
+msgid "Whether a man or a woman speaks"
+msgstr "Мужской или женский голос"
+
+#: src/dictate-settings.c
+msgid "How much Vibe says"
+msgstr "Насколько подробно отвечает Vibe"
+
+#: src/dictate-settings.c
+msgid "Listen after a reply"
+msgstr "Слушать после ответа"
+
+#: src/dictate-settings.c
+msgid "Once a reply has been spoken, Vibe listens for your answer"
+msgstr "После ответа вслух Vibe слушает, что вы скажете"
+
+#: src/dictate-settings.c
+msgid "Sounds"
+msgstr "Звуки"
+
+#: src/dictate-settings.c
+msgid "A short sound when Vibe listens, works, is done or fails"
+msgstr ""
+"Короткий звук, когда Vibe слушает, работает, завершает или сталкивается с "
+"ошибкой"
+
+#: src/dictate-settings.c
+msgid "Vibration"
+msgstr "Вибрация"
+
+#: src/dictate-settings.c
+msgid "A short vibration at the same moments"
+msgstr "Короткая вибрация в те же моменты"
+
+#. Voice match, a page of its own
+#: src/dictate-settings.c
+msgid "Your voice"
+msgstr "Ваш голос"
+
+#: src/dictate-settings.c src/dictate-voicematch-page.c
+msgid "Voice match"
+msgstr "Голосовая идентификация"
+
+#. calls, and when and where it speaks
+#: src/dictate-settings.c
+msgid "Calls and privacy"
+msgstr "Звонки и конфиденциальность"
+
+#: src/dictate-settings.c
+msgid "Announce calls"
+msgstr "Объявлять звонки"
+
+#: src/dictate-settings.c
+msgid ""
+"Vibe says who is calling and listens for answer or decline, also when it is "
+"closed"
+msgstr ""
+"Vibe сообщает, кто звонит, и ждёт команды «ответить» или «отклонить», даже "
+"когда приложение закрыто"
+
+#: src/dictate-settings.c
+msgid ""
+"Replies only in headphones; on the speaker short, with no names or messages "
+"read out"
+msgstr ""
+"Ответы только в наушниках; через динамик кратко, без имён и текста сообщений"
+
+#: src/dictate-settings.c
+msgid "Vibe says nothing and plays no sound on its own"
+msgstr "Vibe ничего не говорит и не издаёт звуков по своей инициативе"
+
+#: src/dictate-settings.c
+msgid "Calls in quiet hours"
+msgstr "Звонки в тихие часы"
+
+#: src/dictate-settings.c
+msgid "Calls are still announced"
+msgstr "Звонки по-прежнему объявляются"
+
+#. what it can use
+#: src/dictate-settings.c
+msgid "What Vibe can use"
+msgstr "Что может использовать Vibe"
+
+#. where what it reads goes, before the switches
+#: src/dictate-settings.c
+msgid "Only to VibeOS"
+msgstr "Только в VibeOS"
+
+#: src/dictate-settings.c
+msgid ""
+"What Vibe reads on the phone goes only to VibeOS's own model server, never "
+"to anyone else. For the weather, the town's rough position goes to Open-"
+"Meteo, as from the Weather app"
+msgstr ""
+"То, что Vibe читает на телефоне, отправляется только на собственный сервер "
+"моделей VibeOS и больше никому. Для прогноза погоды примерное расположение "
+"города передаётся в Open-Meteo, как и из приложения «Погода»"
+
+#. the conversation kept on the screen, which is what Vibe remembers
+#: src/dictate-settings.c
+msgid "Conversation"
+msgstr "Диалог"
+
+#: src/dictate-settings.c
+msgid "Clear conversation"
+msgstr "Очистить диалог"
+
+#: src/dictate-settings.c
+msgid "Deletes it from the phone, and Vibe forgets it"
+msgstr "Удаляет его с телефона, и Vibe его забывает"
+
+#. the languages, and what of each is on the phone
+#: src/dictate-settings.c
+msgid "Languages"
+msgstr "Языки"
+
+#: src/dictate-settings.c
+msgid "Tap a downloaded language to remove it."
+msgstr "Нажмите на скачанный язык, чтобы удалить его."
+
+#. finding what went wrong, and About
+#: src/dictate-settings.c
+msgid "Help"
+msgstr "Помощь"
+
+#: src/dictate-settings.c
+msgid ""
+"Each turn is recorded on the phone, and only there, to find what went wrong"
+msgstr ""
+"Каждое обращение записывается на телефоне, и только там, чтобы найти, что "
+"пошло не так"
+
+#: src/dictate-settings.c
+msgid "View debug log"
+msgstr "Открыть журнал отладки"
+
+#: src/dictate-settings.c
+msgid "About Vibe"
+msgstr "О приложении Vibe"
+
+#. TRANSLATORS: a bubble's name for screen readers; %s is what the user said
+#: src/dictate-stage.c
+#, c-format
+msgid "You: %s"
+msgstr "Вы: %s"
+
+#. TRANSLATORS: a reply's name for screen readers; %s is what Vibe answered
+#: src/dictate-stage.c
+#, c-format
+msgid "Vibe: %s"
+msgstr "Vibe: %s"
+
+#. TRANSLATORS: the steps' dots for screen readers: step 2 of 6
+#: src/dictate-stage.c
+#, c-format
+msgid "Step %u of %u"
+msgstr "Шаг %u из %u"
+
+#: src/dictate-talk.c
+msgid "Vibe needs a language model, and none is installed"
+msgstr "Для разговора с Vibe нужна языковая модель, но она не установлена"
+
+#: src/dictate-talk.c
+msgid "Vibe has no voice for this language yet"
+msgstr "Для этого языка у Vibe пока нет голоса"
+
+#: src/dictate-talk.c
+msgid "The answer could not be played"
+msgstr "Не удалось воспроизвести ответ"
+
+#: src/dictate-talk.c
+msgid "The voice could not be loaded"
+msgstr "Не удалось загрузить голос"
+
+#: src/dictate-talk.c
+msgid "The language model could not be loaded"
+msgstr "Не удалось загрузить языковую модель"
+
+#: src/dictate-talk.c
+msgid "That is too long to answer"
+msgstr "Это слишком длинно, чтобы ответить"
+
+#: src/dictate-talk.c
+msgid "The language model could not answer"
+msgstr "Языковая модель не смогла ответить"
+
+#: src/dictate-tools-device.c
+msgid "Do Not Disturb"
+msgstr "Не беспокоить"
+
+#: src/dictate-tools-device.c
+msgid "Airplane mode"
+msgstr "Режим полета"
+
+#: src/dictate-tools-device.c
+msgid "Mobile data"
+msgstr "Мобильный интернет"
+
+#: src/dictate-tools-device.c
+msgid "Battery saver"
+msgstr "Экономия заряда"
+
+#: src/dictate-tools-device.c
+msgid "Media volume"
+msgstr "Громкость мультимедиа"
+
+#. the Phone's and the Clock's 7 steps
+#: src/dictate-tools-device.c
+msgid "Ring volume"
+msgstr "Громкость звонка"
+
+#: src/dictate-tools-device.c
+msgid "Alarm volume"
+msgstr "Громкость будильника"
+
+#: src/dictate-tools-device.c
+msgid "Flashlight"
+msgstr "Фонарик"
+
+#: src/dictate-tools-device.c
+msgid "Muted"
+msgstr "Без звука"
+
+#: src/dictate-tools-device.c src/dictate-tools-phone.c
+#, c-format
+msgid "%d %%"
+msgstr "%d %%"
+
+#: src/dictate-tools-device.c
+msgid "Brightness"
+msgstr "Яркость"
+
+#: src/dictate-tools-device.c
+msgid "Opening hours not known"
+msgstr "Часы работы неизвестны"
+
+#: src/dictate-tools-device.c
+msgid "Opening hours as written by the map"
+msgstr "Часы работы по данным карты"
+
+#: src/dictate-tools-device.c
+#, c-format
+msgid "Open until %s"
+msgstr "Открыто до %s"
+
+#: src/dictate-tools-device.c
+msgid "Open"
+msgstr "Открыто"
+
+#: src/dictate-tools-device.c
+#, c-format
+msgid "Closed · opens %s"
+msgstr "Закрыто · откроется в %s"
+
+#: src/dictate-tools-device.c
+msgid "Closed this week"
+msgstr "Закрыто на этой неделе"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d %%, full"
+msgstr "%d %%, полностью заряжена"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d %%, charging"
+msgstr "%d %%, идёт зарядка"
+
+#. TRANSLATORS: the battery's level, and the time it lasts on it: "40 %, about 3 h left"
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d %%, about %s left"
+msgstr "%d %%, хватит примерно на %s"
+
+#: src/dictate-tools-phone.c
+msgid "Battery"
+msgstr "Батарея"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d h"
+msgstr "%d ч"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d h %d min"
+msgstr "%d ч %d мин"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d min"
+msgstr "%d мин"
+
+#. TRANSLATORS: the storage's fact in the debug log: the space free, of all there is
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%.0f GB free of %.0f GB"
+msgstr "Свободно %.0f ГБ из %.0f ГБ"
+
+#: src/dictate-tools-phone.c
+msgid "Storage"
+msgstr "Хранилище"
+
+#: src/dictate-tools-phone.c
+msgid "Call back"
+msgstr "Перезвонить"
+
+#: src/dictate-tools-phone.c
+msgid "Text back"
+msgstr "Написать в ответ"
+
+#: src/dictate-tools-phone.c
+msgid "That number cannot get messages"
+msgstr "На этот номер нельзя отправить сообщение"
+
+#: src/dictate-tools-phone.c
+msgid "Number"
+msgstr "Номер"
+
+#. TRANSLATORS: the card's title, a call to place (a noun)
+#: src/dictate-tools-phone.c
+msgctxt "title of the card that proposes a call"
+msgid "Call"
+msgstr "Звонок"
+
+#. TRANSLATORS: the card's button, which places the call (a verb)
+#: src/dictate-tools-phone.c src/dictate-window.c
+msgctxt "button: place a call"
+msgid "Call"
+msgstr "Позвонить"
+
+#: src/dictate-tools-phone.c src/dictate-window.c
+msgid "Calling…"
+msgstr "Звонок…"
+
+#. TRANSLATORS: a row of the card, over the name of the person to call
+#: src/dictate-tools-phone.c
+msgctxt "card row: whom to call"
+msgid "Call"
+msgstr "Кому"
+
+#. TRANSLATORS: a suggestion under the messages just read out: reply to the text message of the person
+#. * named, not answer a phone call; %s is their name: Kim
+#: src/dictate-tools-phone.c
+#, c-format
+msgctxt "suggestion: reply to a text message"
+msgid "Answer %s"
+msgstr "Ответить: %s"
+
+#: src/dictate-tools-phone.c
+msgid "Read them"
+msgstr "Прочитать"
+
+#: src/dictate-tools-phone.c
+msgid "Send a message"
+msgstr "Отправить сообщение"
+
+#. the action's own verb where it has one: "Sending in three…", "Calling in three…" (`go` is the button's label, so
+#. * it is compared with the same string in the same context)
+#. K5: it goes by itself; the button does it now, with the action's own verb where it has one
+#: src/dictate-tools-phone.c src/dictate-window.c
+msgid "Send"
+msgstr "Отправить"
+
+#: src/dictate-tools-phone.c
+msgid "Sent"
+msgstr "Отправлено"
+
+#: src/dictate-tools-phone.c
+msgid "Message to"
+msgstr "Кому"
+
+#: src/dictate-tools-phone.c
+msgid "Text"
+msgstr "Текст"
+
+#: src/dictate-tools-phone.c
+msgid "Wi-Fi"
+msgstr "Wi-Fi"
+
+#: src/dictate-tools-phone.c
+msgid "On, not connected"
+msgstr "Включён, не подключён"
+
+#: src/dictate-tools-phone.c
+msgid "Bluetooth"
+msgstr "Bluetooth"
+
+#. TRANSLATORS: the phone's signal; %1$d is the bars of four (3 or 4), %2$s the network type: 4G
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Good, %1$d of 4 · %2$s"
+msgstr "Хороший, %1$d из 4 · %2$s"
+
+#. TRANSLATORS: the phone's signal; %d is the bars of four (3 or 4)
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Good, %d of 4"
+msgstr "Хороший, %d из 4"
+
+#. TRANSLATORS: the phone's signal, a middling one; %1$d is the bars of four (2), %2$s the network type: 4G
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Fair, %1$d of 4 · %2$s"
+msgstr "Средний, %1$d из 4 · %2$s"
+
+#. TRANSLATORS: the phone's signal, a middling one; %d is the bars of four (2)
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Fair, %d of 4"
+msgstr "Средний, %d из 4"
+
+#. TRANSLATORS: the phone's signal, a poor one; %1$d is the bars of four (0 or 1), %2$s the network type: 4G
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Weak, %1$d of 4 · %2$s"
+msgstr "Слабый, %1$d из 4 · %2$s"
+
+#. TRANSLATORS: the phone's signal, a poor one; %d is the bars of four (0 or 1)
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Weak, %d of 4"
+msgstr "Слабый, %d из 4"
+
+#: src/dictate-tools-phone.c
+msgid "SIM locked"
+msgstr "SIM-карта заблокирована"
+
+#: src/dictate-tools-phone.c
+msgid "No network"
+msgstr "Нет сети"
+
+#: src/dictate-tools-phone.c
+msgid "Signal"
+msgstr "Сигнал"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%u missed call"
+msgid_plural "%u missed calls"
+msgstr[0] "%u пропущенный вызов"
+msgstr[1] "%u пропущенных вызова"
+msgstr[2] "%u пропущенных вызовов"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%u notification"
+msgid_plural "%u notifications"
+msgstr[0] "%u уведомление"
+msgstr[1] "%u уведомления"
+msgstr[2] "%u уведомлений"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Call %s"
+msgstr "Позвонить: %s"
+
+#: src/dictate-tools-phone.c
+msgid "Details"
+msgstr "Сведения"
+
+#: src/dictate-tools-phone.c
+msgid "There is nowhere to keep it"
+msgstr "Некуда сохранить"
+
+#: src/dictate-tools-phone.c
+msgid "Add a contact"
+msgstr "Добавить контакт"
+
+#: src/dictate-tools-phone.c
+msgid "Add"
+msgstr "Добавить"
+
+#: src/dictate-tools-phone.c
+msgid "Added"
+msgstr "Добавлено"
+
+#: src/dictate-tools-phone.c
+msgid "Name"
+msgstr "Имя"
+
+#: src/dictate-tools-phone.c
+msgid "Email"
+msgstr "Эл. почта"
+
+#: src/dictate-tools-phone.c
+msgid "The event could not be made"
+msgstr "Не удалось создать событие"
+
+#: src/dictate-tools-phone.c
+msgid "A reminder at the time"
+msgstr "Напоминание в назначенное время"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "A reminder %d minute before"
+msgid_plural "A reminder %d minutes before"
+msgstr[0] "Напоминание за %d минуту"
+msgstr[1] "Напоминание за %d минуты"
+msgstr[2] "Напоминание за %d минут"
+
+#: src/dictate-tools-phone.c
+msgid "Add to the calendar"
+msgstr "Добавить в календарь"
+
+#: src/dictate-tools-phone.c
+msgid "Event"
+msgstr "Событие"
+
+#: src/dictate-tools-phone.c
+msgid "When"
+msgstr "Когда"
+
+#: src/dictate-tools-phone.c
+msgid "Where"
+msgstr "Где"
+
+#: src/dictate-tools-phone.c
+msgid "Reminder"
+msgstr "Напоминание"
+
+#: src/dictate-tools-phone.c
+msgid "At the time"
+msgstr "В назначенное время"
+
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "%d minute before"
+msgid_plural "%d minutes before"
+msgstr[0] "За %d минуту"
+msgstr[1] "За %d минуты"
+msgstr[2] "За %d минут"
+
+#: src/dictate-tools-phone.c
+msgid "told the time"
+msgstr "назвал время"
+
+#: src/dictate-tools-phone.c
+msgid "Checking the battery…"
+msgstr "Проверяю батарею…"
+
+#: src/dictate-tools-phone.c
+msgid "read the battery"
+msgstr "проверил батарею"
+
+#: src/dictate-tools-phone.c
+msgid "Checking the storage…"
+msgstr "Проверяю хранилище…"
+
+#: src/dictate-tools-phone.c
+msgid "read the storage"
+msgstr "проверил хранилище"
+
+#: src/dictate-tools-phone.c
+msgid "Checking your calls…"
+msgstr "Проверяю звонки…"
+
+#: src/dictate-tools-phone.c
+msgid "read the call history"
+msgstr "прочитал журнал вызовов"
+
+#: src/dictate-tools-phone.c
+msgid "Getting the call ready…"
+msgstr "Готовлю звонок…"
+
+#: src/dictate-tools-phone.c
+msgid "a phone call, on a card"
+msgstr "звонок на карточке"
+
+#: src/dictate-tools-phone.c
+msgid "Looking in your contacts…"
+msgstr "Ищу в контактах…"
+
+#: src/dictate-tools-phone.c
+msgid "looked in the contacts"
+msgstr "посмотрел в контактах"
+
+#: src/dictate-tools-phone.c
+msgid "Checking your messages…"
+msgstr "Проверяю сообщения…"
+
+#: src/dictate-tools-phone.c
+msgid "read the messages"
+msgstr "прочитал сообщения"
+
+#: src/dictate-tools-phone.c
+msgid "Writing the message…"
+msgstr "Пишу сообщение…"
+
+#: src/dictate-tools-phone.c
+msgid "a text message, on a card"
+msgstr "SMS на карточке"
+
+#: src/dictate-tools-phone.c
+msgid "Checking your calendar…"
+msgstr "Проверяю календарь…"
+
+#: src/dictate-tools-phone.c
+msgid "read the calendar"
+msgstr "прочитал календарь"
+
+#: src/dictate-tools-phone.c
+msgid "Checking your alarms…"
+msgstr "Проверяю будильники…"
+
+#: src/dictate-tools-phone.c
+msgid "read the alarms"
+msgstr "прочитал будильники"
+
+#: src/dictate-tools-phone.c
+msgid "Setting the alarm…"
+msgstr "Ставлю будильник…"
+
+#: src/dictate-tools-phone.c
+msgid "set an alarm"
+msgstr "поставил будильник"
+
+#: src/dictate-tools-phone.c
+msgid "Starting the timer…"
+msgstr "Запускаю таймер…"
+
+#: src/dictate-tools-phone.c
+msgid "started a timer"
+msgstr "запустил таймер"
+
+#: src/dictate-tools-phone.c
+msgid "Checking Wi-Fi and Bluetooth…"
+msgstr "Проверяю Wi-Fi и Bluetooth…"
+
+#: src/dictate-tools-phone.c
+msgid "read Wi-Fi and Bluetooth"
+msgstr "проверил Wi-Fi и Bluetooth"
+
+#: src/dictate-tools-phone.c
+msgid "Changing the setting…"
+msgstr "Меняю настройку…"
+
+#: src/dictate-tools-phone.c
+msgid "changed a setting"
+msgstr "изменил настройку"
+
+#: src/dictate-tools-phone.c
+msgid "Switching the flashlight…"
+msgstr "Переключаю фонарик…"
+
+#: src/dictate-tools-phone.c
+msgid "switched the flashlight"
+msgstr "переключил фонарик"
+
+#: src/dictate-tools-phone.c
+msgid "Checking the phone's settings…"
+msgstr "Проверяю настройки телефона…"
+
+#: src/dictate-tools-phone.c
+msgid "read the phone's settings"
+msgstr "прочитал настройки телефона"
+
+#: src/dictate-tools-phone.c
+msgid "Changing the volume…"
+msgstr "Меняю громкость…"
+
+#: src/dictate-tools-phone.c
+msgid "changed the volume"
+msgstr "изменил громкость"
+
+#: src/dictate-tools-phone.c
+msgid "Changing the brightness…"
+msgstr "Меняю яркость…"
+
+#: src/dictate-tools-phone.c
+msgid "changed the brightness"
+msgstr "изменил яркость"
+
+#: src/dictate-tools-phone.c
+msgid "Controlling what plays…"
+msgstr "Управляю воспроизведением…"
+
+#: src/dictate-tools-phone.c
+msgid "controlled what plays"
+msgstr "управлял воспроизведением"
+
+#: src/dictate-tools-phone.c
+msgid "offered to turn on an area"
+msgstr "предложил включить доступ"
+
+#: src/dictate-tools-phone.c
+msgid "Searching the web…"
+msgstr "Ищу в интернете…"
+
+#: src/dictate-tools-phone.c
+msgid "searched the web"
+msgstr "искал в интернете"
+
+#: src/dictate-tools-phone.c
+msgid "Checking your apps…"
+msgstr "Проверяю приложения…"
+
+#: src/dictate-tools-phone.c
+msgid "read the open apps"
+msgstr "проверил открытые приложения"
+
+#: src/dictate-tools-phone.c
+msgid "Opening the app…"
+msgstr "Открываю приложение…"
+
+#: src/dictate-tools-phone.c
+msgid "opened an app"
+msgstr "открыл приложение"
+
+#: src/dictate-tools-phone.c
+msgid "Looking up the opening hours…"
+msgstr "Смотрю часы работы…"
+
+#: src/dictate-tools-phone.c
+msgid "looked up opening hours"
+msgstr "посмотрел часы работы"
+
+#: src/dictate-tools-phone.c
+msgid "Finding the way…"
+msgstr "Ищу маршрут…"
+
+#: src/dictate-tools-phone.c
+msgid "opened Navi with routes"
+msgstr "открыл Navi с маршрутами"
+
+#: src/dictate-tools-phone.c
+msgid "Removing the alarm…"
+msgstr "Удаляю будильник…"
+
+#: src/dictate-tools-phone.c
+msgid "removed an alarm"
+msgstr "удалил будильник"
+
+#: src/dictate-tools-phone.c
+msgid "Stopping the timer…"
+msgstr "Останавливаю таймер…"
+
+#: src/dictate-tools-phone.c
+msgid "stopped a timer"
+msgstr "остановил таймер"
+
+#: src/dictate-tools-phone.c
+msgid "Undoing it…"
+msgstr "Отменяю…"
+
+#: src/dictate-tools-phone.c
+msgid "undid the last action"
+msgstr "отменил последнее действие"
+
+#: src/dictate-tools-phone.c
+msgid "Checking what I did…"
+msgstr "Проверяю, что я сделал…"
+
+#: src/dictate-tools-phone.c
+msgid "read Vibe's log"
+msgstr "прочитал журнал Vibe"
+
+#: src/dictate-tools-phone.c
+msgid "Checking the mobile network…"
+msgstr "Проверяю мобильную сеть…"
+
+#: src/dictate-tools-phone.c
+msgid "read the mobile network"
+msgstr "проверил мобильную сеть"
+
+#: src/dictate-tools-phone.c
+msgid "Checking the weather…"
+msgstr "Смотрю погоду…"
+
+#: src/dictate-tools-phone.c
+msgid "looked up the weather"
+msgstr "посмотрел погоду"
+
+#: src/dictate-tools-phone.c
+msgid "Finding where you are…"
+msgstr "Определяю, где вы находитесь…"
+
+#: src/dictate-tools-phone.c
+msgid "read where the phone is"
+msgstr "определил местоположение телефона"
+
+#: src/dictate-tools-phone.c
+msgid "Looking through your files…"
+msgstr "Просматриваю файлы…"
+
+#: src/dictate-tools-phone.c
+msgid "looked through the files"
+msgstr "просмотрел файлы"
+
+#: src/dictate-tools-phone.c
+msgid "Opening the file…"
+msgstr "Открываю файл…"
+
+#: src/dictate-tools-phone.c
+msgid "opened a file"
+msgstr "открыл файл"
+
+#: src/dictate-tools-phone.c
+msgid "Checking what you missed…"
+msgstr "Проверяю, что вы пропустили…"
+
+#: src/dictate-tools-phone.c
+msgid "read what was missed"
+msgstr "проверил пропущенное"
+
+#: src/dictate-tools-phone.c
+msgid "Getting the contact ready…"
+msgstr "Готовлю контакт…"
+
+#: src/dictate-tools-phone.c
+msgid "a new contact, on a card"
+msgstr "новый контакт на карточке"
+
+#: src/dictate-tools-phone.c
+msgid "Getting the event ready…"
+msgstr "Готовлю событие…"
+
+#: src/dictate-tools-phone.c
+msgid "a calendar event, on a card"
+msgstr "событие календаря на карточке"
+
+#: src/dictate-tools-phone.c
+msgid "Checking the call…"
+msgstr "Проверяю вызов…"
+
+#: src/dictate-tools-phone.c
+msgid "checked the call"
+msgstr "проверил вызов"
+
+#: src/dictate-tools-phone.c
+msgid "Changing the call…"
+msgstr "Меняю параметры вызова…"
+
+#: src/dictate-tools-phone.c
+msgid "changed the call"
+msgstr "изменил параметры вызова"
+
+#: src/dictate-tools-phone.c
+msgid "Answering…"
+msgstr "Отвечаю…"
+
+#: src/dictate-tools-phone.c
+msgid "answered a call"
+msgstr "ответил на вызов"
+
+#: src/dictate-tools-phone.c
+msgid "Declining…"
+msgstr "Отклоняю…"
+
+#: src/dictate-tools-phone.c
+msgid "declined a call"
+msgstr "отклонил вызов"
+
+#: src/dictate-tools.c
+msgid "That was already done"
+msgstr "Это уже сделано"
+
+#: src/dictate-voicematch-page.c
+msgid "Lenient"
+msgstr "Мягкий"
+
+#: src/dictate-voicematch-page.c
+msgid "Balanced"
+msgstr "Средний"
+
+#: src/dictate-voicematch-page.c
+msgid "Strict"
+msgstr "Строгий"
+
+#: src/dictate-voicematch-page.c
+msgid "Off · no voice sample yet"
+msgstr "Выкл. · образца голоса пока нет"
+
+#: src/dictate-voicematch-page.c
+msgid "Not on this phone yet"
+msgstr "Пока недоступно на этом телефоне"
+
+#: src/dictate-voicematch-page.c
+msgid "Voices can't be checked · the voice model is not installed"
+msgstr "Голоса нельзя проверить · голосовая модель не установлена"
+
+#: src/dictate-voicematch-page.c
+msgid "Off · the voice model is not installed"
+msgstr "Выкл. · голосовая модель не установлена"
+
+#: src/dictate-voicematch-page.c
+msgid "Record your voice again"
+msgstr "Запишите голос заново"
+
+#: src/dictate-voicematch-page.c
+msgid "Off · voice sample saved"
+msgstr "Выкл. · образец голоса сохранён"
+
+#. TRANSLATORS: Settings › Voice match's summary; the %s is how close: lenient, balanced or strict
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "On · %s match"
+msgstr "Вкл. · %s режим"
+
+#: src/dictate-voicematch-page.c
+msgid "lenient"
+msgstr "мягкий"
+
+#: src/dictate-voicematch-page.c
+msgid "balanced"
+msgstr "средний"
+
+#: src/dictate-voicematch-page.c
+msgid "strict"
+msgstr "строгий"
+
+#: src/dictate-voicematch-page.c
+msgid "Delete voice sample?"
+msgstr "Удалить образец голоса?"
+
+#: src/dictate-voicematch-page.c
+msgid ""
+"Voice match turns off and Vibe takes commands from any voice until you "
+"record a new sample."
+msgstr ""
+"Голосовая идентификация отключится, и Vibe будет принимать команды от любого "
+"голоса, пока вы не запишете новый образец."
+
+#: src/dictate-voicematch-page.c
+msgid "Delete"
+msgstr "Удалить"
+
+#. TRANSLATORS: under Voice match's slider: 75% match needed
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "%.0f%% match needed"
+msgstr "Нужно совпадение %.0f %%"
+
+#: src/dictate-voicematch-page.c
+msgid "Works with a cold or in noise, but a similar voice may get through."
+msgstr ""
+"Работает при простуде и в шуме, но похожий голос может пройти проверку."
+
+#: src/dictate-voicematch-page.c
+msgid "Right for most people and rooms."
+msgstr "Подходит большинству людей и помещений."
+
+#: src/dictate-voicematch-page.c
+msgid "Hardest to imitate. You may need to repeat yourself in noise."
+msgstr "Сложнее всего подделать. В шуме, возможно, придётся повторять."
+
+#: src/dictate-voicematch-page.c
+msgid "Off, Vibe answers anyone"
+msgstr "Выкл., Vibe отвечает всем"
+
+#. on, and nothing to check a voice with: what asks for it is refused, as for
+#. * too little speech (dictate-talk.c)
+#: src/dictate-voicematch-page.c
+msgid ""
+"Voices can't be checked now: personal and action commands that ask for my "
+"voice are not carried out"
+msgstr ""
+"Сейчас голоса нельзя проверить: личные команды и действия, для которых нужен "
+"мой голос, не выполняются"
+
+#: src/dictate-voicematch-page.c
+msgid "Other voices can't give Vibe commands"
+msgstr "Другие голоса не могут давать Vibe команды"
+
+#. TRANSLATORS: Voice match's sample: 4 phrases
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "%u phrase"
+msgid_plural "%u phrases"
+msgstr[0] "%u фраза"
+msgstr[1] "%u фразы"
+msgstr[2] "%u фраз"
+
+#. TRANSLATORS: Voice match's sample: 4 phrases · recorded today
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "%u phrase · recorded today"
+msgid_plural "%u phrases · recorded today"
+msgstr[0] "%u фраза · записано сегодня"
+msgstr[1] "%u фразы · записано сегодня"
+msgstr[2] "%u фраз · записано сегодня"
+
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "%u phrase · recorded yesterday"
+msgid_plural "%u phrases · recorded yesterday"
+msgstr[0] "%u фраза · записано вчера"
+msgstr[1] "%u фразы · записано вчера"
+msgstr[2] "%u фраз · записано вчера"
+
+#. TRANSLATORS: a date, as in "recorded on 3 March 2026" (strftime)
+#: src/dictate-voicematch-page.c
+msgid "%e %B %Y"
+msgstr "%e %B %Y"
+
+#. TRANSLATORS: Voice match's sample: 4 phrases · recorded on 3 March 2026
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "%u phrase · recorded on %s"
+msgid_plural "%u phrases · recorded on %s"
+msgstr[0] "%u фраза · записано %s"
+msgstr[1] "%u фразы · записано %s"
+msgstr[2] "%u фраз · записано %s"
+
+#: src/dictate-voicematch-page.c
+msgid ""
+"Vibe can't tell voices apart on this phone yet, so it answers anyone who "
+"speaks to it."
+msgstr ""
+"Vibe пока не различает голоса на этом телефоне, поэтому отвечает любому, кто "
+"к нему обращается."
+
+#: src/dictate-voicematch-page.c
+msgid ""
+"Vibe learns your voice and won't carry out commands from anyone who doesn't "
+"sound like you. The sample never leaves this phone."
+msgstr ""
+"Vibe запоминает ваш голос и не выполняет команды тех, чей голос не похож на "
+"ваш. Образец никогда не покидает этот телефон."
+
+#: src/dictate-voicematch-page.c
+msgid "Voice match is coming"
+msgstr "Голосовая идентификация скоро появится"
+
+#: src/dictate-voicematch-page.c
+msgid ""
+"Then Vibe learns your voice and won't carry out commands from anyone who "
+"doesn't sound like you. Recording your voice will be offered here."
+msgstr ""
+"Тогда Vibe запомнит ваш голос и не будет выполнять команды того, чей голос "
+"не похож на ваш. Записать голос можно будет здесь."
+
+#: src/dictate-voicematch-page.c
+#, c-format
+msgid "Read %u short phrase aloud. About a minute, somewhere quiet."
+msgid_plural "Read %u short phrases aloud. About a minute, somewhere quiet."
+msgstr[0] "Прочитайте вслух %u короткую фразу. Около минуты, в тихом месте."
+msgstr[1] "Прочитайте вслух %u короткие фразы. Около минуты, в тихом месте."
+msgstr[2] "Прочитайте вслух %u коротких фраз. Около минуты, в тихом месте."
+
+#: src/dictate-voicematch-page.c
+msgid "No voice sample yet"
+msgstr "Образца голоса пока нет"
+
+#: src/dictate-voicematch-page.c
+msgid "Record my voice"
+msgstr "Записать мой голос"
+
+#: src/dictate-voicematch-page.c
+msgid "The voice model is not installed"
+msgstr "Голосовая модель не установлена"
+
+#: src/dictate-voicematch-page.c
+msgid ""
+"Your voice sample is kept, but Vibe can't check voices until the model is "
+"installed again."
+msgstr ""
+"Образец вашего голоса сохранён, но Vibe не сможет проверять голоса, пока "
+"модель не будет установлена снова."
+
+#: src/dictate-voicematch-page.c
+msgid ""
+"Voice match was updated, and your sample was made for the earlier version. "
+"Vibe can't check voices with it."
+msgstr ""
+"Голосовая идентификация обновилась, а ваш образец был сделан для прежней "
+"версии. Vibe не может проверять голоса по нему."
+
+#: src/dictate-voicematch-page.c src/dictate-window.c
+msgid "Record again"
+msgstr "Записать снова"
+
+#: src/dictate-voicematch-page.c
+msgid "Only answer my voice"
+msgstr "Отвечать только на мой голос"
+
+#: src/dictate-voicematch-page.c
+msgid "Voice sample"
+msgstr "Образец голоса"
+
+#: src/dictate-voicematch-page.c
+msgid "Re-record"
+msgstr "Перезаписать"
+
+#: src/dictate-voicematch-page.c
+msgid "Delete voice sample"
+msgstr "Удалить образец голоса"
+
+#: src/dictate-voicematch-page.c
+msgid "Vibe will answer anyone again"
+msgstr "Vibe снова будет отвечать всем"
+
+#. how close a match: the slider on a card of its own
+#: src/dictate-voicematch-page.c
+msgid "How close a match"
+msgstr "Строгость сравнения"
+
+#. what the owner's voice is asked for (dictate_tools_risk ())
+#: src/dictate-voicematch-page.c
+msgid "Ask for my voice on"
+msgstr "Требовать мой голос для"
+
+#: src/dictate-voicematch-page.c
+msgid "Everyday questions"
+msgstr "Повседневные вопросы"
+
+#: src/dictate-voicematch-page.c
+msgid "Time, weather, alarms, timers"
+msgstr "Время, погода, будильники, таймеры"
+
+#: src/dictate-voicematch-page.c
+msgid "Personal information"
+msgstr "Личные данные"
+
+#: src/dictate-voicematch-page.c
+msgid "Reading messages, calendar, contacts"
+msgstr "Чтение сообщений, календаря, контактов"
+
+#: src/dictate-voicematch-page.c
+msgid "Actions"
+msgstr "Действия"
+
+#: src/dictate-voicematch-page.c
+msgid "Calling, sending, deleting, changing settings"
+msgstr "Звонки, отправка, удаление, изменение настроек"
+
+#: src/dictate-voicematch.c
+msgid "Voice Match is not installed"
+msgstr "Голосовая идентификация не установлена"
+
+#: src/dictate-voicematch.c
+#, c-format
+msgid "The voice sample could not be removed: %s"
+msgstr "Не удалось удалить образец голоса: %s"
+
+#: src/dictate-voicematch.c
+msgid "No voice sample"
+msgstr "Нет образца голоса"
+
+#: src/dictate-voicematch.c
+msgid "Too little speech to tell whose voice it is"
+msgstr "Слишком мало речи, чтобы понять, чей это голос"
+
+#: src/dictate-voicematch.c
+msgid ""
+"The voice sample was made for another Voice Match model: record it again"
+msgstr ""
+"Образец голоса создан для другой модели голосовой идентификации: запишите "
+"его заново"
+
+#: src/dictate-voicematch.c
+#, c-format
+msgid "A voice sample needs %d recording"
+msgid_plural "A voice sample needs %d recordings"
+msgstr[0] "Для образца голоса нужна %d запись"
+msgstr[1] "Для образца голоса нужны %d записи"
+msgstr[2] "Для образца голоса нужно %d записей"
+
+#: src/dictate-voicematch.c
+#, c-format
+msgid "The voice sample could not be saved: %s"
+msgstr "Не удалось сохранить образец голоса: %s"
+
+#: src/dictate-window.c
+msgid "Listening…"
+msgstr "Слушаю…"
+
+#: src/dictate-window.c
+msgid "Tap the microphone and start talking"
+msgstr "Нажмите на микрофон и говорите"
+
+#. TRANSLATORS: the language button's name for screen readers; %s is the language's name for itself
+#: src/dictate-window.c
+#, c-format
+msgid "Language: %s"
+msgstr "Язык: %s"
+
+#: src/dictate-window.c
+msgid "Dictating"
+msgstr "Идёт диктовка"
+
+#: src/dictate-window.c
+msgid "Not carried out"
+msgstr "Не выполнено"
+
+#: src/dictate-window.c
+msgid "Listening while you hold"
+msgstr "Слушаю, пока вы удерживаете кнопку"
+
+#: src/dictate-window.c
+msgid "Vibe writes"
+msgstr "Vibe пишет"
+
+#: src/dictate-window.c
+msgid "Vibe says · on the speaker"
+msgstr "Vibe говорит · через динамик"
+
+#. TRANSLATORS: the seconds left of a countdown, in "Sending in %s…"
+#: src/dictate-window.c
+msgid "one"
+msgstr "одну секунду"
+
+#: src/dictate-window.c
+msgid "two"
+msgstr "две секунды"
+
+#: src/dictate-window.c
+msgid "three"
+msgstr "три секунды"
+
+#: src/dictate-window.c
+msgid "four"
+msgstr "четыре секунды"
+
+#: src/dictate-window.c
+msgid "five"
+msgstr "пять секунд"
+
+#: src/dictate-window.c
+msgid "six"
+msgstr "шесть секунд"
+
+#: src/dictate-window.c
+msgid "seven"
+msgstr "семь секунд"
+
+#: src/dictate-window.c
+msgid "eight"
+msgstr "восемь секунд"
+
+#: src/dictate-window.c
+msgid "nine"
+msgstr "девять секунд"
+
+#: src/dictate-window.c
+msgid "ten"
+msgstr "десять секунд"
+
+#. TRANSLATORS: over a message that is sent by itself when the countdown ends; %s is "three"
+#: src/dictate-window.c
+#, c-format
+msgid "Sending in %s…"
+msgstr "Отправка через %s…"
+
+#. TRANSLATORS: over a call that is placed by itself when the countdown ends; %s is "three"
+#: src/dictate-window.c
+#, c-format
+msgid "Calling in %s…"
+msgstr "Звонок через %s…"
+
+#. TRANSLATORS: over an action that goes ahead by itself when the countdown ends; %s is "three"
+#: src/dictate-window.c
+#, c-format
+msgid "Going ahead in %s…"
+msgstr "Выполнение через %s…"
+
+#: src/dictate-window.c
+msgid "Say “cancel” to stop"
+msgstr "Скажите «отменить», чтобы остановить"
+
+#: src/dictate-window.c
+msgid "Tap Cancel to stop it"
+msgstr "Нажмите «Отмена», чтобы остановить"
+
+#: src/dictate-window.c
+msgid "Say “send” or “cancel”"
+msgstr "Скажите «отправить» или «отменить»"
+
+#. TRANSLATORS: under a proposed action; %s is its button's label ("Send")
+#: src/dictate-window.c
+#, c-format
+msgid "Nothing happens until you tap “%s”"
+msgstr "Ничего не произойдёт, пока вы не нажмёте «%s»"
+
+#: src/dictate-window.c
+msgid "Cancelled"
+msgstr "Отменено"
+
+#: src/dictate-window.c
+msgid "Send now"
+msgstr "Отправить сейчас"
+
+#: src/dictate-window.c
+msgid "Call now"
+msgstr "Позвонить сейчас"
+
+#: src/dictate-window.c
+msgid "Do it now"
+msgstr "Выполнить сейчас"
+
+#. TRANSLATORS: what the Undo button asks Vibe, as if said; Vibe's undo tool answers it
+#: src/dictate-window.c
+msgctxt "vibe asked"
+msgid "Undo that."
+msgstr "Отмени это."
+
+#: src/dictate-window.c
+msgid "Calls and messages"
+msgstr "Звонки и сообщения"
+
+#: src/dictate-window.c
+msgid "“Call Kim” · “Read my messages”"
+msgstr "«Позвони Ким» · «Прочитай мои сообщения»"
+
+#: src/dictate-window.c
+msgid "Time and alarms"
+msgstr "Время и будильники"
+
+#: src/dictate-window.c
+msgid "“Wake me at 6:30” · “Timer, ten minutes”"
+msgstr "«Разбуди меня в 6:30» · «Таймер на десять минут»"
+
+#: src/dictate-window.c
+msgid "This phone"
+msgstr "Этот телефон"
+
+#: src/dictate-window.c
+msgid "“Turn on Wi-Fi” · “How's the battery?”"
+msgstr "«Включи Wi-Fi» · «Какой заряд батареи?»"
+
+#: src/dictate-window.c
+msgid "Around me"
+msgstr "Вокруг меня"
+
+#: src/dictate-window.c
+msgid "“Take me home” · “What's the weather?”"
+msgstr "«Поехали домой» · «Какая погода?»"
+
+#: src/dictate-window.c
+msgid "“What time is it?” · “Timer, ten minutes”"
+msgstr "«Который час?» · «Таймер на десять минут»"
+
+#: src/dictate-window.c
+msgid "What I just did"
+msgstr "Последнее действие"
+
+#: src/dictate-window.c
+msgid "“Undo” · “What did you just do?”"
+msgstr "«Отмени» · «Что ты только что сделал?»"
+
+#: src/dictate-window.c
+msgid "No connection · basic commands only"
+msgstr "Нет подключения · только базовые команды"
+
+#: src/dictate-window.c
+msgid "Tap anywhere and speak, or just try a command"
+msgstr "Нажмите на экран и говорите или просто попробуйте команду"
+
+#: src/dictate-window.c
+msgid "Without my model, these still work."
+msgstr "Без моей модели это всё равно работает."
+
+#: src/dictate-window.c
+msgid "Here are some things you can say."
+msgstr "Вот что можно сказать."
+
+#. TRANSLATORS: what the button asks Vibe, as if said
+#: src/dictate-window.c
+msgctxt "vibe asked"
+msgid "What can I do?"
+msgstr "Что я могу сделать?"
+
+#. TRANSLATORS: what a user says to hear what Vibe can do, alternatives separated by "|", lower case, without
+#. * punctuation; only the whole sentence counts
+#: src/dictate-window.c
+msgid "what can i say|what can you do|what can i ask|help"
+msgstr ""
+"что можно сказать|что мне сказать|что ты умеешь|что ты можешь|что можно "
+"спросить|помощь|помоги"
+
+#: src/dictate-window.c
+msgid "Private number"
+msgstr "Скрытый номер"
+
+#: src/dictate-window.c
+msgid "Unknown number"
+msgstr "Неизвестный номер"
+
+#: src/dictate-window.c
+msgid "On hold"
+msgstr "На удержании"
+
+#. TRANSLATORS: over the name of whom the call is with; %s is how long it has gone on: 02:41 or 1:02:41
+#: src/dictate-window.c
+#, c-format
+msgid "On a call · %s"
+msgstr "Идёт разговор · %s"
+
+#: src/dictate-window.c
+msgid "On a call"
+msgstr "Идёт разговор"
+
+#: src/dictate-window.c
+msgid "Speaker is on."
+msgstr "Громкая связь включена."
+
+#: src/dictate-window.c
+msgid "Unmute"
+msgstr "Вкл. звук"
+
+#: src/dictate-window.c
+msgid "Mute"
+msgstr "Без звука"
+
+#: src/dictate-window.c
+msgid "Resume"
+msgstr "Продолжить"
+
+#: src/dictate-window.c
+msgid "Hold"
+msgstr "Удержать"
+
+#: src/dictate-window.c
+msgid "Hang up"
+msgstr "Завершить"
+
+#: src/dictate-window.c
+msgid "Tap anywhere and say “mute”, “hold”, “speaker” or “hang up”"
+msgstr ""
+"Нажмите на экран и скажите «без звука», «удержать», «громкая связь» или "
+"«завершить звонок»"
+
+#: src/dictate-window.c
+msgid "Tap anywhere and say “mute”, “speaker” or “hang up”"
+msgstr ""
+"Нажмите на экран и скажите «без звука», «громкая связь» или «завершить "
+"звонок»"
+
+#. TRANSLATORS: over a call whose person has no name to show (a noun)
+#: src/dictate-window.c
+msgctxt "name of a call with no contact"
+msgid "Call"
+msgstr "Звонок"
+
+#. TRANSLATORS: the date under Vibe's greeting, a g_date_time_format () string: "Tuesday 24 November"
+#: src/dictate-window.c
+msgid "%A %e %B"
+msgstr "%A, %e %B"
+
+#. TRANSLATORS: over "I'm keeping quiet."; %s is when the quiet hours end: 07:00
+#: src/dictate-window.c
+#, c-format
+msgid "Quiet hours · until %s"
+msgstr "Тихие часы · до %s"
+
+#: src/dictate-window.c
+msgid "I'm keeping quiet."
+msgstr "Я молчу."
+
+#: src/dictate-window.c
+msgid ""
+"I won't speak or play sounds on my own. Calls are still announced. Ask me "
+"anything and I'll answer."
+msgstr ""
+"Я не буду говорить и издавать звуки по своей инициативе. О звонках я по-"
+"прежнему сообщаю. Спросите что угодно, и я отвечу."
+
+#: src/dictate-window.c
+msgid ""
+"I won't speak or play sounds on my own. Ask me anything and I'll answer."
+msgstr ""
+"Я не буду говорить и издавать звуки по своей инициативе. Спросите что "
+"угодно, и я отвечу."
+
+#: src/dictate-window.c
+msgid "Good evening."
+msgstr "Добрый вечер."
+
+#: src/dictate-window.c
+msgid "Good morning."
+msgstr "Доброе утро."
+
+#: src/dictate-window.c
+msgid "Good afternoon."
+msgstr "Добрый день."
+
+#: src/dictate-window.c
+msgid "Say “answer” or “decline”"
+msgstr "Скажите «ответить» или «отклонить»"
+
+#: src/dictate-window.c
+msgid "Release the side button when you have finished"
+msgstr "Отпустите боковую кнопку, когда закончите"
+
+#: src/dictate-window.c
+msgid "Listening for your answer…"
+msgstr "Слушаю ваш ответ…"
+
+#: src/dictate-window.c
+msgid "Tap to stop"
+msgstr "Нажмите, чтобы остановить"
+
+#: src/dictate-window.c
+msgid "Hold the phone a little closer, or speak up."
+msgstr "Поднесите телефон поближе или говорите громче."
+
+#: src/dictate-window.c
+msgid "I can't check your voice right now."
+msgstr "Сейчас я не могу проверить ваш голос."
+
+#: src/dictate-window.c
+msgid ""
+"Voice match was updated since your voice was recorded. Record it again and I "
+"can check it."
+msgstr ""
+"Голосовая идентификация обновилась после записи вашего голоса. Запишите его "
+"снова, и я смогу его проверять."
+
+#: src/dictate-window.c
+msgid ""
+"The voice model is not installed any more, so I can't tell your voice from "
+"anyone else's."
+msgstr ""
+"Голосовая модель больше не установлена, поэтому я не могу отличить ваш голос "
+"от чужого."
+
+#. the model is there and the sample made for it, and the check failed to run
+#: src/dictate-window.c
+msgid ""
+"Voice match couldn't run just now, so I can't tell your voice from anyone "
+"else's."
+msgstr ""
+"Голосовая идентификация сейчас не сработала, поэтому я не могу отличить ваш "
+"голос от чужого."
+
+#: src/dictate-window.c
+msgid "Use PIN instead"
+msgstr "Ввести PIN-код"
+
+#: src/dictate-window.c
+msgid "Unlock with PIN instead"
+msgstr "Разблокировать PIN-кодом"
+
+#: src/dictate-window.c
+msgid "Until voices can be checked, commands like this one need your PIN"
+msgstr "Пока голоса нельзя проверить, для таких команд нужен ваш PIN-код"
+
+#: src/dictate-window.c
+msgid "Until voices can be checked, commands like this one are not carried out"
+msgstr "Пока голоса нельзя проверить, такие команды не выполняются"
+
+#: src/dictate-window.c
+msgid "Third try not recognised"
+msgstr "Третья попытка не распознана"
+
+#: src/dictate-window.c
+msgid "Has your voice changed?"
+msgstr "Ваш голос изменился?"
+
+#: src/dictate-window.c
+msgid ""
+"A cold or a new microphone can do that. Enter your PIN and I'll learn it "
+"again."
+msgstr ""
+"Так бывает при простуде или с новым микрофоном. Введите PIN-код, и я запомню "
+"голос заново."
+
+#: src/dictate-window.c
+msgid ""
+"A cold or a new microphone can do that. Record your voice again and I'll "
+"learn it."
+msgstr ""
+"Так бывает при простуде или с новым микрофоном. Запишите голос ещё раз, и я "
+"его запомню."
+
+#: src/dictate-window.c
+msgid "Not now"
+msgstr "Не сейчас"
+
+#: src/dictate-window.c
+msgid "Enter PIN"
+msgstr "Ввести PIN-код"
+
+#: src/dictate-window.c
+msgid "Until then, commands in this voice are not carried out"
+msgstr "До тех пор команды этим голосом не выполняются"
+
+#: src/dictate-window.c
+msgid "That didn't sound like my owner."
+msgstr "Я не узнаю этот голос."
+
+#: src/dictate-window.c
+msgid ""
+"I only take commands from the voice I was taught. Try again, closer to the "
+"phone."
+msgstr ""
+"Я принимаю команды только от знакомого голоса. Попробуйте ещё раз, ближе к "
+"телефону."
+
+#: src/dictate-window.c
+msgid "Leave it off"
+msgstr "Оставить выключенным"
+
+#: src/dictate-window.c
+msgid "Turn on"
+msgstr "Включить"
+
+#: src/dictate-window.c
+msgid "Try again"
+msgstr "Повторить"
+
+#: src/dictate-window.c
+msgid "What can I do?"
+msgstr "Что я могу сделать?"
+
+#: src/dictate-window.c
+msgid "Undo"
+msgstr "Отменить"
+
+#: src/dictate-window.c
+msgid "Say “undo” to take it back"
+msgstr "Скажите «отменить», чтобы вернуть как было"
+
+#: src/dictate-window.c
+msgid "Say which one, or tap it"
+msgstr "Скажите, какой, или нажмите на него"
+
+#: src/dictate-window.c
+msgid "Hold the side button to come back"
+msgstr "Удерживайте боковую кнопку, чтобы вернуться"
+
+#: src/dictate-window.c
+msgid "Private mode is on"
+msgstr "Приватный режим включён"
+
+#. J5: Speak the replies is off
+#: src/dictate-window.c
+msgid "Speech is off · replies are only written"
+msgstr "Речь выключена · ответы только текстом"
+
+#: src/dictate-window.c
+msgid "Clear the conversation?"
+msgstr "Очистить диалог?"
+
+#: src/dictate-window.c
+msgid "All of the conversation is deleted from the phone, and Vibe forgets it."
+msgstr "Весь диалог будет удалён с телефона, и Vibe его забудет."
+
+#: src/dictate-window.c
+msgid "Incoming call"
+msgstr "Входящий вызов"
+
+#: src/dictate-window.c
+msgid "Decline"
+msgstr "Отклонить"
+
+#: src/dictate-window.c
+msgid "Answer"
+msgstr "Ответить"
+
+#. TRANSLATORS: in a call, the bar says so (a noun), over the call's stage and over what is asked in it
+#: src/dictate-window.c
+msgctxt "screen title: a call in progress"
+msgid "Call"
+msgstr "Звонок"
+
+#: src/dictate-window.c
+msgid "Text copied"
+msgstr "Текст скопирован"
+
+#: src/dictate-window.c
+msgid "Clear the text?"
+msgstr "Очистить текст?"
+
+#: src/dictate-window.c
+msgid "All of the text is deleted."
+msgstr "Весь текст будет удалён."
+
+#: src/dictate-window.c
+msgid "Copy"
+msgstr "Копировать"
+
+#: src/dictate-window.c
+msgid "Select all"
+msgstr "Выделить всё"
+
+# android: Framework action_menu_overflow_description (several translations, short)
+#. Material's ⋮, as the other actions' glyphs (Adwaita's view-more is a size larger beside them)
+#: src/dictate-window.c
+msgid "More options"
+msgstr "Ещё"

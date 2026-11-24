@@ -174,10 +174,76 @@ test_replies (void)
   g_assert_cmpuint (ran->len, ==, 6);
 }
 
+/* "send" and "cancel" said to a card, in every language, and what is not either */
+static void
+test_confirm_word (void)
+{
+  static const struct {
+    const char *language, *said;
+    DictateConfirmWord word;
+  } cases[] = {
+    { "en", "Send.", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "en", "Yes, send it please", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "en", "OK, call her now.", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "en", "Cancel", DICTATE_CONFIRM_WORD_CANCEL },
+    { "en", "No, don't send it!", DICTATE_CONFIRM_WORD_CANCEL },
+    { "en", "never mind", DICTATE_CONFIRM_WORD_CANCEL },
+    { "en", "Send it to Anna instead", DICTATE_CONFIRM_WORD_NONE },
+    { "en", "Change 10 to 10:30", DICTATE_CONFIRM_WORD_NONE },
+    { "en", "No, send it", DICTATE_CONFIRM_WORD_NONE },
+    { "en", "please", DICTATE_CONFIRM_WORD_NONE },
+    { "en", "", DICTATE_CONFIRM_WORD_NONE },
+    { "de", "Ja, schick es bitte ab", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "de", "Ja, schick es bitte", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "de", "Senden!", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "de", "Abbrechen", DICTATE_CONFIRM_WORD_CANCEL },
+    { "de", "Nein, nicht senden", DICTATE_CONFIRM_WORD_CANCEL },
+    { "de", "Schick es an Anna", DICTATE_CONFIRM_WORD_NONE },
+    { "es", "Sí, envíalo", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "es", "No, cancélalo", DICTATE_CONFIRM_WORD_CANCEL },
+    { "fr", "Oui, envoie-le s'il te plaît", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "fr", "Non, ne l'envoie pas", DICTATE_CONFIRM_WORD_CANCEL },
+    { "it", "Sì, invialo", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "it", "Annulla", DICTATE_CONFIRM_WORD_CANCEL },
+    { "ru", "Да, отправь", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "ru", "Нет, не надо", DICTATE_CONFIRM_WORD_CANCEL },
+    { "ru", "Отправь Анне", DICTATE_CONFIRM_WORD_NONE },
+    { "nl", "Ja, verstuur het maar", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "nl", "Ja, stuur maar", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "nl", "Nee, laat maar", DICTATE_CONFIRM_WORD_CANCEL },
+    /* accents or none, an apostrophe straight, curly, a space or nothing: as the recogniser writes them */
+    { "fr", "D’accord, envoie-le", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "fr", "daccord envoie", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "fr", "Arrête", DICTATE_CONFIRM_WORD_CANCEL },
+    { "fr", "arrete", DICTATE_CONFIRM_WORD_CANCEL },
+    { "es", "Envia", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "es", "Olvídalo", DICTATE_CONFIRM_WORD_CANCEL },
+    { "de", "Bestätigen", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "de", "bestatigen bitte", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "it", "D'accordo, mandalo", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "it", "Si, invialo", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "ru", "Всё верно", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "ru", "все верно", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "nl", "Oké, verstuur het", DICTATE_CONFIRM_WORD_CONFIRM },
+    { "en", "dont send it", DICTATE_CONFIRM_WORD_CANCEL },
+    { "en", "That’s right", DICTATE_CONFIRM_WORD_CONFIRM },
+  };
+
+  for (guint i = 0; i < G_N_ELEMENTS (cases); i++)
+    {
+      DictateConfirmWord got = dictate_offline_confirm_word (cases[i].language, cases[i].said);
+
+      if (got != cases[i].word)
+        g_error ("\"%s\" (%s): %d, not %d", cases[i].said, cases[i].language, got, cases[i].word);
+    }
+  g_assert_cmpint (dictate_offline_confirm_word ("en", NULL), ==, DICTATE_CONFIRM_WORD_NONE);
+}
+
 int
 main (int argc, char **argv)
 {
   g_test_init (&argc, &argv, NULL);
+  g_test_add_func ("/offline/confirm-word", test_confirm_word);
   g_test_add_func ("/offline/parse", test_parse);
   g_test_add_func ("/offline/numbers", test_numbers);
   g_test_add_func ("/offline/replies", test_replies);

@@ -36,6 +36,7 @@
 #define TURN_MIN_MS     250     /* shorter speech (a cough, a knock) with no words heard in it does not count */
 #define TURN_PREROLL_MS 300     /* the audio before the speech's start that goes with it: its first sound */
 #define TURN_WAIT_MS    8000    /* nothing said for this long, the turn is over */
+#define TURN_KEEP_S     30      /* a turn's speech kept for dictate_engine_take_turn_audio: at most this long */
 #define TURN_LOUD       0.3     /* without the detector: a frame this loud (as the level) is speech */
 #define FRAME_MS        (DICTATE_VAD_FRAME * 1000 / DICTATE_RATE)
 
@@ -66,6 +67,7 @@ struct _DictateEngine
   /* the worker's: the voice activity detector, loaded the first time turns are taken, kept */
   DictateVad *vad;
   gboolean vad_tried;
+  GBytes *turn_audio;           /* under the lock: the last turn's speech, until taken or the next start */
 };
 
 enum { SIGNAL_TEXT, SIGNAL_STATE_CHANGED, SIGNAL_ERROR, N_SIGNALS };
@@ -112,6 +114,8 @@ dictate_engine_available (DictateEngine *self, char **reason)
     {
       g_autofree char *package = language ? g_strconcat ("vibeos-dictate-", language->code, NULL) : NULL;
 
+      if (!reason)
+        return FALSE;
       if (language)
         /* TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second the package's name
          * (vibeos-dictate-de) */
@@ -125,9 +129,10 @@ dictate_engine_available (DictateEngine *self, char **reason)
   recogniser = dictate_recogniser_class (model->kind);
   if (!recogniser->installed ())
     {
-      /* TRANSLATORS: %s is the package's name (vibeos-dictate-moonshine) */
-      *reason = g_strdup_printf (_("Speech recognition is not installed. Install the %s package."),
-                                 recogniser->package);
+      if (reason)
+        /* TRANSLATORS: %s is the package's name (vibeos-dictate-moonshine) */
+        *reason = g_strdup_printf (_("Speech recognition is not installed. Install the %s package."),
+                                   recogniser->package);
       return FALSE;
     }
   return TRUE;
@@ -384,6 +389,15 @@ turn_feed (DictateEngine *self, Turn *t, GArray *audio, gboolean heard, gboolean
     }
 }
 
+/* the speech sent to the recogniser, kept too: up to TURN_KEEP_S of it */
+static void
+keep (GArray *kept, GArray *speech)
+{
+  guint room = TURN_KEEP_S * DICTATE_RATE - MIN (kept->len, TURN_KEEP_S * DICTATE_RATE);
+
+  g_array_append_vals (kept, speech->data, MIN (speech->len, room));
+}
+
 static gpointer
 work (gpointer data)
 {
@@ -396,6 +410,7 @@ work (gpointer data)
   gint64 last = 0;
   gboolean turns, heard = FALSE, was_held = FALSE;
   Turn turn;
+  g_autoptr (GArray) kept = g_array_new (FALSE, FALSE, sizeof (float));
 
   g_mutex_lock (&self->lock);
   model = g_steal_pointer (&self->wanted);
@@ -449,6 +464,7 @@ work (gpointer data)
             turn.frames = 0;
           was_held = held;
           turn_feed (self, &turn, audio, heard, held);
+          keep (kept, turn.speech);
           if (hear_audio (self, stream, turn.speech, &partial))
             heard = TRUE;
           g_array_set_size (turn.speech, 0);
@@ -468,7 +484,16 @@ work (gpointer data)
     {
       g_autoptr (GArray) audio = take_queued (self);
       turn_feed (self, &turn, audio, heard, was_held);
+      keep (kept, turn.speech);
       hear_audio (self, stream, turn.speech, &partial);
+    }
+  /* the turn's speech, for the voice match (taken on the main thread once the state is idle) */
+  if (turns && kept->len)
+    {
+      g_mutex_lock (&self->lock);
+      g_clear_pointer (&self->turn_audio, g_bytes_unref);
+      self->turn_audio = g_bytes_new (kept->data, kept->len * sizeof (float));
+      g_mutex_unlock (&self->lock);
     }
   {
     g_autoptr (GPtrArray) finished = g_ptr_array_new_with_free_func (g_free);
@@ -632,6 +657,7 @@ dictate_engine_start (DictateEngine *self)
     }
   g_mutex_lock (&self->lock);
   g_array_set_size (self->queued, 0);
+  g_clear_pointer (&self->turn_audio, g_bytes_unref);
   self->stop = FALSE;
   g_clear_pointer (&self->wanted, dictate_model_free);
   self->wanted = model;
@@ -674,6 +700,17 @@ dictate_engine_get_level (DictateEngine *self)
   return g_atomic_int_get (&self->level) / 1e6;
 }
 
+GBytes *
+dictate_engine_take_turn_audio (DictateEngine *self)
+{
+  GBytes *audio;
+
+  g_mutex_lock (&self->lock);
+  audio = g_steal_pointer (&self->turn_audio);
+  g_mutex_unlock (&self->lock);
+  return audio;
+}
+
 static void
 dictate_engine_finalize (GObject *object)
 {
@@ -686,6 +723,7 @@ dictate_engine_finalize (GObject *object)
   dictate_model_free (self->loaded);
   dictate_model_free (self->wanted);
   dictate_vad_free (self->vad);
+  g_clear_pointer (&self->turn_audio, g_bytes_unref);
   g_free (self->language);
   g_array_unref (self->queued);
   g_mutex_clear (&self->lock);

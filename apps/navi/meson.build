@@ -97,7 +97,7 @@ endif
 if get_option('debug_privacy')
   app_args += '-DNAVI_DEBUG'
 endif
-# Agent's voices: Piper models run by ONNX Runtime, with espeak-ng's phonemes. Their code is Agent's, built from its
+# Agent's voices: Piper models run by ONNX Runtime, with espeak-ng's phonemes, and Russian's tiny-voca. Their code is Agent's, built from its
 # sources (not copied here), until it is a library both apps link.
 voice_sources = []
 voice_deps = []
@@ -108,6 +108,10 @@ if voice_src != ''
     onnxruntime = meson.get_compiler('c').find_library('onnxruntime')
   endif
   voice_sources = files(voice_src / 'dictate-voice.c', voice_src / 'dictate-phonemes.c')
+  # Russian's voice, tiny-voca, reads its own front end's tokens
+  foreach ru : ['', '-numbers', '-tables', '-text', '-normalize', '-stress', '-g2p']
+    voice_sources += files(voice_src / 'dictate-ru@0@.c'.format(ru))
+  endforeach
   voice_deps = [onnxruntime, dependency('espeak-ng'), dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0')]
   app_args += ['-DHAVE_PIPER', '-I' + voice_src]
   # the search's microphone: Agent's and Dictate's speech recognition (Moonshine, Vosk, the voice activity detector),

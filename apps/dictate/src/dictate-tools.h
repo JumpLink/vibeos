@@ -30,7 +30,15 @@ typedef struct {
   gpointer data;
   gboolean private_speaker;     /* private mode, the answer on the speaker: no texts of messages or notifications */
   gboolean locked;              /* the phone is locked (Agent asked by holding the power key): reading tools only */
+  guint countdown;              /* the seconds an outward action proposed counts down (dictate_action_set_countdown ()),
+                                 * 0: it waits for the user */
+  /* what the window shows besides the reply, from the tool's thread: "facts", "person", "suggestions", "choices",
+   * "written" (DictateTalk's signals of those names); NULL: nothing is shown */
+  void (*show) (const char *kind, const char *const *rows, gpointer data);
 } DictateToolContext;
+
+/* how far a tool reaches (dictate-actions.h): DICTATE_TIER_READ for one there is not */
+int          dictate_tools_tier        (const char *name);
 
 /* the areas that are on, as DictateToolContext.areas, from Agent's settings */
 guint32      dictate_tools_areas       (GSettings *settings);
@@ -46,6 +54,16 @@ const char  *dictate_tools_status      (const char *name);
 char        *dictate_tools_run         (const char *name, const char *arguments, const DictateToolContext *ctx,
                                         guint timeout_ms);
 
+/* the risk class of a tool, for Voice Match (the voice-match-everyday, -personal and -actions settings) */
+typedef enum {
+  DICTATE_RISK_EVERYDAY,        /* the time, the weather, alarms, timers, the phone's state */
+  DICTATE_RISK_PERSONAL,        /* reading messages, calls, the calendar, contacts, files, where the phone is */
+  DICTATE_RISK_ACTIONS,         /* calling, sending, adding, deleting, changing settings */
+} DictateRisk;
+
+/* `name`'s class; a tool not known is an action */
+DictateRisk  dictate_tools_risk        (const char *name);
+
 /* --- a proposed action */
 
 DictateAction       *dictate_action_ref         (DictateAction *self);
@@ -54,8 +72,43 @@ void                 dictate_action_unref       (DictateAction *self);
 const char          *dictate_action_get_title   (DictateAction *self);
 const char *const   *dictate_action_get_lines   (DictateAction *self);
 const char          *dictate_action_get_button  (DictateAction *self);
+/* the card's fields, label and value ("Message to", "Kim Novak"; "Text", "“…”"), translated, ended by a NULL label;
+ * NULL when it has none (its title and lines then) */
+typedef struct {
+  const char *label;
+  const char *value;
+} DictateActionField;
+const DictateActionField *dictate_action_get_fields (DictateAction *self);
+/* it deletes, or cannot be undone: its button says so */
+gboolean             dictate_action_get_destructive (DictateAction *self);
+/* it goes to someone, a message or a call; certain: to whom was not guessed (a number given, or the contact's own
+ * name), only then may it count down */
+gboolean             dictate_action_get_outward  (DictateAction *self);
+gboolean             dictate_action_get_certain  (DictateAction *self);
+void                 dictate_action_set_outward  (DictateAction *self, gboolean certain);
+/* the seconds it counts down once Vibe has read it back, then runs by itself (outward-confirm 'countdown'); 0: it
+ * waits for the user's tap or "send". Set by DictateTalk to DICTATE_ACTION_COUNTDOWN when outward-confirm is
+ * 'countdown', the turn's voice passed its check and the phone is unlocked; it takes only on an outward action whose
+ * recipient is certain and that is not destructive. The window shows the countdown and, at 0, runs it with
+ * dictate_action_run_by (DICTATE_ACTION_BY_COUNTDOWN); any new speech or touch, the screen going off or the window
+ * leaving the foreground stops it, and the card then waits */
+#define DICTATE_ACTION_COUNTDOWN 3
+guint                dictate_action_get_countdown (DictateAction *self);
+void                 dictate_action_set_countdown (DictateAction *self, guint seconds);
+/* nothing was decided about it yet */
+gboolean             dictate_action_is_waiting   (DictateAction *self);
+
+/* how an action was run, for the action log and for what the model is told */
+typedef enum {
+  DICTATE_ACTION_BY_TAP,        /* its button */
+  DICTATE_ACTION_BY_COUNTDOWN,  /* its countdown ended */
+  DICTATE_ACTION_BY_VOICE,      /* the user said "send" */
+} DictateActionBy;
 /* the user tapped its button: it runs (once) */
 void                 dictate_action_run         (DictateAction *self, GCancellable *cancellable,
+                                                 GAsyncReadyCallback callback, gpointer data);
+/* the same, run otherwise than by its button */
+void                 dictate_action_run_by      (DictateAction *self, DictateActionBy by, GCancellable *cancellable,
                                                  GAsyncReadyCallback callback, gpointer data);
 /* what was done, for the card ("Sent"), or FALSE with the error */
 char                *dictate_action_run_finish  (DictateAction *self, GAsyncResult *result, GError **error);

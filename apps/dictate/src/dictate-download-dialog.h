@@ -7,7 +7,7 @@
  * recogniser's library that is not installed (Vosk's) is code: it comes only as its signed package from the VibeOS
  * archive, installed by the system's package manager (dictate-package.h) in the same run, before the files.
  *
- * An app that only speaks (Navi) asks for a voice alone: the language's Piper voice (dictate_voice_find_piper), the
+ * An app that only speaks (Navi) asks for a voice alone: the language's voice (dictate_voice_find), the
  * same pack Agent downloads, into the same place, so a voice downloaded in one app is the other's too. Built into
  * such an app without Agent's conversation, the file is compiled with DICTATE_WITHOUT_TALK. */
 #pragma once
