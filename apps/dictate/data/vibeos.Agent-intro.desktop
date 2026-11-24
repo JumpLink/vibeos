@@ -7,4 +7,3 @@ Icon=vibeos.Agent
 Terminal=false
 NoDisplay=true
 X-GNOME-AutostartCondition=GSettings vibeos.Dictate first-run
-X-GNOME-Autostart-Phase=Applications
