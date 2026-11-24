@@ -147,5 +147,36 @@
       <summary>Agent can use the web</summary>
       <description>"Web" in Agent's settings. Off, Agent is told it has no access to it, and says so when asked.</description>
     </key>
+    <key name="first-run" type="b">
+      <default>true</default>
+      <summary>Vibe's introduction is still to come</summary>
+      <description>While true, Vibe introduces itself the next time the session starts or the app opens (its language, speed, what it may use and the voice sample), and the key goes false once that is over or skipped.</description>
+    </key>
+    <key name="voice-match" type="b">
+      <default>false</default>
+      <summary>Vibe only answers the owner's voice</summary>
+      <description>"Only answer my voice" in Vibe's Voice match settings, turned on when a voice sample is saved. While it is on and a sample is on the phone, a command in another voice runs nothing the settings below ask the owner's voice for.</description>
+    </key>
+    <key name="voice-match-strictness" type="i">
+      <range min="0" max="100"/>
+      <default>50</default>
+      <summary>How close a voice must be to the owner's</summary>
+      <description>"How close a match", from 0 (lenient) to 100 (strict); 50, balanced, needs a 75 % match.</description>
+    </key>
+    <key name="voice-match-everyday" type="b">
+      <default>true</default>
+      <summary>The owner's voice for everyday questions</summary>
+      <description>The time, the weather, alarms and timers answered only to the owner's voice, while Voice match is on.</description>
+    </key>
+    <key name="voice-match-personal" type="b">
+      <default>true</default>
+      <summary>The owner's voice for personal information</summary>
+      <description>Messages, the calendar and contacts read out only to the owner's voice, while Voice match is on.</description>
+    </key>
+    <key name="voice-match-actions" type="b">
+      <default>true</default>
+      <summary>The owner's voice for actions</summary>
+      <description>Calling, sending, deleting and changing settings only for the owner's voice, while Voice match is on.</description>
+    </key>
   </schema>
 </schemalist>
