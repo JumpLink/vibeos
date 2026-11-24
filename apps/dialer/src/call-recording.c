@@ -6,6 +6,8 @@
 
 #define PARTY_MAX       100     /* bytes of the name's other-side part: a file name holds 255 */
 #define UNKNOWN         "unknown"       /* Lineage's, for a call with no number */
+#define SOUNDS_DIR      "vibeos-dialer/sounds"
+#define FALLBACK        "en"
 
 char *
 call_recording_default_folder (void)
@@ -95,4 +97,36 @@ call_recording_file_name (const char *party, GDateTime *when)
 
   return g_strdup_printf ("%s_%s%03d%s", name, stamp, g_date_time_get_microsecond (when) / 1000,
                           CALL_RECORDING_EXTENSION);
+}
+
+static char *
+announcement_in (const char *language, const char * const *data_dirs)
+{
+  g_autofree char *name = g_strdup_printf ("call-recording-%s.opus", language);
+
+  for (guint i = 0; data_dirs[i]; i++)
+    {
+      g_autofree char *path = g_build_filename (data_dirs[i], SOUNDS_DIR, name, NULL);
+
+      if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
+        return g_steal_pointer (&path);
+    }
+  return NULL;
+}
+
+char *
+call_recording_announcement (const char * const *languages, const char * const *data_dirs)
+{
+  for (guint i = 0; languages[i]; i++)
+    {
+      /* the language alone: "pt_BR.UTF-8@euro" is "pt"; "C" and "POSIX" are none */
+      g_autofree char *code = g_strndup (languages[i], strcspn (languages[i], "_.@"));
+      char *path;
+
+      if (!*code || g_str_equal (code, "C") || g_str_equal (code, "POSIX"))
+        continue;
+      if ((path = announcement_in (code, data_dirs)))
+        return path;
+    }
+  return announcement_in (FALLBACK, data_dirs);
 }

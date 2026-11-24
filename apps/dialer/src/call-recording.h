@@ -24,3 +24,8 @@ char *call_recording_folder_display (const char *folder);
  * "unknown") that started at @when: "Anna Schmidt_261124_140322123.opus". What a file name cannot hold here or on
  * a memory card (/ \ : * ? " < > | and control characters) becomes "_", and a long name is cut short */
 char *call_recording_file_name (const char *party, GDateTime *when);
+
+/* the announcement "This call is now being recorded" (call-recording-<language>.opus in vibeos-dialer/sounds) in
+ * the first of @languages (g_get_language_names: "fr_FR.UTF-8", "fr_FR", "fr", "C") it is there in, under the first
+ * of @data_dirs that has it; else the English one; NULL when there is none */
+char *call_recording_announcement (const char * const *languages, const char * const *data_dirs);

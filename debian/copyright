@@ -31,26 +31,50 @@ Comment:
  Launcher3, DeskClock, Dialer, Messaging, ExactCalculator).
 
 Files: apps/dialer/data/sounds/call-recording-en.opus
-Copyright: Michael Hansen (Piper voice en_US-lessac-medium, rhasspy/piper-voices)
-           2013 Lessac Technologies, Inc. (the Lessac recordings, Blizzard Challenge 2013)
+Copyright: Bryce Beattie (Piper voice en_GB-cori-high, rhasspy/piper-voices)
+           Cori Samuel (the recordings, LibriVox)
 License: Expat
 Comment:
  The Phone's call-recording announcement in English, "This call is now being
- recorded", read by the Piper voice en_US-lessac-medium (MIT) and made with
- apps/dialer/data/sounds/make-sounds.sh. The voice was trained on the Lessac
- recordings of the Blizzard Challenge 2013, whose own licence allows research
- use only:
- https://www.cstr.ed.ac.uk/projects/blizzard/2013/lessac_blizzard2013/license.html
+ recorded", read by the Piper voice en_GB-cori-high (MIT) and made with
+ apps/dialer/data/sounds/make-sounds.sh. The voice was trained from scratch on
+ Cori Samuel's LibriVox recordings (https://librivox.org), which are in the
+ public domain.
 
 Files: apps/dialer/data/sounds/call-recording-de.opus
-Copyright: Michael Hansen (Piper voice de_DE-thorsten-medium, rhasspy/piper-voices)
+       apps/dialer/data/sounds/call-recording-es.opus
+       apps/dialer/data/sounds/call-recording-nl.opus
+       apps/dialer/data/sounds/call-recording-ru.opus
+Copyright: Michael Hansen and the rhasspy/piper-voices contributors (Piper voices)
            Thorsten Müller (Thorsten-Voice)
 License: Expat
 Comment:
- The Phone's call-recording announcement in German, "Dieser Anruf wird jetzt
- aufgezeichnet", read by the Piper voice de_DE-thorsten-medium (MIT), trained
- on the Thorsten-Voice recordings (CC0), and made with
- apps/dialer/data/sounds/make-sounds.sh.
+ The Phone's call-recording announcement in German, Spanish, Dutch and
+ Russian, read by the Piper voices de_DE-thorsten-medium, es_ES-davefx-medium,
+ nl_NL-pim-medium and ru_RU-denis-medium (MIT) and made with
+ apps/dialer/data/sounds/make-sounds.sh. Their recordings are under CC0
+ (Thorsten-Voice, https://github.com/thorstenMueller/Thorsten-Voice; the
+ others https://github.com/OHF-Voice/voice-datasets), and the voices are
+ trained from the Piper voice nl_BE-rdh-medium, whose recordings are CC0 too
+ (https://github.com/r-dh/dutch-vl-tts).
+
+Files: apps/dialer/data/sounds/call-recording-fr.opus
+       apps/dialer/data/sounds/call-recording-it.opus
+Copyright: Michael Hansen and the rhasspy/piper-voices contributors (Piper voices)
+           Centre for Speech Technology Research, University of Edinburgh, and
+           Idiap Research Institute (the SIWIS French Speech Synthesis Database)
+           NVIDIA Corporation (the Hi-Fi Multi-Speaker English TTS Dataset)
+License: Expat and CC-BY-4.0
+Comment:
+ The Phone's call-recording announcement in French and Italian, read by the
+ Piper voices fr_FR-siwis-medium and it_IT-paola-medium (MIT) and made with
+ apps/dialer/data/sounds/make-sounds.sh. The French voice is trained on the
+ SIWIS French Speech Synthesis Database (CC BY 4.0,
+ https://datashare.is.ed.ac.uk/handle/10283/2353), the Italian one on
+ recordings under CC0 (https://github.com/OHF-Voice/voice-datasets); both are
+ trained from the Piper voice en_US-hifi_tts_92-medium, the voice of Cori
+ Samuel in NVIDIA's Hi-Fi Multi-Speaker English TTS Dataset (CC BY 4.0,
+ https://www.openslr.org/109/).
 
 Files: apps/installer/data/icons/*
        apps/installer/data/vibeos.Installer.svg

@@ -35,8 +35,8 @@ gboolean      call_recorder_start (CallRecorder *self, const char *path, const c
 void          call_recorder_stop (CallRecorder *self);
 gboolean      call_recorder_is_recording (CallRecorder *self);
 
-/* the announcement in the user's language (g_get_language_names), German or English, from
- * vibeos-dialer/sounds in the system's data directories; NULL when it is not there */
+/* the announcement in the user's language (g_get_language_names), else in English, from vibeos-dialer/sounds in the
+ * system's data directories (call_recording_announcement); NULL when it is not there */
 char         *call_recorder_announcement (void);
 
 /* for the tests: GStreamer elements in place of pulsesrc and pulsesink, with no sound server to look the PCMs up in

@@ -1,6 +1,7 @@
 /* The call recorder (call-recorder.h): PulseAudio's API (PipeWire's pulse server) to find the source and the sink of
  * the "Voice Call" profile by their PCMs, GStreamer to record and to play the announcement. */
 #include "call-recorder.h"
+#include "call-recording.h"
 
 #include <fcntl.h>
 #include <gio/gio.h>
@@ -14,7 +15,6 @@
 #define STOP_MS 2000            /* for the recording's end to go through the encoder into the file */
 #define BITRATE 24000           /* Opus for voice; Lineage records AMR-WB, 23.85 kbit/s */
 #define RECORDED_BYTES 4096     /* a file bigger than this has audio in it, past the Ogg Opus headers */
-#define SOUNDS_DIR "vibeos-dialer/sounds"
 #define CLIENT_NAME "Phone call recorder"
 
 typedef enum {
@@ -537,25 +537,7 @@ call_recorder_is_recording (CallRecorder *self)
 char *
 call_recorder_announcement (void)
 {
-  const char * const *languages = g_get_language_names ();
-  const char * const *dirs = g_get_system_data_dirs ();
-  const char *code = "en";
-
-  for (guint i = 0; languages[i]; i++)
-    if (g_str_has_prefix (languages[i], "de") || g_str_has_prefix (languages[i], "en"))
-      {
-        code = g_str_has_prefix (languages[i], "de") ? "de" : "en";
-        break;
-      }
-  for (guint i = 0; dirs[i]; i++)
-    {
-      g_autofree char *name = g_strdup_printf ("call-recording-%s.opus", code);
-      g_autofree char *path = g_build_filename (dirs[i], SOUNDS_DIR, name, NULL);
-
-      if (g_file_test (path, G_FILE_TEST_IS_REGULAR))
-        return g_steal_pointer (&path);
-    }
-  return NULL;
+  return call_recording_announcement (g_get_language_names (), g_get_system_data_dirs ());
 }
 
 void

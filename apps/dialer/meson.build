@@ -49,9 +49,12 @@ install_data('data/vibeos.Dialer.desktop', 'data/vibeos.Dialer.InCall.desktop',
              install_dir: datadir / 'applications')
 install_data('data/vibeos.Dialer.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 install_data('data/vibeos.Dialer.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
-# "This call is now being recorded", English and German (data/sounds/README: how they were made)
-install_data('data/sounds/call-recording-en.opus', 'data/sounds/call-recording-de.opus',
-             install_dir: datadir / 'vibeos-dialer/sounds')
+# "This call is now being recorded" in each of VibeOS's languages (data/sounds/make-sounds.sh: how they were made)
+announcements = []
+foreach lang : ['de', 'en', 'es', 'fr', 'it', 'nl', 'ru']
+  announcements += 'data/sounds/call-recording-' + lang + '.opus'
+endforeach
+install_data(announcements, install_dir: datadir / 'vibeos-dialer/sounds')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 foreach name : ['call-log', 'phone-number', 'blocked-numbers']

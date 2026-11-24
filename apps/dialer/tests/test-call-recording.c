@@ -2,6 +2,7 @@
  * (GSETTINGS_SCHEMA_DIR: the build's compiled schema; GSETTINGS_BACKEND=memory) */
 #include "../src/call-recording.h"
 
+#include <glib/gstdio.h>
 #include <string.h>
 
 static GDateTime *
@@ -138,6 +139,58 @@ test_settings (void)
   g_settings_reset (settings, "recordings-folder");
 }
 
+/* the announcement in the first of the user's languages it is there in, else in English */
+static void
+test_announcement (void)
+{
+  g_autofree char *tmp = g_dir_make_tmp ("test-call-recording-XXXXXX", NULL);
+  g_autofree char *empty = g_build_filename (tmp, "empty", NULL);
+  g_autofree char *data = g_build_filename (tmp, "data", NULL);
+  g_autofree char *app = g_build_filename (data, "vibeos-dialer", NULL);
+  g_autofree char *sounds = g_build_filename (app, "sounds", NULL);
+  const char *dirs[] = { empty, data, NULL };
+  const char *none[] = { empty, NULL };
+  const char *french[] = { "fr_FR.UTF-8", "fr_FR", "fr", "C", NULL };
+  const char *dutch[] = { "nl_NL.UTF-8", "nl_NL", "nl", "C", NULL };
+  const char *second[] = { "pt_BR.UTF-8@euro", "pt_BR", "pt", "de_DE", "de", "C", NULL };
+  const char *posix[] = { "C", NULL };
+  g_autofree char *fr = NULL, *nl = NULL, *de = NULL, *c = NULL, *gone = NULL;
+
+  g_assert_no_errno (g_mkdir_with_parents (sounds, 0700));
+  g_assert_no_errno (g_mkdir_with_parents (empty, 0700));
+  for (const char **lang = (const char *[]) { "en", "de", "fr", NULL }; *lang; lang++)
+    {
+      g_autofree char *name = g_strdup_printf ("call-recording-%s.opus", *lang);
+      g_autofree char *path = g_build_filename (sounds, name, NULL);
+
+      g_assert_true (g_file_set_contents (path, "OggS", -1, NULL));
+    }
+  fr = call_recording_announcement (french, dirs);
+  nl = call_recording_announcement (dutch, dirs);
+  de = call_recording_announcement (second, dirs);
+  c = call_recording_announcement (posix, dirs);
+  gone = call_recording_announcement (french, none);
+  g_assert_true (g_str_has_suffix (fr, "/data/vibeos-dialer/sounds/call-recording-fr.opus"));
+  /* no Dutch one: English */
+  g_assert_true (g_str_has_suffix (nl, "/call-recording-en.opus"));
+  /* no Portuguese one: the user's next language, before English */
+  g_assert_true (g_str_has_suffix (de, "/call-recording-de.opus"));
+  g_assert_true (g_str_has_suffix (c, "/call-recording-en.opus"));
+  g_assert_null (gone);
+  for (const char **lang = (const char *[]) { "en", "de", "fr", NULL }; *lang; lang++)
+    {
+      g_autofree char *name = g_strdup_printf ("call-recording-%s.opus", *lang);
+      g_autofree char *path = g_build_filename (sounds, name, NULL);
+
+      g_unlink (path);
+    }
+  g_rmdir (sounds);
+  g_rmdir (app);
+  g_rmdir (data);
+  g_rmdir (empty);
+  g_rmdir (tmp);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -149,5 +202,6 @@ main (int argc, char **argv)
   g_test_add_func ("/call-recording/default-folder", test_default_folder);
   g_test_add_func ("/call-recording/display", test_display);
   g_test_add_func ("/call-recording/settings", test_settings);
+  g_test_add_func ("/call-recording/announcement", test_announcement);
   return g_test_run ();
 }
