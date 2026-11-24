@@ -275,7 +275,7 @@ on_settings_button (VibeosPressable *button, Shell *shell)
 }
 
 /* ⋮: About, VibeOS's About sheet, as every VibeOS app has it */
-static const VibeosAboutInfo clock_about = { .name = "Clock", .icon_name = "vibeos.Clock" };
+static const VibeosAboutInfo clock_about = { .name = N_("Clock"), .icon_name = "vibeos.Clock" };
 
 static void
 on_more_button (VibeosPressable *button, Shell *shell)

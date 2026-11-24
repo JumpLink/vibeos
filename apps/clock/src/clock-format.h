@@ -8,6 +8,8 @@ G_BEGIN_DECLS
 /* the week's first day: the "Start week on" setting, or the locale's */
 GDateWeekday clock_week_start (GSettings *settings);
 
+/* the language's AM (@hour < 12) or PM, for a 12-hour clock; owned by the Clock */
+const char *clock_day_period (int hour);
 /* "08:30" in 24-hour mode ("Hm"), "8:30 AM" in 12-hour mode ("hma") */
 char *clock_time_text (int hour, int minute, gboolean use_24h);
 /* the same as Pango markup with the AM/PM at `ampm_ratio` of the size, bold */

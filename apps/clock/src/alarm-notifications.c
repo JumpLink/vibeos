@@ -3,6 +3,7 @@
 #include "clock-notifier.h"
 
 #include <glib/gi18n.h>
+#include <vibeos-locale.h>
 
 typedef struct {
   guint32 id;                   /* the server's id for it; 0 while it is not up */
@@ -26,12 +27,8 @@ shown_free (Shown *shown)
 char *
 alarm_format_time (GDateTime *time)
 {
-  g_autoptr(GSettings) interface = g_settings_new ("org.gnome.desktop.interface");
-
-  /* the skeletons "EHm" and "Ehma" */
-  if (g_settings_get_enum (interface, "clock-format") == 0 /* 24h */)
-    return g_date_time_format (time, "%a %H:%M");
-  return g_date_time_format (time, "%a %-l:%M %p");
+  /* the skeletons "EHm" and "Ehma", by the clock setting */
+  return vibeos_format_date (time, "EEEjm");
 }
 
 /* the label, or "Alarm" */

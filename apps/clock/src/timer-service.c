@@ -200,7 +200,10 @@ show_unexpired (TimerService *self, GPtrArray *timers, gint64 now)
 
   if (timers->len > 1)
     {
-      title = g_strdup_printf (running ? _("%u timers") : _("%u timers paused"), timers->len);
+      /* only with two or more; the plural forms are for the languages with several */
+      title = g_strdup_printf (running ? g_dngettext (NULL, "%u timer", "%u timers", timers->len)
+                                       : g_dngettext (NULL, "%u timer paused", "%u timers paused", timers->len),
+                               timers->len);
       actions = several_actions;
     }
   else if (running)
@@ -235,7 +238,7 @@ show_expired (TimerService *self, GPtrArray *timers)
   g_autofree char *title = NULL;
 
   if (timers->len > 1)
-    title = g_strdup_printf (_("%u timers expired"), timers->len);
+    title = g_strdup_printf (g_dngettext (NULL, "%u timer expired", "%u timers expired", timers->len), timers->len);
   else
     title = g_strdup (label_or (timer, _("Time's up")));
   self->expired_timer = timer->id;
@@ -255,7 +258,7 @@ show_missed (TimerService *self, GPtrArray *timers)
   g_autofree char *title = NULL;
 
   if (timers->len > 1)
-    title = g_strdup_printf (_("%u timers missed"), timers->len);
+    title = g_strdup_printf (g_dngettext (NULL, "%u timer missed", "%u timers missed", timers->len), timers->len);
   else if (*timer->label)
     title = g_strdup_printf (_("Missed timer: %s"), timer->label);
   else

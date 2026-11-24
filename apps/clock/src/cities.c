@@ -1,6 +1,7 @@
 /* The world-clock cities: see cities.h. */
 #include "cities.h"
 
+#include <glib/gi18n.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -109,7 +110,7 @@ cities_search_key (const char *query)
 gboolean
 cities_matches (const City *city, const char *query)
 {
-  return g_str_has_prefix (city->search_key, query);
+  return g_str_has_prefix (city->search_key, query) || g_str_has_prefix (city->search_key_en, query);
 }
 
 GPtrArray *
@@ -134,9 +135,21 @@ cities_get_all (void)
         }
       city = g_new0 (City, 1);
       city->data = data;
+      city->name = g_dpgettext2 (NULL, "city", data->name);
+      /* a translated name is filed under its own first letter, upper-cased ("Moskau" under M) */
+      if (city->name != data->name && *city->name)
+        {
+          char letter[8] = { 0 };
+
+          g_unichar_to_utf8 (g_unichar_toupper (g_utf8_get_char (city->name)), letter);
+          city->index = g_strdup (letter);
+        }
+      else
+        city->index = g_strdup (data->index);
       city->tz = tz;
       city->number = g_ascii_isdigit (data->index[0]) ? atoi (data->index) : -1;
-      city->search_key = search_key (data->name);
+      city->search_key = search_key (city->name);
+      city->search_key_en = search_key (data->name);
       g_ptr_array_add (all, city);
     }
   return all;
@@ -176,7 +189,7 @@ cities_compare_index (const City *a, const City *b, CitySort sort)
   /* by name: a number in the index first, then the index letters in the locale's collation */
   if (a->number != b->number)
     return a->number < b->number ? -1 : 1;
-  return g_utf8_collate (a->data->index, b->data->index);
+  return g_utf8_collate (a->index, b->index);
 }
 
 int
@@ -191,7 +204,7 @@ cities_compare (gconstpointer pa, gconstpointer pb, gpointer data)
     /* by time, then by name */
     result = cities_compare_index (a, b, CITY_SORT_NAME);
   if (result == 0)
-    result = g_utf8_collate (a->data->name, b->data->name);
+    result = g_utf8_collate (a->name, b->name);
   return result;
 }
 
@@ -225,6 +238,12 @@ guint
 home_zones_count (void)
 {
   return G_N_ELEMENTS (home_zone_data);
+}
+
+const char *
+home_zone_name (const HomeZoneData *zone)
+{
+  return g_dpgettext2 (NULL, "time zone", zone->name);
 }
 
 const HomeZoneData *

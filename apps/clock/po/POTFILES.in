@@ -1,0 +1,26 @@
+# the files with translatable strings
+data/vibeos.Clock.Ringing.desktop.in
+data/vibeos.Clock.desktop.in
+src/alarm-card.c
+src/alarm-model.c
+src/alarm-notifications.c
+src/alarm-page.c
+src/cities-data.h
+src/cities.c
+src/city-picker.c
+src/clock-bar.c
+src/clock-dialogs.c
+src/clock-format.c
+src/clock-page.c
+src/clock-window.c
+src/expired-window.c
+src/ringing-window.c
+src/ringtone-picker.c
+src/screensaver.c
+src/settings-page.c
+src/stopwatch-page.c
+src/stopwatch-service.c
+src/timer-card.c
+src/timer-page.c
+src/timer-service.c
+src/timer-setup.c

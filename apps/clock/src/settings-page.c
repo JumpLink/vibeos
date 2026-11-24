@@ -285,7 +285,7 @@ add_home_zones (ListRow *list)
       int offset = tz ? clock_zone_offset (tz, now) : 0;
 
       add_choice (list, g_strdup_printf ("(GMT%c%d:%02d) %s", offset < 0 ? '-' : '+', ABS (offset) / 3600,
-                                         ABS (offset) / 60 % 60, zone->name),
+                                         ABS (offset) / 60 % 60, home_zone_name (zone)),
                   g_strdup (zone->zone));
     }
 }

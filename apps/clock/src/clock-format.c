@@ -3,6 +3,7 @@
 
 #include <glib/gi18n.h>
 #include <langinfo.h>
+#include <vibeos-locale.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -39,12 +40,22 @@ clock_week_start (GSettings *settings)
 #endif
 }
 
+const char *
+clock_day_period (int hour)
+{
+  static char *am, *pm;
+
+  if (!am)
+    vibeos_locale_am_pm (&am, &pm);
+  return hour < 12 ? am : pm;
+}
+
 char *
 clock_time_text (int hour, int minute, gboolean use_24h)
 {
   if (use_24h)
     return g_strdup_printf ("%02d:%02d", hour, minute);
-  return g_strdup_printf ("%d:%02d %s", hour % 12 ? hour % 12 : 12, minute, hour < 12 ? "AM" : "PM");
+  return g_strdup_printf ("%d:%02d %s", hour % 12 ? hour % 12 : 12, minute, clock_day_period (hour));
 }
 
 char *
@@ -54,13 +65,13 @@ clock_time_markup (int hour, int minute, gboolean use_24h, double ampm_ratio)
     return g_strdup_printf ("%02d:%02d", hour, minute);
   /* the space before AM/PM is a hair space (U+200A), as Utils.get12ModeFormat makes it */
   return g_strdup_printf ("%d:%02d <span size='%d%%' weight='900'>%s</span>", hour % 12 ? hour % 12 : 12,
-                          minute, (int) (ampm_ratio * 100), hour < 12 ? "AM" : "PM");
+                          minute, (int) (ampm_ratio * 100), clock_day_period (hour));
 }
 
 char *
 clock_alarm_time_text (GDateTime *time, gboolean use_24h)
 {
-  return g_date_time_format (time, use_24h ? "%a %H:%M" : "%a %-l:%M %p");
+  return vibeos_format_date (time, use_24h ? "EEEHm" : "EEEhm");
 }
 
 char *
@@ -78,9 +89,9 @@ clock_alarm_set_text (gint64 seconds_until)
   days = hours / 24;
   hours %= 24;
 
-  d = g_strdup_printf (ngettext ("1 day", "%" G_GINT64_FORMAT " days", days), days);
-  h = g_strdup_printf (ngettext ("1 hour", "%" G_GINT64_FORMAT " hours", hours), hours);
-  m = g_strdup_printf (ngettext ("1 minute", "%" G_GINT64_FORMAT " minutes", minutes), minutes);
+  d = g_strdup_printf (ngettext ("%d day", "%d days", days), (int) days);
+  h = g_strdup_printf (ngettext ("%d hour", "%d hours", hours), (int) hours);
+  m = g_strdup_printf (ngettext ("%d minute", "%d minutes", minutes), (int) minutes);
   /* the "Alarm set for …" sentences, picked by which of days, hours and minutes are there */
   switch ((days > 0) | (hours > 0) << 1 | (minutes > 0) << 2)
     {
@@ -97,11 +108,10 @@ clock_alarm_set_text (gint64 seconds_until)
 char *
 clock_weekday_letter (int index)
 {
-  /* 2024-01-01 was a Monday; the first character of the short name stands for the narrow one */
+  /* 2024-01-01 was a Monday; the language's narrow name ("M", in Russian "П") */
   g_autoptr(GDateTime) day = g_date_time_new_utc (2024, 1, 1 + index, 12, 0, 0);
-  g_autofree char *name = g_date_time_format (day, "%a");
 
-  return g_utf8_substring (name, 0, 1);
+  return vibeos_format_date (day, "EEEEE");
 }
 
 /* a sound file's name without its folder and extension, as the media scanner titles it */
