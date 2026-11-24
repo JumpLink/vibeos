@@ -589,15 +589,16 @@ ask (Offer *offer)
   VibeosDialog *dialog = vibeos_dialog_new (title);
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *sum;
 
+  /* the title names the language, in its own name, which a sentence could not decline: the message refers to it */
   if (offer->app)
-    /* TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second an app's name (Navi) */
-    message = g_strdup_printf (_("To speak %s, %s needs this on the phone:"), name, offer->app);
+    /* TRANSLATORS: under the title "Download Deutsch?"; %s is an app's name (Navi) */
+    message = g_strdup_printf (_("To speak this language, %s needs this on the phone:"), offer->app);
   else if (offer->talk)
-    /* TRANSLATORS: %s is the language's name for itself (Deutsch) */
-    message = g_strdup_printf (_("To hear and speak %s, Vibe needs these on the phone:"), name);
+    /* TRANSLATORS: under the title "Download Deutsch?" */
+    message = g_strdup (_("To hear and speak this language, Vibe needs these on the phone:"));
   else
-    /* TRANSLATORS: %s is the language's name for itself (Deutsch) */
-    message = g_strdup_printf (_("To hear %s, Dictate needs these on the phone:"), name);
+    /* TRANSLATORS: under the title "Download Deutsch?" */
+    message = g_strdup (_("To hear this language, Dictate needs these on the phone:"));
   /* the recogniser's package: looked up now, for its size */
   if (offer->needs.package)
     {

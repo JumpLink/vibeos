@@ -257,13 +257,13 @@ dictate_talk_available (DictateTalk *self, const char *language, char **reason)
   if (!brain)
     {
       if (reason)
-        *reason = g_strdup (_("Talk needs a language model, and none is installed"));
+        *reason = g_strdup (_("Vibe needs a language model, and none is installed"));
       return FALSE;
     }
   if (!voice)
     {
       if (reason)
-        *reason = g_strdup (_("Talk has no voice for this language yet"));
+        *reason = g_strdup (_("Vibe has no voice for this language yet"));
       return FALSE;
     }
   return TRUE;
@@ -1522,8 +1522,8 @@ job_with_files (DictateTalk *self, int kind, const char *language, const char *t
 
   if (!brain || !voice)
     {
-      *reason = g_strdup (!brain ? _("Talk needs a language model, and none is installed")
-                                 : _("Talk has no voice for this language yet"));
+      *reason = g_strdup (!brain ? _("Vibe needs a language model, and none is installed")
+                                 : _("Vibe has no voice for this language yet"));
       return NULL;
     }
   job = job_new (kind, g_atomic_int_get (&self->turn), language, text);

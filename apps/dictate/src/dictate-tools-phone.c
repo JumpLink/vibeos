@@ -522,7 +522,8 @@ get_battery (JsonObject *args, ToolRun *run, GError **error)
     g_autofree char *left = state == 2 && to_empty > 0 ? fact_duration (to_empty) : NULL;
     g_autofree char *fact = state == 4 ? g_strdup_printf (_("%d %%, full"), (int) (percent + 0.5))
                             : state == 1 ? g_strdup_printf (_("%d %%, charging"), (int) (percent + 0.5))
-                            : left ? g_strdup_printf (_("%d %%, about %s"), (int) (percent + 0.5), left)
+                            /* TRANSLATORS: the battery's level, and the time it lasts on it: "40 %, about 3 h left" */
+                            : left ? g_strdup_printf (_("%d %%, about %s left"), (int) (percent + 0.5), left)
                                    : g_strdup_printf (_("%d %%"), (int) (percent + 0.5));
     tool_run_fact (run, _("Battery"), fact);
   }
@@ -572,7 +573,8 @@ get_storage (JsonObject *args, ToolRun *run, GError **error)
     }
   {
     double block = home.f_frsize ? home.f_frsize : home.f_bsize;
-    g_autofree char *fact = g_strdup_printf (_("%.0f GB free of %.0f"), home.f_bavail * block / 1e9,
+    /* TRANSLATORS: the storage's fact in the debug log: the space free, of all there is */
+    g_autofree char *fact = g_strdup_printf (_("%.0f GB free of %.0f GB"), home.f_bavail * block / 1e9,
                                              home.f_blocks * block / 1e9);
     tool_run_fact (run, _("Storage"), fact);
   }
@@ -3583,7 +3585,8 @@ propose_event (JsonObject *args, ToolRun *run, GError **error)
   if (reminder == 0)
     g_ptr_array_add (lines, g_strdup (_("A reminder at the time")));
   else if (reminder > 0)
-    g_ptr_array_add (lines, g_strdup_printf (_("A reminder %d minutes before"), (int) reminder));
+    g_ptr_array_add (lines, g_strdup_printf (g_dngettext (NULL, "A reminder %d minute before",
+                                                          "A reminder %d minutes before", reminder), (int) reminder));
   g_ptr_array_add (lines, NULL);
   about = g_strdup_printf ("the calendar event \"%s\"", title);
   action = dictate_action_new ("add a calendar event", _("Add to the calendar"), (const char *const *) lines->pdata,
@@ -3597,7 +3600,8 @@ propose_event (JsonObject *args, ToolRun *run, GError **error)
     dictate_action_add_field (action, _("Reminder"), _("At the time"));
   else if (reminder > 0)
     {
-      g_autofree char *before = g_strdup_printf (_("%d minutes before"), (int) reminder);
+      g_autofree char *before = g_strdup_printf (g_dngettext (NULL, "%d minute before", "%d minutes before", reminder),
+                                                 (int) reminder);
       dictate_action_add_field (action, _("Reminder"), before);
     }
   tool_run_propose (run, action);
@@ -4245,7 +4249,7 @@ static const DictateTool TOOLS[] = {
     "{\"type\":\"object\",\"properties\":{"
     "\"count\":{\"type\":\"integer\",\"description\":\"How many actions, 1 to 10. Default 5.\"}"
     "}}", get_action_log,
-    DICTATE_TIER_READ, N_("read Agent's log"), FALSE },
+    DICTATE_TIER_READ, N_("read Vibe's log"), FALSE },
   { "get_mobile_network", "access-settings", N_("Checking the mobile network…"),
     "The mobile network: whether there is a SIM, the operator, the signal in bars (of 4), the network type (4G, "
     "5G), whether the phone is roaming, and whether mobile data is on.",
