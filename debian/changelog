@@ -35,6 +35,9 @@ vibeos (1:0.1.4.1) unstable; urgency=medium
   * Vibe: the call announcer's autostart entry leaves out
     X-GNOME-Autostart-Phase, which gnome-session warned about at login.
   * Navi: the package's changelog entry is wrapped at 80 columns.
+  * Navi: a release's package requires that release's libvibeos, libspongy
+    and libtonal at exactly its version, as every other package does; 0.1.4's
+    took any since 0.1.3.
   * Terminal, a new app (vibeos-terminal, vibeos.Terminal), takes Console's
     place: GNOME's terminal widget (VTE) made for the touchscreen. A tap
     brings the keyboard over the window with a row of Esc, Tab, Ctrl, Alt
@@ -51,7 +54,7 @@ vibeos (1:0.1.4.1) unstable; urgency=medium
     shell keeps the other apps clear of the hole; vibeos.Shell's
     cutout-extend-apps lists the apps that go under it.
 
- -- pulpoff <pashkovsky@gmail.com>  Tue, 24 Nov 2026 04:53:21 +0100
+ -- pulpoff <pashkovsky@gmail.com>  Tue, 24 Nov 2026 15:23:27 +0100
 
 vibeos (1:0.1.4) unstable; urgency=medium
 

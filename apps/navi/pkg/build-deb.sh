@@ -13,7 +13,8 @@
 #   ROOT             the arm64 root filesystem (the sysroot of both builds), entered with sudo chroot
 #   OUTDIR           where the .deb goes; the package is put together in OUTDIR/vibeos-navi.work
 #
-# NAVI_VERSION=VERSION: the package's version, for a release (1:0.1.4) instead of the project's and the commit's.
+# NAVI_VERSION=VERSION: the package's version, for a release (1:0.1.4) instead of the project's and the commit's; the
+# release's VibeOS libraries are then required at exactly that version.
 #
 # LIBDIRS=DIR[:DIR…]: libraries ROOT does not have (libtonal, from the same tree's top-level build), for
 # dpkg-shlibdeps to find; their packages' versions are in pkg/shlibs.local.
@@ -74,6 +75,14 @@ install -m 644 "$pkgdir/copyright" "$p/usr/share/doc/vibeos-navi/"
 gzip -9n < "$maplibre_src/LICENSES.core.md" > "$p/usr/share/doc/vibeos-navi/LICENSES.maplibre.md.gz"
 cp "$pkgdir/control" "$work/debian/control"
 cp "$pkgdir/shlibs.local" "$work/debian/shlibs.local"
+# a release's package needs that release's libraries, exactly, as debian/rules has every other package of it pin
+# them (dh_makeshlibs -V): pkg/'s (>= 1:0.1.3) is for a build between releases. An image refuses a relaxed pin.
+if [ -n "${NAVI_VERSION:-}" ]; then
+    sed -i -E "/lib(vibeos|spongy|spongy-gtk|tonal)-1-0/ s/\(>= [^)]*\)/(= $version)/" \
+        "$work/debian/control" "$work/debian/shlibs.local"
+    ! grep -E 'lib(vibeos|spongy|spongy-gtk|tonal)-1-0 \(>=' "$work/debian/control" "$work/debian/shlibs.local" ||
+        { echo "a VibeOS library is still pinned with >="; exit 1; }
+fi
 subject=$(git -C "$srcdir" log -1 --format=%s)
 # the entry wrapped as Debian's changelog lines are (at most 80 columns), the subject being as long as it is
 entry=$(printf 'Built from VibeOS commit %s ("%s").\n' "$commit" "$subject" | fold -s -w 74 | sed -e 's/ *$//' -e '1s/^/  * /' -e '2,$s/^/    /')
