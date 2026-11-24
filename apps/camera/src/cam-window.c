@@ -128,6 +128,7 @@ struct _CamView {
   CamRecorder *recorder;
   guint        duration_timer, start_timer, flash_timer;
   gboolean     taking, rec_audio;
+  gboolean     record_after_probe;      /* Record was pressed before the encoder was measured */
   gboolean     scanning_paused;
 
   /* the shell */
@@ -143,6 +144,7 @@ static void update_controls (CamView *self);
 static void update_flash (CamView *self);
 static void sync_running (CamView *self);
 static void take_photo (CamView *self);
+static void record_after_probe (CamView *self);
 static void start_video (CamView *self);
 static void retry_setup (CamView *self);
 
@@ -1060,6 +1062,7 @@ on_streaming (CamPipeline *pipeline, CamView *self)
   self->scanning_paused = FALSE;
   sync_torch (self);
   update_controls (self);
+  record_after_probe (self);
 }
 
 static void
@@ -1463,6 +1466,31 @@ on_pause (CamPause *pause, CamView *self)
 static void on_encoder (gpointer data);
 
 static void
+record (CamView *self)
+{
+  cam_shutter_set_recording (CAM_SHUTTER (self->shutter), TRUE, TRUE);
+  slide_pro (self, FALSE);
+  start_timer_and_run (self);
+}
+
+/* the press that started the probe records once the answer is in and the camera streams at the video size */
+static void
+record_after_probe (CamView *self)
+{
+  if (!self->record_after_probe || !cam_encoder_get ())
+    return;
+  if (self->mode != CAM_MODE_VIDEO || !can_record (self) || self->state != ST_IDLE || !self->running)
+    {
+      self->record_after_probe = FALSE;
+      return;
+    }
+  if (!cam_pipeline_is_streaming (self->pipeline))
+    return;
+  self->record_after_probe = FALSE;
+  record (self);
+}
+
+static void
 shutter (CamView *self)
 {
   if (!self->running || !cam_pipeline_is_streaming (self->pipeline))
@@ -1488,13 +1516,15 @@ shutter (CamView *self)
           if (!cam_encoder_get ())
             {
               /* not measured yet: do it now that a recording is wanted; on_encoder() then falls back to PHOTO if
-               * nothing can record, or rebinds the camera at the video size, and the next press records */
-              cam_encoder_probe (G_CALLBACK (on_encoder), g_object_ref (self));
+               * nothing can record, or records as soon as the camera streams at the video size */
+              if (!self->record_after_probe)
+                {
+                  self->record_after_probe = TRUE;
+                  cam_encoder_probe (G_CALLBACK (on_encoder), g_object_ref (self));
+                }
               return;
             }
-          cam_shutter_set_recording (CAM_SHUTTER (self->shutter), TRUE, TRUE);
-          slide_pro (self, FALSE);
-          start_timer_and_run (self);
+          record (self);
         }
       else if (self->state == ST_RECORDING || self->state == ST_PAUSED)
         stop_video (self);
@@ -1726,6 +1756,7 @@ on_encoder (gpointer data)
       if (self->mode == CAM_MODE_VIDEO)
         bind_camera (self);
     }
+  record_after_probe (self);
   g_object_unref (self);
 }
 
