@@ -1,7 +1,7 @@
 #!/bin/sh
-# build-voice-en.sh OUTDIR: vibeos-dictate-voice-en, Agent's English voice (Piper's en_US-lessac-medium) in
-# /usr/share/vibeos-dictate/voices/en, where Agent (vibeos-dictate) looks for a voice after the user's own data
-# directory. The files are the ones Agent downloads when English is chosen (apps/dictate/src/dictate-download.c, the
+# build-voice-en.sh OUTDIR: vibeos-dictate-voice-en, Vibe's English voice (Piper's en_US-lessac-medium) in
+# /usr/share/vibeos-dictate/voices/en, where Vibe (vibeos-dictate) looks for a voice after the user's own data
+# directory. The files are the ones Vibe downloads when English is chosen (apps/dictate/src/dictate-download.c, the
 # same revision of rhasspy/piper-voices and the same sums), so a phone with the package needs no download.
 #
 # The voice is MIT, as rhasspy/piper-voices is, but it is trained from the Lessac recordings of Blizzard 2013, whose
@@ -68,7 +68,7 @@ Comment: Piper's voice, unmodified; its model card is in this directory.
  reach a voice trained from those recordings is not settled here; VibeOS's
  maintainer ships the voice knowing this, and it is not offered for any
  commercial use. Another voice put in ~/.local/share/vibeos-dictate/voices/en
- is the one Agent reads first.
+ is the one Vibe reads first.
 
 Files: usr/share/vibeos-dictate/voices/en/*
 Copyright: Michael Hansen (rhasspy) and the contributors of rhasspy/piper-voices
@@ -107,8 +107,8 @@ Enhances: vibeos-dictate
 Section: sound
 Priority: optional
 Homepage: https://huggingface.co/rhasspy/piper-voices
-Description: English voice for VibeOS's Agent (Piper, Lessac)
- Piper's en_US-lessac-medium voice, where Agent (vibeos-dictate) looks for it,
+Description: English voice for VibeOS's Vibe assistant (Piper, Lessac)
+ Piper's en_US-lessac-medium voice, where Vibe (vibeos-dictate) looks for it,
  so that English answers need no download. The voice is MIT, but the
  recordings it is trained from are under the Blizzard 2013 Lessac research
  licence, which forbids commercial use: see the copyright file.
