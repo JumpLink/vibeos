@@ -1,3 +1,4 @@
 usr/bin/vibeos-browser
 usr/share/applications/vibeos.Browser.desktop
 usr/share/icons/hicolor/scalable/apps/vibeos.Browser.svg
+usr/share/locale/*/LC_MESSAGES/vibeos-browser.mo

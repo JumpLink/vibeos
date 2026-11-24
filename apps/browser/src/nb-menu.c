@@ -166,12 +166,13 @@ typedef enum {
 
 /* About: VibeOS's About sheet, as every VibeOS app has it; the pages are WebKitGTK's */
 static const VibeosAboutSection nb_legal[] = {
-  { "WebKitGTK", "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, under the GNU LGPL 2.1 "
-                 "and BSD licences." },
+  /* TRANSLATORS: keep the link's markup as it is */
+  { "WebKitGTK", N_("Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, under the GNU LGPL 2.1 "
+                    "and BSD licences.") },
   { NULL }
 };
 
-static const VibeosAboutInfo nb_about = { .name = "Browser", .icon_name = "vibeos.Browser", .legal = nb_legal };
+static const VibeosAboutInfo nb_about = { .name = N_("Browser"), .icon_name = "vibeos.Browser", .legal = nb_legal };
 
 static gboolean
 share_later (gpointer data)
@@ -309,7 +310,7 @@ desktop_item (NbTab *t)
 {
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *image = nb_icon ("jelly-desktop-symbolic", 24);
-  GtkWidget *label = nb_label ("Desktop site", 16, "nb-menu-text", TRUE);
+  GtkWidget *label = nb_label (_("Desktop site"), 16, "nb-menu-text", TRUE);
   GtkWidget *sw = vibeos_switch_new ();
 
   gtk_widget_add_css_class (box, "nb-menu-item");
@@ -360,30 +361,30 @@ nb_menu_open (NbTab *t)
   GtkWidget *top = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 24);
   gtk_widget_add_css_class (top, "nb-menu-top");
   gtk_widget_set_halign (top, GTK_ALIGN_CENTER);
-  gtk_box_append (GTK_BOX (top), top_icon (t, "jelly-back-symbolic", "Go back", OPT_BACK));
-  gtk_box_append (GTK_BOX (top), top_icon (t, "jelly-forward-symbolic", "Go forward", OPT_FORWARD));
-  gtk_box_append (GTK_BOX (top), top_icon (t, "jelly-refresh-symbolic", "Refresh page", OPT_REFRESH));
-  gtk_box_append (GTK_BOX (top), top_icon (t, "jelly-heart-plus-symbolic", "Add to favorites", OPT_ADD_TO_FAVORITE));
-  gtk_box_append (GTK_BOX (top), top_icon (t, "jelly-share-symbolic", "Share", OPT_SHARE));
+  gtk_box_append (GTK_BOX (top), top_icon (t, "jelly-back-symbolic", _("Go back"), OPT_BACK));
+  gtk_box_append (GTK_BOX (top), top_icon (t, "jelly-forward-symbolic", _("Go forward"), OPT_FORWARD));
+  gtk_box_append (GTK_BOX (top), top_icon (t, "jelly-refresh-symbolic", _("Refresh page"), OPT_REFRESH));
+  gtk_box_append (GTK_BOX (top), top_icon (t, "jelly-heart-plus-symbolic", _("Add to favorites"), OPT_ADD_TO_FAVORITE));
+  gtk_box_append (GTK_BOX (top), top_icon (t, "jelly-share-symbolic", _("Share"), OPT_SHARE));
   gtk_box_append (GTK_BOX (outer), top);
 
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (list, "nb-menu-list");
-  gtk_box_append (GTK_BOX (list), item (t, "jelly-new-tab-symbolic", "New tab", OPT_NEW_TAB));
-  gtk_box_append (GTK_BOX (list), item (t, "jelly-new-private-tab-symbolic", "Incognito tab", OPT_NEW_PRIVATE_TAB));
+  gtk_box_append (GTK_BOX (list), item (t, "jelly-new-tab-symbolic", _("New tab"), OPT_NEW_TAB));
+  gtk_box_append (GTK_BOX (list), item (t, "jelly-new-private-tab-symbolic", _("Incognito tab"), OPT_NEW_PRIVATE_TAB));
   gtk_box_append (GTK_BOX (list), divider ());
-  gtk_box_append (GTK_BOX (list), item (t, "jelly-favorite-symbolic", "Favorites", OPT_FAVORITES));
-  gtk_box_append (GTK_BOX (list), item (t, "jelly-history-symbolic", "History", OPT_HISTORY));
-  gtk_box_append (GTK_BOX (list), item (t, "jelly-file-download-symbolic", "Downloads", OPT_DOWNLOADS));
+  gtk_box_append (GTK_BOX (list), item (t, "jelly-favorite-symbolic", _("Favorites"), OPT_FAVORITES));
+  gtk_box_append (GTK_BOX (list), item (t, "jelly-history-symbolic", _("History"), OPT_HISTORY));
+  gtk_box_append (GTK_BOX (list), item (t, "jelly-file-download-symbolic", _("Downloads"), OPT_DOWNLOADS));
   gtk_box_append (GTK_BOX (list), divider ());
-  gtk_box_append (GTK_BOX (list), item (t, "jelly-apps-symbolic", "Add shortcut", OPT_ADD_TO_HOME_SCREEN));
-  gtk_box_append (GTK_BOX (list), item (t, "jelly-find-in-page-symbolic", "Find in page", OPT_FIND_IN_PAGE));
+  gtk_box_append (GTK_BOX (list), item (t, "jelly-apps-symbolic", _("Add shortcut"), OPT_ADD_TO_HOME_SCREEN));
+  gtk_box_append (GTK_BOX (list), item (t, "jelly-find-in-page-symbolic", _("Find in page"), OPT_FIND_IN_PAGE));
   gtk_box_append (GTK_BOX (list), desktop_item (t));
-  gtk_box_append (GTK_BOX (list), item (t, "jelly-print-symbolic", "Print", OPT_PRINT));
+  gtk_box_append (GTK_BOX (list), item (t, "jelly-print-symbolic", _("Print"), OPT_PRINT));
   gtk_box_append (GTK_BOX (list), divider ());
-  gtk_box_append (GTK_BOX (list), item (t, "jelly-desktop-symbolic", "Desktop shortcuts", OPT_DESKTOP_SHORTCUTS));
-  gtk_box_append (GTK_BOX (list), item (t, "jelly-settings-symbolic", "Settings", OPT_SETTINGS));
-  gtk_box_append (GTK_BOX (list), item (t, "jelly-info-symbolic", "About", OPT_ABOUT));
+  gtk_box_append (GTK_BOX (list), item (t, "jelly-desktop-symbolic", _("Desktop shortcuts"), OPT_DESKTOP_SHORTCUTS));
+  gtk_box_append (GTK_BOX (list), item (t, "jelly-settings-symbolic", _("Settings"), OPT_SETTINGS));
+  gtk_box_append (GTK_BOX (list), item (t, "jelly-info-symbolic", _("About"), OPT_ABOUT));
 
   /* the scroller: the list at its natural height, scrolled when the window is shorter */
   GtkWidget *scroll = spongy_scroll_view_new ();
@@ -473,17 +474,17 @@ nb_link_sheet (NbTab *t, const char *url, gboolean image)
   gtk_widget_add_css_class (box, "nb-sheet-box");
   a->t = t;
   a->url = g_strdup (url);
-  row = nb_sheet_row ("jelly-new-tab-symbolic", NULL, "Open in new tab");
+  row = nb_sheet_row ("jelly-new-tab-symbolic", NULL, _("Open in new tab"));
   g_signal_connect (row, "clicked", G_CALLBACK (on_link_new_tab), a);
   gtk_box_append (GTK_BOX (box), row);
-  row = nb_sheet_row ("jelly-share-symbolic", NULL, "Share");
+  row = nb_sheet_row ("jelly-share-symbolic", NULL, _("Share"));
   g_signal_connect (row, "clicked", G_CALLBACK (on_link_share), a);
   gtk_box_append (GTK_BOX (box), row);
-  row = nb_sheet_row ("jelly-heart-plus-symbolic", NULL, "Add to favorites");
+  row = nb_sheet_row ("jelly-heart-plus-symbolic", NULL, _("Add to favorites"));
   g_signal_connect (row, "clicked", G_CALLBACK (on_link_favorite), a);
   gtk_box_append (GTK_BOX (box), row);
   if (image) {
-    row = nb_sheet_row ("jelly-download-symbolic", NULL, "Download");
+    row = nb_sheet_row ("jelly-download-symbolic", NULL, _("Download"));
     g_signal_connect (row, "clicked", G_CALLBACK (on_link_download), a);
     gtk_box_append (GTK_BOX (box), row);
   }
@@ -517,7 +518,7 @@ on_send (GtkWidget *row, SendTarget *s)
 {
   if (!s->app) {
     gdk_clipboard_set_text (gtk_widget_get_clipboard (s->t->win), s->url);
-    nb_tab_snackbar (s->t, "Link copied", NULL, NULL, NULL);
+    nb_tab_snackbar (s->t, _("Link copied"), NULL, NULL, NULL);
   } else {
     g_autofree char *body = g_uri_escape_string (s->url, NULL, TRUE);
     g_autofree char *uri = g_strdup_printf ("%s:?body=%s", s->scheme, body);
@@ -548,7 +549,7 @@ add_target (GtkWidget *box, NbTab *t, NbSheet **sheet_slot, const char *url, GAp
                                                                                GTK_TEXT_DIR_LTR, 0) : NULL;
     row = nb_sheet_row ("jelly-share-symbolic", icon ? GDK_PAINTABLE (icon) : NULL, g_app_info_get_name (app));
   } else {
-    row = nb_sheet_row ("jelly-external-symbolic", NULL, "Copy link");
+    row = nb_sheet_row ("jelly-external-symbolic", NULL, _("Copy link"));
   }
   g_signal_connect (row, "clicked", G_CALLBACK (on_send), s);
   gtk_box_append (GTK_BOX (box), row);
@@ -564,7 +565,7 @@ nb_send_to (NbTab *t, const char *url)
   static const char *const schemes[] = { "sms", "mailto" };
 
   gtk_widget_add_css_class (box, "nb-sheet-box");
-  GtkWidget *title = nb_label ("Send to", 16, "nb-sheet-title", FALSE);
+  GtkWidget *title = nb_label (_("Send to"), 16, "nb-sheet-title", FALSE);
   gtk_widget_set_halign (title, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), title);
   add_target (box, t, NULL, url, NULL, NULL, targets);
@@ -616,7 +617,7 @@ on_pin_add (GtkWidget *b, PinRequest *p)
 
   if (!nb_add_shortcut (p->name, p->url, p->icon, &error)) {
     g_message ("vibeos-browser: shortcut not written: %s", error->message);
-    nb_tab_snackbar (p->t, "Shortcut not added", NULL, NULL, NULL);
+    nb_tab_snackbar (p->t, _("Shortcut not added"), NULL, NULL, NULL);
   }
   nb_sheet_dismiss (p->sheet);
 }
@@ -648,10 +649,10 @@ nb_shortcut_sheet (NbTab *t)
 
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (box, "nb-pin-sheet");
-  GtkWidget *app = nb_label ("Browser", 24, "nb-pin-title", FALSE);
+  GtkWidget *app = nb_label (_("Browser"), 24, "nb-pin-title", FALSE);
   gtk_widget_set_halign (app, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (box), app);
-  GtkWidget *hint = nb_label ("Touch & hold the shortcut to move it around the home screen", 14, "nb-pin-hint",
+  GtkWidget *hint = nb_label (_("Touch & hold the shortcut to move it around the home screen"), 14, "nb-pin-hint",
                               FALSE);
   gtk_label_set_wrap (GTK_LABEL (hint), TRUE);
   gtk_label_set_justify (GTK_LABEL (hint), GTK_JUSTIFY_CENTER);
@@ -681,7 +682,7 @@ nb_shortcut_sheet (NbTab *t)
   GtkWidget *buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
   gtk_widget_add_css_class (buttons, "nb-pin-buttons");
   gtk_widget_set_halign (buttons, GTK_ALIGN_END);
-  GtkWidget *cancel = pill ("Cancel"), *add = pill ("Add to home screen");
+  GtkWidget *cancel = pill (_("Cancel")), *add = pill (_("Add to home screen"));
   g_signal_connect (cancel, "clicked", G_CALLBACK (on_pin_cancel), p);
   g_signal_connect (add, "clicked", G_CALLBACK (on_pin_add), p);
   gtk_box_append (GTK_BOX (buttons), cancel);

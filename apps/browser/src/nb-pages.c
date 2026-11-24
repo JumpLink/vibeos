@@ -353,12 +353,13 @@ nb_swipe_row_init (NbSwipeRow *self)
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (drag));
 }
 
-/* "Saturday November 07 2026, 04:41" */
+/* the weekday, the date and the time, in the user's language and order and by the 12/24-hour setting: "Saturday,
+ * 7 November 2026 at 04:41" in British English */
 static char *
 history_date (double time)
 {
   g_autoptr (GDateTime) dt = g_date_time_new_from_unix_local ((gint64) time);
-  return dt ? g_date_time_format (dt, "%A %B %d %Y, %H:%M") : g_strdup ("");
+  return dt ? vibeos_format_date (dt, "yMMMMEEEEdjm") : g_strdup ("");
 }
 
 /* an empty title shows the URL's third '/' piece, the host */
@@ -452,7 +453,7 @@ history_row_deleted (History *h, NbSwipeRow *row)
       undo.index = i;
       g_weak_ref_set (&undo.row, row);
       undo.serial++;
-      nb_tab_snackbar (h->t, "Entry deleted", "Undo", on_undo, GUINT_TO_POINTER (undo.serial));
+      nb_tab_snackbar (h->t, _("Entry deleted"), _("Undo"), on_undo, GUINT_TO_POINTER (undo.serial));
       break;
     }
   }
@@ -543,7 +544,7 @@ on_clear_response (NbDialog *d, int response, History *h)
   if (response != NB_RESPONSE_OK)
     return;
   /* "Clear history" over a spinner and "Clearing history…", not cancelable, gone 200 ms after */
-  NbDialog *busy = nb_dialog_new ("Clear history");
+  NbDialog *busy = nb_dialog_new (_("Clear history"));
   GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_widget_add_css_class (row, "nb-deleting");
   GtkWidget *spin = gtk_drawing_area_new ();
@@ -551,7 +552,7 @@ on_clear_response (NbDialog *d, int response, History *h)
   gtk_drawing_area_set_content_height (GTK_DRAWING_AREA (spin), 48);
   gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (spin), draw_spinner, NULL, NULL);
   gtk_widget_add_tick_callback (spin, spinner_tick, NULL, NULL);
-  GtkWidget *label = nb_label ("Clearing history…", 14, "nb-dialog-message", FALSE);
+  GtkWidget *label = nb_label (_("Clearing history…"), 14, "nb-dialog-message", FALSE);
   gtk_label_set_xalign (GTK_LABEL (label), 0.5);
   /* the spinner at the start, then the message */
   GtkWidget *left = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
@@ -579,11 +580,11 @@ on_clear_response (NbDialog *d, int response, History *h)
 static void
 on_clear_history (GtkWidget *button, History *h)
 {
-  NbDialog *d = nb_dialog_new ("Clear history");
-  nb_dialog_set_message (d, "You're going to delete all the history, this action cannot be undone. Do you want to "
-                            "proceed?");
-  nb_dialog_add_button (d, "Cancel", NB_RESPONSE_CANCEL);
-  nb_dialog_add_button (d, "Clear", NB_RESPONSE_OK);
+  NbDialog *d = nb_dialog_new (_("Clear history"));
+  nb_dialog_set_message (d, _("You're going to delete all the history, this action cannot be undone. Do you want to "
+                              "proceed?"));
+  nb_dialog_add_button (d, _("Cancel"), NB_RESPONSE_CANCEL);
+  nb_dialog_add_button (d, _("Clear"), NB_RESPONSE_OK);
   g_signal_connect (d, "response", G_CALLBACK (on_clear_response), h);
   nb_dialog_present (d, h->t->win);
 }
@@ -601,7 +602,7 @@ GtkWidget *
 nb_history_page_new (NbTab *t)
 {
   History *h = g_new0 (History, 1);
-  GtkWidget *del = nb_action_button ("jelly-delete-symbolic", "Clear history");
+  GtkWidget *del = nb_action_button ("jelly-delete-symbolic", _("Clear history"));
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *image = nb_icon ("jelly-history-symbolic", 104);
 
@@ -609,8 +610,9 @@ nb_history_page_new (NbTab *t)
   gtk_widget_add_css_class (del, "nb-toolbar-action");
   gtk_widget_add_css_class (image, "nb-empty-image");
   gtk_widget_set_valign (list, GTK_ALIGN_START);
-  h->f = frame_new (t, "History", "nb-history", del,
-                    list, empty_layout (image, "There's nothing here, browse on the internet to see your history here"),
+  h->f = frame_new (t, _("History"), "nb-history", del,
+                    list, empty_layout (image,
+                                       _("There's nothing here, browse on the internet to see your history here")),
                     TRUE);
   g_signal_connect (del, "clicked", G_CALLBACK (on_clear_history), h);
   g_object_set_data_full (G_OBJECT (h->f->page), "nb-history", h, history_free);
@@ -744,7 +746,7 @@ static void
 on_fav_url_changed (GtkEditable *editable, FavEdit *e)
 {
   const char *text = gtk_editable_get_text (editable);
-  nb_field_set_error (e->url_field, strstr (text, "http") ? NULL : "Insert a valid URL");
+  nb_field_set_error (e->url_field, strstr (text, "http") ? NULL : _("Insert a valid URL"));
 }
 
 static void
@@ -758,7 +760,7 @@ on_fav_edit_response (NbDialog *d, int response, FavEdit *e)
     /* Jelly saves whatever is there; a favourite that cannot open is kept from being made instead: the dialog
      * stays with its error */
     if (!strstr (url, "http")) {
-      nb_field_set_error (e->url_field, "Insert a valid URL");
+      nb_field_set_error (e->url_field, _("Insert a valid URL"));
       gtk_widget_grab_focus (GTK_WIDGET (nb_field_get_entry (e->url_field)));
       return;
     }
@@ -775,7 +777,7 @@ static void
 on_fav_long_press (GtkWidget *card, Favorites *fav)
 {
   FavEdit *e = g_new0 (FavEdit, 1);
-  NbDialog *d = nb_dialog_new ("Edit favorite");
+  NbDialog *d = nb_dialog_new (_("Edit favorite"));
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
 
   e->fav = fav;
@@ -783,8 +785,8 @@ on_fav_long_press (GtkWidget *card, Favorites *fav)
   e->title = g_strdup (g_object_get_data (G_OBJECT (card), "nb-title"));
   /* two outlined fields, the title over the URL */
   gtk_widget_add_css_class (box, "nb-fav-edit");
-  e->title_field = nb_field_new ("Title", FALSE);
-  e->url_field = nb_field_new ("URL", FALSE);
+  e->title_field = nb_field_new (_("Title"), FALSE);
+  e->url_field = nb_field_new (_("URL"), FALSE);
   gtk_widget_add_css_class (e->title_field, "nb-fav-edit-title");
   gtk_editable_set_text (GTK_EDITABLE (nb_field_get_entry (e->title_field)), e->title ? e->title : "");
   gtk_editable_set_text (GTK_EDITABLE (nb_field_get_entry (e->url_field)), e->url);
@@ -793,9 +795,9 @@ on_fav_long_press (GtkWidget *card, Favorites *fav)
   gtk_box_append (GTK_BOX (box), e->title_field);
   gtk_box_append (GTK_BOX (box), e->url_field);
   nb_dialog_set_content (d, box);
-  nb_dialog_add_button (d, "Delete", NB_RESPONSE_NEUTRAL);
-  nb_dialog_add_button (d, "Cancel", NB_RESPONSE_CANCEL);
-  nb_dialog_add_button (d, "Edit", NB_RESPONSE_OK);
+  nb_dialog_add_button (d, _("Delete"), NB_RESPONSE_NEUTRAL);
+  nb_dialog_add_button (d, _("Cancel"), NB_RESPONSE_CANCEL);
+  nb_dialog_add_button (d, _("Edit"), NB_RESPONSE_OK);
   nb_dialog_set_sticky (d, NB_RESPONSE_OK);
   g_object_set_data_full (G_OBJECT (d), "nb-data", e, (GDestroyNotify) fav_edit_free);
 g_signal_connect (d, "response", G_CALLBACK (on_fav_edit_response), e);
@@ -873,8 +875,8 @@ nb_favorites_page_new (NbTab *t)
   gtk_widget_set_valign (fav->grid, GTK_ALIGN_START);
   /* the empty page's picture, in its own colours */
   gtk_widget_add_css_class (image, "nb-fav-empty-image");
-  fav->f = frame_new (t, "Favorites", "nb-favorites", NULL, fav->grid,
-                      empty_layout (image, "There's nothing here, add a favorite link to see it here"), TRUE);
+  fav->f = frame_new (t, _("Favorites"), "nb-favorites", NULL, fav->grid,
+                      empty_layout (image, _("There's nothing here, add a favorite link to see it here")), TRUE);
   g_object_set_data_full (G_OBJECT (fav->f->page), "nb-favorites", fav, g_free);
   favorites_fill (fav);
   return fav->f->page;
@@ -888,23 +890,8 @@ typedef struct {
   guint      refresh_id;
 } Downloads;
 
-/* SI units, two decimals under 100 */
-static char *
-format_size (guint64 bytes)
-{
-  static const char *const units[] = { "B", "kB", "MB", "GB", "TB" };
-  double v = bytes;
-  int u = 0;
-  while (v > 900 && u < 4) {
-    v /= 1000;
-    u++;
-  }
-  if (u == 0)
-    return g_strdup_printf ("%" G_GUINT64_FORMAT " B", bytes);
-  return g_strdup_printf (v < 100 ? "%.2f %s" : "%.0f %s", v, units[u]);
-}
-
-/* the time today, "Nov 4" this year, else with the year */
+/* the time today (by the 12/24-hour setting), "Nov 4" this year, else with the year: in the user's language and
+ * order */
 static char *
 format_day (gint64 time)
 {
@@ -914,10 +901,10 @@ format_day (gint64 time)
     return g_strdup ("");
   if (g_date_time_get_year (dt) == g_date_time_get_year (now) &&
       g_date_time_get_day_of_year (dt) == g_date_time_get_day_of_year (now))
-    return g_date_time_format (dt, "%H:%M");
+    return vibeos_format_time (dt);
   if (g_date_time_get_year (dt) == g_date_time_get_year (now))
-    return g_date_time_format (dt, "%b %-d");
-  return g_date_time_format (dt, "%b %-d, %Y");
+    return vibeos_format_date (dt, "MMMd");
+  return vibeos_format_date (dt, "yMMMd");
 }
 
 static void
@@ -960,15 +947,17 @@ download_row (Downloads *dl, NbDownload *e)
   gtk_box_append (GTK_BOX (text), nb_label (e->name ? e->name : "", 16, "nb-download-name", TRUE));
   g_autofree char *line2 = NULL;
   if (e->failed) {
-    line2 = g_strdup ("Download failed");
+    line2 = g_strdup (_("Download failed"));
   } else if (!e->done && e->d) {
     double p = webkit_download_get_estimated_progress (e->d);
-    line2 = g_strdup_printf ("Downloading… %d%%", (int) round (p * 100));
+    line2 = g_strdup_printf (_("Downloading… %d%%"), (int) round (p * 100));
   } else {
     g_autofree char *day = format_day (e->time);
-    g_autofree char *size = format_size (e->size);
-    g_autofree char *desc = type ? g_content_type_get_description (type) : g_strdup ("File");
-    line2 = g_strdup_printf ("%s, %s, %s", day, size, desc);
+    /* SI units with the language's decimal separator: "5.6 MB", "5,6 MB" */
+    g_autofree char *size = g_format_size (e->size);
+    g_autofree char *desc = type ? g_content_type_get_description (type) : g_strdup (_("File"));
+    /* TRANSLATORS: a download's day, its size and the file's type */
+    line2 = g_strdup_printf (_("%s, %s, %s"), day, size, desc);
   }
   gtk_box_append (GTK_BOX (text), nb_label (line2, 14, "nb-download-meta", TRUE));
   gtk_box_append (GTK_BOX (box), text);
@@ -1032,7 +1021,7 @@ nb_downloads_page_new (NbTab *t)
   gtk_widget_set_valign (list, GTK_ALIGN_START);
   gtk_widget_add_css_class (list, "nb-download-list");
   gtk_widget_add_css_class (image, "nb-empty-image");
-  dl->f = frame_new (t, "Downloads", "nb-downloads", NULL, list, empty_layout (image, "No items"), TRUE);
+  dl->f = frame_new (t, _("Downloads"), "nb-downloads", NULL, list, empty_layout (image, _("No items")), TRUE);
   g_object_set_data_full (G_OBJECT (dl->f->page), "nb-downloads", dl, downloads_free);
   nb_scan_downloads ();
   downloads_fill (dl);
@@ -1120,13 +1109,13 @@ GtkWidget *
 nb_desktop_shortcuts_page_new (NbTab *t)
 {
   Shortcuts *s = g_new0 (Shortcuts, 1);
-  GtkWidget *save = nb_action_button ("jelly-check-symbolic", "Save");
+  GtkWidget *save = nb_action_button ("jelly-check-symbolic", _("Save"));
   GtkWidget *list = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
 
   s->t = t;
   gtk_widget_add_css_class (save, "nb-toolbar-action");
   gtk_widget_set_valign (list, GTK_ALIGN_START);
-  s->f = frame_new (t, "Desktop shortcuts", "nb-shortcuts", save, list, NULL, FALSE);
+  s->f = frame_new (t, _("Desktop shortcuts"), "nb-shortcuts", save, list, NULL, FALSE);
   g_object_set_data_full (G_OBJECT (s->f->page), "nb-shortcuts", s, shortcuts_free);
   g_signal_connect (save, "clicked", G_CALLBACK (on_shortcuts_save), s);
   s->shortcuts = nb_list_shortcuts ();

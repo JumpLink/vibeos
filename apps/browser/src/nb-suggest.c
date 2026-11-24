@@ -1,13 +1,15 @@
 /* nb-suggest: see nb-suggest.h. The URLs and the parsing are Jelly's. */
 #include "nb-suggest.h"
 
+#include <glib/gi18n.h>
 #include <json-glib/json-glib.h>
 #include <libsoup/soup.h>
 #include <string.h>
 
 const char *const nb_suggest_ids[] = { "BAIDU", "BING", "BRAVE", "DUCK", "GOOGLE", "YAHOO", "HISTORY", "NONE", NULL };
-const char *const nb_suggest_names[] = { "Baidu", "Bing", "Brave", "DuckDuckGo", "Google", "Yahoo", "History",
-                                         "None", NULL };
+/* the names as the list shows them, translated there (nb_list_dialog_present): History and None are words */
+const char *const nb_suggest_names[] = { "Baidu", "Bing", "Brave", "DuckDuckGo", "Google", "Yahoo", N_("History"),
+                                         N_("None"), NULL };
 
 void
 nb_suggestion_free (NbSuggestion *s)

@@ -1,0 +1,705 @@
+# French translations of vibeos-browser.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-browser\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:43+0100\n"
+"PO-Revision-Date: 2026-11-24 03:43+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+# android: Jelly app_name
+#: data/vibeos.Browser.desktop.in src/nb-menu.c src/nb-switcher.c src/nb-tab.c
+msgid "Browser"
+msgstr "Navigateur"
+
+#: data/vibeos.Browser.desktop.in
+msgid "Web Browser"
+msgstr ""
+
+#: data/vibeos.Browser.desktop.in
+msgid "Browse the web"
+msgstr ""
+
+# android: Jelly shortcut_new_incognito_tab
+#: data/vibeos.Browser.desktop.in src/nb-switcher.c
+msgid "New incognito tab"
+msgstr "Nouvel onglet de navigation privée"
+
+#: src/main.c
+msgid "Open an incognito tab"
+msgstr ""
+
+#: src/main.c
+msgid "Open a home-screen shortcut"
+msgstr ""
+
+#: src/main.c
+msgid "ID"
+msgstr ""
+
+#: src/main.c
+msgid "URL…"
+msgstr ""
+
+#: src/nb-app.c
+msgid "Download complete"
+msgstr ""
+
+#. TRANSLATORS: keep the link's markup as it is
+#: src/nb-menu.c
+msgid ""
+"Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, "
+"under the GNU LGPL 2.1 and BSD licences."
+msgstr ""
+
+# android: Jelly menu_desktop_mode
+#: src/nb-menu.c
+msgid "Desktop site"
+msgstr "Version ordinateur"
+
+# android: Jelly menu_go_back
+#: src/nb-menu.c
+msgid "Go back"
+msgstr "Retour"
+
+# android: Jelly menu_go_forward
+#: src/nb-menu.c
+msgid "Go forward"
+msgstr "Avancer"
+
+# android: Jelly menu_refresh
+#: src/nb-menu.c
+msgid "Refresh page"
+msgstr "Actualiser la page"
+
+# android: Jelly menu_fav_add
+#: src/nb-menu.c
+msgid "Add to favorites"
+msgstr "Ajouter aux favoris"
+
+# android: Jelly menu_share
+#: src/nb-menu.c
+msgid "Share"
+msgstr "Partager"
+
+# android: Jelly menu_new_tab
+#: src/nb-menu.c src/nb-switcher.c
+msgid "New tab"
+msgstr "Nouvel onglet"
+
+# android: Jelly menu_incognito
+#: src/nb-menu.c src/nb-switcher.c
+msgid "Incognito tab"
+msgstr "Onglet de navigation privée"
+
+# android: Jelly menu_favorites
+#: src/nb-menu.c src/nb-pages.c
+msgid "Favorites"
+msgstr "Favoris"
+
+# android: Jelly menu_history
+#. the names as the list shows them, translated there (nb_list_dialog_present): History and None are words
+#: src/nb-menu.c src/nb-pages.c src/nb-suggest.c
+msgid "History"
+msgstr "Historique"
+
+# android: Jelly menu_downloads
+#: src/nb-menu.c src/nb-pages.c
+msgid "Downloads"
+msgstr "Téléchargements"
+
+# android: Jelly menu_shortcut
+#: src/nb-menu.c
+msgid "Add shortcut"
+msgstr "Ajouter un raccourci"
+
+# android: Jelly menu_search
+#: src/nb-menu.c
+msgid "Find in page"
+msgstr "Rechercher dans la page"
+
+# android: Jelly menu_print
+#: src/nb-menu.c
+msgid "Print"
+msgstr "Imprimer"
+
+# android: Jelly menu_desktop_shortcuts
+#: src/nb-menu.c src/nb-pages.c
+msgid "Desktop shortcuts"
+msgstr "Raccourcis du bureau"
+
+# android: Jelly menu_settings
+#. the pinned toolbar: the up arrow, and the collapsed title
+#: src/nb-menu.c src/nb-settings.c
+msgid "Settings"
+msgstr "Paramètres"
+
+#: src/nb-menu.c
+msgid "About"
+msgstr ""
+
+# android: Jelly menu_in_new_tab
+#: src/nb-menu.c
+msgid "Open in new tab"
+msgstr "Ouvrir dans un nouvel onglet"
+
+# android: Jelly menu_download
+#: src/nb-menu.c src/nb-tab.c
+msgid "Download"
+msgstr "Télécharger"
+
+#: src/nb-menu.c
+msgid "Link copied"
+msgstr ""
+
+#: src/nb-menu.c
+msgid "Copy link"
+msgstr ""
+
+# android: Jelly share_title
+#: src/nb-menu.c
+msgid "Send to"
+msgstr "Envoyer à"
+
+#: src/nb-menu.c
+msgid "Shortcut not added"
+msgstr ""
+
+#: src/nb-menu.c
+msgid "Touch & hold the shortcut to move it around the home screen"
+msgstr ""
+
+# android: Framework cancel (short)
+#: src/nb-menu.c src/nb-pages.c src/nb-settings.c src/nb-tab.c src/nb-widgets.c
+msgid "Cancel"
+msgstr "Annuler"
+
+# android: Launcher3 add_to_home_screen (other app)
+#: src/nb-menu.c
+msgid "Add to home screen"
+msgstr "Ajouter à l'écran d'accueil"
+
+# android: Jelly history_snackbar_item_deleted
+#: src/nb-pages.c
+msgid "Entry deleted"
+msgstr "Entrée supprimée"
+
+# android: Jelly history_snackbar_item_deleted_message
+#: src/nb-pages.c
+msgid "Undo"
+msgstr "Annuler"
+
+# android: Jelly history_delete_title
+#. "Clear history" over a spinner and "Clearing history…", not cancelable, gone 200 ms after
+#: src/nb-pages.c
+msgid "Clear history"
+msgstr "Effacer l'historique"
+
+# android: Jelly history_deleting_message
+#: src/nb-pages.c
+msgid "Clearing history…"
+msgstr "Suppression de l'historique en cours…"
+
+# android: Jelly history_delete_message
+#: src/nb-pages.c
+msgid "You're going to delete all the history, this action cannot be undone. Do you want to proceed?"
+msgstr "Vous êtes sur le point de supprimer tout l’historique de navigation, cette action ne peut pas être annulée. Confirmer la suppression ?"
+
+# android: Jelly history_delete_positive
+#: src/nb-pages.c
+msgid "Clear"
+msgstr "Effacer"
+
+# android: Jelly history_empty
+#: src/nb-pages.c
+msgid "There's nothing here, browse on the internet to see your history here"
+msgstr "Il n’y a rien ici, naviguez sur internet pour voir votre historique ici"
+
+# android: Jelly favorite_edit_error
+#: src/nb-pages.c
+msgid "Insert a valid URL"
+msgstr "Insérer une URL valide"
+
+# android: Jelly favorite_edit_dialog_title
+#: src/nb-pages.c
+msgid "Edit favorite"
+msgstr "Modifier le favori"
+
+# android: Jelly favorite_edit_title
+#: src/nb-pages.c
+msgid "Title"
+msgstr "Titre"
+
+# android: Jelly favorite_edit_url
+#: src/nb-pages.c
+msgid "URL"
+msgstr "URL"
+
+# android: Jelly favorite_edit_delete
+#: src/nb-pages.c
+msgid "Delete"
+msgstr "Supprimer"
+
+# android: Jelly favorite_edit_positive
+#: src/nb-pages.c
+msgid "Edit"
+msgstr "Modifier"
+
+# android: Jelly favorite_empty
+#: src/nb-pages.c
+msgid "There's nothing here, add a favorite link to see it here"
+msgstr "Il n’y a rien ici, ajoutez des favoris pour les voir ici"
+
+#: src/nb-pages.c
+msgid "Download failed"
+msgstr ""
+
+#: src/nb-pages.c
+#, c-format
+msgid "Downloading… %d%%"
+msgstr ""
+
+# android: Framework mime_type_generic (short)
+#: src/nb-pages.c
+msgid "File"
+msgstr "Fichier"
+
+# android: Framework action_bar_home_subtitle_description_format
+#. TRANSLATORS: a download's day, its size and the file's type
+#: src/nb-pages.c
+#, c-format
+msgid "%s, %s, %s"
+msgstr "%s, %s, %s"
+
+# android: DocumentsUI empty (other app, short)
+#: src/nb-pages.c
+msgid "No items"
+msgstr "Aucun élément"
+
+# android: Framework autofill_save_yes (several translations, short)
+#: src/nb-pages.c
+msgid "Save"
+msgstr "Enregistrer"
+
+# android: Jelly pref_search_engine
+#: src/nb-settings.c
+msgid "Search engine"
+msgstr "Moteur de recherche"
+
+# android: Jelly pref_suggestions_provider
+#: src/nb-settings.c
+msgid "Suggestions provider"
+msgstr "Fournisseur de suggestions"
+
+# android: Jelly pref_start_page_autoload_disabled (several translations, short)
+#: src/nb-settings.c
+msgid "Disabled"
+msgstr "Désactivé"
+
+# android: Jelly pref_start_page_dialog_title
+#: src/nb-settings.c
+msgid "Select home page"
+msgstr "Définir la page d'accueil"
+
+# android: Jelly pref_start_page_dialog_message
+#: src/nb-settings.c
+msgid "Write the home page URL"
+msgstr "Donner l’URL de la page d’accueil"
+
+# android: Jelly pref_start_page_autoload_enabled
+#: src/nb-settings.c
+msgid "Enabled"
+msgstr "Activé"
+
+# android: Jelly pref_start_page
+#: src/nb-settings.c
+msgid "Home page"
+msgstr "Page d'accueil"
+
+# android: Jelly pref_start_page_dialog_reset
+#: src/nb-settings.c
+msgid "Reset"
+msgstr "Réinitialiser"
+
+# android: Framework httpErrorOk (short)
+#: src/nb-settings.c
+msgid "OK"
+msgstr "OK"
+
+# android: Jelly pref_cookie_clear_done
+#: src/nb-settings.c
+msgid "Cleared all the cookies"
+msgstr "Tous les cookies ont été effacés"
+
+# android: Jelly pref_reach_mode_title
+#: src/nb-settings.c
+msgid "Reach mode"
+msgstr "Mode Accès simplifié"
+
+# android: Jelly pref_reach_mode_summary
+#: src/nb-settings.c
+msgid "Relocate interface elements for easier one-hand usage"
+msgstr "Modifier l'emplacement des éléments de l'interface pour faciliter l'utilisation à une main"
+
+# android: Jelly pref_fullscreen_shortcuts_title
+#: src/nb-settings.c
+msgid "Fullscreen shortcuts"
+msgstr "Raccourcis en plein écran"
+
+# android: Jelly pref_fullscreen_shortcuts_summary
+#: src/nb-settings.c
+msgid "Force shortcuts to open in fullscreen mode"
+msgstr "Forcer l'ouverture des raccourcis en mode plein écran"
+
+# android: Jelly pref_privacy_security
+#: src/nb-settings.c
+msgid "Privacy & security"
+msgstr "Vie privée & sécurité"
+
+# android: Jelly pref_dynamic_popup_title
+#: src/nb-settings.c
+msgid "Dynamic popups"
+msgstr "Popups dynamiques"
+
+# android: Jelly pref_dynamic_popup_summary
+#: src/nb-settings.c
+msgid "Allow JavaScript to open popups without user interaction"
+msgstr "Autoriser JavaScript à ouvrir des popups sans interaction de l'utilisateur"
+
+# android: Jelly pref_js_summary
+#: src/nb-settings.c
+msgid "Enable JavaScript"
+msgstr "Activer JavaScript"
+
+# android: Jelly pref_location_title (several translations, short)
+#: src/nb-settings.c
+msgid "Location"
+msgstr "Localisation"
+
+# android: Jelly pref_location_summary
+#: src/nb-settings.c
+msgid "Allow websites to request access to your location"
+msgstr "Autoriser les sites web à demander l'accès à votre position"
+
+# android: Jelly pref_do_not_track_title
+#: src/nb-settings.c
+msgid "Do Not Track"
+msgstr "Ne pas me pister"
+
+# android: Jelly pref_do_not_track_summary (quotes added)
+#: src/nb-settings.c
+msgid "Send a Do Not Track request to websites you visit"
+msgstr "Envoyer une requête \"ne pas me pister\" aux sites web que vous visitez"
+
+# android: Jelly pref_cookie_title
+#: src/nb-settings.c
+msgid "Cookies"
+msgstr "Cookies"
+
+# android: Jelly pref_cookie_summary
+#: src/nb-settings.c
+msgid "Allow websites to save and load cookies"
+msgstr "Autoriser les sites web à enregistrer et charger les cookies"
+
+# android: Jelly pref_cookie_clear
+#: src/nb-settings.c
+msgid "Clear cookies"
+msgstr "Effacer les cookies"
+
+# android: Jelly suggestions_provider_none (several translations, short)
+#: src/nb-suggest.c
+msgid "None"
+msgstr "Aucun"
+
+#: src/nb-switcher.c
+#, c-format
+msgid "Close %s"
+msgstr ""
+
+#. TRANSLATORS: a screen reader's name for the tab card of the tab that was shown; %s is the tab's title
+#: src/nb-switcher.c
+#, c-format
+msgid "%s, current tab"
+msgstr ""
+
+#: src/nb-switcher.c
+#, c-format
+msgid "%u tab"
+msgid_plural "%u tabs"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/nb-switcher.c
+msgid "Tabs"
+msgstr ""
+
+#: src/nb-switcher.c
+msgid "No open tabs"
+msgstr ""
+
+# android: Jelly favorite_added
+#: src/nb-tab.c
+msgid "Added to favorites"
+msgstr "Ajouté aux favoris"
+
+# android: Jelly location_dialog_title
+#. a site asks for the location
+#: src/nb-tab.c
+msgid "Provide location?"
+msgstr "Fournir la localisation ?"
+
+# android: Jelly location_dialog_message
+#. TRANSLATORS: %s is the site (its origin, "https://example.org")
+#: src/nb-tab.c
+#, c-format
+msgid "%s wants to use your geolocation."
+msgstr "%s veut utiliser votre géolocalisation."
+
+# android: Jelly location_dialog_cancel
+#: src/nb-tab.c
+msgid "Deny for now"
+msgstr "Refuser pour l'instant"
+
+# android: Jelly location_dialog_block
+#: src/nb-tab.c
+msgid "Block"
+msgstr "Bloquer"
+
+# android: Jelly location_dialog_allow
+#: src/nb-tab.c
+msgid "Allow"
+msgstr "Autoriser"
+
+# android: Jelly protected_media_dialog_message
+#: src/nb-tab.c
+msgid "Allow protected media?"
+msgstr "Autoriser les médias protégés ?"
+
+# android: Jelly protected_media_dialog_deny
+#: src/nb-tab.c
+msgid "Deny"
+msgstr "Refuser"
+
+# android: Jelly protected_media_dialog_grant
+#: src/nb-tab.c
+msgid "Grant"
+msgstr "Accorder"
+
+#. TRANSLATORS: %s is the site (its origin, "https://example.org")
+#: src/nb-tab.c
+#, c-format
+msgid "%s wants to use your camera and microphone."
+msgstr ""
+
+#: src/nb-tab.c
+#, c-format
+msgid "%s wants to use your camera."
+msgstr ""
+
+#: src/nb-tab.c
+#, c-format
+msgid "%s wants to use your microphone."
+msgstr ""
+
+# android: Jelly auth_dialog_title
+#: src/nb-tab.c
+msgid "Authentication Required"
+msgstr "Authentification requise"
+
+# android: Jelly auth_dialog_detail
+#. TRANSLATORS: %s is the page's address
+#: src/nb-tab.c
+#, c-format
+msgid "%s requires a username and password."
+msgstr "%s requiert un identifiant et un mot de passe."
+
+# android: Jelly auth_dialog_username
+#: src/nb-tab.c
+msgid "User Name:"
+msgstr "Identifiant :"
+
+# android: Jelly auth_dialog_password
+#: src/nb-tab.c
+msgid "Password:"
+msgstr "Mot de passe :"
+
+# android: Jelly auth_dialog_login
+#: src/nb-tab.c
+msgid "Log in"
+msgstr "Se connecter"
+
+# android: Jelly download_message
+#. TRANSLATORS: %s is the file's name
+#: src/nb-tab.c
+#, c-format
+msgid "Do you want to download %s?"
+msgstr "Voulez-vous télécharger %s ?"
+
+# android: Jelly download_title
+#: src/nb-tab.c
+msgid "Download file"
+msgstr "Télécharger le fichier"
+
+# android: Framework review_notification_settings_dismiss (several translations, short)
+#: src/nb-tab.c
+msgid "Dismiss"
+msgstr "Fermer"
+
+# android: Jelly ssl_cert_dialog_title
+#: src/nb-tab.c
+msgid "SSL Certificate Details"
+msgstr "Détails du certificat SSL"
+
+# android: Jelly ssl_cert_dialog_trusted
+#: src/nb-tab.c
+msgid "Connection is secure"
+msgstr "La connexion est sécurisée"
+
+# android: Jelly ssl_error_expired
+#: src/nb-tab.c
+msgid "This certificate has expired."
+msgstr "Ce certificat a expiré."
+
+# android: Jelly ssl_error_not_yet_valid
+#: src/nb-tab.c
+msgid "This certificate isn't valid yet."
+msgstr "Ce certificat n'est pas encore valide."
+
+# android: Jelly ssl_error_mismatch
+#: src/nb-tab.c
+msgid "The name of the site doesn't match the name on the certificate."
+msgstr "Le nom du site ne correspond pas au nom figurant sur le certificat."
+
+# android: Jelly ssl_error_untrusted
+#: src/nb-tab.c
+msgid "This certificate isn't from a trusted authority."
+msgstr "Ce certificat ne provient pas d'une autorité de confiance."
+
+# android: Jelly ssl_error_invalid
+#: src/nb-tab.c
+msgid "This certificate is invalid."
+msgstr "Ce certificat est invalide."
+
+# android: Jelly ssl_cert_dialog_trust (several translations, short)
+#: src/nb-tab.c
+msgid "Trust"
+msgstr "Confiance"
+
+# android: Jelly ssl_cert_dialog_domain
+#: src/nb-tab.c
+msgid "Domain"
+msgstr "Domaine"
+
+# android: Jelly ssl_cert_dialog_issued_to
+#: src/nb-tab.c
+msgid "Issued to"
+msgstr "Délivré à"
+
+# android: Jelly ssl_cert_dialog_issued_by
+#: src/nb-tab.c
+msgid "Issued by"
+msgstr "Délivré par"
+
+# android: Jelly ssl_cert_dialog_common_name
+#: src/nb-tab.c
+msgid "Common Name (CN)"
+msgstr "Nom commun (CN)"
+
+# android: Jelly ssl_cert_dialog_organization
+#: src/nb-tab.c
+msgid "Organization (O)"
+msgstr "Organisation (O)"
+
+# android: Jelly ssl_cert_dialog_organizational_unit
+#: src/nb-tab.c
+msgid "Organizational Unit (UN)"
+msgstr "Unité organisationnelle (UN)"
+
+# android: Jelly ssl_cert_dialog_validity
+#: src/nb-tab.c
+msgid "Validity Period"
+msgstr "Durée de validité"
+
+# android: Jelly ssl_cert_dialog_issued_on
+#: src/nb-tab.c
+msgid "Issued On"
+msgstr "Délivré le"
+
+# android: Jelly ssl_cert_dialog_expires_on
+#: src/nb-tab.c
+msgid "Expires On"
+msgstr "Expire le"
+
+# android: Jelly error_no_activity_found
+#: src/nb-tab.c
+msgid "No app can handle this link"
+msgstr "Aucune application ne peut gérer ce lien"
+
+#: src/nb-tab.c
+msgid "Playing full screen"
+msgstr ""
+
+# android: Framework input_method_nav_back_button_desc (several translations, short)
+#. the shell's back gesture clicks the showing button named "Back"
+#: src/nb-tab.c src/nb-widgets.c
+msgid "Back"
+msgstr "Retour"
+
+#: src/nb-urlbar.c
+#, c-format
+msgid "Switch tabs, %u open tab"
+msgid_plural "Switch tabs, %u open tabs"
+msgstr[0] ""
+msgstr[1] ""
+
+# android: Jelly url_bar_auto_complete_hint
+#: src/nb-urlbar.c
+msgid "Search or type URL"
+msgstr "Rechercher ou saisir une URL"
+
+# android: Jelly url_bar_more
+#: src/nb-urlbar.c
+msgid "More"
+msgstr "Plus"
+
+# android: Jelly url_bar_search_cancel
+#: src/nb-urlbar.c
+msgid "Cancel search"
+msgstr "Annuler la recherche"
+
+# android: Jelly search_bar_hint (several translations, short)
+#: src/nb-urlbar.c
+msgid "Search"
+msgstr "Rechercher"
+
+# android: Jelly url_bar_search_clear
+#: src/nb-urlbar.c
+msgid "Clear search"
+msgstr "Effacer la recherche"
+
+# android: Jelly url_bar_search_previous
+#: src/nb-urlbar.c
+msgid "Previous"
+msgstr "Précédent"
+
+# android: Jelly url_bar_search_next (several translations, short)
+#: src/nb-urlbar.c
+msgid "Next"
+msgstr "Suivant"
+
+#. TRANSLATORS: a screen reader's name for a radio mark and a check mark
+#: src/nb-widgets.c
+msgid "radio"
+msgstr ""
+
+#: src/nb-widgets.c
+msgid "check"
+msgstr ""

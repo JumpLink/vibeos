@@ -9,6 +9,7 @@
 #include "nb.h"
 
 #include <gst/gst.h>
+#include <locale.h>
 #include <vibeos.h>
 #include <string.h>
 
@@ -109,13 +110,17 @@ web_video_in_software (void)
 int
 main (int argc, char **argv)
 {
+  setlocale (LC_ALL, "");
+  bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+  textdomain (GETTEXT_PACKAGE);
   /* before anything starts a thread or a web process */
   web_video_in_software ();
   g_autoptr (GtkApplication) app = gtk_application_new (NB_APP_ID, G_APPLICATION_HANDLES_COMMAND_LINE);
   static const GOptionEntry entries[] = {
-    { "incognito", 0, 0, G_OPTION_ARG_NONE, NULL, "Open an incognito tab", NULL },
-    { "shortcut", 0, 0, G_OPTION_ARG_STRING, NULL, "Open a home-screen shortcut", "ID" },
-    { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, NULL, NULL, "URL…" },
+    { "incognito", 0, 0, G_OPTION_ARG_NONE, NULL, N_("Open an incognito tab"), NULL },
+    { "shortcut", 0, 0, G_OPTION_ARG_STRING, NULL, N_("Open a home-screen shortcut"), N_("ID") },
+    { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, NULL, NULL, N_("URL…") },
     { NULL, 0, 0, 0, NULL, NULL, NULL },
   };
 

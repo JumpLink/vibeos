@@ -485,7 +485,7 @@ on_download_finished (WebKitDownload *d, gpointer data)
     return;
   /* a finished download's notification: the file's name, "Download complete"; a tap opens it */
   g_autoptr (GNotification) n = g_notification_new (e->name);
-  g_notification_set_body (n, "Download complete");
+  g_notification_set_body (n, _("Download complete"));
   g_notification_set_default_action_and_target (n, "app.open-file", "s", e->path);
   g_autofree char *id = g_strdup_printf ("download-%s", e->path);
   g_application_send_notification (G_APPLICATION (nb->gapp), id, n);

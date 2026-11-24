@@ -1,0 +1,12 @@
+# the files with translatable strings
+data/vibeos.Browser.desktop.in
+src/main.c
+src/nb-app.c
+src/nb-menu.c
+src/nb-pages.c
+src/nb-settings.c
+src/nb-suggest.c
+src/nb-switcher.c
+src/nb-tab.c
+src/nb-urlbar.c
+src/nb-widgets.c
