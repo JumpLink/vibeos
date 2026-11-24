@@ -43,7 +43,7 @@ talk_has_voice (DictateTalk *talk, const char *language)
 #endif
 }
 
-/* `voice_only`: an app that only speaks (Navi), which needs the language's Piper voice and nothing else */
+/* `voice_only`: an app that only speaks (Navi), which needs the language's voice and nothing else */
 static void
 find_needs (const char *language, DictateTalk *talk, gboolean voice_only, Needs *needs)
 {
@@ -54,7 +54,7 @@ find_needs (const char *language, DictateTalk *talk, gboolean voice_only, Needs 
   memset (needs, 0, sizeof *needs);
   if (voice_only)
     {
-      g_autofree char *voice = dictate_voice_find_piper (language);
+      g_autofree char *voice = dictate_voice_find (language);
       const DictatePack *pack = voice ? NULL : dictate_pack_find (language, DICTATE_PACK_VOICE);
 
       if (pack)

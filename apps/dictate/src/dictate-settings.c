@@ -7,6 +7,7 @@
 #include "dictate-debuglog-page.h"
 #include "dictate-models.h"
 #include "dictate-tools.h"
+#include "dictate-voice.h"
 #include "dictate-voicematch-page.h"
 
 #include <glib/gi18n.h>
@@ -16,7 +17,7 @@
 typedef struct {
   DictateSettingsHooks hooks;
   GtkWidget *window;
-  GtkWidget *page, *language, *rate, *verbosity, *quiet, *voice, *confirm, *clear, *viewer;
+  GtkWidget *page, *language, *rate, *gender, *verbosity, *quiet, *voice, *confirm, *clear, *viewer;
   GPtrArray *languages;         /* their rows, in dictate_languages' order */
 } Page;
 
@@ -43,6 +44,8 @@ refresh (Page *p)
   const DictateLanguage *now = dictate_language_lookup (current);
 
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->language), now ? now->name : NULL);
+  /* a man's or a woman's voice, only where the language's voice has both */
+  gtk_widget_set_visible (p->gender, dictate_voice_has_genders (current));
   for (guint i = 0; i < n; i++)
     {
       VibeosListRow *row = p->languages->pdata[i];
@@ -103,6 +106,27 @@ static const struct { double speed; const char *label; } RATES[] = {
   { 3.0, "3×" },
 };
 
+/* who speaks (talk-voice-gender), where the voice has a man and a woman */
+static const char *const GENDERS[] = { "male", "female" };
+
+static const char *
+gender_label (guint i)
+{
+  if (i)
+    /* TRANSLATORS: Vibe's voice in Settings: a woman speaks (Russian's voice has a man's and a woman's) */
+    return C_("voice gender", "Female");
+  /* TRANSLATORS: Vibe's voice in Settings: a man speaks (Russian's voice has a man's and a woman's) */
+  return C_("voice gender", "Male");
+}
+
+static guint
+gender_index (GSettings *settings)
+{
+  g_autofree char *value = g_settings_get_string (settings, "talk-voice-gender");
+
+  return !g_strcmp0 (value, GENDERS[1]);
+}
+
 /* how much Vibe says (talk-verbosity) */
 static const struct { const char *value, *label, *summary; } VERBOSITY[] = {
   { "short", N_("Short"), N_("A sentence") },
@@ -158,6 +182,7 @@ show_choices (Page *p)
   g_autofree char *range = quiet < 0 ? g_settings_get_string (p->hooks.settings, "quiet-hours") : NULL;
 
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->rate), _(RATES[rate_index (p->hooks.settings)].label));
+  vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->gender), gender_label (gender_index (p->hooks.settings)));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->verbosity),
                              _(VERBOSITY[verbosity_index (p->hooks.settings)].label));
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (p->quiet), quiet < 0 ? range : _(QUIET[quiet].label));
@@ -169,7 +194,8 @@ on_setting_changed (GSettings *settings, const char *key, Page *p)
   /* the language is the window's to say (dictate_settings_page_refresh): its setting changes before the engine's */
   if (g_str_equal (key, "talk-voice"))
     refresh (p);
-  else if (g_str_equal (key, "talk-speed") || g_str_equal (key, "talk-verbosity") || g_str_equal (key, "quiet-hours"))
+  else if (g_str_equal (key, "talk-speed") || g_str_equal (key, "talk-verbosity") || g_str_equal (key, "quiet-hours")
+           || g_str_equal (key, "talk-voice-gender"))
     show_choices (p);
 }
 
@@ -252,6 +278,29 @@ on_rate (VibeosListRow *row, Page *p)
     labels[i] = _(RATES[i].label);
   choose (p, _("Speech rate"), labels, NULL, G_N_ELEMENTS (RATES), rate_index (p->hooks.settings),
           G_CALLBACK (on_rate_chosen));
+}
+
+static void
+on_gender_chosen (VibeosDialog *dialog, int response, GtkWidget *window)
+{
+  GtkWidget *page = g_object_get_data (G_OBJECT (window), "dictate-settings-page");
+  Page *p = page ? g_object_get_data (G_OBJECT (page), "dictate-settings") : NULL;
+
+  /* the voice takes it from its next sentence */
+  if (p && response >= 100 && response - 100 < (int) G_N_ELEMENTS (GENDERS))
+    g_settings_set_string (p->hooks.settings, "talk-voice-gender", GENDERS[response - 100]);
+}
+
+static void
+on_gender (VibeosListRow *row, Page *p)
+{
+  const char *labels[G_N_ELEMENTS (GENDERS)];
+
+  for (guint i = 0; i < G_N_ELEMENTS (GENDERS); i++)
+    labels[i] = gender_label (i);
+  /* TRANSLATORS: the dialog choosing whether a man or a woman speaks for Vibe */
+  choose (p, _("Voice"), labels, NULL, G_N_ELEMENTS (GENDERS), gender_index (p->hooks.settings),
+          G_CALLBACK (on_gender_chosen));
 }
 
 static void
@@ -469,6 +518,10 @@ dictate_settings_page_new (GtkWidget *window, const DictateSettingsHooks *hooks)
   p->rate = vibeos_list_row_new (_("Speech rate"), _("How fast Vibe speaks"));
   g_signal_connect (p->rate, "clicked", G_CALLBACK (on_rate), p);
   vibeos_card_list_append (VIBEOS_CARD_LIST (cards), p->rate);
+  /* TRANSLATORS: a row in Vibe's settings, under Speech rate; its summary says what it chooses */
+  p->gender = vibeos_list_row_new (_("Voice"), _("Whether a man or a woman speaks"));
+  g_signal_connect (p->gender, "clicked", G_CALLBACK (on_gender), p);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (cards), p->gender);
   p->verbosity = vibeos_list_row_new (_("Answers"), _("How much Vibe says"));
   g_signal_connect (p->verbosity, "clicked", G_CALLBACK (on_verbosity), p);
   vibeos_card_list_append (VIBEOS_CARD_LIST (cards), p->verbosity);

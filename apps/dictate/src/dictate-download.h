@@ -3,7 +3,9 @@
  * A pack is what one language lacks for one thing: its speech model (dictate-models.h: Moonshine's tiny streaming
  * models from download.moonshine.ai, Vosk's small models from alphacephei.com, the same files and sums as Dictate's
  * language packages, tools/vibeos-dictate-speech/build-debs.sh) or Agent's voice for it (a Piper voice from
- * rhasspy/piper-voices on Hugging Face, at one revision). Every file is pinned here, with its size and SHA-256.
+ * rhasspy/piper-voices on Hugging Face, at one revision; Russian's tiny-voca from egnch/tiny-voca-ru there, with its
+ * front end's stress data from its source on GitHub, at one commit). Every file is pinned here, with its size and
+ * SHA-256.
  * Only data comes this way: a recogniser's library (dictate-recogniser.h) is code, and comes from its package.
  *
  * A download has a directory of its own in vibeos-dictate/.downloads under the user's data directory. Each file comes
@@ -24,6 +26,7 @@ typedef struct {
   const char *name;     /* its name at the pack's source, and in its place */
   guint64 size;
   const char *sha256;
+  const char *url;      /* where it comes from when that is not the pack's source (https://…/NAME) */
 } DictateFile;
 
 typedef enum {
@@ -43,12 +46,14 @@ typedef struct {
   const char *archive_top;      /* a zip (its one file), unpacked: its one top directory, which is `place`'s last
                                  * part; NULL for plain files */
   const DictateFile *files;     /* up to one with a NULL name */
+  const char *made;             /* a voice's: the start of the names of files the app makes from them there (a
+                                 * sorted dictionary), which go when they go */
 } DictatePack;
 
 /* the pack for `language`'s speech model or voice; NULL if there is none to download */
 const DictatePack *dictate_pack_find   (const char *language, DictatePackKind kind);
 guint64            dictate_pack_size   (const DictatePack *pack);
-/* its source's host, for the user: "huggingface.co" */
+/* its files' hosts, for the user: "huggingface.co", "huggingface.co, raw.githubusercontent.com" */
 char              *dictate_pack_host   (const DictatePack *pack);
 /* every pack, for the tests: `n` of them */
 const DictatePack *dictate_packs       (guint *n);

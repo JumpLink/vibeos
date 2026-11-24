@@ -91,9 +91,10 @@ struct _DictateTalk {
   guint turn;                   /* atomic */
   GAsyncQueue *jobs, *says;     /* Job, for the brain's and the voice's threads */
   GThread *brain_thread, *voice_thread;
-  GMutex lock;                  /* the reply's cancellable, the speed, the sink */
+  GMutex lock;                  /* the reply's cancellable, the speed, the gender, the sink */
   GCancellable *cancellable;
   double speed;
+  char *gender;                 /* talk-voice-gender: who speaks, where the voice has a man and a woman */
   char *sink;                   /* private mode with headphones on: the replies play there and nowhere else */
   int speak;                    /* atomic: the replies spoken, or only written */
   GMainContext *main;
@@ -224,46 +225,17 @@ find_brain (DictateTalk *self)
   return NULL;
 }
 
-/* a voice for `language` in vibeos-dictate/voices/LANGUAGE: a Piper model (NAME.onnx and NAME.onnx.json), or a
- * Kokoro directory (model*.onnx, tokenizer.json, voices/); *name is Kokoro's voice */
+/* the voice for `language`: the setting's file if it is there, else the one in vibeos-dictate/voices/LANGUAGE
+ * (dictate_voice_find); *name is Kokoro's voice */
 static char *
 find_voice (DictateTalk *self, const char *language, char **name)
 {
   g_autofree char *chosen = g_settings_get_string (self->settings, "talk-voice");
-  g_autoptr (GPtrArray) dirs = NULL;
 
   *name = g_settings_get_string (self->settings, "talk-voice-name");
   if (*chosen && g_file_test (chosen, G_FILE_TEST_IS_REGULAR))
     return g_steal_pointer (&chosen);
-  dirs = data_dirs ("voices");
-  for (guint i = 0; i < dirs->len; i++)
-    {
-      g_autofree char *dir = g_build_filename (dirs->pdata[i], language, NULL);
-      g_autoptr (GPtrArray) names = list (dir, NULL);
-
-      for (guint j = 0; j < names->len; j++)
-        {
-          const char *n = names->pdata[j];
-          g_autofree char *path = g_build_filename (dir, n, NULL);
-          g_autofree char *config = g_strconcat (path, ".json", NULL);
-          g_autofree char *tokenizer = g_build_filename (path, "tokenizer.json", NULL);
-
-          if (g_str_has_suffix (n, ".onnx") && g_file_test (config, G_FILE_TEST_IS_REGULAR))
-            return g_steal_pointer (&path);
-          if (g_file_test (tokenizer, G_FILE_TEST_IS_REGULAR))
-            {
-              /* the smallest of its precisions that is there: the 8-bit one, else the full one */
-              static const char *const files[] = { "model_quantized.onnx", "model.onnx", NULL };
-              for (guint k = 0; files[k]; k++)
-                {
-                  g_autofree char *model = g_build_filename (path, files[k], NULL);
-                  if (g_file_test (model, G_FILE_TEST_IS_REGULAR))
-                    return g_steal_pointer (&model);
-                }
-            }
-        }
-    }
-  return NULL;
+  return dictate_voice_find (language);
 }
 
 gboolean
@@ -584,10 +556,12 @@ post_audio (DictateTalk *self, guint turn, float *samples, gsize n, guint rate, 
 
 /* ---------------- the voice's thread ---------------- */
 
-/* what a voice should not read out: markdown's marks, emoji and other pictures */
+/* what a voice should not read out: markdown's marks, emoji and other pictures; but in Russian the degree and numero
+ * signs are read (5 °C: пять градусов Цельсия; № 3: номер три) */
 static char *
-speakable (const char *text)
+speakable (const char *text, const char *language)
 {
+  gboolean signs = !g_strcmp0 (language, "ru");
   GString *out = g_string_new (NULL);
 
   for (const char *p = text; *p; p = g_utf8_next_char (p))
@@ -597,7 +571,9 @@ speakable (const char *text)
 
       if (strchr ("*#`_~|>", (int) c) && c < 128)
         continue;
-      if (type == G_UNICODE_OTHER_SYMBOL || type == G_UNICODE_MODIFIER_SYMBOL || c == 0xfe0f || c == 0x200d)
+      if (signs && (c == 0x00b0 || c == 0x2116))
+        ;
+      else if (type == G_UNICODE_OTHER_SYMBOL || type == G_UNICODE_MODIFIER_SYMBOL || c == 0xfe0f || c == 0x200d)
         continue;
       if (g_unichar_isspace (c))
         {
@@ -660,13 +636,15 @@ voice_thread (gpointer data)
         post_audio (self, say->turn, NULL, 0, 0, TRUE);
       else if (ensure_voice (self, say))
         {
-          g_autofree char *text = speakable (say->text);
+          g_autofree char *text = speakable (say->text, say->language);
           g_autoptr (GError) error = NULL;
           gsize n = 0;
           float *samples;
 
           g_mutex_lock (&self->lock);
           speed = self->speed;
+          /* from this sentence on */
+          dictate_voice_set_gender (self->voice, self->gender);
           g_mutex_unlock (&self->lock);
           samples = *text ? dictate_voice_speak (self->voice, text, speed, &n, &error) : NULL;
           if (*text && !samples)
@@ -1911,6 +1889,7 @@ dictate_talk_finalize (GObject *object)
   g_free (self->reply);
   g_free (self->voice_path);
   g_free (self->voice_name);
+  g_free (self->gender);
   G_OBJECT_CLASS (dictate_talk_parent_class)->finalize (object);
 }
 
@@ -1955,6 +1934,17 @@ dictate_talk_class_init (DictateTalkClass *klass)
 }
 
 static void
+on_gender_changed (GSettings *settings, const char *key, DictateTalk *self)
+{
+  char *gender = g_settings_get_string (settings, key);
+
+  g_mutex_lock (&self->lock);
+  g_free (self->gender);
+  self->gender = gender;
+  g_mutex_unlock (&self->lock);
+}
+
+static void
 dictate_talk_init (DictateTalk *self)
 {
   g_mutex_init (&self->lock);
@@ -1963,6 +1953,8 @@ dictate_talk_init (DictateTalk *self)
   self->hushed = G_MAXUINT;     /* no turn */
   self->main = g_main_context_ref_thread_default ();
   self->settings = g_settings_new ("vibeos.Dictate");
+  g_signal_connect (self->settings, "changed::talk-voice-gender", G_CALLBACK (on_gender_changed), self);
+  on_gender_changed (self->settings, "talk-voice-gender", self);
   self->proposals = g_ptr_array_new_with_free_func ((GDestroyNotify) dictate_action_unref);
   /* NULL-terminated */
   self->facts = g_ptr_array_new_with_free_func (g_free);

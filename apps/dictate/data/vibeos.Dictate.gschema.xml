@@ -15,12 +15,21 @@
     <key name="talk-voice" type="s">
       <default>''</default>
       <summary>Agent's voice</summary>
-      <description>A Piper or Kokoro ONNX model's path. Empty, or a file that is not there: the first voice in vibeos-dictate/voices/LANGUAGE under the user's data directory or the system's.</description>
+      <description>A Piper, Kokoro or tiny-voca ONNX model's path. Empty, or a file that is not there: the voice in vibeos-dictate/voices/LANGUAGE under the user's data directory or the system's (for Russian tiny-voca, in its tiny-voca directory).</description>
     </key>
     <key name="talk-voice-name" type="s">
       <default>''</default>
       <summary>Kokoro's speaker</summary>
       <description>The voice file's name in the model's voices directory (af_heart). Empty: the first there is. Piper voices have one speaker each and ignore it.</description>
+    </key>
+    <key name="talk-voice-gender" type="s">
+      <choices>
+        <choice value="male"/>
+        <choice value="female"/>
+      </choices>
+      <default>"male"</default>
+      <summary>Whether a man or a woman speaks</summary>
+      <description>"Voice" in Agent's settings, for a voice that has both (Russian's tiny-voca); from the next sentence on. Voices with one speaker ignore it.</description>
     </key>
     <key name="talk-speed" type="d">
       <range min="0.5" max="3.0"/>

@@ -1,6 +1,7 @@
 /* dictate-voice: see dictate-voice.h. */
 #include "dictate-voice.h"
 #include "dictate-phonemes.h"
+#include "dictate-ru.h"
 
 #include <gio/gio.h>
 #include <json-glib/json-glib.h>
@@ -12,8 +13,10 @@
 #define KOKORO_STYLE    256     /* a style row's floats */
 #define KOKORO_MAX      510     /* phonemes per run: the model's context less its two pads */
 #define CLUSTER_MAX     4       /* phonemes in a Piper vowel cluster */
+#define TINY_VOCA_MARGIN 12     /* tokens a tiny-voca utterance keeps free of its max_tokens, as its synthesizer does */
+#define TINY_VOCA_PEAK  0.99    /* the loudest a tiny-voca text is let be: it is scaled down to it */
 
-typedef enum { KOKORO, PIPER } Kind;
+typedef enum { KOKORO, PIPER, TINY_VOCA } Kind;
 
 /* Piper 1.5's vowel clusters: phonemes that follow each other (a, ɪ) read as one id, the id of their joined name
  * (aɪ) in the phoneme map, as Piper's phonemizer merges them (phonemize_espeak.py, _merge_known_vowel_clusters) */
@@ -29,7 +32,8 @@ struct _DictateVoice {
   OrtMemoryInfo *memory;
   char **inputs;                /* the model's input names, NULL-terminated */
   gsize n_inputs;
-  char *output;                 /* its (first) output's name */
+  char **outputs;               /* its output names, NULL-terminated */
+  char *output;                 /* the first of them */
   char *language;               /* espeak-ng's voice for the phonemes */
   gboolean british;             /* Kokoro: misaki's British notation, not its American one */
   GHashTable *ids;              /* a phoneme (gunichar) → its id (gint64), as GINT_TO_POINTER (id + 1) */
@@ -42,6 +46,12 @@ struct _DictateVoice {
   float noise_scale, length_scale, noise_w;
   gboolean has_sid;
   GArray *clusters;             /* Cluster, the longest first */
+  /* tiny-voca */
+  DictateRu *ru;                /* its Russian front end: the text in tokens and stress */
+  gint64 male, female;          /* the speakers' indexes in its voices ("M", "F"), -1 where it has none */
+  gint64 speaker;               /* the one speaking */
+  guint max_tokens, max_frames;
+  gboolean has_durations;       /* it says how long each token lasts: an utterance over max_frames is split */
 };
 
 static const OrtApi *ort;
@@ -144,7 +154,8 @@ open_session (DictateVoice *self, const char *model, int threads, GError **error
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "%s has no output", model);
       return FALSE;
     }
-  self->output = g_strdup (outputs[0]);
+  self->outputs = g_steal_pointer (&outputs);
+  self->output = self->outputs[0];
   return TRUE;
 }
 
@@ -334,17 +345,92 @@ load_piper (DictateVoice *self, const char *model, const char *config, GError **
   return TRUE;
 }
 
+/* a string in a JSON array, NULL for anything else */
+static const char *
+string_at (JsonArray *array, guint i)
+{
+  JsonNode *node = json_array_get_element (array, i);
+
+  return JSON_NODE_HOLDS_VALUE (node) && json_node_get_value_type (node) == G_TYPE_STRING
+         ? json_node_get_string (node) : NULL;
+}
+
+static gboolean
+load_tiny_voca (DictateVoice *self, const char *model, const char *config, GError **error)
+{
+  static const char *const INPUTS[] = { "tokens", "stress", "voice", "speed", "pitch_shift", "pitch_range", NULL };
+  g_autoptr (JsonNode) root = read_json (config, error);
+  g_autofree char *dir = g_path_get_dirname (model);
+  JsonObject *o;
+  JsonArray *symbols, *voices;
+  const char *const *known;
+  guint n;
+
+  if (!root)
+    return FALSE;
+  o = JSON_NODE_HOLDS_OBJECT (root) ? json_node_get_object (root) : NULL;
+  symbols = o && json_object_has_member (o, "symbols") ? json_object_get_array_member (o, "symbols") : NULL;
+  voices = o && json_object_has_member (o, "voices") ? json_object_get_array_member (o, "voices") : NULL;
+  /* its ids are the front end's: the same symbols in the same order */
+  known = dictate_ru_symbols (&n);
+  for (guint i = 0; symbols && i < n; i++)
+    if (json_array_get_length (symbols) != n || g_strcmp0 (string_at (symbols, i), known[i]) != 0)
+      symbols = NULL;
+  if (!symbols || !voices || json_array_get_length (voices) == 0)
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "%s does not list the symbols and voices of "
+                   "tiny-voca-ru", config);
+      return FALSE;
+    }
+  self->male = self->female = -1;
+  for (guint i = 0; i < json_array_get_length (voices); i++)
+    {
+      const char *name = string_at (voices, i);
+      if (!g_strcmp0 (name, "M"))
+        self->male = i;
+      else if (!g_strcmp0 (name, "F"))
+        self->female = i;
+    }
+  self->speaker = self->male >= 0 ? self->male : MAX (self->female, 0);
+  self->rate = json_object_get_int_member_with_default (o, "sample_rate", 24000);
+  self->max_tokens = json_object_get_int_member_with_default (o, "max_tokens", 512);
+  self->max_frames = json_object_get_int_member_with_default (o, "max_frames", 3000);
+  self->language = g_strdup ("ru");
+  for (guint i = 0; INPUTS[i]; i++)
+    if (!has_input (self, INPUTS[i]))
+      {
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "%s does not take %s", model, INPUTS[i]);
+        return FALSE;
+      }
+  if (self->max_tokens <= TINY_VOCA_MARGIN || self->rate == 0 || !g_str_equal (self->output, "audio"))
+    {
+      g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "%s does not give audio as tiny-voca-ru does",
+                   model);
+      return FALSE;
+    }
+  self->has_durations = g_strv_contains ((const char *const *) self->outputs, "durations");
+  /* the front end's dictionary and stress models are beside it, and loaded when first needed */
+  self->ru = dictate_ru_new (dir, TRUE);
+  return TRUE;
+}
+
 DictateVoice *
 dictate_voice_load (const char *model, const char *voice, int threads, GError **error)
 {
   g_autofree char *config = g_strconcat (model, ".json", NULL);
+  g_autofree char *dir = g_path_get_dirname (model);
+  g_autofree char *tiny_voca = g_build_filename (dir, "model.json", NULL);
   DictateVoice *self = g_new0 (DictateVoice, 1);
   gboolean ok;
 
   self->ids = g_hash_table_new (NULL, NULL);
-  self->kind = g_file_test (config, G_FILE_TEST_EXISTS) ? PIPER : KOKORO;
+  /* MODEL.json beside it: Piper's; model.json: tiny-voca's; else Kokoro's directory */
+  self->kind = g_file_test (config, G_FILE_TEST_EXISTS) ? PIPER
+             : g_file_test (tiny_voca, G_FILE_TEST_EXISTS) ? TINY_VOCA : KOKORO;
   ok = open_session (self, model, threads, error) &&
-       (self->kind == PIPER ? load_piper (self, model, config, error) : load_kokoro (self, model, voice, error));
+       (self->kind == PIPER ? load_piper (self, model, config, error)
+        : self->kind == TINY_VOCA ? load_tiny_voca (self, model, tiny_voca, error)
+        : load_kokoro (self, model, voice, error));
   if (!ok)
     {
       dictate_voice_free (self);
@@ -363,8 +449,9 @@ dictate_voice_free (DictateVoice *self)
   if (self->memory)
     ort->ReleaseMemoryInfo (self->memory);
   g_strfreev (self->inputs);
-  g_free (self->output);
+  g_strfreev (self->outputs);
   g_free (self->language);
+  dictate_ru_free (self->ru);
   g_hash_table_unref (self->ids);
   g_free (self->styles);
   if (self->clusters)
@@ -380,9 +467,14 @@ dictate_voice_get_rate (DictateVoice *self)
 
 /* ---------------- speaking ---------------- */
 
+static char *tiny_voca_phonemes (DictateVoice *self, const char *text);
+static float *tiny_voca_speak (DictateVoice *self, const char *text, double speed, gsize *n, GError **error);
+
 char *
 dictate_voice_phonemes (DictateVoice *self, const char *text, GError **error)
 {
+  if (self->kind == TINY_VOCA)
+    return tiny_voca_phonemes (self, text);
   g_autofree char *ipa = dictate_espeak_phonemes (self->language, text, self->kind == KOKORO, error);
   g_autoptr (GString) known = NULL;
   g_autofree char *notation = NULL;
@@ -539,17 +631,20 @@ ids_for (DictateVoice *self, const gunichar *phonemes, gsize from, gsize to)
 float *
 dictate_voice_speak (DictateVoice *self, const char *text, double speed, gsize *n, GError **error)
 {
-  g_autofree char *phonemes = dictate_voice_phonemes (self, text, error);
+  g_autofree char *phonemes = self->kind == TINY_VOCA ? NULL : dictate_voice_phonemes (self, text, error);
   g_autofree gunichar *chars = NULL;
   glong count = 0;
   GArray *out;
   gsize from = 0;
 
   *n = 0;
+  if (self->kind == TINY_VOCA)
+    return tiny_voca_speak (self, text, speed, n, error);
   if (!phonemes)
     return NULL;
   chars = g_utf8_to_ucs4_fast (phonemes, -1, &count);
-  out = g_array_new (FALSE, FALSE, sizeof (float));
+  /* room made at once: a text with nothing to say gives no samples, but not NULL, which is a failure */
+  out = g_array_sized_new (FALSE, FALSE, sizeof (float), self->rate);
   /* Kokoro reads at most KOKORO_MAX phonemes a run: a longer text goes in pieces, cut after a sentence's or a
    * clause's mark, else at a space */
   while (from < (gsize) count)
@@ -582,6 +677,227 @@ dictate_voice_speak (DictateVoice *self, const char *text, double speed, gsize *
   return (float *) g_array_free (out, FALSE);
 }
 
+/* ---------------- tiny-voca ---------------- */
+
+/* the tokens of `text`'s sentences written out, for the log and the tests: a stressed vowel after ˈ, <sp> a space */
+static char *
+tiny_voca_phonemes (DictateVoice *self, const char *text)
+{
+  g_auto (GStrv) sentences = dictate_ru_sentences (text);
+  GString *out = g_string_new (NULL);
+  guint n;
+  const char *const *symbols = dictate_ru_symbols (&n);
+
+  for (char **sentence = sentences; *sentence; sentence++)
+    {
+      g_autoptr (GArray) ids = g_array_new (FALSE, FALSE, sizeof (gint64));
+      g_autoptr (GArray) stress = g_array_new (FALSE, FALSE, sizeof (gint64));
+
+      if (!dictate_ru_phonemize (self->ru, *sentence, ids, stress))
+        continue;
+      if (out->len)
+        g_string_append_c (out, ' ');
+      /* past <bos>, before <eos> */
+      for (guint i = 1; i + 1 < ids->len; i++)
+        {
+          gint64 id = g_array_index (ids, gint64, i);
+          const char *symbol = id >= 0 && id < n ? symbols[id] : "<unk>";
+
+          if (g_str_equal (symbol, "<sp>"))
+            g_string_append_c (out, ' ');
+          else
+            g_string_append_printf (out, "%s%s", g_array_index (stress, gint64, i) ? "ˈ" : "", symbol);
+        }
+    }
+  return g_string_free (out, FALSE);
+}
+
+/* the frames an utterance lasts: the sum of its tokens' durations */
+static gboolean
+tiny_voca_frames (OrtValue *durations, gint64 *total, GError **error)
+{
+  OrtTensorTypeAndShapeInfo *info = NULL;
+  ONNXTensorElementDataType type = ONNX_TENSOR_ELEMENT_DATA_TYPE_UNDEFINED;
+  size_t count = 0;
+  void *data = NULL;
+  gboolean ok = ort_ok (ort->GetTensorTypeAndShape (durations, &info), error) &&
+                ort_ok (ort->GetTensorElementType (info, &type), error) &&
+                ort_ok (ort->GetTensorShapeElementCount (info, &count), error) &&
+                ort_ok (ort->GetTensorMutableData (durations, &data), error);
+
+  if (info)
+    ort->ReleaseTensorTypeAndShapeInfo (info);
+  *total = 0;
+  for (size_t i = 0; ok && i < count; i++)
+    switch (type)
+      {
+      case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64: *total += ((const int64_t *) data)[i]; break;
+      case ONNX_TENSOR_ELEMENT_DATA_TYPE_INT32: *total += ((const int32_t *) data)[i]; break;
+      case ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT: *total += (gint64) ((const float *) data)[i]; break;
+      default: ok = FALSE; break;
+      }
+  if (!ok && error && !*error)
+    g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "the voice's durations are not numbers");
+  return ok;
+}
+
+/* one utterance through tiny-voca, its samples appended to `out`; FALSE without an error (*too_long) when it would
+ * last longer than the model's max_frames, and is to be read in parts */
+static gboolean
+tiny_voca_run (DictateVoice *self, GArray *ids, GArray *stress, double speed, GArray *out, gboolean *too_long,
+               GError **error)
+{
+  static const char *const IN[] = { "tokens", "stress", "voice", "speed", "pitch_shift", "pitch_range" };
+  static const char *const OUT[] = { "audio", "durations" };
+  OrtValue *in[G_N_ELEMENTS (IN)] = { NULL }, *result[G_N_ELEMENTS (OUT)] = { NULL };
+  int64_t shape[2] = { 1, ids->len }, one = 1;
+  /* kept alive until the run is over: the tensors only point at them */
+  int64_t voice = self->speaker;
+  float speed_f = CLAMP (speed, 0.25, 4.0), pitch_shift = 0.0f, pitch_range = 1.0f;
+  gsize n_out = self->has_durations ? 2 : 1;
+  gint64 frames = 0;
+  gboolean ok;
+
+  *too_long = FALSE;
+  ok = tensor (self, ids->data, ids->len * sizeof (gint64), shape, 2, ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64, &in[0],
+               error) &&
+       tensor (self, stress->data, stress->len * sizeof (gint64), shape, 2, ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64,
+               &in[1], error) &&
+       tensor (self, &voice, sizeof voice, &one, 1, ONNX_TENSOR_ELEMENT_DATA_TYPE_INT64, &in[2], error) &&
+       tensor (self, &speed_f, sizeof speed_f, &one, 1, ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT, &in[3], error) &&
+       tensor (self, &pitch_shift, sizeof pitch_shift, &one, 1, ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT, &in[4], error) &&
+       tensor (self, &pitch_range, sizeof pitch_range, &one, 1, ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT, &in[5], error) &&
+       ort_ok (ort->Run (self->session, NULL, IN, (const OrtValue *const *) in, G_N_ELEMENTS (IN), OUT, n_out, result),
+               error);
+  if (ok && n_out == 2 && (ok = tiny_voca_frames (result[1], &frames, error)) && frames > self->max_frames)
+    *too_long = TRUE, ok = FALSE;
+  if (ok)
+    {
+      OrtTensorTypeAndShapeInfo *info = NULL;
+      size_t count = 0;
+      float *samples = NULL;
+
+      ok = ort_ok (ort->GetTensorTypeAndShape (result[0], &info), error) &&
+           ort_ok (ort->GetTensorShapeElementCount (info, &count), error) &&
+           ort_ok (ort->GetTensorMutableData (result[0], (void **) &samples), error);
+      if (info)
+        ort->ReleaseTensorTypeAndShapeInfo (info);
+      for (size_t i = 0; ok && i < count; i++)
+        if (!isfinite (samples[i]))
+          {
+            g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "the voice gave samples that are not numbers");
+            ok = FALSE;
+          }
+      if (ok)
+        g_array_append_vals (out, samples, count);
+    }
+  for (gsize i = 0; i < G_N_ELEMENTS (in); i++)
+    if (in[i])
+      ort->ReleaseValue (in[i]);
+  for (gsize i = 0; i < G_N_ELEMENTS (result); i++)
+    if (result[i])
+      ort->ReleaseValue (result[i]);
+  return ok;
+}
+
+/* a sentence (or a part of one) spoken: in one run if the model reads it at once, else in its clauses or halves.
+ * What has nothing to say is left out; one word too long for the model is too (tiny-voca's synthesizer stops there) */
+static gboolean
+tiny_voca_read (DictateVoice *self, const char *piece, double speed, GArray *out, GError **error)
+{
+  g_autoptr (GArray) ids = g_array_new (FALSE, FALSE, sizeof (gint64));
+  g_autoptr (GArray) stress = g_array_new (FALSE, FALSE, sizeof (gint64));
+  g_auto (GStrv) parts = NULL;
+  gboolean too_long = FALSE;
+
+  if (!dictate_ru_phonemize (self->ru, piece, ids, stress))
+    return TRUE;
+  if (ids->len <= self->max_tokens - TINY_VOCA_MARGIN)
+    {
+      if (tiny_voca_run (self, ids, stress, speed, out, &too_long, error))
+        return TRUE;
+      if (!too_long)
+        return FALSE;
+    }
+  parts = dictate_ru_split_clause (piece);
+  if (!parts)
+    {
+      g_debug ("voice: a word of %u tokens is too long to say", ids->len);
+      return TRUE;
+    }
+  for (char **part = parts; *part; part++)
+    if (!tiny_voca_read (self, *part, speed, out, error))
+      return FALSE;
+  return TRUE;
+}
+
+static float *
+tiny_voca_speak (DictateVoice *self, const char *text, double speed, gsize *n, GError **error)
+{
+  g_auto (GStrv) sentences = dictate_ru_sentences (text);
+  GArray *out = g_array_sized_new (FALSE, FALSE, sizeof (float), self->rate);
+  float loudest = 0.0f;
+
+  for (char **sentence = sentences; *sentence; sentence++)
+    if (!tiny_voca_read (self, *sentence, speed, out, error))
+      {
+        g_array_free (out, TRUE);
+        return NULL;
+      }
+  /* too loud, the whole text is scaled down to TINY_VOCA_PEAK, as by tiny-voca's limit_peak () */
+  for (guint i = 0; i < out->len; i++)
+    loudest = MAX (loudest, fabsf (g_array_index (out, float, i)));
+  if (loudest > TINY_VOCA_PEAK)
+    {
+      float scale = (float) (TINY_VOCA_PEAK / loudest);
+      for (guint i = 0; i < out->len; i++)
+        g_array_index (out, float, i) *= scale;
+    }
+  *n = out->len;
+  return (float *) g_array_free (out, FALSE);
+}
+
+gboolean
+dictate_voice_set_gender (DictateVoice *self, const char *gender)
+{
+  gint64 speaker = self->kind != TINY_VOCA ? -1
+                 : !g_strcmp0 (gender, "female") ? self->female : !g_strcmp0 (gender, "male") ? self->male : -1;
+
+  if (speaker < 0)
+    return FALSE;
+  self->speaker = speaker;
+  return TRUE;
+}
+
+/* ---------------- finding a voice ---------------- */
+
+/* the languages tiny-voca speaks, in vibeos-dictate/voices/LANGUAGE/TINY_VOCA_DIR: a Piper voice also there is not
+ * used for them */
+static const char *const TINY_VOCA_LANGUAGES[] = { "ru", NULL };
+#define TINY_VOCA_DIR   "tiny-voca"
+
+gboolean
+dictate_voice_has_genders (const char *language)
+{
+  return language && g_strv_contains (TINY_VOCA_LANGUAGES, language);
+}
+
+/* a tiny-voca voice whole in `dir`: the model, its symbols and its front end's dictionary and models */
+static gboolean
+tiny_voca_whole (const char *dir)
+{
+  static const char *const FILES[] = { "model.onnx", "model.json", "stress.txt.gz", "accent.onnx", "omograph.onnx",
+                                       "omograph_vocab.txt.gz", NULL };
+
+  for (guint i = 0; FILES[i]; i++)
+    {
+      g_autofree char *path = g_build_filename (dir, FILES[i], NULL);
+      if (!g_file_test (path, G_FILE_TEST_IS_REGULAR))
+        return FALSE;
+    }
+  return TRUE;
+}
+
 static gint
 compare_names (gconstpointer a, gconstpointer b)
 {
@@ -589,7 +905,7 @@ compare_names (gconstpointer a, gconstpointer b)
 }
 
 char *
-dictate_voice_find_piper (const char *language)
+dictate_voice_find (const char *language)
 {
   g_autoptr (GPtrArray) dirs = g_ptr_array_new_with_free_func (g_free);
   const char *const *system = g_get_system_data_dirs ();
@@ -601,21 +917,41 @@ dictate_voice_find_piper (const char *language)
     g_ptr_array_add (dirs, g_build_filename (system[i], "vibeos-dictate", "voices", language, NULL));
   for (guint i = 0; i < dirs->len; i++)
     {
-      g_autoptr (GDir) dir = g_dir_open (dirs->pdata[i], 0, NULL);
+      g_autoptr (GDir) dir = NULL;
       g_autoptr (GPtrArray) names = g_ptr_array_new_with_free_func (g_free);
       const char *name;
 
+      if (dictate_voice_has_genders (language))
+        {
+          g_autofree char *tiny_voca = g_build_filename (dirs->pdata[i], TINY_VOCA_DIR, NULL);
+          if (tiny_voca_whole (tiny_voca))
+            return g_build_filename (tiny_voca, "model.onnx", NULL);
+          continue;
+        }
+      dir = g_dir_open (dirs->pdata[i], 0, NULL);
       while (dir && (name = g_dir_read_name (dir)))
-        if (g_str_has_suffix (name, ".onnx"))
-          g_ptr_array_add (names, g_strdup (name));
+        g_ptr_array_add (names, g_strdup (name));
       g_ptr_array_sort (names, compare_names);
       for (guint j = 0; j < names->len; j++)
         {
           g_autofree char *path = g_build_filename (dirs->pdata[i], names->pdata[j], NULL);
           g_autofree char *config = g_strconcat (path, ".json", NULL);
+          g_autofree char *tokenizer = g_build_filename (path, "tokenizer.json", NULL);
 
-          if (g_file_test (path, G_FILE_TEST_IS_REGULAR) && g_file_test (config, G_FILE_TEST_IS_REGULAR))
+          if (g_str_has_suffix (path, ".onnx") && g_file_test (path, G_FILE_TEST_IS_REGULAR) &&
+              g_file_test (config, G_FILE_TEST_IS_REGULAR))
             return g_steal_pointer (&path);
+          if (g_file_test (tokenizer, G_FILE_TEST_IS_REGULAR))
+            {
+              /* the smallest of its precisions that is there: the 8-bit one, else the full one */
+              static const char *const files[] = { "model_quantized.onnx", "model.onnx", NULL };
+              for (guint k = 0; files[k]; k++)
+                {
+                  g_autofree char *model = g_build_filename (path, files[k], NULL);
+                  if (g_file_test (model, G_FILE_TEST_IS_REGULAR))
+                    return g_steal_pointer (&model);
+                }
+            }
         }
     }
   return NULL;
