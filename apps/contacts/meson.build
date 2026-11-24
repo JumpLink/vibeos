@@ -5,6 +5,7 @@ add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers'
                       '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')), language: 'c')
 
 gnome = import('gnome')
+i18n = import('i18n')
 gio = dependency('gio-unix-2.0', version: '>= 2.76')
 ebook = dependency('libebook-1.2')
 m = meson.get_compiler('c').find_library('m')
@@ -15,9 +16,15 @@ datadir = get_option('prefix') / get_option('datadir')
 dialer = include_directories('../dialer/src')
 src = include_directories('src')
 
+# dates in the user's language: libvibeos's vibeos-locale (GLib and ICU only), which the app has from libvibeos and
+# the tests and the seeder, without GTK, build in
+icu = [dependency('icu-i18n'), dependency('icu-uc')]
+locale_inc = include_directories('../../libvibeos')
+locale_src = files('../../libvibeos/vibeos-locale.c')
+
 # the contacts, their vCards and the list's rows: no GTK, so the tests and the seeder link them alone
 core = static_library('contacts-core', 'src/ct-contact.c', 'src/ct-vcard.c', 'src/ct-store.c', 'src/ct-rows.c',
-                      dependencies: [gio, ebook, m])
+                      include_directories: locale_inc, dependencies: [gio, ebook, m, icu])
 
 gtk = dependency('gtk4', version: '>= 4.14')
 resources = gnome.compile_resources('contacts-resources', 'src/contacts.gresource.xml', source_dir: ['src', 'data'])
@@ -26,21 +33,26 @@ executable('vibeos-contacts', 'src/ct-main.c', 'src/ct-window.c', 'src/ct-page.c
            'src/ct-popup.c', 'src/ct-ui.c', 'src/ct-avatar.c', 'src/ct-highlights.c', 'src/ct-organize.c', '../dialer/src/text.c',
            '../dialer/src/phone-number.c', '../dialer/src/avatar.c', resources,
            include_directories: dialer, link_with: core, install: true,
-           dependencies: [gio, ebook, m, gtk, dependency('vibeos-1'), dependency('spongy-gtk-1')])
+           dependencies: [gio, ebook, m, gtk, dependency('vibeos-1'), dependency('spongy-gtk-1'), icu])
 
 unit = configuration_data({'bindir': bindir})
 configure_file(input: 'data/vibeos.Contacts.service.in', output: 'vibeos.Contacts.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/vibeos.Contacts.desktop', install_dir: datadir / 'applications')
+i18n.merge_file(input: 'data/vibeos.Contacts.desktop.in', output: 'vibeos.Contacts.desktop', type: 'desktop', po_dir: 'po',
+                install: true, install_dir: datadir / 'applications')
 install_data('data/vibeos.Contacts.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 install_data('data/vibeos.Contacts.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
+# the translations, and their checks
+subdir('po')
+
 foreach name : ['ct-contact', 'ct-vcard', 'ct-rows']
-  test(name, executable('test-' + name, 'tests/test-' + name + '.c', include_directories: src, link_with: core,
-                        dependencies: [gio, ebook, m]))
+  test(name, executable('test-' + name, 'tests/test-' + name + '.c', locale_src, include_directories: src,
+                        link_with: core, dependencies: [gio, ebook, m, icu]),
+       env: ['LANG=C.UTF-8', 'LANGUAGE=', 'LC_ALL=', 'LC_TIME=', 'LC_MESSAGES='])
 endforeach
 
 # fake contacts for the test rig's private address book (tests/try-contacts.sh); not installed
-executable('ct-seed', 'tests/ct-seed.c', include_directories: src, link_with: core,
-           dependencies: [gio, ebook, m, dependency('gdk-pixbuf-2.0')])
+executable('ct-seed', 'tests/ct-seed.c', locale_src, include_directories: src, link_with: core,
+           dependencies: [gio, ebook, m, icu, dependency('gdk-pixbuf-2.0')])

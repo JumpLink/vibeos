@@ -2,8 +2,8 @@
 #include "ct-contact.h"
 
 #include <glib/gi18n.h>
-#include <locale.h>
 #include <string.h>
+#include <vibeos-locale.h>
 
 /* --- small string helpers */
 
@@ -1477,16 +1477,12 @@ ct_date_format_display (const char *value)
 {
   int year, month, day;
   g_autoptr(GDateTime) date = NULL;
-  const char *locale = setlocale (LC_TIME, NULL);
-  gboolean german = locale && g_str_has_prefix (locale, "de");
 
   if (!ct_date_parse (value, &year, &month, &day))
     return g_strdup (value ? value : "");
   date = g_date_time_new_utc (year > 0 ? year : 2000, month, day, 0, 0, 0);
-  /* the date in full, with the year only when there is one */
-  if (german)
-    return g_date_time_format (date, year > 0 ? "%-d. %B %Y" : "%-d. %B");
-  return g_date_time_format (date, year > 0 ? "%B %-d, %Y" : "%B %-d");
+  /* the date in full, with the year only when there is one: "March 4, 1990", "4. März 1990" */
+  return vibeos_format_date (date, year > 0 ? "yMMMMd" : "MMMMd");
 }
 
 /* --- search */

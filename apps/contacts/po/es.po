@@ -1,0 +1,1220 @@
+# Spanish translations of vibeos-contacts.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-contacts\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Spanish\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# android: Contacts applicationLabel
+#. --- About Contacts: VibeOS's About sheet, as every VibeOS app has it
+#: data/vibeos.Contacts.desktop.in src/ct-people.c src/ct-settings.c
+#: src/ct-window.c
+msgid "Contacts"
+msgstr "Contactos"
+
+#: data/vibeos.Contacts.desktop.in
+msgid "Keep the people you know in one list"
+msgstr ""
+
+#: data/vibeos.Contacts.desktop.in
+msgid "Contacts;People;Address;Book;vCard;Friends;"
+msgstr ""
+
+# android: Framework phoneTypes[1] (several translations, short)
+#. the Device account's spinner
+#: src/ct-contact.c
+msgid "Mobile"
+msgstr "Móvil"
+
+# android: Framework phoneTypes[2] (short)
+#: src/ct-contact.c
+msgid "Work"
+msgstr "Trabajo"
+
+# android: Framework phoneTypes[0] (several translations, short)
+#: src/ct-contact.c
+msgid "Home"
+msgstr "Casa"
+
+# android: Framework phoneTypeMain (short)
+#: src/ct-contact.c
+msgid "Main"
+msgstr "Principal"
+
+# android: Framework phoneTypes[3] (short)
+#: src/ct-contact.c
+msgid "Work Fax"
+msgstr "Fax del trabajo"
+
+# android: Framework phoneTypes[4] (short)
+#: src/ct-contact.c
+msgid "Home Fax"
+msgstr "Fax de casa"
+
+# android: Framework phoneTypes[5] (short)
+#: src/ct-contact.c
+msgid "Pager"
+msgstr "Busca"
+
+# android: Contacts local_invisible_directory (several translations, short)
+#: src/ct-contact.c
+msgid "Other"
+msgstr "Otro"
+
+# android: Contacts label_custom_field (several translations, short)
+#: src/ct-contact.c
+msgid "Custom"
+msgstr "Personalizado"
+
+# android: Framework phoneTypeCallback (short)
+#. the rest of the Device account's list: shown on the card, kept when the row is not edited
+#: src/ct-contact.c
+msgid "Callback"
+msgstr "Devolución de llamada"
+
+# android: Framework phoneTypeCar (short)
+#: src/ct-contact.c
+msgid "Car"
+msgstr "Coche"
+
+# android: Framework phoneTypeCompanyMain (short)
+#: src/ct-contact.c
+msgid "Company Main"
+msgstr "Teléfono principal de la empresa"
+
+# android: Framework phoneTypeIsdn (short)
+#: src/ct-contact.c
+msgid "ISDN"
+msgstr "RDSI"
+
+# android: Framework phoneTypeOtherFax (short)
+#: src/ct-contact.c
+msgid "Other Fax"
+msgstr "Otro fax"
+
+# android: Framework phoneTypeRadio (short)
+#: src/ct-contact.c
+msgid "Radio"
+msgstr "Señal móvil"
+
+# android: Framework phoneTypeTelex (short)
+#: src/ct-contact.c
+msgid "Telex"
+msgstr "Télex"
+
+# android: Framework phoneTypeTtyTdd (short)
+#: src/ct-contact.c
+msgid "TTY TDD"
+msgstr "TTY TDD"
+
+# android: Framework phoneTypeWorkMobile (short)
+#: src/ct-contact.c
+msgid "Work Mobile"
+msgstr "Móvil del trabajo"
+
+# android: Framework phoneTypeWorkPager (short)
+#: src/ct-contact.c
+msgid "Work Pager"
+msgstr "Busca del trabajo"
+
+# android: Framework phoneTypeAssistant (short)
+#: src/ct-contact.c
+msgid "Assistant"
+msgstr "Asistente"
+
+# android: Framework phoneTypeMms (short)
+#: src/ct-contact.c
+msgid "MMS"
+msgstr "MMS"
+
+# android: Framework eventTypeBirthday (short)
+#: src/ct-contact.c
+msgid "Birthday"
+msgstr "Cumpleaños"
+
+# android: Framework eventTypeAnniversary (short)
+#: src/ct-contact.c
+msgid "Anniversary"
+msgstr "Aniversario"
+
+# android: Framework relationTypeBrother (short)
+#: src/ct-contact.c
+msgid "Brother"
+msgstr "Hermano"
+
+# android: Framework relationTypeChild (several translations, short)
+#: src/ct-contact.c
+msgid "Child"
+msgstr "Hijo/a"
+
+# android: Framework relationTypeDomesticPartner (short)
+#: src/ct-contact.c
+msgid "Domestic Partner"
+msgstr "Pareja de hecho"
+
+# android: Framework relationTypeFather (short)
+#: src/ct-contact.c
+msgid "Father"
+msgstr "Padre"
+
+# android: Framework relationTypeFriend (short)
+#: src/ct-contact.c
+msgid "Friend"
+msgstr "Amigo"
+
+# android: Framework relationTypeManager (short)
+#: src/ct-contact.c
+msgid "Manager"
+msgstr "Superior"
+
+# android: Framework relationTypeMother (short)
+#: src/ct-contact.c
+msgid "Mother"
+msgstr "Madre"
+
+# android: Framework relationTypeParent (short)
+#: src/ct-contact.c
+msgid "Parent"
+msgstr "Padre/madre"
+
+# android: Framework relationTypePartner (short)
+#: src/ct-contact.c
+msgid "Partner"
+msgstr "Pareja"
+
+# android: Framework relationTypeReferredBy (short)
+#: src/ct-contact.c
+msgid "Referred by"
+msgstr "Recomendado por"
+
+# android: Framework relationTypeRelative (short)
+#: src/ct-contact.c
+msgid "Relative"
+msgstr "Pariente"
+
+# android: Framework relationTypeSister (short)
+#: src/ct-contact.c
+msgid "Sister"
+msgstr "Hermana"
+
+# android: Framework relationTypeSpouse (short)
+#: src/ct-contact.c
+msgid "Spouse"
+msgstr "Cónyuge"
+
+# android: Framework imProtocols[0] (short)
+#: src/ct-contact.c
+msgid "AIM"
+msgstr "AIM"
+
+# android: Framework imProtocols[1] (short)
+#: src/ct-contact.c
+msgid "Windows Live"
+msgstr "Windows Live"
+
+# android: Framework imProtocols[2] (short)
+#: src/ct-contact.c
+msgid "Yahoo"
+msgstr "Yahoo!"
+
+# android: Framework imProtocols[3] (short)
+#: src/ct-contact.c
+msgid "Skype"
+msgstr "Skype"
+
+# android: Framework imProtocols[4] (short)
+#: src/ct-contact.c
+msgid "QQ"
+msgstr "QQ"
+
+# android: Framework imProtocolGoogleTalk (short)
+#: src/ct-contact.c
+msgid "Hangouts"
+msgstr "Hangouts"
+
+# android: Framework imProtocols[6] (short)
+#: src/ct-contact.c
+msgid "ICQ"
+msgstr "ICQ"
+
+# android: Framework imProtocols[7] (short)
+#: src/ct-contact.c
+msgid "Jabber"
+msgstr "Jabber"
+
+# android: Framework imProtocolNetMeeting (short)
+#: src/ct-contact.c
+msgid "NetMeeting"
+msgstr "NetMeeting"
+
+#: src/ct-contact.c
+msgid "Gadu-Gadu"
+msgstr ""
+
+#: src/ct-contact.c
+msgid "GroupWise"
+msgstr ""
+
+#: src/ct-contact.c
+msgid "Matrix"
+msgstr ""
+
+# android: Contacts cancel_button_content_description
+#. the toolbar: ✕ "Cancel", the title, SAVE flush with the end
+#: src/ct-dialogs.c src/ct-editor.c
+msgid "Cancel"
+msgstr "Cancelar"
+
+# android: Framework httpErrorOk (several translations, short)
+#: src/ct-dialogs.c src/ct-main.c src/ct-people.c src/ct-settings.c
+msgid "OK"
+msgstr "Aceptar"
+
+#. Translators: the order of the date picker's wheels: M month, D day, Y year (German: DMY)
+#: src/ct-dialogs.c
+msgid "MDY"
+msgstr ""
+
+# android: Contacts date_year_toggle
+#: src/ct-dialogs.c
+msgid "Include year"
+msgstr "Incluir año"
+
+# android: Contacts date_time_set
+#: src/ct-dialogs.c
+msgid "Set"
+msgstr "Establecer"
+
+# android: Contacts header_name_entry
+#: src/ct-editor.c
+msgid "Name"
+msgstr "Nombre"
+
+# android: Contacts header_nickname_entry
+#: src/ct-editor.c src/ct-quick.c
+msgid "Nickname"
+msgstr "Apodo"
+
+# android: Contacts ghostData_company
+#: src/ct-editor.c
+msgid "Company"
+msgstr "Empresa"
+
+# android: Contacts ghostData_department
+#: src/ct-editor.c
+msgid "Department"
+msgstr "Departamento"
+
+# android: Contacts ghostData_title (several translations, short)
+#: src/ct-editor.c
+msgid "Title"
+msgstr "Cargo"
+
+# android: Contacts header_phone_entry
+#: src/ct-editor.c
+msgid "Phone"
+msgstr "Teléfono"
+
+# android: Contacts header_email_entry (several translations, short)
+#: src/ct-editor.c
+msgid "Email"
+msgstr "Correo electrónico"
+
+# android: Contacts postalLabelsGroup
+#: src/ct-editor.c
+msgid "Address"
+msgstr "Dirección"
+
+# android: Contacts header_website_entry (several translations, short)
+#: src/ct-editor.c src/ct-quick.c
+msgid "Website"
+msgstr "Sitio web"
+
+# android: Contacts header_event_entry
+#: src/ct-editor.c src/ct-quick.c
+msgid "Event"
+msgstr "Evento"
+
+# android: Contacts relationLabelsGroup
+#: src/ct-editor.c
+msgid "Relationship"
+msgstr "Relación"
+
+# android: Contacts label_notes
+#: src/ct-editor.c
+msgid "Notes"
+msgstr "Notas"
+
+# android: Contacts menu_title_groups
+#: src/ct-editor.c src/ct-organize.c src/ct-people.c
+msgid "Labels"
+msgstr "Etiquetas"
+
+# android: Contacts event_edit_field_hint_text
+#: src/ct-editor.c
+msgid "Date"
+msgstr "Fecha"
+
+# android: Contacts customLabelPickerTitle
+#: src/ct-editor.c
+msgid "Custom label name"
+msgstr "Nombre del campo personalizado"
+
+# android: Contacts group_name_dialog_hint (several translations, short)
+#: src/ct-editor.c src/ct-people.c
+msgid "Label name"
+msgstr "Nombre de etiqueta"
+
+# android: Contacts description_minus_button
+#: src/ct-editor.c
+msgid "delete"
+msgstr "eliminar"
+
+# android: Contacts editor_delete_view_description
+#: src/ct-editor.c
+#, c-format
+msgid "Delete %1$s %2$s"
+msgstr "Eliminar %1$s %2$s"
+
+# android: Contacts editor_delete_view_description_short
+#: src/ct-editor.c
+#, c-format
+msgid "Delete %s"
+msgstr "Eliminar %s"
+
+# android: Contacts name_prefix
+#: src/ct-editor.c
+msgid "Name prefix"
+msgstr "Prefijo del nombre"
+
+# android: Contacts name_given
+#: src/ct-editor.c src/ct-settings.c
+msgid "First name"
+msgstr "Nombre"
+
+# android: Contacts name_middle
+#: src/ct-editor.c
+msgid "Middle name"
+msgstr "Segundo nombre"
+
+# android: Contacts name_family
+#: src/ct-editor.c src/ct-settings.c
+msgid "Last name"
+msgstr "Apellidos"
+
+# android: Contacts name_suffix
+#: src/ct-editor.c
+msgid "Name suffix"
+msgstr "Sufijo del nombre"
+
+# android: Contacts collapse_name_fields_description
+#: src/ct-editor.c
+msgid "Collapse name fields"
+msgstr "Ocultar los campos de nombre"
+
+# android: Contacts expand_name_fields_description
+#. the chevron, beside the first field (gravity top)
+#: src/ct-editor.c
+msgid "Show more name fields"
+msgstr "Mostrar más campos de nombre"
+
+# android: Contacts name_phonetic_family
+#: src/ct-editor.c
+msgid "Phonetic last name"
+msgstr "Apellido fonético"
+
+# android: Contacts name_phonetic_middle
+#: src/ct-editor.c
+msgid "Phonetic middle name"
+msgstr "Segundo nombre fonético"
+
+# android: Contacts name_phonetic_given
+#: src/ct-editor.c
+msgid "Phonetic first name"
+msgstr "Nombre fonético"
+
+# android: DeskClock label (other app, several translations, short)
+#: src/ct-editor.c
+msgid "Label"
+msgstr "Nombre"
+
+# android: Contacts groupExistsErrorMessage
+#: src/ct-editor.c src/ct-people.c
+msgid "That label already exists"
+msgstr "Esta etiqueta ya existe"
+
+# android: Contacts menu_new_group_action_bar
+#: src/ct-editor.c src/ct-people.c
+msgid "Create label"
+msgstr "Crear etiqueta"
+
+# android: Contacts create_group_item_label
+#: src/ct-editor.c
+msgid "Create new…"
+msgstr "Crear…"
+
+# android: Contacts editor_change_photo_content_description
+#: src/ct-editor.c
+msgid "Change contact photo"
+msgstr "Cambiar la foto del contacto"
+
+# android: Contacts editor_add_photo_content_description
+#: src/ct-editor.c
+msgid "Add contact photo"
+msgstr "Añadir una foto del contacto"
+
+# android: Contacts contactPhotoSavedErrorToast
+#: src/ct-editor.c
+msgid "Couldn't save contact photo changes"
+msgstr "No se han podido guardar los cambios en la foto del contacto"
+
+# android: Settings storage_images (other app, short)
+#: src/ct-editor.c
+msgid "Images"
+msgstr "Imágenes"
+
+# android: Contacts pick_photo
+#: src/ct-editor.c
+msgid "Choose photo"
+msgstr "Elegir foto"
+
+# android: Contacts removePhoto
+#: src/ct-editor.c
+msgid "Remove photo"
+msgstr "Eliminar foto"
+
+# android: Contacts pick_new_photo
+#: src/ct-editor.c
+msgid "Select new photo"
+msgstr "Seleccionar nueva foto"
+
+# android: Contacts menu_change_photo
+#: src/ct-editor.c
+msgid "Change photo"
+msgstr "Cambiar foto"
+
+# android: Contacts local_profile_title
+#: src/ct-editor.c
+msgid "My local profile"
+msgstr "Mi perfil local"
+
+# android: Contacts account_phone
+#. the phone's own book is the Device account
+#: src/ct-editor.c src/ct-store.c
+msgid "Device"
+msgstr "Dispositivo"
+
+# android: Contacts editor_account_selector_title
+#: src/ct-editor.c
+msgid "Saving to"
+msgstr "Se guardará en"
+
+# android: Contacts toast_text_copied (several translations, short)
+#: src/ct-editor.c src/ct-quick.c
+msgid "Text copied"
+msgstr "Texto copiado"
+
+# android: Contacts editor_uneditable_section_title
+#: src/ct-editor.c
+msgid "Can’t update this info"
+msgstr "Esta información no se puede actualizar"
+
+# android: Contacts contactSavedErrorToast
+#: src/ct-editor.c
+msgid "Couldn't save contact changes"
+msgstr "No se han podido guardar los cambios en el contacto"
+
+# android: Contacts contactSavedNamedToast
+#. "%s saved", or "Contact saved" without a name
+#: src/ct-editor.c
+#, c-format
+msgid "%s saved"
+msgstr "Se ha guardado %s"
+
+# android: Contacts contactSavedToast
+#: src/ct-editor.c
+msgid "Contact saved"
+msgstr "Contacto guardado"
+
+# android: Contacts cancel_confirmation_dialog_message
+#: src/ct-editor.c
+msgid "Discard changes?"
+msgstr "¿Descartar cambios?"
+
+# android: Contacts cancel_confirmation_dialog_cancel_editing_button
+#: src/ct-editor.c
+msgid "Discard"
+msgstr "Descartar"
+
+# android: Contacts editor_failed_to_load
+#: src/ct-editor.c src/ct-main.c
+msgid "Failed to open editor."
+msgstr "No se ha podido abrir el editor."
+
+# android: Contacts header_entry_contact_list_adapter_header_title (several translations)
+#: src/ct-editor.c src/ct-picker.c
+msgid "Create new contact"
+msgstr "Crear contacto"
+
+# android: Contacts contact_editor_title_existing_contact
+#: src/ct-editor.c
+msgid "Edit contact"
+msgstr "Editar contacto"
+
+# android: Contacts menu_save
+#: src/ct-editor.c src/ct-settings.c
+msgid "Save"
+msgstr "Guardar"
+
+# android: Contacts editor_more_fields
+#. "More fields", in line with the fields
+#: src/ct-editor.c
+msgid "More fields"
+msgstr "Más campos"
+
+# android: Contacts missing_name
+#: src/ct-highlights.c src/ct-people.c src/ct-quick.c src/ct-settings.c
+msgid "(No name)"
+msgstr "(Sin nombre)"
+
+#: src/ct-highlights.c
+msgid "Add favorites"
+msgstr ""
+
+#: src/ct-highlights.c
+msgid "Clear recents"
+msgstr ""
+
+#: src/ct-highlights.c
+msgid "Birthday today"
+msgstr ""
+
+#: src/ct-highlights.c
+msgid "Birthday tomorrow"
+msgstr ""
+
+#: src/ct-highlights.c
+#, c-format
+msgid "Birthday on %s"
+msgstr ""
+
+# android: Contacts menu_add_contacts
+#: src/ct-highlights.c src/ct-picker.c
+msgid "Add"
+msgstr "Añadir"
+
+# android: Dialer description_dialpad_overflow (short)
+#: src/ct-highlights.c src/ct-people.c src/ct-picker.c src/ct-quick.c
+msgid "More options"
+msgstr "Más opciones"
+
+# android: Contacts contactsFavoritesLabel
+#: src/ct-highlights.c src/ct-list.c
+msgid "Favorites"
+msgstr "Favoritos"
+
+#: src/ct-highlights.c
+msgid "Add favorites to see them here"
+msgstr ""
+
+#: src/ct-highlights.c
+msgid "For you"
+msgstr ""
+
+# android: Settings navbar_recent_button (other app, short)
+#: src/ct-highlights.c
+msgid "Recents"
+msgstr "Recientes"
+
+# android: Contacts import_from_vcf_file_confirmation_message
+#: src/ct-main.c
+msgid "Import contacts from vCard?"
+msgstr "¿Importar contactos de vCard?"
+
+# android: Contacts contactPickerActivityTitle
+#: src/ct-main.c
+msgid "Choose a contact"
+msgstr "Elige un contacto"
+
+#. the address books, each with how many contacts it has; a tap shows only those
+#. the address books, each with how many it has; a tap shows only its people
+#: src/ct-organize.c src/ct-people.c
+msgid "Address books"
+msgstr ""
+
+#. what can be done with them
+#: src/ct-organize.c
+msgid "Manage contacts"
+msgstr ""
+
+#: src/ct-organize.c
+msgid "Import from file"
+msgstr ""
+
+#: src/ct-organize.c
+msgid "Add contacts from a .vcf file"
+msgstr ""
+
+#: src/ct-organize.c
+msgid "Export to file"
+msgstr ""
+
+#: src/ct-organize.c
+msgid "Save your contacts as a .vcf file"
+msgstr ""
+
+#: src/ct-organize.c
+#, c-format
+msgid "%u label"
+msgid_plural "%u labels"
+msgstr[0] ""
+msgstr[1] ""
+
+# android: Settings zen_mode_from_contacts_settings (other app, short)
+#: src/ct-organize.c src/ct-people.c
+msgid "Contacts settings"
+msgstr "Ajustes de contactos"
+
+#: src/ct-people.c
+msgid "Create contact"
+msgstr ""
+
+# android: Contacts emptyGroup
+#: src/ct-people.c
+msgid "No contacts with this label"
+msgstr "No hay ningún contacto con esta etiqueta"
+
+# android: Contacts menu_addContactsToGroup
+#: src/ct-people.c
+msgid "Add contacts"
+msgstr "Añadir contactos"
+
+#: src/ct-people.c
+msgid "No contacts here"
+msgstr ""
+
+#: src/ct-people.c
+msgid "No contacts yet"
+msgstr ""
+
+# android: Contacts menu_editGroup
+#: src/ct-people.c
+msgid "Remove contacts"
+msgstr "Quitar contactos"
+
+# android: Contacts separatorJoinAggregateAll
+#: src/ct-people.c src/ct-settings.c
+msgid "All contacts"
+msgstr "Todos los contactos"
+
+# android: Contacts set_up_profile
+#: src/ct-people.c src/ct-settings.c
+msgid "Set up your profile"
+msgstr "Configura tu perfil"
+
+#: src/ct-people.c
+msgid "Your info"
+msgstr ""
+
+# android: Contacts contacts_unavailable_import_contacts
+#: src/ct-people.c src/ct-settings.c
+msgid "Import"
+msgstr "Importar"
+
+#: src/ct-people.c
+msgid "From a .vcf file"
+msgstr ""
+
+# android: Contacts menu_export
+#: src/ct-people.c src/ct-settings.c
+msgid "Export"
+msgstr "Exportar"
+
+#: src/ct-people.c
+msgid "To a .vcf file"
+msgstr ""
+
+#: src/ct-people.c src/ct-quick.c
+msgid "About"
+msgstr ""
+
+#: src/ct-people.c
+msgid "Contacts to show"
+msgstr ""
+
+# android: Contacts title_share_via
+#: src/ct-people.c src/ct-quick.c
+msgid "Share contact via"
+msgid_plural "Share contacts via"
+msgstr[0] "Compartir contacto a través de"
+msgstr[1] "Compartir contactos a través de"
+
+# android: Contacts menu_share
+#: src/ct-people.c src/ct-quick.c
+msgid "Share"
+msgstr "Compartir"
+
+# android: Contacts searchHint
+#: src/ct-people.c src/ct-picker.c
+msgid "Search contacts"
+msgstr "Buscar contactos"
+
+#: src/ct-people.c
+msgid "Account and settings"
+msgstr ""
+
+#: src/ct-people.c
+msgid "View labels"
+msgstr ""
+
+#: src/ct-people.c
+msgid "Show list filters"
+msgstr ""
+
+#: src/ct-people.c
+msgid "Phone contacts"
+msgstr ""
+
+#: src/ct-people.c
+msgid "Email contacts"
+msgstr ""
+
+# android: SystemUI clear_all_notifications_text (other app, short)
+#: src/ct-people.c
+msgid "Clear all"
+msgstr "Borrar todo"
+
+#: src/ct-people.c
+msgid "Recent contacts"
+msgstr ""
+
+#: src/ct-people.c
+msgid "No contacts found"
+msgstr ""
+
+# android: Contacts contacts_deleted_toast
+#: src/ct-people.c
+msgid "Contact deleted"
+msgid_plural "Contacts deleted"
+msgstr[0] "Contacto eliminado"
+msgstr[1] "Contactos eliminados"
+
+# android: Contacts batch_delete_confirmation
+#: src/ct-people.c
+msgid "Delete selected contacts?"
+msgstr "¿Eliminar contactos seleccionados?"
+
+# android: Contacts menu_deleteContact (several translations, short)
+#: src/ct-people.c src/ct-quick.c
+msgid "Delete"
+msgstr "Eliminar"
+
+# android: Contacts groupMembersAddedToast
+#: src/ct-people.c
+msgid "Added to label"
+msgstr "Añadido a la etiqueta"
+
+# android: Contacts groupMemberPickerActivityTitle
+#: src/ct-people.c
+msgid "Select"
+msgstr "Seleccionar"
+
+# android: Contacts groupSomeContactsNoEmailsToast
+#: src/ct-people.c
+msgid "Some contacts do not have emails."
+msgstr "Algunos contactos no tienen correo electrónico."
+
+# android: Contacts groupSomeContactsNoPhonesToast
+#: src/ct-people.c
+msgid "Some contacts do not have phone numbers."
+msgstr "Algunos contactos no tienen número de teléfono."
+
+# android: Contacts missing_app
+#: src/ct-people.c src/ct-quick.c
+msgid "No app was found to handle this action."
+msgstr "No se ha detectado ninguna aplicación que pueda hacer esta acción."
+
+# android: Contacts groupUpdatedToast
+#: src/ct-people.c
+msgid "Label updated"
+msgstr "Etiqueta actualizada"
+
+# android: Contacts groupDeletedToast
+#: src/ct-people.c
+msgid "Label deleted"
+msgstr "Etiqueta eliminada"
+
+# android: Contacts undo
+#: src/ct-people.c
+msgid "Undo"
+msgstr "Deshacer"
+
+# android: Contacts delete_group_dialog_message
+#: src/ct-people.c
+#, c-format
+msgid "Delete the label \"%s\"? (Contacts themselves will not be deleted.)"
+msgstr "¿Seguro que quieres eliminar la etiqueta \"%s\"? Los contactos no se eliminarán."
+
+# android: Contacts groupMembersRemovedToast
+#: src/ct-people.c
+msgid "Removed from label"
+msgstr "Eliminado(s) de la etiqueta"
+
+# android: Contacts menu_renameGroup
+#: src/ct-people.c
+msgid "Rename label"
+msgstr "Cambiar nombre de etiqueta"
+
+# android: Contacts menu_sendEmailOption
+#: src/ct-people.c
+msgid "Send email"
+msgstr "Enviar correo electrónico"
+
+# android: Contacts menu_sendMessageOption
+#: src/ct-people.c
+msgid "Send message"
+msgstr "Enviar mensaje"
+
+# android: Contacts menu_deleteGroup
+#: src/ct-people.c
+msgid "Delete label"
+msgstr "Eliminar etiqueta"
+
+# android: Contacts menu_removeFromGroup
+#: src/ct-people.c
+msgid "Remove from label"
+msgstr "Eliminar de la etiqueta"
+
+# android: Contacts groupCreatedToast
+#: src/ct-people.c
+msgid "Label created"
+msgstr "Etiqueta creada"
+
+# android: Contacts menu_selectForGroup
+#: src/ct-picker.c
+msgid "Select contacts"
+msgstr "Seleccionar contactos"
+
+# android: Contacts back_arrow_content_description (several translations, short)
+#: src/ct-picker.c src/ct-settings.c
+msgid "Back"
+msgstr "Atrás"
+
+# android: Contacts action_menu_back_from_search
+#: src/ct-picker.c
+msgid "stop searching"
+msgstr "dejar de buscar"
+
+# android: Contacts description_clear_search (several translations, short)
+#: src/ct-picker.c
+msgid "Clear search"
+msgstr "Borrar la búsqueda"
+
+# android: Contacts action_menu_back_from_edit_select
+#: src/ct-picker.c
+msgid "close"
+msgstr "cerrar"
+
+# android: Contacts listFoundAllContactsZero
+#. nobody left to offer: the list's own "No contacts"
+#: src/ct-picker.c
+msgid "No contacts"
+msgstr "No hay contactos"
+
+# android: Contacts copy_text (several translations)
+#: src/ct-quick.c
+msgid "Copy to clipboard"
+msgstr "Copiar en el portapapeles"
+
+# android: Contacts clear_default
+#: src/ct-quick.c
+msgid "Clear default"
+msgstr "Borrar predeterminado"
+
+# android: Contacts set_default (several translations, short)
+#: src/ct-quick.c
+msgid "Set default"
+msgstr "Elegir como predeterminado"
+
+# android: Contacts sms_custom (several translations)
+#: src/ct-quick.c
+#, c-format
+msgid "Text %s"
+msgstr "Enviar un SMS a: %s"
+
+# android: Contacts quickcontact_add_phone_number
+#: src/ct-quick.c
+msgid "Add phone number"
+msgstr "Añadir número de teléfono"
+
+# android: Contacts quickcontact_add_email
+#: src/ct-quick.c
+msgid "Add email"
+msgstr "Añadir correo electrónico"
+
+# android: Contacts header_organization_entry
+#: src/ct-quick.c
+msgid "Organization"
+msgstr "Organización"
+
+# android: Contacts header_relation_entry
+#: src/ct-quick.c
+msgid "Relation"
+msgstr "Relación"
+
+# android: Contacts header_im_entry (several translations, short)
+#: src/ct-quick.c
+msgid "IM"
+msgstr "MI"
+
+# android: Contacts header_note_entry
+#: src/ct-quick.c
+msgid "Note"
+msgstr "Nota"
+
+# android: Contacts menu_removeStar (several translations)
+#: src/ct-quick.c
+msgid "Remove from favorites"
+msgstr "Eliminar de Favoritos"
+
+# android: Contacts menu_addStar (several translations)
+#: src/ct-quick.c
+msgid "Add to favorites"
+msgstr "Añadir a Favoritos"
+
+# android: Contacts contacts_deleted_one_named_toast (several translations)
+#: src/ct-quick.c
+#, c-format
+msgid "%s deleted"
+msgstr "Se ha eliminado a %s"
+
+# android: Contacts single_delete_confirmation
+#: src/ct-quick.c
+msgid "Delete this contact?"
+msgstr "¿Eliminar este contacto?"
+
+# android: Contacts menu_editContact (several translations, short)
+#: src/ct-quick.c
+msgid "Edit"
+msgstr "Editar"
+
+# android: Contacts invalidContactMessage
+#: src/ct-quick.c
+msgid "The contact doesn't exist."
+msgstr "Este contacto no existe."
+
+# android: Contacts listCustomView
+#: src/ct-settings.c
+msgid "Customized view"
+msgstr "Vista personalizada"
+
+# android: Contacts display_options_view_given_name_first
+#: src/ct-settings.c
+msgid "First name first"
+msgstr "Nombre primero"
+
+# android: Contacts display_options_view_family_name_first
+#: src/ct-settings.c
+msgid "Last name first"
+msgstr "Apellidos primero"
+
+# android: Contacts editor_options_always_show_phonetic_names
+#: src/ct-settings.c
+msgid "Always show"
+msgstr "Mostrar siempre"
+
+# android: Contacts editor_options_hide_phonetic_names_if_empty
+#: src/ct-settings.c
+msgid "Hide if empty"
+msgstr "Ocultar si está vacío"
+
+# android: Contacts default_editor_account
+#: src/ct-settings.c
+msgid "Default account for new contacts"
+msgstr "Cuenta por defecto para nuevos contactos"
+
+# android: Contacts display_options_sort_list_by
+#: src/ct-settings.c
+msgid "Sort by"
+msgstr "Ordenar por"
+
+# android: Contacts display_options_view_names_as
+#: src/ct-settings.c
+msgid "Name format"
+msgstr "Formato de nombre"
+
+# android: Contacts name_phonetic
+#: src/ct-settings.c
+msgid "Phonetic name"
+msgstr "Nombre fonético"
+
+#: src/ct-settings.c
+msgid "vCard"
+msgstr ""
+
+# android: Contacts dialog_new_contact_account
+#: src/ct-settings.c
+msgid "Save imported contacts to:"
+msgstr "Guardar contactos importados en:"
+
+# android: Contacts import_from_vcf_file
+#: src/ct-settings.c
+msgid ".vcf file"
+msgstr "Archivo .vcf"
+
+# android: Contacts dialog_import
+#: src/ct-settings.c
+msgid "Import contacts from"
+msgstr "Importar contactos de"
+
+# android: Contacts dialog_export
+#: src/ct-settings.c
+msgid "Export contacts"
+msgstr "Exportar contactos"
+
+# android: Contacts export_to_vcf_file
+#: src/ct-settings.c
+msgid "Export to .vcf file"
+msgstr "Exportar a archivo .vcf"
+
+# android: Contacts activity_title_settings
+#: src/ct-settings.c
+msgid "Settings"
+msgstr "Ajustes"
+
+# android: Contacts settings_my_info_title
+#: src/ct-settings.c
+msgid "My info"
+msgstr "Mi información"
+
+# android: Contacts menu_title_filters
+#: src/ct-settings.c
+msgid "Accounts"
+msgstr "Cuentas"
+
+# android: Contacts menu_contacts_filter
+#: src/ct-settings.c
+msgid "Contacts to display"
+msgstr "Contactos que mostrar"
+
+# android: Contacts setting_about
+#: src/ct-settings.c
+msgid "About Contacts"
+msgstr "Información sobre Contactos"
+
+# android: Contacts leave_customize_confirmation_dialog_message
+#: src/ct-settings.c
+msgid "Discard customizations?"
+msgstr "¿Descartar las personalizaciones?"
+
+# android: Contacts custom_list_filter
+#: src/ct-settings.c
+msgid "Customize view"
+msgstr "Personalizar vista"
+
+# android: Contacts list_filter_customize
+#: src/ct-settings.c
+msgid "Customize"
+msgstr "Personalizar"
+
+# android: Contacts vcard_import_failed
+#. nothing in the file is a vCard
+#: src/ct-settings.c
+msgid "Couldn't import vCard."
+msgstr "Error al importar el archivo vCard"
+
+# android: Contacts importing_vcard_finished_title
+#: src/ct-settings.c
+#, c-format
+msgid "Finished importing vCard %s"
+msgstr "Importación de %s de vCard finalizada"
+
+# android: Contacts reading_vcard_failed_title
+#: src/ct-settings.c
+msgid "Couldn't read vCard data"
+msgstr "No se han podido leer los datos de la vCard."
+
+# android: Contacts vcard_import_will_start_message
+#. a long toast
+#: src/ct-settings.c
+#, c-format
+msgid "%s will be imported shortly."
+msgstr "%s se importará en breve."
+
+# android: Contacts exporting_contact_failed_title
+#: src/ct-settings.c
+msgid "Couldn't export"
+msgstr "Error al exportar"
+
+# android: Contacts exporting_vcard_finished_title
+#: src/ct-settings.c
+#, c-format
+msgid "Finished exporting %s."
+msgstr "Exportación de %s finalizada"
+
+# android: Contacts no_contact_to_share
+#: src/ct-settings.c
+msgid "There are no contacts to share."
+msgstr "No hay contactos que compartir."
+
+#: src/ct-store.c
+msgid "The address book is not available"
+msgstr ""
+
+#: src/ct-ui.c
+#, c-format
+msgid "%u contact · %s"
+msgid_plural "%u contacts · %s"
+msgstr[0] ""
+msgstr[1] ""
+
+# android: Contacts contacts_count
+#: src/ct-ui.c
+#, c-format
+msgid "%u contact"
+msgid_plural "%u contacts"
+msgstr[0] "%u contacto"
+msgstr[1] "%u contactos"
+
+# android: Dialer notification_missedCall_message (short)
+#: src/ct-window.c
+msgid "Message"
+msgstr "Mensaje"
+
+# android: SystemUI notification_section_header_highlights (other app, short)
+#: src/ct-window.c
+msgid "Highlights"
+msgstr "Destacadas"
+
+#: src/ct-window.c
+msgid "Organize"
+msgstr ""
+
+#: src/ct-window.c
+msgid "Pick a contact to see it here"
+msgstr ""
+
+# android: Dialer private_num_non_verizon (short)
+#: ../dialer/src/phone-number.c
+msgid "Private number"
+msgstr "Número privado"
+
+# android: Dialer new_call_log_unknown (several translations, short)
+#: ../dialer/src/phone-number.c
+msgid "Unknown"
+msgstr "Desconocido"
+
+# android: Dialer payphone (short)
+#: ../dialer/src/phone-number.c
+msgid "Payphone"
+msgstr "Teléfono público"
