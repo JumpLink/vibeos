@@ -1,10 +1,9 @@
 [Desktop Entry]
 Type=Application
-Name=Agent
-Comment=Says who is calling, while Announce calls is on in Agent's settings
+Name=Vibe
+Comment=Says who is calling, while Announce calls is on in Vibe's settings
 Exec=vibeos-dictate --agent --background
 Icon=vibeos.Agent
 Terminal=false
 NoDisplay=true
 X-GNOME-AutostartCondition=GSettings vibeos.Dictate announce-calls
-X-GNOME-Autostart-Phase=Applications

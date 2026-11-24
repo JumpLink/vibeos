@@ -21,7 +21,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {BackProbe} from './a11y.js';
 import {BackPanelController} from './backpanel.js';
-import {dismissKeyboard} from './keyboard/keyboard.js';
+import {dismissKeyboard, keyboardShown} from './keyboard/keyboard.js';
 import {cubic, openerOf} from './launch.js';
 import {Animator} from './motion.js';
 import {overWindows} from './scanout.js';
@@ -297,7 +297,8 @@ export class EdgeBack {
         const nav = this._nav;
         const focus = global.display.focus_window;
         const launcher = !focus || nav.home.isHome(focus);
-        if (Main.keyboard.visible)
+        // (a keyboard left on the screen closed too: Back takes it away)
+        if (keyboardShown())
             return {kind: 'keyboard', launcher};
         if (nav.recentsShown)
             return {kind: 'recents'};

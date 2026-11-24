@@ -75,10 +75,12 @@ gzip -9n < "$maplibre_src/LICENSES.core.md" > "$p/usr/share/doc/vibeos-navi/LICE
 cp "$pkgdir/control" "$work/debian/control"
 cp "$pkgdir/shlibs.local" "$work/debian/shlibs.local"
 subject=$(git -C "$srcdir" log -1 --format=%s)
+# the entry wrapped as Debian's changelog lines are (at most 80 columns), the subject being as long as it is
+entry=$(printf 'Built from VibeOS commit %s ("%s").\n' "$commit" "$subject" | fold -s -w 74 | sed -e 's/ *$//' -e '1s/^/  * /' -e '2,$s/^/    /')
 cat > "$work/debian/changelog" <<EOF
 vibeos-navi ($version) unstable; urgency=medium
 
-  * Built from VibeOS commit $commit ("$subject").
+$entry
 
  -- pulpoff <pashkovsky@gmail.com>  $(date -R)
 EOF

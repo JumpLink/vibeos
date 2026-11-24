@@ -48,7 +48,7 @@ const MAX_ICONS = 6;
 const BATTERY_CENTRE_Y = 2099;
 const BATTERY_ROW_H = 60;               // the icon's height; the label is centred on it
 const GREY = '#8a8a8a';
-const ICON_OPACITY = 0x8a;              // white icons over black: #8a8a8a
+const ICON_OPACITY = 0x8a;              // white icons over black: #8a8a8a; an app's logo in greys as dim
 
 // --- the panel
 
@@ -373,7 +373,7 @@ class Aod extends St.BoxLayout {
             if (!source.notifications.length || !source.policy.showInLockScreen || !key || seen.has(key))
                 continue;
             seen.add(key);
-            const icon = notificationIcon(source, 24);
+            const icon = notificationIcon(source, 24, {grey: true});
             icon.opacity = ICON_OPACITY;
             this._icons.add_child(icon);
         }

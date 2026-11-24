@@ -84,7 +84,7 @@ typedef struct {
   guint ringing;                /* the call being announced, while it rings */
   gboolean announcing;          /* the announcement is being said: then Agent listens for the answer */
   gboolean answer_listening;    /* and listens for it */
-  gboolean held;                /* listening while the power key is held (dictate_window_hold) */
+  gboolean held;                /* the power key is held (dictate_window_hold): no pause ends the turn */
   gboolean hold_turn;           /* the last turn was the power key's: no listening again after the reply */
   GCancellable *caller;         /* the caller being looked up */
 } Window;
@@ -568,9 +568,10 @@ talk_send (Window *self)
   dictate_talk_ask (self->talk, dictate_engine_get_language (self->engine), said);
 }
 
-/* listening: for a turn whose end is found in what is said (`turns`), or until it is stopped (the power key held) */
+/* listening for a turn, whose end is found in what is said: a tap's on the microphone, or the power key's, which no
+ * pause ends while the key is held (dictate_window_hold) */
 static void
-talk_listen_for (Window *self, gboolean turns)
+talk_listen (Window *self)
 {
   g_autofree char *reason = NULL;
 
@@ -590,15 +591,10 @@ talk_listen_for (Window *self, gboolean turns)
     self->mine = talk_bubble (self, TRUE, "…");
   /* the cue plays while the microphone opens: it is over before the first words are heard */
   dictate_cue_play (self->settings, DICTATE_CUE_LISTENING);
-  self->hold_turn = !turns;
-  dictate_engine_set_turns (self->engine, turns);
+  self->hold_turn = FALSE;
+  dictate_engine_set_turns (self->engine, TRUE);
+  dictate_engine_set_held (self->engine, self->held);
   dictate_engine_start (self->engine);
-}
-
-static void
-talk_listen (Window *self)
-{
-  talk_listen_for (self, TRUE);
 }
 
 static void
@@ -996,17 +992,41 @@ dictate_window_hold (GtkWidget *window, gboolean held, gboolean locked)
         }
       self->held = TRUE;
       self->drop_when_idle = FALSE;
+      /* listening at once, as after a tap on the microphone (a turn already under way is held on) */
+      dictate_engine_set_held (self->engine, TRUE);
       if (state == DICTATE_IDLE)
-        talk_listen_for (self, FALSE);
-      else
-        self->hold_turn = TRUE;
+        talk_listen (self);
+      self->hold_turn = TRUE;
     }
   else if (self->held)
     {
-      /* let go: what was said goes to the model */
+      /* Let go: Agent listens on until the speaker pauses (at once if they have), then what was said goes to the
+       * model, as Android's assistant listens on after its long press. The key is mostly let go before the first
+       * word: stopping here ended those turns with nothing heard, the microphone off. */
       self->held = FALSE;
-      if (state == DICTATE_STARTING || state == DICTATE_LISTENING)
-        dictate_engine_stop (self->engine);
+      dictate_engine_set_held (self->engine, FALSE);
+    }
+  show_state (self);
+  maybe_close (self);
+}
+
+void
+dictate_window_hold_cancel (GtkWidget *window)
+{
+  Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
+  DictateState state;
+
+  if (!self || !self->talk || !self->held)
+    return;
+  g_message ("window: the power key's hold is given up: nothing is sent");
+  self->held = FALSE;
+  dictate_engine_set_held (self->engine, FALSE);
+  state = dictate_engine_get_state (self->engine);
+  /* what was heard goes, as when the microphone is stopped while listening */
+  if (state == DICTATE_STARTING || state == DICTATE_LISTENING)
+    {
+      self->drop_when_idle = TRUE;
+      dictate_engine_stop (self->engine);
     }
   show_state (self);
   maybe_close (self);
@@ -1180,7 +1200,7 @@ on_clear (VibeosPressable *button, Window *self)
 
   dialog = vibeos_dialog_new (self->talking ? _("Clear the conversation?") : _("Clear the text?"));
 
-  vibeos_dialog_set_message (dialog, self->talking ? _("All of the conversation is deleted, and Agent forgets it.")
+  vibeos_dialog_set_message (dialog, self->talking ? _("All of the conversation is deleted, and Vibe forgets it.")
                                                    : _("All of the text is deleted."));
   vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
   vibeos_dialog_add_button (dialog, _("Clear"), VIBEOS_RESPONSE_OK);
@@ -1285,7 +1305,7 @@ static const VibeosAboutSection agent_legal[] = {
   { NULL }
 };
 
-static const VibeosAboutInfo agent_about = { .name = "Agent", .icon_name = "vibeos.Agent", .legal = agent_legal };
+static const VibeosAboutInfo agent_about = { .name = "Vibe", .icon_name = "vibeos.Agent", .legal = agent_legal };
 
 /* --- Agent's Settings, a page over the conversation (dictate-settings.h) */
 
@@ -1741,10 +1761,10 @@ dictate_window_new (GtkApplication *app, gboolean agent)
   self->settings = g_settings_new ("vibeos.Dictate");
   self->path = g_build_filename (g_get_user_data_dir (), "vibeos-dictate", "document.txt", NULL);
   g_object_set_data_full (G_OBJECT (self->window), "dictate-window", self, window_free);
-  gtk_window_set_title (GTK_WINDOW (self->window), agent ? _("Agent") : _("Dictate"));
+  gtk_window_set_title (GTK_WINDOW (self->window), agent ? _("Vibe") : _("Dictate"));
 
   /* the app bar */
-  title = self->title = gtk_label_new (agent ? _("Agent") : _("Dictate"));
+  title = self->title = gtk_label_new (agent ? _("Vibe") : _("Dictate"));
   gtk_widget_add_css_class (bar, "vibeos-app-bar");
   gtk_widget_add_css_class (title, "vibeos-app-bar-title");
   gtk_label_set_xalign (GTK_LABEL (title), 0);
@@ -1882,7 +1902,7 @@ dictate_window_new (GtkApplication *app, gboolean agent)
     gtk_box_append (GTK_BOX (outer), self->pages);
     self->marker = g_object_new (GTK_TYPE_BOX, "accessible-role", GTK_ACCESSIBLE_ROLE_DIALOG, NULL);
     gtk_accessible_update_property (GTK_ACCESSIBLE (self->marker), GTK_ACCESSIBLE_PROPERTY_LABEL,
-                                    agent ? _("Agent") : _("Dictate"), -1);
+                                    agent ? _("Vibe") : _("Dictate"), -1);
     gtk_widget_set_can_target (self->marker, FALSE);
     gtk_widget_set_visible (self->marker, FALSE);
     gtk_box_append (GTK_BOX (outer), self->marker);

@@ -119,8 +119,8 @@
     </key>
     <key name="power-hold-agent" type="b">
       <default>true</default>
-      <summary>Hold power button for Agent</summary>
-      <description>On: holding the power key for half a second has Agent listen until the key is let go (on a locked phone Agent only reads until the phone is unlocked), and the power menu is the power key and volume up together. Off: holding the power key opens the power menu, as it did before. Without the Agent app installed, holding the key opens the power menu.</description>
+      <summary>Hold power button for Vibe</summary>
+      <description>On: holding the power key for half a second has Vibe listen, while the key is held and after it is let go, until the speaker pauses (on a locked phone Vibe only reads until the phone is unlocked), and the power menu is the power key and volume up together. Off: holding the power key opens the power menu, as it did before. Without Vibe installed, holding the key opens the power menu.</description>
     </key>
     <key name="side-key-app" type="s">
       <default>'vibeos.Camera.desktop'</default>
@@ -155,6 +155,11 @@
       <default>true</default>
       <summary>Next-word suggestions</summary>
       <description>Between words the strip suggests the next one, from the words typed before and the language's commonest pairs (LatinIME's "Use previous word in making suggestions").</description>
+    </key>
+    <key name="keyboard-slide-apps" type="as">
+      <default>['org.gnome.Console']</default>
+      <summary>Apps the keyboard opens over</summary>
+      <description>App ids (desktop file names without .desktop) whose window keeps its size when the on-screen keyboard comes up: it slides up just far enough to keep the text cursor's line above the keys, and back down when they close. For terminals, whose text is reflowed when the window is resized. Other apps' windows are fitted above the keys. An app can ask for this itself with X-Vibeos-Keyboard=slide in its desktop file.</description>
     </key>
 </schema>
 </schemalist>

@@ -1,10 +1,14 @@
 // Power and a volume key together, as Android's key chords: with volume down a screenshot, with volume up the power
-// menu (onPowerMenu: the menu's own chord, since holding the power key talks to Agent, keylaunch.js). The second
-// key's down comes within 150 ms of the first's, the first still held, and the screen on. Neither key then does its
-// own thing: the power key neither sleeps on its up nor does anything when held, and the volume stays as it was. A
-// volume key waits those 150 ms for the power key before it acts. The shot is taken at once under a white flash
-// (133 ms in, 217 ms out, both fast-out-slow-in), and saved, copied and announced as the shell's own screenshot key
-// does it.
+// menu (onPowerMenu: the menu's own chord, since holding the power key talks to Agent, keylaunch.js), the screen on.
+// A screenshot is Android's chord: the second key's down within 150 ms of the first's, the first still held. The power
+// menu forgives more: volume up pressed at any time while the power key is held, or the power key pressed at any time
+// while volume up is held, as a hand does it, holding one key and then finding the other (a press of volume up 150 ms
+// after the power key changed the volume, and one 500 ms after it found Agent listening, keylaunch.js; power.js then
+// tells Agent to stop without acting). A key that is part of a chord then does nothing of its own: the power key
+// neither sleeps on its up nor does anything when held, and a volume key leaves the volume as it was, except for the
+// steps volume up already made, held, before the power key came. A volume key waits 150 ms for the power key before
+// it acts. The shot is taken at once under a white flash (133 ms in, 217 ms out, both fast-out-slow-in), and saved,
+// copied and announced as the shell's own screenshot key does it.
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
@@ -46,7 +50,8 @@ export class ScreenshotChord {
     powerDown(interactive) {
         this._powerTaken = false;
         this._powerAt = interactive ? now() : 0;
-        if (this._powerAt && this._volumeAt && this._powerAt - this._volumeAt <= COMBINE_MS && !this._volumeTaken)
+        if (this._powerAt && this._volumeAt && !this._volumeTaken &&
+            (this._powerAt - this._volumeAt <= COMBINE_MS || this._volume > 0))
             this._fire(this._volume);
     }
 
@@ -76,7 +81,7 @@ export class ScreenshotChord {
         this._volumeTaken = false;
         this._volumeAt = now();
         this._volume = direction;
-        if (this._powerAt && this._volumeAt - this._powerAt <= COMBINE_MS && !this._powerTaken) {
+        if (this._powerAt && !this._powerTaken && (this._volumeAt - this._powerAt <= COMBINE_MS || direction > 0)) {
             this._fire(direction);
             return;
         }

@@ -33,8 +33,8 @@ Build-Depends: debhelper-compat (= 13),
                libdrm-dev,
                libgmp-dev,
                libsqlite3-dev,
-               libecal2.0-dev (>= 3.46),
-               libebook1.2-dev,
+               libecal2.0-dev (>= 3.62),
+               libebook1.2-dev (>= 3.62),
                libgstreamer1.0-dev,
                libgstreamer-plugins-base1.0-dev,
                libsecret-1-dev,
@@ -598,7 +598,7 @@ Description: dictation for VibeOS
  hears English, German, Spanish, French, Italian and Russian, the language
  chosen in its app bar.
  .
- Agent, in the same package, is a spoken conversation: it listens, answers
+ Vibe, in the same package, is a spoken conversation: it listens, answers
  from a language model (VibeOS's server, or a GGUF file on the phone through
  llama.cpp) and speaks the answer with a Piper voice, downloaded with the
  language when it is chosen.
