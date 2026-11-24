@@ -181,7 +181,7 @@ msgstr "Buscar"
 
 #: src/conversation-list.c
 msgid "Account and settings"
-msgstr ""
+msgstr "Cuenta y ajustes"
 
 # android: Messaging action_menu_show_archived
 #. "Messages", with search and the account; the archived list: "Archived" with the back arrow
