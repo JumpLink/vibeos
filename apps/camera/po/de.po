@@ -22,11 +22,11 @@ msgstr "Kamera"
 
 #: data/vibeos.Camera.desktop.in
 msgid "Take photos and videos, scan barcodes"
-msgstr ""
+msgstr "Fotos und Videos aufnehmen, Barcodes scannen"
 
 #: data/vibeos.Camera.desktop.in
 msgid "Camera;Photo;Video;Picture;Selfie;QR;Barcode;"
-msgstr ""
+msgstr "Kamera;Foto;Video;Bild;Selfie;QR;Barcode;"
 
 # android: Aperture cancel_button_description
 #: src/cam-dialogs.c
@@ -41,7 +41,9 @@ msgstr "Standortdaten von Fotos und Videos speichern"
 # android: Aperture location_permission_dialog_description
 #: src/cam-dialogs.c
 msgid "Map your memories by including location metadata with each capture."
-msgstr "Füge jeder Aufnahme Standort-Metadaten hinzu, um deine Erinnerungen zuzuordnen."
+msgstr ""
+"Füge jeder Aufnahme Standort-Metadaten hinzu, um deine Erinnerungen "
+"zuzuordnen."
 
 # android: Aperture location_permission_dialog_later
 #: src/cam-dialogs.c
@@ -58,19 +60,19 @@ msgstr "Aktivieren"
 #: src/cam-mode-selector.c
 msgctxt "mode"
 msgid "PHOTO"
-msgstr "Foto"
+msgstr "FOTO"
 
 # android: Aperture video_header (adapted, several translations, short)
 #: src/cam-mode-selector.c
 msgctxt "mode"
 msgid "VIDEO"
-msgstr "Video"
+msgstr "VIDEO"
 
 # android: Aperture camera_mode_qr (adapted)
 #: src/cam-mode-selector.c
 msgctxt "mode"
 msgid "SCAN"
-msgstr "Scannen"
+msgstr "SCANNEN"
 
 # android: Aperture qr_uri_title
 #: src/cam-qr-sheet.c
@@ -142,6 +144,8 @@ msgid ""
 "The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, "
 "under the GNU LGPL 2.1 or later."
 msgstr ""
+"Die Kameras werden von <a href=\"https://libcamera.org/\">libcamera</a> "
+"angesteuert, unter der GNU LGPL 2.1 oder neuer."
 
 # android: Aperture title_activity_settings
 #: src/cam-settings.c
@@ -185,11 +189,10 @@ msgstr "Mikrofon stummschalten"
 msgid "Zoom"
 msgstr "Zoom"
 
-# android: Framework system_locale_title (several translations, short)
 #. the keys keep their usual job: the volume
 #: src/cam-settings.c
 msgid "System default"
-msgstr "Standardeinstellung des Systems"
+msgstr "Systemstandard"
 
 # android: Aperture gesture_action_nothing (several translations, short)
 #: src/cam-settings.c
@@ -220,7 +223,7 @@ msgstr "Max. Bildschirmhelligkeit"
 # android: Aperture bright_screen_summary
 #: src/cam-settings.c
 msgid "Locks brightness to 100%"
-msgstr "Helligkeit auf 100% festlegen"
+msgstr "Helligkeit auf 100 % festlegen"
 
 # android: Aperture save_location_title
 #: src/cam-settings.c
@@ -235,7 +238,7 @@ msgstr "GPS-Standort in Metadaten speichern"
 # android: Aperture shutter_sound_title
 #: src/cam-settings.c
 msgid "Shutter sound"
-msgstr "Auslöser-Ton"
+msgstr "Auslöserton"
 
 # android: Aperture shutter_sound_summary
 #: src/cam-settings.c
@@ -286,11 +289,11 @@ msgstr "Videospiegelung aktivieren"
 #. last, About: the camera has no ⋮ (its top corners are the flash's and the flip's), so it is here
 #: src/cam-settings.c
 msgid "About"
-msgstr ""
+msgstr "Info"
 
 #: src/cam-settings.c
 msgid "About Camera"
-msgstr ""
+msgstr "Info zu „Kamera“"
 
 # android: Aperture volume_buttons_title (several translations, short)
 #: src/cam-settings.c
@@ -330,11 +333,16 @@ msgstr "Galerie"
 #: src/cam-window.c
 msgid "Camera access is off. Turn it on in Settings, Security and privacy."
 msgstr ""
+"Kamerazugriff ist deaktiviert. Aktiviere ihn unter „Einstellungen“ > "
+"„Datenschutz & Sicherheit“."
 
 # android: Aperture force_torch_help
 #: src/cam-window.c
-msgid "On photo mode, you can long press the flash button to switch into torch mode."
-msgstr "Im Fotomodus kannst du die Blitztaste lange drücken, um in den Taschenlampenmodus zu wechseln."
+msgid ""
+"On photo mode, you can long press the flash button to switch into torch mode."
+msgstr ""
+"Im Fotomodus kannst du die Blitztaste lange drücken, um in den "
+"Taschenlampenmodus zu wechseln."
 
 # android: Framework ok (several translations, short)
 #: src/cam-window.c
@@ -359,7 +367,7 @@ msgstr "RASTER 4 x 4"
 # android: Aperture grid_on_goldenratio
 #: src/cam-window.c
 msgid "GRID φ"
-msgstr "RASTER GOLDENER SCHNITT"
+msgstr "RASTER φ"
 
 # android: Aperture timer_3
 #: src/cam-window.c
@@ -399,18 +407,26 @@ msgstr "EINSTELLUNGEN"
 
 # android: Aperture error_stream_config
 #: src/cam-window.c
-msgid "There was an error while preparing the stream. Please report this to the developers."
-msgstr "Es ist ein Fehler bei der Vorbereitung des Streams aufgetreten. Bitte melde dies den Entwicklern."
+msgid ""
+"There was an error while preparing the stream. Please report this to the "
+"developers."
+msgstr ""
+"Es ist ein Fehler bei der Vorbereitung des Streams aufgetreten. Bitte melde "
+"dies den Entwicklern."
 
 # android: Aperture error_camera_in_use
 #: src/cam-window.c
 msgid "This camera is already in use, try closing the app using it."
-msgstr "Diese Kamera wird bereits verwendet. Versuche, die App zu schließen, die sie verwendet."
+msgstr ""
+"Diese Kamera wird bereits verwendet. Versuche, die App zu schließen, die sie "
+"verwendet."
 
 # android: Aperture error_other_recoverable_error
 #: src/cam-window.c
 msgid "Error while setting up the session. The app will try to recover."
-msgstr "Fehler beim Einrichten der Session. Die App wird versuchen, den Fehler zu beheben."
+msgstr ""
+"Fehler beim Einrichten der Session. Die App wird versuchen, den Fehler zu "
+"beheben."
 
 # android: Aperture camcorder_unsupported_toast
 #: src/cam-window.c
@@ -419,18 +435,28 @@ msgstr "Keine Kamera mit Videounterstützung vorhanden."
 
 # android: Aperture thermal_status_moderate
 #: src/cam-window.c
-msgid "Moderate thermal throttling, make sure the device isn't under direct sunlight."
-msgstr "Mäßige thermische Drosselung; achte darauf, dass das Gerät nicht direkter Sonneneinstrahlung ausgesetzt ist."
+msgid ""
+"Moderate thermal throttling, make sure the device isn't under direct "
+"sunlight."
+msgstr ""
+"Mäßige thermische Drosselung; achte darauf, dass das Gerät nicht direkter "
+"Sonneneinstrahlung ausgesetzt ist."
 
 # android: Aperture thermal_status_severe
 #: src/cam-window.c
-msgid "Severe thermal throttling, it is recommended to let the device cool down a bit."
-msgstr "Starke thermische Drosselung; es wird empfohlen, das Gerät etwas abkühlen zu lassen."
+msgid ""
+"Severe thermal throttling, it is recommended to let the device cool down a "
+"bit."
+msgstr ""
+"Starke thermische Drosselung; es wird empfohlen, das Gerät etwas abkühlen zu "
+"lassen."
 
 # android: Aperture thermal_status_critical
 #: src/cam-window.c
 msgid "Critical thermal throttling, the app might be closed soon."
-msgstr "Kritische thermische Drosselung; die App wird möglicherweise bald geschlossen."
+msgstr ""
+"Kritische thermische Drosselung; die App wird möglicherweise bald "
+"geschlossen."
 
 # android: Aperture thermal_status_emergency
 #: src/cam-window.c
@@ -440,7 +466,8 @@ msgstr "Thermische Notdrosselung; die App wird jetzt geschlossen."
 # android: Aperture thermal_status_shutdown
 #: src/cam-window.c
 msgid "Shutdown thermal throttling, the device will power off."
-msgstr "Abschaltung wegen thermischer Drosselung; das Gerät wird ausgeschaltet."
+msgstr ""
+"Abschaltung wegen thermischer Drosselung; das Gerät wird ausgeschaltet."
 
 # android: Aperture save_location_toast
 #: src/cam-window.c
@@ -460,4 +487,6 @@ msgstr "Blitzmodus"
 # android: Aperture error_no_cameras_available
 #: src/cam-window.c
 msgid "No cameras were found on the device, cannot start the app."
-msgstr "Es wurden keine Kameras in dem Gerät gefunden, die App kann nicht gestartet werden."
+msgstr ""
+"Es wurden keine Kameras in dem Gerät gefunden, die App kann nicht gestartet "
+"werden."

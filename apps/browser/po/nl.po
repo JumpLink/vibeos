@@ -59,7 +59,7 @@ msgid ""
 "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, "
 "under the GNU LGPL 2.1 and BSD licences."
 msgstr ""
-"Webpagina’s worden weergegeven door <a href=\"https://webkitgtk.org/"
+"Webpagina's worden weergegeven door <a href=\"https://webkitgtk.org/"
 "\">WebKitGTK</a>, onder de licenties GNU LGPL 2.1 en BSD."
 
 # android: Jelly menu_desktop_mode

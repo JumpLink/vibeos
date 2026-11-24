@@ -22,11 +22,11 @@ msgstr "Camera"
 
 #: data/vibeos.Camera.desktop.in
 msgid "Take photos and videos, scan barcodes"
-msgstr ""
+msgstr "Foto's en video's maken, barcodes scannen"
 
 #: data/vibeos.Camera.desktop.in
 msgid "Camera;Photo;Video;Picture;Selfie;QR;Barcode;"
-msgstr ""
+msgstr "camera;foto;video;afbeelding;selfie;qr;barcode;"
 
 # android: Framework cancel (several translations, short)
 #: src/cam-dialogs.c
@@ -36,12 +36,12 @@ msgstr "Annuleren"
 # android: Aperture location_permission_dialog_title
 #: src/cam-dialogs.c
 msgid "Add photo and video locations"
-msgstr "Voeg foto- en videolocaties toe"
+msgstr "Foto- en videolocaties toevoegen"
 
-# android: Aperture location_permission_dialog_description
 #: src/cam-dialogs.c
 msgid "Map your memories by including location metadata with each capture."
-msgstr "Markeer uw herinneringen aan de hand van metadata van de locatie met elke opname."
+msgstr ""
+"Breng je herinneringen in kaart door bij elke opname de locatie op te slaan."
 
 # android: Aperture location_permission_dialog_later
 #: src/cam-dialogs.c
@@ -58,59 +58,58 @@ msgstr "Aanzetten"
 #: src/cam-mode-selector.c
 msgctxt "mode"
 msgid "PHOTO"
-msgstr "Foto"
+msgstr "FOTO"
 
 # android: Aperture video_header (adapted)
 #: src/cam-mode-selector.c
 msgctxt "mode"
 msgid "VIDEO"
-msgstr "Video"
+msgstr "VIDEO"
 
 # android: Aperture camera_mode_qr (adapted)
 #: src/cam-mode-selector.c
 msgctxt "mode"
 msgid "SCAN"
-msgstr "Scannen"
+msgstr "SCANNEN"
 
 # android: Aperture qr_uri_title
 #: src/cam-qr-sheet.c
 msgid "Open URL"
-msgstr "Open URL"
+msgstr "URL openen"
 
 # android: Aperture qr_address_title (several translations, short)
 #: src/cam-qr-sheet.c
 msgid "Add contact"
-msgstr "Voeg contact toe"
+msgstr "Contact toevoegen"
 
 # android: Aperture qr_calendar_title
 #: src/cam-qr-sheet.c
 msgid "Add event to calendar"
-msgstr "Voeg afspraak aan kalender toe"
+msgstr "Afspraak toevoegen aan agenda"
 
 # android: Aperture qr_email_title
 #: src/cam-qr-sheet.c
 msgid "Send a new email"
-msgstr "Stuur een nieuwe e-mail"
+msgstr "Nieuwe e-mail sturen"
 
 # android: Aperture qr_geo_title
 #: src/cam-qr-sheet.c
 msgid "Open this location"
-msgstr "Open deze locatie"
+msgstr "Deze locatie openen"
 
 # android: Aperture qr_tel_title
 #: src/cam-qr-sheet.c
 msgid "Call phone number"
-msgstr "Bel telefoonnummer"
+msgstr "Telefoonnummer bellen"
 
-# android: Aperture qr_sms_title
 #: src/cam-qr-sheet.c
 msgid "Send a new SMS"
-msgstr "Verzendt een nieuwe SMS"
+msgstr "Nieuwe sms sturen"
 
 # android: Aperture qr_isbn_title
 #: src/cam-qr-sheet.c
 msgid "Lookup this ISBN"
-msgstr "Zoek deze ISBN op"
+msgstr "Dit ISBN opzoeken"
 
 # android: Aperture qr_product_title
 #: src/cam-qr-sheet.c
@@ -120,7 +119,7 @@ msgstr "Product opzoeken"
 # android: Aperture qr_vin_title
 #: src/cam-qr-sheet.c
 msgid "Lookup VIN"
-msgstr "Zoek VIN"
+msgstr "VIN opzoeken"
 
 # android: Aperture qr_text (several translations, short)
 #: src/cam-qr-sheet.c
@@ -135,13 +134,15 @@ msgstr "Geen app beschikbaar voor deze actie"
 # android: Aperture qr_copy_description (several translations)
 #: src/cam-qr-sheet.c
 msgid "Copy to clipboard"
-msgstr "Kopieer naar klembord"
+msgstr "Kopiëren naar klembord"
 
 #: src/cam-settings.c
 msgid ""
 "The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, "
 "under the GNU LGPL 2.1 or later."
 msgstr ""
+"De camera's worden aangestuurd door <a href=\"https://libcamera.org/"
+"\">libcamera</a>, onder de GNU LGPL 2.1 of later."
 
 # android: Aperture title_activity_settings
 #: src/cam-settings.c
@@ -220,7 +221,7 @@ msgstr "Helder scherm"
 # android: Aperture bright_screen_summary
 #: src/cam-settings.c
 msgid "Locks brightness to 100%"
-msgstr "Vergrendelt helderheid op 100%"
+msgstr "Helderheid vast op 100%"
 
 # android: Aperture save_location_title
 #: src/cam-settings.c
@@ -230,32 +231,30 @@ msgstr "Locatiegegevens opslaan"
 # android: Aperture save_location_summary
 #: src/cam-settings.c
 msgid "Include GPS location in metadata"
-msgstr "GPS locatie opnemen in metadata"
+msgstr "GPS-locatie opnemen in metadata"
 
 # android: Aperture shutter_sound_title
 #: src/cam-settings.c
 msgid "Shutter sound"
-msgstr "Sluiter geluid"
+msgstr "Sluitergeluid"
 
 # android: Aperture shutter_sound_summary
 #: src/cam-settings.c
 msgid "Play a sound on capture"
-msgstr "Een geluid afspelen bij afdrukken"
+msgstr "Een geluid afspelen bij een opname"
 
-# android: Aperture leveler_title
 #: src/cam-settings.c
 msgid "Leveler"
-msgstr "Leveler"
+msgstr "Waterpas"
 
 # android: Aperture leveler_summary
 #: src/cam-settings.c
 msgid "Indicator that shows device orientation"
-msgstr "Indicator die apparaatoriëntatie toont"
+msgstr "Indicator die de stand van het apparaat toont"
 
-# android: Aperture gestures_title (several translations, short)
 #: src/cam-settings.c
 msgid "Gestures"
-msgstr "Gestures"
+msgstr "Gebaren"
 
 # android: Aperture photos_header
 #: src/cam-settings.c
@@ -270,7 +269,9 @@ msgstr "Camera aan de voorzijde spiegelen"
 # android: Aperture photo_ffc_mirror_summary
 #: src/cam-settings.c
 msgid "Save front camera photos as they appear in the preview"
-msgstr "Sla foto's van de voorste camera op zoals ze worden weergegeven in het voorbeeld"
+msgstr ""
+"Foto's van de camera aan de voorzijde opslaan zoals ze in het voorbeeld "
+"worden getoond"
 
 # android: Aperture video_header
 #: src/cam-settings.c
@@ -281,16 +282,16 @@ msgstr "Video"
 # android: Aperture video_mirror_mode_title
 #: src/cam-settings.c
 msgid "Enable video mirroring"
-msgstr "Schakel video spiegeling in"
+msgstr "Videospiegeling inschakelen"
 
 #. last, About: the camera has no ⋮ (its top corners are the flash's and the flip's), so it is here
 #: src/cam-settings.c
 msgid "About"
-msgstr ""
+msgstr "Over"
 
 #: src/cam-settings.c
 msgid "About Camera"
-msgstr ""
+msgstr "Over Camera"
 
 # android: Aperture volume_buttons_title
 #: src/cam-settings.c
@@ -300,7 +301,7 @@ msgstr "Volumeknoppen"
 # android: Aperture volume_buttons_action_title
 #: src/cam-settings.c
 msgid "Volume buttons action"
-msgstr "Volumeknoppen functie"
+msgstr "Functie volumeknoppen"
 
 # android: Aperture volume_buttons_invert_title
 #: src/cam-settings.c
@@ -310,7 +311,7 @@ msgstr "Volumeknoppen omkeren"
 # android: Aperture volume_buttons_invert_summary
 #: src/cam-settings.c
 msgid "Invert volume up and down behavior"
-msgstr "Gedrag Gedrag van volume omhoog en omlaag omkeren"
+msgstr "Gedrag van volume omhoog en omlaag omkeren"
 
 # android: Aperture flip_camera_button_description
 #: src/cam-widgets.c src/cam-window.c
@@ -330,11 +331,16 @@ msgstr "Galerij"
 #: src/cam-window.c
 msgid "Camera access is off. Turn it on in Settings, Security and privacy."
 msgstr ""
+"Cameratoegang staat uit. Zet deze aan via Instellingen > Beveiliging en "
+"privacy."
 
 # android: Aperture force_torch_help
 #: src/cam-window.c
-msgid "On photo mode, you can long press the flash button to switch into torch mode."
-msgstr "In de foto-modus kun je lang op de flash-knop drukken om te schakelen naar zaklampmodus."
+msgid ""
+"On photo mode, you can long press the flash button to switch into torch mode."
+msgstr ""
+"In de fotomodus kun je lang op de flitserknop drukken om naar de "
+"zaklampmodus te schakelen."
 
 # android: Framework httpErrorOk (short)
 #: src/cam-window.c
@@ -349,17 +355,17 @@ msgstr "RASTER UIT"
 # android: Aperture grid_on_3
 #: src/cam-window.c
 msgid "GRID 3x3"
-msgstr "GRID 3x3"
+msgstr "RASTER 3x3"
 
 # android: Aperture grid_on_4
 #: src/cam-window.c
 msgid "GRID 4x4"
-msgstr "GRID 4x4"
+msgstr "RASTER 4x4"
 
 # android: Aperture grid_on_goldenratio
 #: src/cam-window.c
 msgid "GRID φ"
-msgstr "ROOSTER φ"
+msgstr "RASTER φ"
 
 # android: Aperture timer_3
 #: src/cam-window.c
@@ -399,18 +405,26 @@ msgstr "INSTELLINGEN"
 
 # android: Aperture error_stream_config
 #: src/cam-window.c
-msgid "There was an error while preparing the stream. Please report this to the developers."
-msgstr "Er is een fout opgetreden tijdens het voorbereiden van de stream. Rapporteer dit aan de ontwikkelaars."
+msgid ""
+"There was an error while preparing the stream. Please report this to the "
+"developers."
+msgstr ""
+"Er is een fout opgetreden tijdens het voorbereiden van de stream. Rapporteer "
+"dit aan de ontwikkelaars."
 
 # android: Aperture error_camera_in_use
 #: src/cam-window.c
 msgid "This camera is already in use, try closing the app using it."
-msgstr "Deze camera is al in gebruik, probeer de app te sluiten die de camera gebruikt."
+msgstr ""
+"Deze camera is al in gebruik, probeer de app te sluiten die de camera "
+"gebruikt."
 
 # android: Aperture error_other_recoverable_error
 #: src/cam-window.c
 msgid "Error while setting up the session. The app will try to recover."
-msgstr "Fout tijdens het instellen van de sessie. De app zal proberen dit te herstellen."
+msgstr ""
+"Fout tijdens het instellen van de sessie. De app zal proberen dit te "
+"herstellen."
 
 # android: Aperture camcorder_unsupported_toast
 #: src/cam-window.c
@@ -419,13 +433,21 @@ msgstr "Geen camera ondersteunt video-opname."
 
 # android: Aperture thermal_status_moderate
 #: src/cam-window.c
-msgid "Moderate thermal throttling, make sure the device isn't under direct sunlight."
-msgstr "Matige warmtebeperking; zorg ervoor dat het apparaat niet in direct zonlicht is."
+msgid ""
+"Moderate thermal throttling, make sure the device isn't under direct "
+"sunlight."
+msgstr ""
+"Matige warmtebeperking; zorg ervoor dat het apparaat niet in direct zonlicht "
+"is."
 
 # android: Aperture thermal_status_severe
 #: src/cam-window.c
-msgid "Severe thermal throttling, it is recommended to let the device cool down a bit."
-msgstr "Ernstige thermische beperking; het wordt aangeraden om het apparaat af te koelen."
+msgid ""
+"Severe thermal throttling, it is recommended to let the device cool down a "
+"bit."
+msgstr ""
+"Ernstige thermische beperking; het wordt aangeraden om het apparaat af te "
+"koelen."
 
 # android: Aperture thermal_status_critical
 #: src/cam-window.c
@@ -445,7 +467,7 @@ msgstr "Het apparaat wordt vanwege oververhitting uitgeschakeld."
 # android: Aperture save_location_toast
 #: src/cam-window.c
 msgid "Location permissions not granted by the user."
-msgstr "Locatiemachtigingen niet verleend door de gebruiker."
+msgstr "Locatierechten niet verleend door de gebruiker."
 
 # android: Aperture pro_button_description
 #: src/cam-window.c
@@ -460,4 +482,6 @@ msgstr "Flitsmodus"
 # android: Aperture error_no_cameras_available
 #: src/cam-window.c
 msgid "No cameras were found on the device, cannot start the app."
-msgstr "Er zijn geen camera's gevonden op het apparaat, de app kan niet worden gestart."
+msgstr ""
+"Er zijn geen camera's gevonden op het apparaat, de app kan niet worden "
+"gestart."
