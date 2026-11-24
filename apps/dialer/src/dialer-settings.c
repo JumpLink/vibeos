@@ -6,19 +6,26 @@
  *   Calling accounts     SIP and other accounts: calls here only go over the modem
  *   Voicemail            its rows open the carrier's pages; the phone has no visual voicemail
  *   Accessibility        TTY mode: the modem's TTY setting, which ModemManager does not reach
- * In Sounds and vibration, "Enable Do Not Disturb during calls" and Call recording are left out too: the phone has
- * no do-not-disturb to turn on, and nothing records calls. */
+ * In Sounds and vibration, "Enable Do Not Disturb during calls" is left out too: the phone has no do-not-disturb to
+ * turn on. Call recording is a row of its own in the top list, as Google's Phone has it (Lineage keeps an "Audio
+ * format" under it in Sounds and vibration; recordings here are always Ogg Opus): "Record every call", "Announce
+ * recording" and "Storage location". Its switches are dimmed, with the reason under them, on a phone whose sound card
+ * cannot record calls or play the announcement to the other person (call-audio-ucm.h). */
 #include "dialer-settings.h"
 #include "blocked-numbers.h"
+#include "call-audio-ucm.h"
+#include "call-recording.h"
 #include "calls-client.h"
 #include "phone-number.h"
 #include "ringer.h"
 
 #include <glib/gi18n.h>
+#include <glib/gstdio.h>
 #include <math.h>
 #include <vibeos.h>
 #include <spongy-gtk.h>
 #include <string.h>
+#include <unistd.h>
 
 #define BAR_HEIGHT      56
 #define UP_SIZE         56
@@ -113,6 +120,15 @@ static void
 settings_switch_set_active (SettingsSwitch *self, gboolean active)
 {
   vibeos_anim_start (self->anim, self->position, active ? 1 : 0, SWITCH_MS, 0, SPONGY_FAST_OUT_SLOW_IN);
+}
+
+/* at once, as a page opens */
+static void
+settings_switch_jump (SettingsSwitch *self, gboolean active)
+{
+  vibeos_anim_stop (self->anim);
+  self->position = active ? 1 : 0;
+  gtk_widget_queue_draw (GTK_WIDGET (self));
 }
 
 static void
@@ -358,6 +374,7 @@ add_row (GtkWidget *page, const char *title, const char *summary, GtkWidget *wid
   /* a bounded ripple over the whole row */
   pressable = vibeos_pressable_new (row);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (pressable), VIBEOS_RIPPLE_BOUNDED, 0);
+  gtk_widget_add_css_class (pressable, "settings-row");    /* dimmed when insensitive (dialer.css) */
   gtk_accessible_update_property (GTK_ACCESSIBLE (pressable), GTK_ACCESSIBLE_PROPERTY_LABEL, title, -1);
   gtk_box_append (GTK_BOX (page_list (page)), pressable);
   return pressable;
@@ -388,15 +405,24 @@ on_switch_row_clicked (GtkWidget *row, DialerSettings *self)
   settings_switch_set_active (g_object_get_data (G_OBJECT (row), "switch"), active);
 }
 
-static void
-add_switch_row (DialerSettings *self, GtkWidget *page, const char *title, const char *summary, const char *key)
+/* the row, its summary label in @summary_out when asked for */
+static GtkWidget *
+add_switch_row_full (DialerSettings *self, GtkWidget *page, const char *title, const char *summary, const char *key,
+                     GtkWidget **summary_out)
 {
   GtkWidget *sw = settings_switch_new (g_settings_get_boolean (self->settings, key));
-  GtkWidget *row = add_row (page, title, summary, sw, NULL);
+  GtkWidget *row = add_row (page, title, summary, sw, summary_out);
 
   g_object_set_data_full (G_OBJECT (row), "key", g_strdup (key), g_free);
   g_object_set_data (G_OBJECT (row), "switch", sw);
   g_signal_connect (row, "clicked", G_CALLBACK (on_switch_row_clicked), self);
+  return row;
+}
+
+static void
+add_switch_row (DialerSettings *self, GtkWidget *page, const char *title, const char *summary, const char *key)
+{
+  add_switch_row_full (self, page, title, summary, key, NULL);
 }
 
 /* ---- a list setting's dialog: its entries with a radio each, and Cancel -------------------------------------- */
@@ -729,6 +755,153 @@ on_sounds (DialerSettings *self)
   push_page (self, page, _("Sounds and vibration"));
 }
 
+/* ---- Call recording -------------------------------------------------------------------------------------------
+ *
+ * "Record every call" and "Announce recording" (both sides hear "This call is now being recorded"), and "Storage
+ * location", the folder picker. What the phone's sound card can do decides what the switches may do
+ * (call-audio-ucm.h): with no way to record a call both are dimmed and say so; with no way to play the announcement
+ * to the other person, calls are recorded only with Announce recording off, as the service records them. A dimmed
+ * switch shows what happens, off. */
+
+typedef struct
+{
+  CallAudioUcm ucm;
+  GtkWidget *record, *record_summary, *announce, *announce_summary, *folder_summary;
+} RecordingPage;
+
+static void
+recording_page_free (RecordingPage *rp)
+{
+  call_audio_ucm_clear (&rp->ucm);
+  g_free (rp);
+}
+
+static void
+set_summary (GtkWidget *label, const char *text)
+{
+  gtk_label_set_label (GTK_LABEL (label), text ? text : "");
+  gtk_widget_set_visible (label, text && *text);
+}
+
+/* @animate: the switches slide to their states; else they are there at once (the page opening) */
+static void
+sync_recording (DialerSettings *self, RecordingPage *rp, gboolean animate)
+{
+  void (*set_active) (SettingsSwitch *, gboolean) = animate ? settings_switch_set_active : settings_switch_jump;
+  gboolean can_record = rp->ucm.capture_pcm != NULL, can_announce = rp->ucm.playback_pcm != NULL;
+  gboolean announce = g_settings_get_boolean (self->settings, "announce-recording");
+  gboolean allowed = can_record && (can_announce || !announce);
+  g_autofree char *folder = call_recording_folder (self->settings);
+  g_autofree char *shown = call_recording_folder_display (folder);
+
+  gtk_widget_set_sensitive (rp->record, allowed);
+  set_active (g_object_get_data (G_OBJECT (rp->record), "switch"),
+              allowed && g_settings_get_boolean (self->settings, "record-calls"));
+  if (!can_record)
+    set_summary (rp->record_summary, _("This device can't record calls"));
+  else if (!allowed)
+    set_summary (rp->record_summary, _("To record calls on this device, turn off Announce recording"));
+  else
+    set_summary (rp->record_summary, NULL);
+
+  gtk_widget_set_sensitive (rp->announce, can_record);
+  set_active (g_object_get_data (G_OBJECT (rp->announce), "switch"), announce);
+  set_summary (rp->announce_summary, can_record && !can_announce
+                                       ? _("This device can't play it to the other person")
+                                       : _("Both sides hear “This call is now being recorded” when recording starts"));
+  gtk_label_set_label (GTK_LABEL (rp->folder_summary), shown);
+}
+
+static void
+on_recording_setting (GSettings *settings, const char *key, GtkWidget *page)
+{
+  DialerSettings *self = g_object_get_data (G_OBJECT (page), "settings");
+  RecordingPage *rp = g_object_get_data (G_OBJECT (page), "recording");
+
+  /* turning the announcement on where it cannot be played stops the recording, visibly */
+  if (!g_strcmp0 (key, "announce-recording") && g_settings_get_boolean (settings, key) && !rp->ucm.playback_pcm)
+    g_settings_set_boolean (settings, "record-calls", FALSE);
+  sync_recording (self, rp, TRUE);
+}
+
+static void
+on_folder_picked (GObject *source, GAsyncResult *result, gpointer data)
+{
+  GtkWidget *page = data;
+  DialerSettings *self = g_object_get_data (G_OBJECT (page), "settings");
+  g_autoptr(GFile) file = gtk_file_dialog_select_folder_finish (GTK_FILE_DIALOG (source), result, NULL);
+  g_autofree char *path = file ? g_file_get_path (file) : NULL;
+  g_autofree char *standard = call_recording_default_folder ();
+
+  if (!path || !gtk_widget_get_root (page))
+    {
+      g_object_unref (page);
+      return;
+    }
+  if (g_access (path, W_OK) != 0)
+    {
+      VibeosDialog *dialog = vibeos_dialog_new (NULL);
+
+      vibeos_dialog_set_message (dialog, _("Call recordings can't be saved in this folder"));
+      vibeos_dialog_add_button (dialog, _("OK"), VIBEOS_RESPONSE_OK);
+      vibeos_dialog_present (dialog, page);
+    }
+  else
+    {
+      /* the default is kept as no folder, so it follows the home folder */
+      g_settings_set_string (self->settings, "recordings-folder", g_str_equal (path, standard) ? "" : path);
+    }
+  g_object_unref (page);
+}
+
+/* the folder picker (the portal's, where there is one), at the folder set, or the nearest one there is */
+static void
+on_folder_clicked (GtkWidget *row, GtkWidget *page)
+{
+  DialerSettings *self = g_object_get_data (G_OBJECT (page), "settings");
+  g_autoptr(GtkFileDialog) dialog = gtk_file_dialog_new ();
+  g_autofree char *folder = call_recording_folder (self->settings);
+  g_autoptr(GFile) start = NULL;
+
+  while (!g_file_test (folder, G_FILE_TEST_IS_DIR))
+    {
+      char *parent = g_path_get_dirname (folder);
+
+      if (g_str_equal (parent, folder))
+        {
+          g_free (parent);
+          break;
+        }
+      g_free (folder);
+      folder = parent;
+    }
+  start = g_file_new_for_path (folder);
+  gtk_file_dialog_set_title (dialog, _("Storage location"));
+  gtk_file_dialog_set_initial_folder (dialog, start);
+  gtk_file_dialog_select_folder (dialog, GTK_WINDOW (gtk_widget_get_root (page)), NULL, on_folder_picked,
+                                 g_object_ref (page));
+}
+
+static void
+on_call_recording (DialerSettings *self)
+{
+  GtkWidget *page = page_new ();
+  RecordingPage *rp = g_new0 (RecordingPage, 1);
+  GtkWidget *folder;
+
+  call_audio_ucm_probe (&rp->ucm);
+  g_object_set_data (G_OBJECT (page), "settings", self);
+  g_object_set_data_full (G_OBJECT (page), "recording", rp, (GDestroyNotify) recording_page_free);
+  rp->record = add_switch_row_full (self, page, _("Record every call"), NULL, "record-calls", &rp->record_summary);
+  rp->announce = add_switch_row_full (self, page, _("Announce recording"), NULL, "announce-recording",
+                                      &rp->announce_summary);
+  folder = add_row (page, _("Storage location"), NULL, NULL, &rp->folder_summary);
+  g_signal_connect (folder, "clicked", G_CALLBACK (on_folder_clicked), page);
+  g_signal_connect_object (self->settings, "changed", G_CALLBACK (on_recording_setting), page, 0);
+  sync_recording (self, rp, FALSE);
+  push_page (self, page, _("Call recording"));
+}
+
 /* ---- Blocked numbers: a page with a theme of its own ----------------------------------------------------------
  *
  * The explanation, then "Add a number"; each blocked number is a row with an X that unblocks it. Left out: the
@@ -974,6 +1147,8 @@ dialer_settings_new (GSettings *settings)
                             G_CALLBACK (on_display_options), self);
   g_signal_connect_swapped (add_row (top, _("Sounds and vibration"), NULL, NULL, NULL), "clicked",
                             G_CALLBACK (on_sounds), self);
+  g_signal_connect_swapped (add_row (top, _("Call recording"), NULL, NULL, NULL), "clicked",
+                            G_CALLBACK (on_call_recording), self);
   g_signal_connect_swapped (add_row (top, _("Blocked numbers"), NULL, NULL, NULL), "clicked",
                             G_CALLBACK (on_blocked), self);
   push_page (self, top, _("Settings"));

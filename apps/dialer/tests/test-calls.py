@@ -58,8 +58,10 @@ def block(data_home, number):
 
 
 class Test:
-    def __init__(self, session_address, data_home):
+    def __init__(self, session_address, data_home, home, config_home):
         self.data_home = data_home
+        self.home = home
+        self.config_home = config_home
         self.bus = Gio.DBusConnection.new_for_address_sync(
             session_address, Gio.DBusConnectionFlags.AUTHENTICATION_CLIENT |
             Gio.DBusConnectionFlags.MESSAGE_BUS_CONNECTION, None, None)
@@ -127,10 +129,85 @@ class Test:
     def call_log(self):
         return self.service('GetCallLog')[0]
 
+    def set_setting(self, key, value):
+        # the keyfile backend's file, which the service watches
+        path = os.path.join(self.config_home, 'glib-2.0', 'settings', 'keyfile')
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as f:
+            f.write('[vibeos/Dialer]\n%s=%s\n' % (key, value))
+
+
+# what the service plays and records through: the ringer (playbin, pulsesink, the dialpad's appsrc), the recorder
+# (opusenc, oggmux) and the test's audiotestsrc and fakesinks
+GST_PLUGINS = ('coreelements', 'playback', 'typefindfunctions', 'app', 'audioconvert', 'audioresample', 'volume',
+               'audiotestsrc', 'autodetect', 'ogg', 'opus', 'opusparse', 'vorbis', 'pulseaudio')
+
+
+def gst_env(tmp):
+    """GStreamer for the service with only GST_PLUGINS, in a registry of its own: the service starts GStreamer in
+    the middle of a call, and a scan of every plugin the build host has blocks it for minutes under emulation"""
+    try:
+        system = subprocess.run(['pkg-config', '--variable=pluginsdir', 'gstreamer-1.0'], capture_output=True,
+                                text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return {}
+    plugins = os.path.join(tmp, 'gst-plugins')
+    os.makedirs(plugins)
+    for name in GST_PLUGINS:
+        path = os.path.join(system, 'libgst%s.so' % name)
+        if os.path.exists(path):
+            os.symlink(path, os.path.join(plugins, os.path.basename(path)))
+    return dict(GST_PLUGIN_SYSTEM_PATH_1_0=plugins, GST_PLUGIN_PATH_1_0='',
+                GST_REGISTRY_1_0=os.path.join(tmp, 'gst-registry.bin'))
+
+
+def gst_warm(env):
+    # the registry written before the service starts, when the test can start GStreamer itself
+    code = "import gi; gi.require_version('Gst', '1.0'); from gi.repository import Gst; Gst.init(None)"
+    subprocess.run([sys.executable, '-c', code], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def recordings(folder):
+    return sorted(os.listdir(folder)) if os.path.isdir(folder) else []
+
+
+def ogg_pages(data):
+    # (header type, granule position, body) of each Ogg page, or None where the file is not Ogg to its end
+    pages, at = [], 0
+    while at < len(data):
+        if data[at:at + 4] != b'OggS' or at + 27 > len(data) or at + 27 + data[at + 26] > len(data):
+            return None
+        segments = data[at + 27:at + 27 + data[at + 26]]
+        body = at + 27 + len(segments)
+        pages.append((data[at + 5], int.from_bytes(data[at + 6:at + 14], 'little'), data[body:body + sum(segments)]))
+        at = body + sum(segments)
+    return pages
+
+
+def recording_complete(path):
+    # Ogg Opus to its end: the two header pages, audio, the last page the stream's end; only the user's. How much
+    # audio is the machine's: under emulation the encoder falls behind the call
+    with open(path, 'rb') as f:
+        pages = ogg_pages(f.read())
+    return bool(pages and len(pages) >= 3 and pages[0][2].startswith(b'OpusHead') and
+                pages[1][2].startswith(b'OpusTags') and pages[-1][0] & 4 and pages[-1][1] > 0 and
+                (os.stat(path).st_mode & 0o777) == 0o600)
+
+
+def describe_recording(path):
+    # what recording_complete looked at, for a failure's report
+    with open(path, 'rb') as f:
+        data = f.read()
+    pages = ogg_pages(data)
+    return '%s: %d bytes, pages %s, mode %o' % (os.path.basename(path), len(data),
+                                                [(t, g) for t, g, _ in pages] if pages is not None else 'not Ogg',
+                                                os.stat(path).st_mode & 0o777)
+
 
 def run(t):
     # --- at start: the modem is found, and hold is probed with no call up
-    t.wait('the service is ready', lambda: t.prop('Status') == 'ready')
+    # a package build under emulation takes a minute to start the service
+    t.wait('the service is ready', lambda: t.prop('Status') == 'ready', timeout=120)
     t.wait('the hold probe ran', lambda: t.logged('HoldAndAccept'))
     t.wait('hold is not claimed (the modem said not supported)', lambda: t.prop('Features') == ['dtmf'])
     check('the country is the network\'s (262 = DE)', t.prop('Country') == 'DE', t.prop('Country'))
@@ -302,6 +379,63 @@ def run(t):
            and t.call_log()[0]['is_read'])
     check('no notification', not t.report()['notifications'], t.report()['notifications'])
 
+    # --- recording (call-recorder.h), on a phone whose UCM has Capture Voice and Play Voice (tests/ucm2's
+    # RecordingPhone): a test tone for the call's audio, the announcement played into fakesinks
+    folder = os.path.join(t.home, 'Recordings', 'Call recordings')
+    check('this phone can record calls', t.prop('CanRecord'))
+    t.phone('Clear')
+    path = t.phone('Incoming', ('+447700900123',), '(s)')[0]
+    call_id = t.wait('a call to record', lambda: next((c['id'] for c in t.calls() if c['state'] == INCOMING), 0))
+    try:
+        t.service('SetRecording', (call_id, True), '(ub)')
+        check('a ringing call is not recorded', False)
+    except GLib.Error:
+        check('a ringing call is not recorded', True)
+    t.service('Answer', (call_id,), '(u)')
+    t.wait('ACTIVE', lambda: t.call(call_id)['state'] == ACTIVE)
+    t.settle(0.5)
+    check('not recorded with Record every call off', t.call(call_id)['recording'] == 0 and not recordings(folder))
+    t.service('SetRecording', (call_id, True), '(ub)')
+    t.wait('recorded from the Record button', lambda: t.call(call_id)['recording'] > 0)
+    first = t.wait('its file, named after the number',
+                   lambda: [f for f in recordings(folder) if f.startswith('+447700900123_') and f.endswith('.opus')])
+    check('the folder only the user reads', (os.stat(folder).st_mode & 0o777) == 0o700, oct(os.stat(folder).st_mode))
+    t.settle(2.5)
+    t.service('SetRecording', (call_id, False), '(ub)')
+    t.wait('Record again ends it', lambda: t.call(call_id)['recording'] == 0)
+    if first:
+        check('the recording is complete Ogg Opus, 0600', recording_complete(os.path.join(folder, first[0])),
+              describe_recording(os.path.join(folder, first[0])))
+    t.settle(0.1)
+    t.service('SetRecording', (call_id, True), '(ub)')
+    t.wait('and recorded again', lambda: t.call(call_id)['recording'] > 0 and len(recordings(folder)) == 2)
+    t.settle(2.5)
+    t.phone('RemoteHangup', (path, R_TERMINATED), '(oi)')
+    t.wait('the call ended: no longer recorded', lambda: all(c['recording'] == 0 for c in t.calls()))
+    second = [f for f in recordings(folder) if f not in (first or [])]
+    check('the second recording ended with the call, complete',
+          len(second) == 1 and recording_complete(os.path.join(folder, second[0])),
+          [describe_recording(os.path.join(folder, f)) for f in second])
+    t.wait('the last call has gone', lambda: not t.calls())
+
+    # Record every call
+    t.set_setting('record-calls', 'true')
+    t.settle(0.5)
+    path = t.phone('Incoming', ('+447700900124',), '(s)')[0]
+    call_id = t.wait('another call', lambda: next((c['id'] for c in t.calls() if c['state'] == INCOMING), 0))
+    t.service('Answer', (call_id,), '(u)')
+    t.wait('with Record every call on, recorded as it comes up', lambda: t.call(call_id)['recording'] > 0)
+    t.settle(2.5)
+    t.service('SetRecording', (call_id, False), '(ub)')
+    t.wait('Record ends it', lambda: t.call(call_id)['recording'] == 0)
+    t.settle(0.5)
+    check('and it does not start again by itself', t.call(call_id)['recording'] == 0)
+    t.service('Hangup', (call_id,), '(u)')
+    t.wait('the last call has gone', lambda: not t.calls())
+    third = [f for f in recordings(folder) if f.startswith('+447700900124_')]
+    check('its recording is complete', len(third) == 1 and recording_complete(os.path.join(folder, third[0])),
+          [describe_recording(os.path.join(folder, f)) for f in third])
+
 
 def main():
     build, source = sys.argv[1], sys.argv[2]
@@ -309,19 +443,25 @@ def main():
     procs = []
     try:
         subprocess.run(['glib-compile-schemas', '--targetdir', tmp, os.path.join(source, 'data')], check=True)
+        # the announcement where the service looks for it, in its data directories
+        sounds = os.path.join(tmp, 'share', 'vibeos-dialer', 'sounds')
+        os.makedirs(sounds)
+        for lang in ('en', 'de'):
+            shutil.copy(os.path.join(source, 'data', 'sounds', 'call-recording-%s.opus' % lang), sounds)
         system, system_address = start_bus(tmp, 'system')
         session, session_address = start_bus(tmp, 'session')
         procs += [system, session]
         env = dict(os.environ, DBUS_SESSION_BUS_ADDRESS=session_address, VIBEOS_DIALER_SYSTEM_BUS=system_address,
                    XDG_DATA_HOME=os.path.join(tmp, 'data'), XDG_STATE_HOME=os.path.join(tmp, 'state'),
-                   XDG_CONFIG_HOME=os.path.join(tmp, 'config'), GSETTINGS_BACKEND='memory',
-                   GSETTINGS_SCHEMA_DIR=tmp, PULSE_SERVER='unix:' + os.path.join(tmp, 'no-sound'))
-        # GStreamer's registry, made before the service starts: in a package build's empty HOME the first ring would
-        # scan every plugin first, the service answering nothing meanwhile (sid's 277 plugins: 25 s and more under
-        # arm64 emulation). libgstreamer1.0-dev brings GStreamer's typelib; without it the first ring scans as before.
-        env['GST_REGISTRY'] = os.path.join(tmp, 'gst-registry.bin')
-        subprocess.run([sys.executable, '-c', 'import gi; gi.require_version("Gst", "1.0"); '
-                        'from gi.repository import Gst; Gst.init(None)'], env=env, timeout=120)
+                   XDG_CONFIG_HOME=os.path.join(tmp, 'config'), GSETTINGS_BACKEND='keyfile',
+                   GSETTINGS_SCHEMA_DIR=tmp, PULSE_SERVER='unix:' + os.path.join(tmp, 'no-sound'),
+                   HOME=os.path.join(tmp, 'home'), XDG_CACHE_HOME=os.path.join(tmp, 'cache'),
+                   XDG_DATA_DIRS=os.path.join(tmp, 'share') + ':' + os.environ.get('XDG_DATA_DIRS',
+                                                                                  '/usr/local/share:/usr/share'),
+                   ALSA_CONFIG_UCM2=os.path.join(source, 'tests', 'ucm2'), VIBEOS_DIALER_UCM_CARD='RecordingPhone',
+                   VIBEOS_DIALER_RECORD_SOURCE='audiotestsrc is-live=true wave=sine freq=440',
+                   VIBEOS_DIALER_RECORD_SINK='fakesink sync=true', **gst_env(tmp))
+        gst_warm(env)
         mock = subprocess.Popen([sys.executable, os.path.join(source, 'tests', 'mock-phone.py'), system_address],
                                 env=env, stdout=subprocess.PIPE, text=True)
         procs.append(mock)
@@ -329,7 +469,7 @@ def main():
             print('FAIL the mock phone did not start')
             return 1
         procs.append(subprocess.Popen([os.path.join(build, 'vibeos-dialer-calls')], env=env))
-        run(Test(session_address, env['XDG_DATA_HOME']))
+        run(Test(session_address, env['XDG_DATA_HOME'], env['HOME'], env['XDG_CONFIG_HOME']))
     finally:
         for p in reversed(procs):
             p.terminate()

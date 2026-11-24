@@ -1,12 +1,13 @@
 /* The in-call screen: a call being placed, up, on hold or just ended.
  *
  * At the top the contact grid: the avatar, a status line ("Calling…"), the name, and under it the kind of number
- * or, once the call is up, how long it has been. In the middle six buttons (Mute, Keypad, Speaker, then Add call
- * and Hold, or Swap and Hold with a second call), and at the foot the red end-call button. The keypad slides up
- * over the buttons and sends touch tones; a call on hold shows as a banner across the top.
+ * or, once the call is up, how long it has been. In the middle six buttons (Mute, Keypad, Speaker, Record on a phone
+ * that can record calls, then Add call and Hold, or Swap and Hold with a second call), and at the foot the red
+ * end-call button. The keypad slides up over the buttons and sends touch tones; a call on hold shows as a banner
+ * across the top.
  *
- * The view asks the call service itself (mute, speaker, hold, tones, hang up); what the buttons show comes back
- * from the service, so a button only turns on when the modem did what it asked. */
+ * The view asks the call service itself (mute, speaker, recording, hold, tones, hang up); what the buttons show
+ * comes back from the service, so a button only turns on when the modem did what it asked. */
 #pragma once
 
 #include <gtk/gtk.h>

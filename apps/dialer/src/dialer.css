@@ -246,6 +246,12 @@ history-tabs {
   color: @vibeos_on_surface_variant;
 }
 
+/* a row that cannot be used here (Call recording's switches on a phone that cannot record): Material's disabled
+ * content alpha */
+.settings-row:disabled {
+  opacity: 0.38;
+}
+
 .settings-category {
   font-family: "VibeOS Roboto", Roboto, sans-serif;
   font-size: 14sp;

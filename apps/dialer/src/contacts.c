@@ -94,7 +94,7 @@ number_label (EVCardAttribute *tel)
   if (work)
     return g_strdup (_("Work"));
   if (home)
-    return g_strdup (_("Home"));
+    return g_strdup (C_("phone number type", "Home"));
   return g_strdup (_("Other"));
 }
 

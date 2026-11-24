@@ -78,14 +78,11 @@ call_dates_relative (gint64 date_ms, gint64 now_ms)
       return g_strdup_printf (now_ms >= date_ms ? g_dngettext (NULL, "%d day ago", "%d days ago", count)
                                                 : g_dngettext (NULL, "In %d day", "In %d days", count), count);
     }
-  /* a week or more: the date, with the year only when it is not this one */
+  /* a week or more: the date, with the year only when it is not this one, in the language's own form ("October 28",
+   * "28. Oktober", "28 октября"; "October 28, 2025") */
   date = g_date_time_new_from_unix_local_usec (date_ms * 1000);
   now = g_date_time_new_from_unix_local_usec (now_ms * 1000);
-  if (g_date_time_get_year (date) == g_date_time_get_year (now))
-    /* TRANSLATORS: a call's date in this year, as strftime: "October 28" */
-    return g_date_time_format (date, C_("call date", "%B %-d"));
-  /* TRANSLATORS: a call's date in another year: "October 28, 2025" */
-  return g_date_time_format (date, C_("call date", "%B %-d, %Y"));
+  return vibeos_format_date (date, g_date_time_get_year (date) == g_date_time_get_year (now) ? "MMMMd" : "yMMMMd");
 }
 
 char *
@@ -95,11 +92,9 @@ call_dates_details (gint64 date_ms)
 
   if (!date)
     return g_strdup ("");
-  /* TRANSLATORS: a call's date and time in Call details, ICU's "EEEE, MMMM d, y 'at' HH:mm" with the 24-hour
-   * clock, as strftime: "Wednesday, November 4, 2026 at 04:36" */
-  return g_date_time_format (date, vibeos_clock_uses_24h () ? C_("call details date", "%A, %B %-d, %Y at %H:%M")
-                                   /* TRANSLATORS: the same with the 12-hour clock: "…, 2026 at 4:36 AM" */
-                                                         : C_("call details date", "%A, %B %-d, %Y at %-l:%M %p"));
+  /* the date and time in the language's own form, the hours by the 12/24-hour setting: "Wednesday, November 4, 2026
+   * at 04:36", "Mittwoch, 4. November 2026 um 04:36" */
+  return vibeos_format_date (date, "yMMMMEEEEdjm");
 }
 
 char *
