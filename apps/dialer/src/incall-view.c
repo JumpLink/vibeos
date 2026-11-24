@@ -54,8 +54,9 @@
 #define BANNER_COLOR    VIBEOS_PALETTE_NEUTRAL1, 800    /* at BANNER_ALPHA */
 #define BANNER_ALPHA    0.4
 
-/* the buttons this phone has; the GSM chooser's others (Record, which Germany forbids, Merge, Manage, Video call,
- * Change SIM) need what the modem or this phone does not have, so they are never allowed */
+/* the buttons this phone has; the GSM chooser's others (Merge, Manage, Video call, Change SIM) need what the modem or
+ * this phone does not have, so they are never allowed. Record is no button here either: a call is recorded or not by
+ * Settings' "Record every call" (dialer-settings.c), for every call alike */
 typedef enum
 {
   BUTTON_MUTE,
