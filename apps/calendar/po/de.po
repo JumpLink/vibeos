@@ -159,7 +159,7 @@ msgstr "Basis-URL"
 # android: Jelly auth_dialog_username (adapted, other app, short)
 #: src/cal-accounts.c
 msgid "User name"
-msgstr "Benutzername"
+msgstr "Nutzername"
 
 # android: Framework lockscreen_glogin_password_hint (short)
 #: src/cal-accounts.c

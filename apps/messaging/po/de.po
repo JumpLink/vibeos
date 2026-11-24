@@ -89,7 +89,7 @@ msgstr[1] "%d aus Archiv entfernt"
 # android: Contacts undo (several translations, short)
 #: src/conversation-list.c
 msgid "Undo"
-msgstr "Rückgängig machen"
+msgstr "Rückgängig"
 
 # android: Messaging delete_conversations_confirmation_dialog_title
 #: src/conversation-list.c src/conversation-view.c

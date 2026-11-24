@@ -856,7 +856,7 @@ msgstr "Label gelöscht"
 # android: Contacts undo (several translations, short)
 #: src/ct-people.c
 msgid "Undo"
-msgstr "Rückgängig machen"
+msgstr "Rückgängig"
 
 # android: Contacts delete_group_dialog_message
 #: src/ct-people.c

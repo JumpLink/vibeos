@@ -778,7 +778,7 @@ msgstr "Zum Beispiel example.com oder 192.168.0.82"
 # android: Jelly auth_dialog_username (adapted, other app, short)
 #: src/ns-accounts.c src/ns-system.c
 msgid "User name"
-msgstr "Benutzername"
+msgstr "Nutzername"
 
 # android: Settings unlock_set_unlock_password_title
 #: src/ns-accounts.c src/ns-net.c

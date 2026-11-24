@@ -1,7 +1,7 @@
 Settings	Instellingen	app and screen name
 Notifications	Meldingen	
 Do Not Disturb	Niet storen	
-Wi-Fi	Wifi	
+Wi-Fi	Wifi	"wifi" in lower case in running text
 Bluetooth	Bluetooth	
 Airplane mode	Vliegtuigmodus	
 Lock screen	Vergrendelscherm	
@@ -43,3 +43,22 @@ Credits	Met dank aan
 Legal	Juridisch	
 Website	Website	
 Report an Issue	Probleem melden	
+Undo	Ongedaan maken	snackbar button
+Retry	Opnieuw proberen	
+Clear search	Zoekopdracht wissen	
+Snooze	Snoozen	the length is "snoozeduur"
+User name	Gebruikersnaam	
+Power button	Aan/uit-knop	
+Side button	Zijknop	
+Icon	Pictogram	
+Refresh	Vernieuwen	
+Recycle Bin	Prullenbak	
+Rate / Rating	beoordelen / beoordeling	the stars
+Review	Review	"Ratings and reviews" is "Beoordelingen en reviews"
+Sign in / Sign out	Inloggen / Uitloggen	
+Account	Account	
+Favorites	Favorieten	the Browser's are "Bladwijzers"
+Bookmark	Bladwijzer	
+Speed camera	Flitspaal	
+Software sources	Softwarebronnen	
+Permissions	Rechten	
