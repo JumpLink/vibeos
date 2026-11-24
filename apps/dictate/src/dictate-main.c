@@ -89,11 +89,20 @@ on_announce_changed (GSettings *s, const char *key, GApplication *app)
 static void
 on_startup (GApplication *app, gpointer data)
 {
+  GtkCssProvider *css;
+
   /* the text follows Font size and Bold text; the stylesheet in sp and dp, over libvibeos's */
   vibeos_init_full (VIBEOS_INIT_SCALED_TEXT);
   /* told to the Agent's gateway when the phone enrolls */
   dictate_device_set_release (vibeos_release ());
-  vibeos_css_load_resource ("/vibeos/Dictate/dictate.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
+  css = vibeos_css_load_resource ("/vibeos/Dictate/dictate.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
+#if GTK_CHECK_VERSION (4, 20, 0)
+  /* its @media (prefers-contrast: more) rules follow High contrast, which libvibeos sets on GTK's settings: a
+   * provider of the app's own is not told by GTK */
+  if (css)
+    g_object_bind_property (gtk_settings_get_default (), "gtk-interface-contrast", css, "prefers-contrast",
+                            G_BINDING_SYNC_CREATE);
+#endif
   if (!agent)
     return;
   settings = g_settings_new ("vibeos.Dictate");

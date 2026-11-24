@@ -201,7 +201,462 @@ progressbar.dictate-progress progress {
   border: none;
 }
 
-/* Agent's Settings: rows on cards, on the colour the system's Settings pages have */
+/* Vibe's Settings: rows on cards, on the colour the system's Settings pages have */
 .dictate-settings {
   background-color: @vibeos_surface_container;
+}
+
+/* Vibe's conversation (dictate-stage.h): the surface, its bar, then the exchange going on with the earlier ones over
+   it; the text column 28dp in from the edges, the cards and buttons 16dp */
+.dictate-stage {
+  background-color: @vibeos_surface;
+  color: @vibeos_on_surface;
+}
+
+.dictate-stage-header {
+  min-height: 48dp;
+  padding: 16dp 16dp 0 28dp;
+}
+
+.dictate-stage-title {
+  font-size: 22sp;
+  font-weight: 500;
+}
+
+.dictate-stage-call {
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_primary;
+}
+
+.dictate-stage-page {
+  padding: 0 28dp 28dp;
+}
+
+.dictate-stage-pasts {
+  padding: 8dp 28dp 0;
+}
+
+.dictate-stage-mine {
+  padding: 10dp 14dp;
+  border-radius: 20dp 20dp 6dp 20dp;
+  background-color: @vibeos_secondary_container;
+  color: @vibeos_on_secondary_container;
+  font-size: 16sp;
+}
+
+.dictate-stage-middle > .dictate-stage-card {
+  margin: 0 -12dp;
+}
+
+.dictate-stage-who {
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_primary;
+}
+
+.dictate-stage-who.dictate-stage-error {
+  color: @vibeos_error;
+}
+
+.dictate-stage-headline {
+  font-size: 30sp;
+  line-height: 1.2;
+}
+
+.dictate-stage-headline.dictate-stage-headline-long {
+  font-size: 26sp;
+}
+
+.dictate-stage-sub {
+  font-size: 16sp;
+  color: @vibeos_on_surface_variant;
+}
+
+.dictate-stage-past-headline {
+  font-size: 22sp;
+  line-height: 1.25;
+}
+
+.dictate-stage-past-note {
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+}
+
+/* lines written and not spoken (private mode) */
+.dictate-stage-written {
+  margin: 16dp -12dp 0;
+  padding: 12dp 20dp;
+  border-radius: 20dp;
+  background-color: @vibeos_surface_container_high;
+}
+
+.dictate-stage-written-line {
+  font-size: 16sp;
+  line-height: 1.5;
+}
+
+.dictate-stage-buttons {
+  margin: 20dp -12dp 0;
+}
+
+.dictate-stage-button label {
+  font-size: 16sp;
+  color: @vibeos_on_surface;
+  padding: 0 8dp;
+}
+
+.dictate-stage-button.dictate-stage-button-large label {
+  font-size: 18sp;
+}
+
+.dictate-stage-button.dictate-stage-button-primary label {
+  color: @vibeos_on_primary;
+  font-weight: 500;
+}
+
+.dictate-stage-button.dictate-stage-button-tonal label {
+  color: @vibeos_on_secondary_container;
+}
+
+.dictate-stage-button.dictate-stage-button-danger label {
+  color: @vibeos_on_error_container;
+}
+
+.dictate-stage-hint {
+  margin-top: 16dp;
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+}
+
+/* a card in the middle: what an action will do, field by field (B5), or a message quoted (C3) */
+.dictate-stage-card {
+  padding: 18dp 20dp;
+  border-radius: 20dp;
+  background-color: @vibeos_surface_container_highest;
+}
+
+.dictate-stage-card-label {
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+}
+
+.dictate-stage-card-label.dictate-stage-card-next {
+  margin-top: 12dp;
+}
+
+.dictate-stage-card-value {
+  font-size: 22sp;
+  line-height: 1.25;
+}
+
+.dictate-stage-card-state {
+  margin-top: 12dp;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_primary;
+}
+
+/* the steps' dots in the bar of the introduction and of a recording */
+.dictate-dot {
+  min-width: 8dp;
+  min-height: 8dp;
+  border-radius: 4dp;
+  background-color: @vibeos_outline_variant;
+}
+
+.dictate-dot.dictate-dot-done {
+  background-color: @vibeos_primary;
+}
+
+.dictate-dot.dictate-dot-now {
+  min-width: 20dp;
+  background-color: @vibeos_on_surface_variant;
+}
+
+/* Settings: a row's action in the primary colour ("Get", "Re-record"), a row that deletes, and the note under the
+   languages */
+.dictate-row-action {
+  color: @vibeos_primary;
+  font-size: 14sp;
+  font-weight: 500;
+}
+
+.dictate-row-danger .vibeos-list-row-title {
+  color: @vibeos_error;
+}
+
+.dictate-settings-footer {
+  margin: 8dp 32dp 4dp;
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+}
+
+/* a pill button: Record my voice, Test voice match */
+.dictate-pill {
+  min-height: 48dp;
+  border-radius: 24dp;
+}
+
+.dictate-pill > label {
+  font-size: 14sp;
+  font-weight: 500;
+}
+
+.dictate-pill-primary > label {
+  color: @vibeos_on_primary;
+}
+
+.dictate-pill-tonal > label {
+  color: @vibeos_on_secondary_container;
+}
+
+/* Settings › Voice match */
+.dictate-vm-body {
+  padding-bottom: 24dp;
+}
+
+.dictate-vm-intro {
+  margin: 8dp 32dp 16dp;
+  font-size: 16sp;
+  line-height: 1.4;
+}
+
+.dictate-vm-card {
+  margin: 0 16dp;
+  padding: 20dp;
+  border-radius: 20dp;
+  background-color: @vibeos_surface_bright;
+}
+
+.dictate-vm-card-title {
+  font-size: 16sp;
+}
+
+.dictate-vm-card-sub {
+  margin: 2dp 0 16dp;
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+}
+
+.dictate-vm-strict {
+  padding: 16dp 20dp;
+  border-radius: 20dp;
+  background-color: @vibeos_surface_bright;
+}
+
+.dictate-vm-strict-label {
+  font-size: 16sp;
+}
+
+.dictate-vm-strict-needed,
+.dictate-vm-end,
+.dictate-vm-strict-note {
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+}
+
+.dictate-vm-end {
+  font-size: 12sp;
+}
+
+.dictate-vm-strict-note {
+  margin-top: 10dp;
+}
+
+/* the slider: a 16dp track, filled up to the 4 x 44dp handle */
+scale.dictate-vm-scale {
+  margin-top: 8dp;
+  min-height: 44dp;
+  padding: 0;
+}
+
+scale.dictate-vm-scale trough {
+  min-height: 16dp;
+  border-radius: 8dp;
+  border: none;
+  background-color: @vibeos_secondary_container;
+}
+
+scale.dictate-vm-scale highlight {
+  min-height: 16dp;
+  border-radius: 8dp;
+  border: none;
+  background-color: @vibeos_primary;
+}
+
+scale.dictate-vm-scale slider {
+  min-width: 4dp;
+  min-height: 44dp;
+  margin: -14dp -2dp;
+  border-radius: 2dp;
+  border: none;
+  box-shadow: none;
+  background-color: @vibeos_primary;
+}
+
+.dictate-vm-test {
+  margin: 16dp 16dp 0;
+}
+
+/* the debug log's step, its JSON as it was */
+.dictate-debuglog-json {
+  background: transparent;
+  font-size: 13sp;
+}
+
+/* Vibe's introduction (dictate-onboarding.h): the languages and the things to try as rows, what Vibe may use as
+   chips, on the stage's middle */
+.dictate-intro-choices {
+  margin: 0 -12dp;
+}
+
+.dictate-intro-choice {
+  min-height: 60dp;
+  padding: 0 20dp;
+  border-radius: 20dp;
+  background-color: @vibeos_surface_container_high;
+}
+
+.dictate-intro-choice.dictate-intro-chosen {
+  background-color: @vibeos_secondary_container;
+  color: @vibeos_on_secondary_container;
+}
+
+.dictate-intro-choice-name {
+  font-size: 20sp;
+}
+
+.dictate-intro-choice-state {
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+}
+
+.dictate-intro-chosen .dictate-intro-choice-state {
+  color: @vibeos_on_secondary_container;
+}
+
+.dictate-intro-chips {
+  margin: 0 -8dp;
+}
+
+.dictate-intro-chips > flowboxchild {
+  padding: 0;
+}
+
+.dictate-intro-chip {
+  min-height: 48dp;
+  padding: 0 18dp;
+  border-radius: 24dp;
+  background-color: @vibeos_secondary_container;
+}
+
+.dictate-intro-chip > label {
+  font-size: 16sp;
+  color: @vibeos_on_secondary_container;
+}
+
+.dictate-intro-chip.dictate-intro-chip-off {
+  padding: 0 16dp;
+  border: 2dp solid @vibeos_outline;
+  background-color: transparent;
+}
+
+.dictate-intro-chip.dictate-intro-chip-off > label {
+  color: @vibeos_on_surface_variant;
+}
+
+.dictate-intro-try {
+  margin: 0 12dp 4dp;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_primary;
+}
+
+.dictate-intro-suggestion {
+  min-height: 56dp;
+  padding: 0 20dp;
+  border-radius: 20dp 20dp 20dp 6dp;
+  background-color: @vibeos_surface_container_high;
+}
+
+.dictate-intro-suggestion > label {
+  font-size: 18sp;
+}
+
+/* a countdown's or a download's bar, under the text */
+progressbar.dictate-stage-progress {
+  margin-top: 20dp;
+}
+
+progressbar.dictate-stage-progress > trough {
+  min-height: 8dp;
+  border-radius: 4dp;
+  border: none;
+  background-color: @vibeos_secondary_container;
+}
+
+progressbar.dictate-stage-progress > trough > progress {
+  margin: 0;
+  min-width: 0;
+  min-height: 8dp;
+  border-radius: 4dp;
+  border: none;
+  background-color: @vibeos_primary;
+}
+
+/* G4: what can be said, by kind */
+.dictate-help-group {
+  min-height: 60dp;
+  padding: 8dp 20dp;
+  border-radius: 20dp;
+  background-color: @vibeos_surface_container_low;
+}
+
+.dictate-help {
+  margin: 0 -12dp;
+}
+
+.dictate-help-title {
+  font-size: 20sp;
+}
+
+.dictate-help-examples {
+  font-size: 14sp;
+  color: @vibeos_on_surface_variant;
+}
+
+/* J4: the focus of the keyboard or of the screen reader's touch exploration, on the stage's buttons */
+.dictate-stage-button:focus-visible {
+  border-radius: 999px;
+  outline: 3dp solid @vibeos_primary;
+  outline-offset: 2dp;
+}
+
+/* J1: High contrast (Accessibility; libvibeos hands it to GTK as prefers-contrast): what floats on the background
+ * is outlined in the text's colour, and the secondary text is at full strength */
+@media (prefers-contrast: more) {
+  .dictate-stage-mine {
+    background-color: @vibeos_surface;
+    color: @vibeos_on_surface;
+    box-shadow: inset 0 0 0 2dp @vibeos_on_surface;
+  }
+  .dictate-stage-card,
+  .dictate-stage-written,
+  .dictate-help-group {
+    background-color: @vibeos_surface;
+    box-shadow: inset 0 0 0 2dp @vibeos_on_surface;
+  }
+  .dictate-stage-card-label,
+  .dictate-stage-sub,
+  .dictate-stage-hint,
+  .dictate-stage-past-note,
+  .dictate-help-examples {
+    color: @vibeos_on_surface;
+  }
+  .dictate-stage-button:not(.dictate-stage-button-primary) {
+    border-radius: 999px;
+    outline: 2dp solid @vibeos_on_surface;
+    outline-offset: -2dp;
+  }
 }

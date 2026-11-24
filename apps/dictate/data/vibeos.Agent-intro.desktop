@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Vibe
+Comment=Vibe introduces itself, once after it is installed or updated
+Exec=vibeos-dictate --agent
+Icon=vibeos.Agent
+Terminal=false
+NoDisplay=true
+X-GNOME-AutostartCondition=GSettings vibeos.Dictate first-run
+X-GNOME-Autostart-Phase=Applications

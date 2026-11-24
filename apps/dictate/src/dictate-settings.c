@@ -3,7 +3,11 @@
 #include "dictate-access.h"
 #include "dictate-download.h"
 #include "dictate-download-dialog.h"
+#include "dictate-confirm-page.h"
+#include "dictate-debuglog-page.h"
 #include "dictate-models.h"
+#include "dictate-tools.h"
+#include "dictate-voicematch-page.h"
 
 #include <glib/gi18n.h>
 #include <spongy-gtk.h>
@@ -12,7 +16,7 @@
 typedef struct {
   DictateSettingsHooks hooks;
   GtkWidget *window;
-  GtkWidget *page, *language, *rate, *verbosity, *quiet;
+  GtkWidget *page, *language, *rate, *verbosity, *quiet, *voice, *confirm, *clear, *viewer;
   GPtrArray *languages;         /* their rows, in dictate_languages' order */
 } Page;
 
@@ -52,16 +56,36 @@ refresh (Page *p)
       else if (downloaded)
         {
           g_autofree char *size = g_format_size (downloaded);
-          /* TRANSLATORS: a language in Agent's settings; %s is a size: 90.4 MB */
+          /* TRANSLATORS: a language in Vibe's settings; %s is a size: 90.4 MB */
           summary = g_strdup_printf (_("Downloaded, %s"), size);
         }
       else
         summary = g_strdup (_("On the phone"));
       vibeos_list_row_set_summary (row, summary);
-      vibeos_list_row_set_value (row, used ? _("In use") : NULL);
+      vibeos_list_row_clear_end (row);
+      if (lacks)
+        {
+          /* what it lacks is downloaded with a tap */
+          GtkWidget *get = gtk_label_new (_("Get"));
+
+          gtk_widget_add_css_class (get, "dictate-row-action");
+          gtk_widget_set_can_target (get, FALSE);
+          vibeos_list_row_set_end_widget (row, get);
+        }
+      else
+        vibeos_list_row_set_value (row, used ? _("In use") : NULL);
       /* a tap downloads what it lacks, or removes what was downloaded (not of the language in use) */
       vibeos_list_row_set_activatable (row, lacks || (downloaded && !used));
     }
+  {
+    g_autofree char *voice = dictate_voicematch_summary (p->hooks.settings);
+
+    g_autofree char *confirm = dictate_confirm_summary (p->hooks.settings);
+
+    vibeos_list_row_set_summary (VIBEOS_LIST_ROW (p->voice), voice);
+    vibeos_list_row_set_summary (VIBEOS_LIST_ROW (p->confirm), confirm);
+  }
+  vibeos_list_row_set_activatable (VIBEOS_LIST_ROW (p->clear), p->hooks.has_conversation (p->hooks.data));
 }
 
 void
@@ -73,20 +97,20 @@ dictate_settings_page_refresh (GtkWidget *page)
     refresh (p);
 }
 
-/* how fast Agent speaks (talk-speed): up to three times its voice's pace, for people used to fast speech */
+/* how fast Vibe speaks (talk-speed): up to three times its voice's pace, for people used to fast speech */
 static const struct { double speed; const char *label; } RATES[] = {
   { 0.75, N_("Slower") }, { 1.0, N_("Normal") }, { 1.25, "1.25×" }, { 1.5, "1.5×" }, { 2.0, "2×" }, { 2.5, "2.5×" },
   { 3.0, "3×" },
 };
 
-/* how much Agent says (talk-verbosity) */
+/* how much Vibe says (talk-verbosity) */
 static const struct { const char *value, *label, *summary; } VERBOSITY[] = {
   { "short", N_("Short"), N_("A sentence") },
   { "normal", N_("Normal"), N_("One to three sentences") },
   { "detailed", N_("Detailed"), N_("More, when the question needs it") },
 };
 
-/* when Agent says nothing on its own (quiet-hours) */
+/* when Vibe says nothing on its own (quiet-hours) */
 static const struct { const char *value, *label; } QUIET[] = {
   { "", N_("Off") }, { "22:00-07:00", "22:00–07:00" }, { "23:00-07:00", "23:00–07:00" },
   { "21:00-06:00", "21:00–06:00" }, { "00:00-08:00", "00:00–08:00" },
@@ -355,6 +379,53 @@ on_language_row (VibeosListRow *row, Page *p)
   }
 }
 
+static void
+on_voice (VibeosListRow *row, Page *p)
+{
+  vibeos_page_stack_push (p->hooks.pages,
+                          dictate_voicematch_page_new (p->window, p->hooks.pages, p->hooks.settings, p->hooks.talk,
+                                                       p->hooks.language (p->hooks.data)));
+}
+
+static void
+on_confirm (VibeosListRow *row, Page *p)
+{
+  vibeos_page_stack_push (p->hooks.pages, dictate_confirm_page_new (p->hooks.pages, p->hooks.settings));
+}
+
+static void
+on_clear (VibeosListRow *row, Page *p)
+{
+  p->hooks.clear_conversation (p->hooks.data);
+}
+
+static void
+viewer_back (gpointer data)
+{
+  Page *p = data;
+
+  vibeos_page_stack_pop (p->hooks.pages);
+}
+
+static void
+on_viewer (VibeosListRow *row, Page *p)
+{
+  vibeos_page_stack_push (p->hooks.pages, dictate_debuglog_page_new (p->window, p->hooks.pages, viewer_back, p));
+}
+
+static void
+on_about (VibeosListRow *row, Page *p)
+{
+  p->hooks.about (p->hooks.data);
+}
+
+/* back on this page from one over it: Voice match's summary, and whether there is a conversation, may have changed */
+static void
+on_map (GtkWidget *page, Page *p)
+{
+  refresh (p);
+}
+
 static GtkWidget *
 switch_row (Page *p, GtkWidget *cards, const char *title, const char *summary, const char *key)
 {
@@ -371,7 +442,8 @@ dictate_settings_page_new (GtkWidget *window, const DictateSettingsHooks *hooks)
 {
   Page *p = g_new0 (Page, 1);
   GtkWidget *bar = vibeos_top_bar_new (_("Settings"));
-  GtkWidget *cards = vibeos_card_list_new (), *scroll = spongy_scroll_view_new ();
+  GtkWidget *cards = vibeos_card_list_new (), *more = vibeos_card_list_new (), *scroll = spongy_scroll_view_new ();
+  GtkWidget *column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *footer;
   guint n;
   const DictateAccess *access = dictate_access_list (&n);
   const DictateLanguage *languages;
@@ -389,7 +461,7 @@ dictate_settings_page_new (GtkWidget *window, const DictateSettingsHooks *hooks)
   g_signal_connect (bar, "back", G_CALLBACK (on_back), p);
   gtk_box_append (GTK_BOX (p->page), bar);
 
-  /* how Agent talks */
+  /* how Vibe talks */
   p->language = vibeos_list_row_new (_("Language"), _("What Vibe hears and speaks"));
   g_signal_connect (p->language, "clicked", G_CALLBACK (on_language), p);
   vibeos_card_list_append (VIBEOS_CARD_LIST (cards), p->language);
@@ -404,6 +476,18 @@ dictate_settings_page_new (GtkWidget *window, const DictateSettingsHooks *hooks)
               "talk-listen-again");
   switch_row (p, cards, _("Sounds"), _("A short sound when Vibe listens, works, is done or fails"), "cue-sounds");
   switch_row (p, cards, _("Vibration"), _("A short vibration at the same moments"), "cue-haptics");
+
+  /* Voice match, a page of its own */
+  vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), _("Your voice"));
+  p->voice = vibeos_list_row_new (_("Voice match"), NULL);
+  {
+    GdkRGBA fill = vibeos_color (VIBEOS_SECONDARY_CONTAINER), glyph = vibeos_color (VIBEOS_ON_SECONDARY_CONTAINER);
+
+    vibeos_list_row_set_icon_circle (VIBEOS_LIST_ROW (p->voice), "dictate-mic-symbolic", &fill, &glyph);
+  }
+  vibeos_list_row_set_chevron (VIBEOS_LIST_ROW (p->voice));
+  g_signal_connect (p->voice, "clicked", G_CALLBACK (on_voice), p);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (cards), p->voice);
 
   /* calls, and when and where it speaks */
   vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), _("Calls and privacy"));
@@ -429,8 +513,20 @@ dictate_settings_page_new (GtkWidget *window, const DictateSettingsHooks *hooks)
     gtk_widget_set_can_target (note, FALSE);
     vibeos_card_list_append (VIBEOS_CARD_LIST (cards), note);
   }
+  p->confirm = vibeos_list_row_new (_("Confirmations"), NULL);
+  vibeos_list_row_set_chevron (VIBEOS_LIST_ROW (p->confirm));
+  g_signal_connect (p->confirm, "clicked", G_CALLBACK (on_confirm), p);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (cards), p->confirm);
+  /* a switch only for what Vibe has tools for (the camera has none yet) */
   for (guint i = 0; i < n; i++)
-    switch_row (p, cards, _(access[i].title), NULL, access[i].key);
+    if (dictate_tools_area_has_tools (access[i].key))
+      switch_row (p, cards, _(access[i].title), NULL, access[i].key);
+
+  /* the conversation kept on the screen, which is what Vibe remembers */
+  vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), _("Conversation"));
+  p->clear = vibeos_list_row_new (_("Clear conversation"), _("Deletes it from the phone, and Vibe forgets it"));
+  g_signal_connect (p->clear, "clicked", G_CALLBACK (on_clear), p);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (cards), p->clear);
 
   /* the languages, and what of each is on the phone */
   vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), _("Languages"));
@@ -445,14 +541,38 @@ dictate_settings_page_new (GtkWidget *window, const DictateSettingsHooks *hooks)
       g_ptr_array_add (p->languages, row);
     }
 
-  vibeos_card_list_set_margins (VIBEOS_CARD_LIST (cards), 8, 24);
+  vibeos_card_list_set_margins (VIBEOS_CARD_LIST (cards), 8, 0);
+  gtk_box_append (GTK_BOX (column), cards);
+  footer = gtk_label_new (_("Tap a downloaded language to remove it."));
+  gtk_widget_add_css_class (footer, "dictate-settings-footer");
+  gtk_label_set_xalign (GTK_LABEL (footer), 0);
+  gtk_label_set_wrap (GTK_LABEL (footer), TRUE);
+  gtk_box_append (GTK_BOX (column), footer);
+
+  /* finding what went wrong, and About */
+  vibeos_card_list_add_group (VIBEOS_CARD_LIST (more), _("Help"));
+  switch_row (p, more, _("Debug log"), _("Each turn is recorded on the phone, and only there, to find what went wrong"),
+              "debug-log");
+  p->viewer = vibeos_list_row_new (_("View debug log"), NULL);
+  vibeos_list_row_set_chevron (VIBEOS_LIST_ROW (p->viewer));
+  g_signal_connect (p->viewer, "clicked", G_CALLBACK (on_viewer), p);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (more), p->viewer);
+  {
+    GtkWidget *about = vibeos_list_row_new (_("About Vibe"), NULL);
+
+    g_signal_connect (about, "clicked", G_CALLBACK (on_about), p);
+    vibeos_card_list_append (VIBEOS_CARD_LIST (more), about);
+  }
+  vibeos_card_list_set_margins (VIBEOS_CARD_LIST (more), 0, 24);
+  gtk_box_append (GTK_BOX (column), more);
   /* on a tablet the rows are a column in the middle, their switches near their text */
-  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), vibeos_clamp_new (cards, VIBEOS_CLAMP_SETTINGS));
+  spongy_scroll_view_set_child (SPONGY_SCROLL_VIEW (scroll), vibeos_clamp_new (column, VIBEOS_CLAMP_SETTINGS));
   gtk_widget_set_vexpand (scroll, TRUE);
   gtk_box_append (GTK_BOX (p->page), scroll);
   g_signal_connect (p->hooks.settings, "changed", G_CALLBACK (on_setting_changed), p);
   g_object_set_data_full (G_OBJECT (p->page), "dictate-settings", p, page_free);
   g_object_set_data (G_OBJECT (window), "dictate-settings-page", p->page);
+  g_signal_connect (p->page, "map", G_CALLBACK (on_map), p);
   refresh (p);
   show_choices (p);
   return p->page;

@@ -35,12 +35,19 @@ tools_deps = [dependency('libebook-1.2'), dependency('libecal-2.0'), dependency(
 # a language's model and voice downloaded (dictate-download.c): libsoup for the files, libarchive for Vosk's zips
 download_deps = [dependency('glib-2.0'), dependency('gio-2.0'), dependency('libsoup-3.0'), dependency('libarchive')]
 
+# Vibe's screens: the conversation and its orb, the conversation kept, the lock screen's PIN asked for, the voice
+# sample's recording and Settings' Voice match and Debug log pages, and the spoken lines in the language Vibe speaks
+vibe_sources = ['src/dictate-stage.c', 'src/dictate-orb.c', 'src/dictate-history.c', 'src/dictate-owner.c',
+                'src/dictate-l10n.c', 'src/dictate-enroll.c', 'src/dictate-voicematch-page.c',
+                'src/dictate-debuglog-page.c', 'src/dictate-onboarding.c',
+                'src/dictate-confirm-page.c']
+
 executable('vibeos-dictate', 'src/dictate-main.c', 'src/dictate-window.c', 'src/dictate-mic.c',
            'src/dictate-engine.c', 'src/dictate-models.c', 'src/dictate-moonshine.c', 'src/dictate-vosk.c',
            'src/dictate-vad.c', 'src/dictate-talk.c', 'src/dictate-voicematch.c', 'src/dictate-voice.c',
            'src/dictate-phonemes.c', brain_sources,
            'src/dictate-download.c', 'src/dictate-download-dialog.c', 'src/dictate-pk.c', 'src/dictate-package.c',
-           'src/dictate-access.c', 'src/dictate-settings.c', 'src/dictate-cues.c', tools_sources, resources,
+           'src/dictate-access.c', 'src/dictate-settings.c', 'src/dictate-cues.c', vibe_sources, tools_sources, resources,
            link_with: text, install: true,
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"',
                     '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
@@ -59,6 +66,8 @@ endforeach
 install_data('data/vibeos.Dictate.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 # Agent running with no window while Announce calls is on: the session starts it, and stops it when that goes off
 install_data('data/vibeos.Agent-announce.desktop', install_dir: get_option('sysconfdir') / 'xdg/autostart')
+# Vibe's introduction at the session's start, while it is still to come (the first-run key)
+install_data('data/vibeos.Agent-intro.desktop', install_dir: get_option('sysconfdir') / 'xdg/autostart')
 # Agent's state cues (dictate-cues.c; data/sounds/make-sounds.sh makes them)
 install_data('data/sounds/agent-listening.wav', 'data/sounds/agent-working.wav', 'data/sounds/agent-done.wav',
              'data/sounds/agent-failed.wav', install_dir: datadir / 'vibeos-dictate/sounds')
