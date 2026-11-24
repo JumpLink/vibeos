@@ -145,6 +145,12 @@ test('debuglog', executable('test-debuglog', 'tests/test-debuglog.c', brain_sour
                             dependencies: [dependency('glib-2.0'), dependency('gio-2.0'), dependency('llama')]
                                           + remote_deps))
 
+# the model on a server, stood in for: a reply with nothing in it asked for again, and the conversation's turns in order
+test('remote', executable('test-remote', 'tests/test-remote.c', 'src/dictate-remote.c', 'src/dictate-device.c',
+                          'src/dictate-debuglog.c', include_directories: 'src',
+                          c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"',
+                          dependencies: [dependency('glib-2.0'), dependency('gio-2.0')] + remote_deps))
+
 # the offline grammar: each command in each language to its tool, and the replies from made-up results
 test('offline', executable('test-offline', 'tests/test-offline.c', 'src/dictate-offline.c', include_directories: 'src',
                            dependencies: [dependency('glib-2.0'), dependency('json-glib-1.0')]))

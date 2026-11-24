@@ -297,7 +297,8 @@ dictate_brain_reset (DictateBrain *self, const char *system)
 void
 dictate_brain_forget_turn (DictateBrain *self)
 {
-  /* the phone's own model offers no tools, so its turns are never refused */
+  /* the server's conversation only: the phone's own model has the turn in its token cache (n_past) as well, and
+   * offers no tools, so its turns are never refused */
   if (self->remote)
     dictate_remote_forget_turn (self->remote);
 }

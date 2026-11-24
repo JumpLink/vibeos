@@ -1390,6 +1390,15 @@ answer (DictateTalk *self, Job *job)
       post_refused (self, job->turn, reason, job->score, job->needed, line);
       on_piece (line, &w);
     }
+  if (reply && !*reply && !offline && !job->refused && current (self, job->turn))
+    {
+      /* nothing came of it, asked twice (dictate_remote_step ()): an error the user sees and hears, never a silent
+       * turn; with no tool run for it, the question goes from the conversation as an unanswered one does */
+      if (!used)
+        dictate_brain_forget_turn (self->brain);
+      g_clear_pointer (&reply, g_free);
+      g_set_error_literal (&error, G_IO_ERROR, G_IO_ERROR_FAILED, "the model gave no reply");
+    }
   if (!reply && g_error_matches (error, DICTATE_BRAIN_ERROR, DICTATE_BRAIN_ERROR_BUSY))
     {
       /* the server has had too many questions: not an error on the screen, it is said as the reply */

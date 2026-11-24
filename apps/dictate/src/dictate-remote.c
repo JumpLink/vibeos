@@ -685,16 +685,23 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
   /* nothing came of it, no reply and no call: the model wrote to its length in what the stream does not pass on (a
    * call the server could not read, seen with "Call him." and nobody named). Asked once more, the same request: it
    * nearly always answers then. The user saw nothing of the first, so nothing is taken back */
-  if (reply->len == 0 && calls->len == 0 && !self->again && !g_cancellable_is_cancelled (cancellable))
+  if (reply->len == 0 && calls->len == 0 && !g_cancellable_is_cancelled (cancellable))
     {
-      char *again;
+      /* numbers only: which side gave nothing (the server's status, how much the model wrote, when) */
+      g_autofree char *why = g_strdup_printf ("an empty reply: HTTP %u, %d written, first piece at %.0f ms, %.0f ms "
+                                              "in all", soup_message_get_status (msg), self->written, self->first_ms,
+                                              self->total_ms);
+      g_message ("agent: %s%s", why, self->again ? ", the second time" : ", asked again");
+      dictate_debuglog_note (self->again ? "empty" : "retry", why);
+      if (!self->again)
+        {
+          char *again;
 
-      g_debug ("agent: an empty reply (%d written), asked again", self->written);
-      dictate_debuglog_note ("retry", "an empty reply: the same request again");
-      self->again = TRUE;
-      again = dictate_remote_step (self, NULL, tools, piece, data, calls_out, cancellable, error);
-      self->again = FALSE;
-      return again;
+          self->again = TRUE;
+          again = dictate_remote_step (self, NULL, tools, piece, data, calls_out, cancellable, error);
+          self->again = FALSE;
+          return again;
+        }
     }
   if (calls->len)
     add_calls (self, reply->str, calls);

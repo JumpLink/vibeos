@@ -35,7 +35,8 @@ void          dictate_brain_reset       (DictateBrain *self, const char *system)
 /* the conversation goes on under another system prompt (NULL: none): on the phone the model reads all of it again at
  * the next reply */
 void          dictate_brain_set_system  (DictateBrain *self, const char *system);
-/* the last question and all that followed it gone from the conversation, as if never asked (a refused turn) */
+/* the last question and all that followed it gone from the conversation, as if never asked (a refused turn, one the
+ * model gave no reply to) */
 void          dictate_brain_forget_turn (DictateBrain *self);
 /* an earlier conversation goes on (`n` questions and their replies, oldest first), after the system prompt; a model on
  * the phone starts afresh instead */
