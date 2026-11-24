@@ -215,12 +215,24 @@ parse_local (const char *t)
   return g_date_time_new_from_iso8601 (full, tz);
 }
 
+/* degrees Fahrenheit, where the user's region tells the weather in them (the forecast comes in Celsius); asked once,
+ * since an app keeps the language and region it started in */
+static gboolean
+fahrenheit (void)
+{
+  static int f = -1;
+  if (f < 0)
+    f = vibeos_locale_uses_fahrenheit ();
+  return f;
+}
+
+/* a temperature given in °C, in the region's degrees, whole, with the degree sign alone ("22°", "72°") */
 static char *
 fmt_temp (double t)
 {
   if (isnan (t))
     return g_strdup ("–");
-  double r = round (t);
+  double r = round (fahrenheit () ? t * 9 / 5 + 32 : t);
   return g_strdup_printf ("%.0f°", r == 0 ? 0 : r);     /* never "-0°" */
 }
 
@@ -664,7 +676,7 @@ fill (Page *p, JsonObject *o)
     gtk_widget_set_hexpand (sl, TRUE);
     gtk_box_append (GTK_BOX (row), sl);
     if (fabs (diff) >= 1) {
-      g_autofree char *dd = g_strdup_printf ("%.0f°%s", fabs (diff), diff < 0 ? "↓" : "↑");
+      g_autofree char *dd = g_strdup_printf ("%.0f°%s", fabs (diff) * (fahrenheit () ? 1.8 : 1), diff < 0 ? "↓" : "↑");
       gtk_box_append (GTK_BOX (row), label (dd, "wx-delta", 1));
     }
     gtk_box_append (GTK_BOX (cmp), row);
@@ -730,10 +742,10 @@ fill (Page *p, JsonObject *o)
   double u = num (uv, 1);
   g_autofree char *uvs = isnan (u) ? g_strdup ("–") : g_strdup_printf ("%.0f", u);
   g_autofree char *hum = g_strdup_printf ("%.0f%%", cur (c, "relative_humidity_2m"));
-  /* TRANSLATORS: the wind's speed in kilometres an hour */
-  g_autofree char *wind = g_strdup_printf (_("%.0f km/h"), cur (c, "wind_speed_10m"));
-  /* TRANSLATORS: the air pressure in hectopascals */
-  g_autofree char *pres = g_strdup_printf (_("%.0f hPa"), cur (c, "pressure_msl"));
+  /* the forecast's km/h and hPa in the region's units, with their names in the user's language */
+  double w = cur (c, "wind_speed_10m"), pa = cur (c, "pressure_msl");
+  g_autofree char *wind = isnan (w) ? g_strdup ("–") : vibeos_format_wind_speed (w);
+  g_autofree char *pres = isnan (pa) ? g_strdup ("–") : vibeos_format_air_pressure (pa);
   gtk_grid_attach (GTK_GRID (dg), detail (_("Sunrise"), rs, ssub), 0, 0, 1, 1);
   gtk_grid_attach (GTK_GRID (dg), detail (_("UV index"), uvs, isnan (u) ? NULL : uv_word (u)), 1, 0, 1, 1);
   gtk_grid_attach (GTK_GRID (dg), detail (_("Humidity"), hum, NULL), 0, 1, 1, 1);
