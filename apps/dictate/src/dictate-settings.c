@@ -390,40 +390,40 @@ dictate_settings_page_new (GtkWidget *window, const DictateSettingsHooks *hooks)
   gtk_box_append (GTK_BOX (p->page), bar);
 
   /* how Agent talks */
-  p->language = vibeos_list_row_new (_("Language"), _("What Agent hears and speaks"));
+  p->language = vibeos_list_row_new (_("Language"), _("What Vibe hears and speaks"));
   g_signal_connect (p->language, "clicked", G_CALLBACK (on_language), p);
   vibeos_card_list_append (VIBEOS_CARD_LIST (cards), p->language);
   switch_row (p, cards, _("Speak the replies"), _("Off, they are only written"), "talk-speak");
-  p->rate = vibeos_list_row_new (_("Speech rate"), _("How fast Agent speaks"));
+  p->rate = vibeos_list_row_new (_("Speech rate"), _("How fast Vibe speaks"));
   g_signal_connect (p->rate, "clicked", G_CALLBACK (on_rate), p);
   vibeos_card_list_append (VIBEOS_CARD_LIST (cards), p->rate);
-  p->verbosity = vibeos_list_row_new (_("Answers"), _("How much Agent says"));
+  p->verbosity = vibeos_list_row_new (_("Answers"), _("How much Vibe says"));
   g_signal_connect (p->verbosity, "clicked", G_CALLBACK (on_verbosity), p);
   vibeos_card_list_append (VIBEOS_CARD_LIST (cards), p->verbosity);
-  switch_row (p, cards, _("Listen after a reply"), _("Once a reply has been spoken, Agent listens for your answer"),
+  switch_row (p, cards, _("Listen after a reply"), _("Once a reply has been spoken, Vibe listens for your answer"),
               "talk-listen-again");
-  switch_row (p, cards, _("Sounds"), _("A short sound when Agent listens, works, is done or fails"), "cue-sounds");
+  switch_row (p, cards, _("Sounds"), _("A short sound when Vibe listens, works, is done or fails"), "cue-sounds");
   switch_row (p, cards, _("Vibration"), _("A short vibration at the same moments"), "cue-haptics");
 
   /* calls, and when and where it speaks */
   vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), _("Calls and privacy"));
   switch_row (p, cards, _("Announce calls"),
-              _("Agent says who is calling and listens for answer or decline, also when it is closed"),
+              _("Vibe says who is calling and listens for answer or decline, also when it is closed"),
               "announce-calls");
   switch_row (p, cards, _("Private mode"),
               _("Replies only in headphones; on the speaker short, with no names or messages read out"),
               "talk-private");
-  p->quiet = vibeos_list_row_new (_("Quiet hours"), _("Agent says nothing and plays no sound on its own"));
+  p->quiet = vibeos_list_row_new (_("Quiet hours"), _("Vibe says nothing and plays no sound on its own"));
   g_signal_connect (p->quiet, "clicked", G_CALLBACK (on_quiet), p);
   vibeos_card_list_append (VIBEOS_CARD_LIST (cards), p->quiet);
   switch_row (p, cards, _("Calls in quiet hours"), _("Calls are still announced"), "quiet-calls");
 
   /* what it can use */
-  vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), _("What Agent can use"));
+  vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), _("What Vibe can use"));
   {
     /* where what it reads goes, before the switches */
     GtkWidget *note = vibeos_list_row_new (_("Only to VibeOS"),
-                                           _("What Agent reads on the phone goes only to VibeOS's own model server, "
+                                           _("What Vibe reads on the phone goes only to VibeOS's own model server, "
                                              "never to anyone else. For the weather, the town's rough position goes "
                                              "to Open-Meteo, as from the Weather app"));
     gtk_widget_set_can_target (note, FALSE);

@@ -550,7 +550,7 @@ ask (Offer *offer)
     message = g_strdup_printf (_("To speak %s, %s needs this on the phone:"), name, offer->app);
   else if (offer->talk)
     /* TRANSLATORS: %s is the language's name for itself (Deutsch) */
-    message = g_strdup_printf (_("To hear and speak %s, Agent needs these on the phone:"), name);
+    message = g_strdup_printf (_("To hear and speak %s, Vibe needs these on the phone:"), name);
   else
     /* TRANSLATORS: %s is the language's name for itself (Deutsch) */
     message = g_strdup_printf (_("To hear %s, Dictate needs these on the phone:"), name);
