@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-shell\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 19:46+0100\n"
+"POT-Creation-Date: 2026-11-24 20:44+0100\n"
 "PO-Revision-Date: 2026-11-24 19:46+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: German\n"
@@ -146,6 +146,80 @@ msgstr "Benachrichtigungseinstellungen"
 msgid "No notifications"
 msgstr "Keine Benachrichtigungen"
 
+#. TRANSLATORS: a Bluetooth device asks to connect to one of the phone's services; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Allow %s to connect?"
+msgstr "%s die Verbindung erlauben?"
+
+# android: Settings bluetooth_pairing_request
+#. TRANSLATORS: a Bluetooth device asks to pair; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Pair with %s?"
+msgstr "Mit %s koppeln?"
+
+# android: Settings bluetooth_pin_values_hint
+#: pairdialog.js
+msgid "Usually 0000 or 1234"
+msgstr "In der Regel 0000 oder 1234"
+
+# android: Settings bluetooth_enable_alphanumeric_pin
+#: pairdialog.js
+msgid "PIN contains letters or symbols"
+msgstr "Die PIN enthält Buchstaben oder Symbole"
+
+# android: Settings bluetooth_enter_pin_other_device
+#: pairdialog.js
+msgid "You may also need to type this PIN on the other device."
+msgstr "Eventuell musst du diese PIN auch auf dem anderen Gerät eingeben."
+
+# android: SettingsLib bluetooth_pairing_decline
+#. authorize: a device pairing without a code
+#: pairdialog.js
+msgid "Cancel"
+msgstr "Abbrechen"
+
+# android: SettingsLib bluetooth_pairing_accept
+#: pairdialog.js
+msgid "Pair"
+msgstr "Koppeln"
+
+#. TRANSLATORS: the passkey (six digits) to type here, as the other device shows it
+#: pairdialog.js
+msgid "Type the passkey shown on the other device."
+msgstr "Gib den Zugangscode ein, der auf dem anderen Gerät angezeigt wird."
+
+# android: Settings bluetooth_pairing_key_msg
+#: pairdialog.js
+msgid "Bluetooth pairing code"
+msgstr "Bluetooth-Kopplungscode"
+
+# android: Settings bluetooth_enter_passkey_msg, typed on the other device
+#. TRANSLATORS: over the code shown here, for a keyboard (the other device) to type
+#: pairdialog.js
+msgid "Type this code on the other device, then press Return or Enter."
+msgstr "Gib diesen Code auf dem anderen Gerät ein und drücke dann die Eingabetaste."
+
+# android: SystemUI usb_authorization_deny
+#: pairdialog.js
+msgid "Don't allow"
+msgstr "Nicht zulassen"
+
+# android: SystemUI usb_authorization_allow
+#: pairdialog.js
+msgid "Allow"
+msgstr "Zulassen"
+
+#: pairdialog.js qs.js
+msgid "Bluetooth"
+msgstr "Bluetooth"
+
+#. TRANSLATORS: a Bluetooth device's question waits behind this notification while the phone is locked
+#: pairdialog.js
+msgid "Unlock the phone to answer."
+msgstr "Entsperre das Smartphone, um die Anfrage zu beantworten."
+
 #: powermenu.js
 msgid "Lockdown"
 msgstr "Sperren"
@@ -161,10 +235,6 @@ msgstr "Neustart"
 #: qs.js
 msgid "Wi-Fi"
 msgstr "WLAN"
-
-#: qs.js
-msgid "Bluetooth"
-msgstr "Bluetooth"
 
 #: qs.js
 msgid "Flashlight"

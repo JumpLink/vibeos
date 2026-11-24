@@ -11,7 +11,6 @@
 // the dialog's grab), and moves up out of the keyboard's way.
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
@@ -19,11 +18,10 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
+import {_} from './l10n.js';
 import {animate, bezier} from './motion.js';
 import {Color, cogl, font, rgba} from './palette.js';
 import {WIDTH, dp, sp} from './units.js';
-
-const _ = text => GLib.dgettext('vibeos-shell', text);
 
 // Material 3's alert dialog: 24 dp padding, 28 dp corners, 280-560 dp wide, the headline 24 sp, the text 14 sp,
 // the buttons text buttons at the end
@@ -46,7 +44,10 @@ const STANDARD = bezier(0.2, 0, 0, 1);
 const STANDARD_ACCELERATE = bezier(0.3, 0, 1, 1);
 
 function title(question) {
-    return question.kind === 'service' ? _('Allow %s to connect?').replace('%s', question.name)
+    return question.kind === 'service'
+        /* TRANSLATORS: a Bluetooth device asks to connect to one of the phone's services; %s is its name */
+        ? _('Allow %s to connect?').replace('%s', question.name)
+        /* TRANSLATORS: a Bluetooth device asks to pair; %s is its name */
         : _('Pair with %s?').replace('%s', question.name);
 }
 
@@ -118,6 +119,7 @@ class Dialog {
             this._buttons([[_('Cancel'), null], [_('Pair'), () => this._typed(), true]]);
             break;
         case 'passkey':
+            /* TRANSLATORS: the passkey (six digits) to type here, as the other device shows it */
             add(text(_('Type the passkey shown on the other device.'), 14, 400, Color.onSurfaceVariant, w));
             add(this._field(PASSKEY_LEN));
             this._buttons([[_('Cancel'), null], [_('Pair'), () => this._typed(), true]]);
@@ -128,6 +130,7 @@ class Dialog {
             this._buttons([[_('Cancel'), null], [_('Pair'), () => true]]);
             break;
         case 'display':
+            /* TRANSLATORS: over the code shown here, for a keyboard (the other device) to type */
             add(text(_('Type this code on the other device, then press Return or Enter.'), 14, 400,
                 Color.onSurfaceVariant, w));
             add(this._code(q.code), 8);
@@ -414,6 +417,7 @@ export class PairingUI {
         const notification = new MessageTray.Notification({
             source: this._source,
             title: title(current.question),
+            /* TRANSLATORS: a Bluetooth device's question waits behind this notification while the phone is locked */
             body: _('Unlock the phone to answer.'),
             urgency: MessageTray.Urgency.HIGH,
         });

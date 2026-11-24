@@ -4,6 +4,7 @@ keyguard.js
 l10n.js
 launch.js
 notifications.js
+pairdialog.js
 powermenu.js
 qs.js
 recents.js

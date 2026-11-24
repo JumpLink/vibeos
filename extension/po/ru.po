@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-shell\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 19:46+0100\n"
+"POT-Creation-Date: 2026-11-24 20:44+0100\n"
 "PO-Revision-Date: 2026-11-24 19:46+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Russian\n"
@@ -148,6 +148,80 @@ msgstr "Настройки уведомлений"
 msgid "No notifications"
 msgstr "Нет уведомлений"
 
+#. TRANSLATORS: a Bluetooth device asks to connect to one of the phone's services; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Allow %s to connect?"
+msgstr "Разрешить устройству %s подключиться?"
+
+# android: Settings bluetooth_pairing_request
+#. TRANSLATORS: a Bluetooth device asks to pair; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Pair with %s?"
+msgstr "Подключить устройство %s?"
+
+# android: Settings bluetooth_pin_values_hint
+#: pairdialog.js
+msgid "Usually 0000 or 1234"
+msgstr "Обычно 0000 или 1234"
+
+# android: Settings bluetooth_enable_alphanumeric_pin
+#: pairdialog.js
+msgid "PIN contains letters or symbols"
+msgstr "PIN-код содержит буквы или символы"
+
+# android: Settings bluetooth_enter_pin_other_device
+#: pairdialog.js
+msgid "You may also need to type this PIN on the other device."
+msgstr "Возможно, потребуется ввести PIN-код на другом устройстве."
+
+# android: SettingsLib bluetooth_pairing_decline
+#. authorize: a device pairing without a code
+#: pairdialog.js
+msgid "Cancel"
+msgstr "Отмена"
+
+# android: SettingsLib bluetooth_pairing_accept
+#: pairdialog.js
+msgid "Pair"
+msgstr "Подключить"
+
+#. TRANSLATORS: the passkey (six digits) to type here, as the other device shows it
+#: pairdialog.js
+msgid "Type the passkey shown on the other device."
+msgstr "Введите ключ доступа, показанный на другом устройстве."
+
+# android: Settings bluetooth_pairing_key_msg
+#: pairdialog.js
+msgid "Bluetooth pairing code"
+msgstr "Код подключения Bluetooth"
+
+# android: Settings bluetooth_enter_passkey_msg, typed on the other device
+#. TRANSLATORS: over the code shown here, for a keyboard (the other device) to type
+#: pairdialog.js
+msgid "Type this code on the other device, then press Return or Enter."
+msgstr "Введите этот код на другом устройстве и нажмите клавишу ввода."
+
+# android: SystemUI usb_authorization_deny
+#: pairdialog.js
+msgid "Don't allow"
+msgstr "Запретить"
+
+# android: SystemUI usb_authorization_allow
+#: pairdialog.js
+msgid "Allow"
+msgstr "Разрешить"
+
+#: pairdialog.js qs.js
+msgid "Bluetooth"
+msgstr "Bluetooth"
+
+#. TRANSLATORS: a Bluetooth device's question waits behind this notification while the phone is locked
+#: pairdialog.js
+msgid "Unlock the phone to answer."
+msgstr "Разблокируйте телефон, чтобы ответить."
+
 #: powermenu.js
 msgid "Lockdown"
 msgstr "Блокировка входа"
@@ -163,10 +237,6 @@ msgstr "Перезапустить"
 #: qs.js
 msgid "Wi-Fi"
 msgstr "Wi-Fi"
-
-#: qs.js
-msgid "Bluetooth"
-msgstr "Bluetooth"
 
 #: qs.js
 msgid "Flashlight"
