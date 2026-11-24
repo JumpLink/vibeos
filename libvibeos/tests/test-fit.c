@@ -1,10 +1,11 @@
 /* VibeosFitLabel's scale without a display, on real text in VibeOS's own font (the one in libvibeos/fonts, so the
  * build machine's fonts play no part): words that fit are not shrunk, a word a little too wide is shrunk just enough
  * and one far too wide only down to the smallest scale, and text with too many lines is shrunk until it has few
- * enough, the largest scale that does it. */
+ * enough, the largest scale that does it. Soft hyphens play no part in the scale. */
 #include <fontconfig/fontconfig.h>
 #include <math.h>
 #include <pango/pangocairo.h>
+#include <string.h>
 
 #include "vibeos.h"
 
@@ -117,10 +118,63 @@ test_lines (void)
   g_assert_cmpfloat (_vibeos_fit_label_scale (layout, full / 2, 1, MIN_SCALE), ==, MIN_SCALE);
 }
 
+#define SHY "\302\255"
+
+static void
+test_soft_hyphen (void)
+{
+  g_autoptr (PangoLayout) layout = layout_new ("Doku" SHY "mente");
+  int word = width_of ("Dokumente"), width = (int) (word * 0.9);
+  double scale;
+
+  /* a tenth too wide: drawn as much smaller as the word without the hyphen, rather than broken at it */
+  scale = _vibeos_fit_label_scale (layout, width, 2, MIN_SCALE);
+  g_assert_cmpfloat (scale, <, 1);
+  g_assert_cmpfloat (word * scale, <=, width + 0.01);
+  g_assert_cmpfloat (word * (scale + 0.01), >, width);
+  /* twice too wide: the smallest scale, where it breaks at the hyphen */
+  g_assert_cmpfloat (_vibeos_fit_label_scale (layout, word / 2, 2, MIN_SCALE), ==, MIN_SCALE);
+
+  /* on the lines too: at every width, the scale of the same text without them */
+  {
+    g_autoptr (PangoLayout) hyphenated = layout_new ("Zuletzt ver" SHY "wendete Dateien");
+    g_autoptr (PangoLayout) plain = layout_new ("Zuletzt verwendete Dateien");
+    int full = width_of ("Zuletzt verwendete Dateien");
+
+    for (int w = (int) (width_of ("verwendete") * 0.7); w <= full; w += 3)
+      g_assert_cmpfloat (_vibeos_fit_label_scale (hyphenated, w, 2, MIN_SCALE), ==,
+                         _vibeos_fit_label_scale (plain, w, 2, MIN_SCALE));
+  }
+
+  /* the attributes stay on their letters: the part after the hyphen in a font half as large again */
+  {
+    g_autoptr (PangoLayout) plain = layout_new ("Dokumente");
+    g_autoptr (PangoAttrList) attrs = pango_attr_list_new ();
+    g_autoptr (PangoAttrList) shifted = pango_attr_list_new ();
+    PangoAttribute *larger = pango_attr_size_new_absolute (24 * PANGO_SCALE);
+    int big;
+
+    larger->start_index = strlen ("Doku");
+    pango_attr_list_insert (attrs, pango_attribute_copy (larger));
+    pango_layout_set_attributes (plain, attrs);
+    pango_layout_get_pixel_size (plain, &big, NULL);
+    g_assert_cmpint (big, >, word);
+
+    larger->start_index = strlen ("Doku" SHY);
+    pango_attr_list_insert (shifted, larger);
+    pango_layout_set_attributes (layout, shifted);
+    scale = _vibeos_fit_label_scale (layout, big, 2, MIN_SCALE);
+    g_assert_cmpfloat (scale, ==, 1);
+    scale = _vibeos_fit_label_scale (layout, (int) (big * 0.9), 2, MIN_SCALE);
+    g_assert_cmpfloat (big * scale, <=, (int) (big * 0.9) + 0.01);
+    g_assert_cmpfloat (big * (scale + 0.01), >, (int) (big * 0.9));
+  }
+}
+
 static void
 test_layout_kept (void)
 {
-  g_autoptr (PangoLayout) layout = layout_new ("Documents");
+  g_autoptr (PangoLayout) layout = layout_new ("Doku" SHY "mente");
 
   pango_layout_set_width (layout, 33 * PANGO_SCALE);
   pango_layout_set_ellipsize (layout, PANGO_ELLIPSIZE_END);
@@ -129,6 +183,7 @@ test_layout_kept (void)
   g_assert_cmpint (pango_layout_get_width (layout), ==, 33 * PANGO_SCALE);
   g_assert_cmpint (pango_layout_get_ellipsize (layout), ==, PANGO_ELLIPSIZE_END);
   g_assert_cmpint (pango_layout_get_wrap (layout), ==, PANGO_WRAP_WORD_CHAR);
+  g_assert_cmpstr (pango_layout_get_text (layout), ==, "Doku" SHY "mente");
 }
 
 int
@@ -140,6 +195,7 @@ main (int argc, char **argv)
   context = pango_font_map_create_context (pango_cairo_font_map_get_default ());
   g_test_add_func ("/fit/word", test_word);
   g_test_add_func ("/fit/lines", test_lines);
+  g_test_add_func ("/fit/soft-hyphen", test_soft_hyphen);
   g_test_add_func ("/fit/layout-kept", test_layout_kept);
   return g_test_run ();
 }

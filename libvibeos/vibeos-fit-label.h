@@ -3,7 +3,9 @@
  * Where a word of the label is wider than the space it is given, or its text takes more lines than the label allows
  * (gtk_label_set_lines), the label is drawn smaller, as little as it takes, down to VIBEOS_FIT_LABEL_MIN_SCALE of its
  * size. Only where even that is not enough does a word break (and the text past the label's lines ellipsize, as the
- * label is set up to). A word wider than the space therefore never widens what holds the label.
+ * label is set up to). A word wider than the space therefore never widens what holds the label. A soft hyphen (U+00AD)
+ * in a translation is where its word breaks then, and only then: the scale is found without them, and a label without
+ * markup or attributes of its own shows them only at the smallest size (read back, its text lacks them until then).
  *
  * The label is set up as usual (its text, lines, ellipsizing, alignment and CSS classes) and handed to the fit label,
  * which holds it; it wraps, at words, and breaks a word only below the smallest size. Its CSS padding shrinks with
