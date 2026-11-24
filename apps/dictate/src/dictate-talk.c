@@ -17,6 +17,7 @@
 #include "dictate-access.h"
 #include "dictate-actions.h"
 #include "dictate-brain.h"
+#include "dictate-debuglog.h"
 #include "dictate-offline.h"
 #include "dictate-output.h"
 #include "dictate-tools.h"
@@ -71,6 +72,7 @@ typedef struct {
   gboolean private_mode;        /* talk-private (read on the main thread) */
   gboolean private_speaker;     /* and the answer plays on the speaker (found on the brain's thread) */
   gboolean locked;              /* the phone is locked: reading tools only (dictate_talk_set_locked) */
+  gboolean debug_log;           /* debug-log: the turn recorded whole, on the phone (dictate-debuglog.h) */
 } Job;
 
 struct _DictateTalk {
@@ -116,7 +118,7 @@ struct _DictateTalk {
 G_DEFINE_FINAL_TYPE (DictateTalk, dictate_talk, G_TYPE_OBJECT)
 
 enum { SIGNAL_REPLY, SIGNAL_STATE_CHANGED, SIGNAL_ERROR, SIGNAL_STATUS, SIGNAL_PROPOSE, SIGNAL_TOOL, SIGNAL_BUSY,
-       N_SIGNALS };
+       SIGNAL_REFUSED, SIGNAL_ACTED, SIGNAL_REPLY_INFO, SIGNAL_WRITTEN, SIGNAL_NO_ACCESS, N_SIGNALS };
 static guint signals[N_SIGNALS];
 
 static Job *
@@ -846,14 +848,29 @@ talk_propose (DictateAction *action, gpointer data)
   post (w->self, on_propose, p);
 }
 
-/* a tool has run: for the tests */
+/* whether a tool's result is its error ({"error": "…"}) */
+static gboolean
+is_error (const char *result)
+{
+  g_autoptr (JsonNode) node = json_from_string (result, NULL);
+
+  return !node || !JSON_NODE_HOLDS_OBJECT (node) || json_object_has_member (json_node_get_object (node), "error");
+}
+
+/* a tool has run: in the log, and for the tests */
 static void
 post_tool (DictateTalk *self, guint turn, const char *name, const char *arguments, const char *result, double ms)
 {
   Post *p = g_new0 (Post, 1);
+  gboolean ok = !is_error (result);
 
-  /* the log has the tool and its time, not what it read */
-  g_debug ("talk: tool %s ran in %.0f ms (%zu bytes)", name, ms, strlen (result));
+  /* the journal has the tool, how it went, its time and its result's size, never what it was given or read: a
+   * debug line, and a message while the debug log is on, which records the turn whole on the phone */
+  if (dictate_debuglog_active ())
+    g_message ("talk: tool %s: %s in %.0f ms, %zu bytes", name, ok ? "ok" : "error", ms, strlen (result));
+  else
+    g_debug ("talk: tool %s: %s in %.0f ms, %zu bytes", name, ok ? "ok" : "error", ms, strlen (result));
+  dictate_debuglog_tool (name, arguments, result, ms, ok);
   p->turn = turn, p->text = g_strdup (name), p->arguments = g_strdup (arguments);
   p->result = g_strdup (result), p->ms = ms;
   post (self, on_tool, p);
@@ -887,6 +904,7 @@ answer_offline (DictateTalk *self, Job *job, Writing *w)
                                  : g_strconcat (dictate_offline_notice (job->language), " ", reply, NULL);
 
   g_message ("talk: offline: the fixed commands answer");
+  dictate_debuglog_note ("offline", "the model cannot be reached: the fixed commands answer");
   self->offline_told = TRUE;
   g_string_truncate (w->reply, 0);
   g_string_truncate (w->sentence, 0);
@@ -942,6 +960,10 @@ answer (DictateTalk *self, Job *job)
   const char *text = job->text;
   guint used = 0, step = 0;
   gboolean offline = FALSE;
+  DictateDebugTurn *debug = job->debug_log ? dictate_debuglog_begin (job->turn, job->said ? job->said : job->text,
+                                                                     job->language, job->brain, job->locked,
+                                                                     job->private_mode)
+                                           : NULL;
 
   /* private mode: the replies only in headphones, and on the speaker short and with nothing personal in them */
   {
@@ -1043,6 +1065,7 @@ answer (DictateTalk *self, Job *job)
   if (!reply && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
     {
       g_warning ("talk: %s", error->message);
+      dictate_debuglog_note ("error", error->message);
       post_error (self, job->turn, error->domain == DICTATE_BRAIN_ERROR ? error->message
                                    : g_error_matches (error, G_IO_ERROR, G_IO_ERROR_NO_SPACE)
                                    ? _("That is too long to answer") : _("The language model could not answer"));
@@ -1067,6 +1090,10 @@ out:
     const char *sent[] = { job->remote && !offline ? DICTATE_SENT_SERVER : NULL, NULL };
     dictate_actions_record ("question", DICTATE_TIER_READ, reply ? "answered" : "not answered", sent, NULL, 0);
   }
+  dictate_debuglog_end (debug, reply, reply ? (offline ? "offline" : "answered")
+                                      : !current (self, job->turn)
+                                        || g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED) ? "stopped"
+                                      : "error");
   g_string_free (w.reply, TRUE);
   g_string_free (w.sentence, TRUE);
 }
@@ -1141,6 +1168,7 @@ job_with_files (DictateTalk *self, int kind, const char *language, const char *t
   job->areas = dictate_tools_areas (self->settings);
   job->verbosity = g_settings_get_string (self->settings, "talk-verbosity");
   job->private_mode = g_settings_get_boolean (self->settings, "talk-private");
+  job->debug_log = g_settings_get_boolean (self->settings, "debug-log");
   job->remote = dictate_brain_is_remote (brain);
   job->brain = g_steal_pointer (&brain);
   job->voice = g_steal_pointer (&voice);
@@ -1230,6 +1258,20 @@ dictate_talk_ask (DictateTalk *self, const char *language, const char *text)
   g_clear_pointer (&self->reply, g_free);
   set_state (self, DICTATE_TALK_THINKING);
   g_async_queue_push (self->jobs, job);
+}
+
+void
+dictate_talk_ask_full (DictateTalk *self, const char *language, const char *text, GBytes *audio,
+                       DictateAskFlags flags)
+{
+  /* no voice sample can be enrolled yet (dictate-voicematch.h): nothing to check */
+  dictate_talk_ask (self, language, text);
+}
+
+void
+dictate_talk_restore (DictateTalk *self, const DictateExchange *exchanges, guint n)
+{
+  /* not yet: the model starts the conversation afresh after a restart */
 }
 
 void
@@ -1378,6 +1420,17 @@ dictate_talk_class_init (DictateTalkClass *klass)
                                        G_TYPE_NONE, 0);
   signals[SIGNAL_TOOL] = g_signal_new ("tool", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
                                        G_TYPE_NONE, 4, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_DOUBLE);
+  signals[SIGNAL_REFUSED] = g_signal_new ("refused", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+                                          NULL, G_TYPE_NONE, 4, G_TYPE_UINT, G_TYPE_DOUBLE, G_TYPE_DOUBLE,
+                                          G_TYPE_STRING);
+  signals[SIGNAL_ACTED] = g_signal_new ("acted", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL,
+                                        G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
+  signals[SIGNAL_REPLY_INFO] = g_signal_new ("reply-info", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
+                                             NULL, NULL, G_TYPE_NONE, 1, G_TYPE_UINT);
+  signals[SIGNAL_WRITTEN] = g_signal_new ("written", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+                                          NULL, G_TYPE_NONE, 1, G_TYPE_STRV);
+  signals[SIGNAL_NO_ACCESS] = g_signal_new ("no-access", G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST, 0, NULL,
+                                            NULL, NULL, G_TYPE_NONE, 1, G_TYPE_STRING);
 }
 
 static void

@@ -117,6 +117,63 @@ dictate_tools_status (const char *name)
   return tool && tool->status ? _(tool->status) : NULL;
 }
 
+/* each tool's risk class, for Voice Match; a tool missing here is an action (tests/test-tools.c: none is) */
+static const struct {
+  const char *name;
+  DictateRisk risk;
+} RISKS[] = {
+  { "get_time", DICTATE_RISK_EVERYDAY },
+  { "get_battery", DICTATE_RISK_EVERYDAY },
+  { "get_storage", DICTATE_RISK_EVERYDAY },
+  { "get_weather", DICTATE_RISK_EVERYDAY },
+  { "get_alarms", DICTATE_RISK_EVERYDAY },
+  { "set_alarm", DICTATE_RISK_EVERYDAY },
+  { "set_timer", DICTATE_RISK_EVERYDAY },
+  { "cancel_alarm", DICTATE_RISK_EVERYDAY },
+  { "cancel_timer", DICTATE_RISK_EVERYDAY },
+  { "get_wifi_bluetooth", DICTATE_RISK_EVERYDAY },
+  { "get_mobile_network", DICTATE_RISK_EVERYDAY },
+  { "get_running_apps", DICTATE_RISK_EVERYDAY },
+  { "open_app", DICTATE_RISK_EVERYDAY },
+
+  { "get_recent_calls", DICTATE_RISK_PERSONAL },
+  { "get_current_call", DICTATE_RISK_PERSONAL },
+  { "find_contacts", DICTATE_RISK_PERSONAL },
+  { "get_messages", DICTATE_RISK_PERSONAL },
+  { "get_events", DICTATE_RISK_PERSONAL },
+  { "what_did_i_miss", DICTATE_RISK_PERSONAL },
+  { "get_action_log", DICTATE_RISK_PERSONAL },
+  { "navigate_to", DICTATE_RISK_PERSONAL },     /* the saved Home and Work */
+
+  { "propose_call", DICTATE_RISK_ACTIONS },
+  { "propose_message", DICTATE_RISK_ACTIONS },
+  { "propose_contact", DICTATE_RISK_ACTIONS },
+  { "propose_event", DICTATE_RISK_ACTIONS },
+  { "answer_call", DICTATE_RISK_ACTIONS },
+  { "decline_call", DICTATE_RISK_ACTIONS },
+  { "call_control", DICTATE_RISK_ACTIONS },
+  { "set_wifi_bluetooth", DICTATE_RISK_ACTIONS },
+  { "undo_last_action", DICTATE_RISK_ACTIONS },
+};
+
+DictateRisk
+dictate_tools_risk (const char *name)
+{
+  for (guint i = 0; name && i < G_N_ELEMENTS (RISKS); i++)
+    if (g_str_equal (RISKS[i].name, name))
+      return RISKS[i].risk;
+  return DICTATE_RISK_ACTIONS;
+}
+
+gboolean
+dictate_tools_risk_known (const char *name)
+{
+  for (guint i = 0; name && i < G_N_ELEMENTS (RISKS); i++)
+    if (g_str_equal (RISKS[i].name, name))
+      return TRUE;
+  return FALSE;
+}
+
 /* ---------------- a call ---------------- */
 
 struct _ToolRun {
@@ -634,6 +691,9 @@ action_log (DictateAction *self, const char *outcome, gboolean went)
 const char *dictate_action_get_title (DictateAction *self) { return self->title; }
 const char *const *dictate_action_get_lines (DictateAction *self) { return (const char *const *) self->lines; }
 const char *dictate_action_get_button (DictateAction *self) { return self->button; }
+/* not yet: the cards have their title and lines only, and none deletes */
+const DictateActionField *dictate_action_get_fields (DictateAction *self) { return NULL; }
+gboolean dictate_action_get_destructive (DictateAction *self) { return FALSE; }
 
 static void
 action_thread (GTask *task, gpointer object, gpointer data, GCancellable *cancellable)

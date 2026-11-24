@@ -31,6 +31,29 @@ gboolean         dictate_talk_has_voice (DictateTalk *self, const char *language
 void             dictate_talk_prepare   (DictateTalk *self, const char *language);
 /* the user said `text` (in `language`): the reply follows */
 void             dictate_talk_ask       (DictateTalk *self, const char *language, const char *text);
+
+/* where a question came from, for the voice check (dictate-voicematch.h) */
+typedef enum {
+  DICTATE_ASK_NONE            = 0,
+  DICTATE_ASK_TAPPED          = 1 << 0, /* a tap or typed text (Undo, a suggested reply), not a voice: not checked */
+  DICTATE_ASK_OWNER_CONFIRMED = 1 << 1, /* the owner's PIN was given for this turn: not checked */
+} DictateAskFlags;
+
+/* the user said `text`, `audio` being the turn's speech (16 kHz mono float32; NULL for none): while Voice Match
+ * applies, a turn whose voice is not the owner's runs nothing it would need the owner for ("refused") */
+void             dictate_talk_ask_full  (DictateTalk *self, const char *language, const char *text, GBytes *audio,
+                                         DictateAskFlags flags);
+
+/* an exchange of the conversation as the screen keeps it */
+typedef struct {
+  const char *said;
+  const char *reply;
+} DictateExchange;
+
+/* after a restart, the conversation on the screen (oldest first) goes on: the model is given its newest
+ * DICTATE_TALK_HISTORY exchanges */
+#define DICTATE_TALK_HISTORY 12
+void             dictate_talk_restore   (DictateTalk *self, const DictateExchange *exchanges, guint n);
 /* the reply stops at once, written and spoken; what was written of it stays in the conversation */
 void             dictate_talk_stop      (DictateTalk *self);
 /* a new conversation: the model forgets this one */
@@ -58,6 +81,17 @@ gboolean         dictate_talk_get_speak (DictateTalk *self);
  *   "propose" (DictateAction *action): an action for the user to confirm (dictate-tools.h); ref it to keep it
  *   "busy" (): the server had too many questions; the reply is a line saying so (for tests: not the model's)
  *   "tool" (const char *name, const char *arguments, const char *result, double ms): a tool ran, for tests: its
- *          arguments and result may hold the user's data, never log them */
+ *          arguments and result may hold the user's data, never log them
+ *   "refused" (guint reason, double score, double needed, const char *line): the turn's voice is not the owner's
+ *          for what it asks (reason 0); nothing ran, and `line` is what Agent says instead
+ *   "acted" (gboolean can_undo): a tool did something for this reply; can_undo: "undo" (DICTATE_ASK_TAPPED) takes it
+ *          back
+ *   "reply-info" (guint flags): at a reply's start, DICTATE_REPLY_* below
+ *   "written" (const char *const *lines): what is shown and not spoken (private mode on the speaker)
+ *   "no-access" (const char *key): the user asked for something whose access-* switch is off */
+
+/* "reply-info"'s flags */
+#define DICTATE_REPLY_OFFLINE         (1 << 0)  /* the fixed commands answered (dictate-offline.h) */
+#define DICTATE_REPLY_PRIVATE_SPEAKER (1 << 1)  /* private mode, the reply on the speaker */
 
 G_END_DECLS

@@ -219,6 +219,23 @@ test_log_tools (void)
   dictate_actions_forget ();
 }
 
+/* every tool has its own risk class for Voice Match; what is not known asks for the most */
+static void
+test_risk (void)
+{
+  guint n;
+  const DictateTool *tools = dictate_tools_table (&n);
+
+  for (guint i = 0; i < n; i++)
+    if (!dictate_tools_risk_known (tools[i].name))
+      g_error ("%s has no risk class", tools[i].name);
+  g_assert_cmpint (dictate_tools_risk ("get_time"), ==, DICTATE_RISK_EVERYDAY);
+  g_assert_cmpint (dictate_tools_risk ("get_messages"), ==, DICTATE_RISK_PERSONAL);
+  g_assert_cmpint (dictate_tools_risk ("propose_message"), ==, DICTATE_RISK_ACTIONS);
+  g_assert_cmpint (dictate_tools_risk ("no_such_tool"), ==, DICTATE_RISK_ACTIONS);
+  g_assert_cmpint (dictate_tools_risk (NULL), ==, DICTATE_RISK_ACTIONS);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -229,5 +246,6 @@ main (int argc, char **argv)
   g_test_add_func ("/tools/every-area", test_every_area);
   g_test_add_func ("/tools/refused", test_refused);
   g_test_add_func ("/tools/locked", test_locked);
+  g_test_add_func ("/tools/risk", test_risk);
   return g_test_run ();
 }

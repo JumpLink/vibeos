@@ -23,7 +23,7 @@ endif
 agent_deps = [dependency('llama'), onnxruntime, dependency('espeak-ng')]
 # a model on a server instead (dictate-remote.c): the Agent's gateway, an OpenAI-style API
 remote_deps = [dependency('libsoup-3.0'), dependency('json-glib-1.0')]
-brain_sources = ['src/dictate-brain.c', 'src/dictate-remote.c', 'src/dictate-device.c']
+brain_sources = ['src/dictate-brain.c', 'src/dictate-remote.c', 'src/dictate-device.c', 'src/dictate-debuglog.c']
 # what the model can use on the phone (dictate-tools.h): Contacts and Calendar through EDS, the call log and the
 # messages from their apps' SQLite stores, the calls from the Phone's call service; and the fixed grammar that runs
 # them when the model cannot be reached
@@ -37,7 +37,8 @@ download_deps = [dependency('glib-2.0'), dependency('gio-2.0'), dependency('libs
 
 executable('vibeos-dictate', 'src/dictate-main.c', 'src/dictate-window.c', 'src/dictate-mic.c',
            'src/dictate-engine.c', 'src/dictate-models.c', 'src/dictate-moonshine.c', 'src/dictate-vosk.c',
-           'src/dictate-vad.c', 'src/dictate-talk.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources,
+           'src/dictate-vad.c', 'src/dictate-talk.c', 'src/dictate-voicematch.c', 'src/dictate-voice.c',
+           'src/dictate-phonemes.c', brain_sources,
            'src/dictate-download.c', 'src/dictate-download-dialog.c', 'src/dictate-pk.c', 'src/dictate-package.c',
            'src/dictate-access.c', 'src/dictate-settings.c', 'src/dictate-cues.c', tools_sources, resources,
            link_with: text, install: true,
@@ -74,7 +75,8 @@ executable('brain-bench', 'tests/brain-bench.c', brain_sources, include_director
 # Agent's whole loop on recorded questions, timed (tests/talk-bench.c)
 executable('talk-bench', 'tests/talk-bench.c', 'src/dictate-engine.c', 'src/dictate-models.c',
            'src/dictate-moonshine.c', 'src/dictate-vosk.c', 'src/dictate-vad.c', 'src/dictate-talk.c',
-           'src/dictate-access.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources, tools_sources,
+           'src/dictate-voicematch.c', 'src/dictate-access.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c',
+           brain_sources, tools_sources,
            include_directories: 'src',
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(library_dir)],
            dependencies: [dependency('gio-2.0'), dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'),
@@ -82,8 +84,9 @@ executable('talk-bench', 'tests/talk-bench.c', 'src/dictate-engine.c', 'src/dict
                           + remote_deps + tools_deps)
 
 # Agent's loop from typed text: the model's reply spoken on the speaker (tests/agent-say.c)
-executable('agent-say', 'tests/agent-say.c', 'src/dictate-talk.c', 'src/dictate-access.c',
-           'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources, tools_sources, include_directories: 'src',
+executable('agent-say', 'tests/agent-say.c', 'src/dictate-talk.c', 'src/dictate-voicematch.c',
+           'src/dictate-access.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources, tools_sources,
+           include_directories: 'src',
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(library_dir)],
            dependencies: [dependency('gio-2.0'), dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'),
                           dependency('json-glib-1.0'), cc.find_library('m'), cc.find_library('dl')] + agent_deps
@@ -92,7 +95,8 @@ executable('agent-say', 'tests/agent-say.c', 'src/dictate-talk.c', 'src/dictate-
 # the tools' test set: questions in a private copy of the phone's data (fixtures made by it, the phone's services
 # stood in for on a private bus), each answer scored (tests/agent-eval.c, tests/agent-eval/)
 executable('agent-eval', 'tests/agent-eval.c', 'tests/agent-eval-mock.c', 'src/dictate-talk.c',
-           'src/dictate-access.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources, tools_sources,
+           'src/dictate-voicematch.c', 'src/dictate-access.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c',
+           brain_sources, tools_sources,
            include_directories: 'src',
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(library_dir)],
            dependencies: [dependency('gio-2.0'), dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'),
@@ -123,6 +127,13 @@ test('tools', executable('test-tools', 'tests/test-tools.c', 'src/dictate-access
 test('calls', executable('test-calls', 'tests/test-calls.c', 'src/dictate-calls.c', include_directories: 'src',
                          dependencies: [dependency('gio-2.0'), dependency('json-glib-1.0')]),
      depends: schemas, env: ['GSETTINGS_SCHEMA_DIR=' + meson.current_build_dir(), 'GSETTINGS_BACKEND=memory'])
+
+# the debug log: a turn written whole and only the user's, the gateway's key never in it, the newest kept (each test
+# in a private data directory)
+test('debuglog', executable('test-debuglog', 'tests/test-debuglog.c', brain_sources, include_directories: 'src',
+                            c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"',
+                            dependencies: [dependency('glib-2.0'), dependency('gio-2.0'), dependency('llama')]
+                                          + remote_deps))
 
 # the offline grammar: each command in each language to its tool, and the replies from made-up results
 test('offline', executable('test-offline', 'tests/test-offline.c', 'src/dictate-offline.c', include_directories: 'src',

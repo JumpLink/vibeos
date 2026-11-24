@@ -57,6 +57,9 @@ DictateAction *dictate_action_new (const char *kind, const char *title, const ch
  * ("the message, by SMS to its recipient"; NULL: it stays on the phone) */
 void           dictate_action_set_log (DictateAction *action, const char *tool, const char *sent);
 
+/* `name` has its own risk class (dictate_tools_risk ()), for the tests */
+gboolean       dictate_tools_risk_known (const char *name);
+
 /* the tools' table entry called `name`, or NULL */
 const DictateTool *dictate_tools_find (const char *name);
 

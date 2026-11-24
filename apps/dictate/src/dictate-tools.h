@@ -46,6 +46,16 @@ const char  *dictate_tools_status      (const char *name);
 char        *dictate_tools_run         (const char *name, const char *arguments, const DictateToolContext *ctx,
                                         guint timeout_ms);
 
+/* the risk class of a tool, for Voice Match (the voice-match-everyday, -personal and -actions settings) */
+typedef enum {
+  DICTATE_RISK_EVERYDAY,        /* the time, the weather, alarms, timers, the phone's state */
+  DICTATE_RISK_PERSONAL,        /* reading messages, calls, the calendar, contacts, files, where the phone is */
+  DICTATE_RISK_ACTIONS,         /* calling, sending, adding, deleting, changing settings */
+} DictateRisk;
+
+/* `name`'s class; a tool not known is an action */
+DictateRisk  dictate_tools_risk        (const char *name);
+
 /* --- a proposed action */
 
 DictateAction       *dictate_action_ref         (DictateAction *self);
@@ -54,6 +64,15 @@ void                 dictate_action_unref       (DictateAction *self);
 const char          *dictate_action_get_title   (DictateAction *self);
 const char *const   *dictate_action_get_lines   (DictateAction *self);
 const char          *dictate_action_get_button  (DictateAction *self);
+/* the card's fields, label and value ("Message to", "Kim Novak"; "Text", "“…”"), translated, ended by a NULL label;
+ * NULL when it has none (its title and lines then) */
+typedef struct {
+  const char *label;
+  const char *value;
+} DictateActionField;
+const DictateActionField *dictate_action_get_fields (DictateAction *self);
+/* it deletes, or cannot be undone: its button says so */
+gboolean             dictate_action_get_destructive (DictateAction *self);
 /* the user tapped its button: it runs (once) */
 void                 dictate_action_run         (DictateAction *self, GCancellable *cancellable,
                                                  GAsyncReadyCallback callback, gpointer data);

@@ -8,6 +8,7 @@
  * choices[0].delta.tool_calls, each by its index, its id and name first and its arguments in pieces. The calls
  * stay in the conversation as the assistant's message, and each one's result follows as a "tool" message. */
 #include "dictate-remote.h"
+#include "dictate-debuglog.h"
 #include "dictate-device.h"
 
 #include <glib/gi18n.h>
@@ -215,6 +216,7 @@ network_error (GError **error, GError *cause)
       return;
     }
   g_warning ("agent: %s", cause->message);
+  dictate_debuglog_note ("error", cause->message);
   g_error_free (cause);
   g_set_error_literal (error, DICTATE_BRAIN_ERROR, DICTATE_BRAIN_ERROR_OFFLINE,
                        _("The assistant cannot be reached. Is the phone online?"));
@@ -253,7 +255,13 @@ enroll (DictateRemote *self, GCancellable *cancellable, GError **error)
   msg = soup_message_new ("POST", self->enroll);
   soup_message_headers_replace (soup_message_get_request_headers (msg), "Accept", "application/json");
   soup_message_set_request_body_from_bytes (msg, "application/json", body);
-  answer = soup_session_send_and_read (self->session, msg, cancellable, &failure);
+  {
+    gint64 t0 = g_get_monotonic_time ();
+
+    answer = soup_session_send_and_read (self->session, msg, cancellable, &failure);
+    dictate_debuglog_http ("POST", self->enroll, answer ? soup_message_get_status (msg) : 0,
+                           (g_get_monotonic_time () - t0) / 1000.0);
+  }
   if (!answer)
     {
       network_error (error, failure);
@@ -310,9 +318,13 @@ call (DictateRemote *self, SoupMessage **msg, const char *method, const char *ur
       GError *failure = NULL;
       GInputStream *in;
       guint status;
+      gint64 t0 = g_get_monotonic_time ();
 
       *msg = request (self, method, url, json);
       in = soup_session_send (self->session, *msg, cancellable, &failure);
+      /* the status only: the request's headers (the key) are never written */
+      dictate_debuglog_http (method, url, in ? soup_message_get_status (*msg) : 0,
+                             (g_get_monotonic_time () - t0) / 1000.0);
       if (!in)
         {
           network_error (error, failure);
@@ -543,6 +555,12 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
   if (text)
     add_message (self, "user", text);
   body = chat_body (self, tool_list && JSON_NODE_HOLDS_ARRAY (tool_list) ? tool_list : NULL);
+  if (dictate_debuglog_active ())
+    {
+      gsize length;
+      const char *data = g_bytes_get_data (body, &length);
+      dictate_debuglog_request ("POST", url, data, length);
+    }
   in = call (self, &msg, "POST", url, body, cancellable, error);
   if (!in)
     {
@@ -574,6 +592,7 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
                   return NULL;
                 }
               g_warning ("agent: the reply was cut off: %s", failure->message);
+              dictate_debuglog_note ("cut-off", failure->message);
             }
           g_clear_error (&failure);
           break;
@@ -607,6 +626,8 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
       else if (!c->id || !*c->id)
         g_free (c->id), c->id = g_strdup_printf ("call-%u", i - 1);
     }
+  dictate_debuglog_response (reply->str, calls, usage ? prompt_tokens : -1, usage ? completion_tokens : -1,
+                             self->first_ms, self->total_ms);
   /* nothing came of it, no reply and no call: the model wrote to its length in what the stream does not pass on (a
    * call the server could not read, seen with "Call him." and nobody named). Asked once more, the same request: it
    * nearly always answers then. The user saw nothing of the first, so nothing is taken back */
@@ -615,6 +636,7 @@ dictate_remote_step (DictateRemote *self, const char *text, const char *tools, D
       char *again;
 
       g_debug ("agent: an empty reply (%d written), asked again", self->written);
+      dictate_debuglog_note ("retry", "an empty reply: the same request again");
       self->again = TRUE;
       again = dictate_remote_step (self, NULL, tools, piece, data, calls_out, cancellable, error);
       self->again = FALSE;

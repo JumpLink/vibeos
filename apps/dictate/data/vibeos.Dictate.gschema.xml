@@ -78,6 +78,11 @@
       <summary>Calls in quiet hours</summary>
       <description>Calls are still announced in the quiet hours.</description>
     </key>
+    <key name="debug-log" type="b">
+      <default>false</default>
+      <summary>Debug log</summary>
+      <description>Agent records each turn whole on the phone, and nowhere else: what it sent to the model, what came back, each tool's call with its arguments and result, the times and the errors. Its newest 100 turns are kept, 5 MB at most.</description>
+    </key>
     <key name="access-calls" type="b">
       <default>true</default>
       <summary>Agent can use calls</summary>
