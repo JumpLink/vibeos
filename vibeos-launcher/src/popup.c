@@ -202,11 +202,11 @@ popup_open_icon (Tile *t, ModelPos pos, bool from_drawer, float ix, float iy, fl
   P.tile = t;
   P.pos = pos;
 
-  add_row (ACT_INFO, ICON_INFO, "App info", NULL);
+  add_row (ACT_INFO, ICON_INFO, _("App info"), NULL);
   if (from_drawer)
-    add_row (ACT_ADD_HOME, ICON_PLUS, "Add to home screen", NULL);
+    add_row (ACT_ADD_HOME, ICON_PLUS, _("Add to home screen"), NULL);
   else
-    add_row (ACT_REMOVE, ICON_REMOVE, "Remove", NULL);
+    add_row (ACT_REMOVE, ICON_REMOVE, _("Remove"), NULL);
   int n_sys = P.n_rows;
   GDesktopAppInfo *d = G_IS_DESKTOP_APP_INFO (t->info) ? G_DESKTOP_APP_INFO (t->info) : NULL;
   const char *const *actions = d ? g_desktop_app_info_list_actions (d) : NULL;
@@ -253,9 +253,9 @@ popup_open_options (float x, float y)
 {
   load_icons ();
   clear_rows ();
-  add_row (ACT_WALLPAPER, ICON_PALETTE, "Wallpaper & style", NULL);
-  add_row (ACT_APPS, ICON_APPS, "Apps list", NULL);
-  add_row (ACT_HOME_SETTINGS, ICON_SETTING, "Home settings", NULL);
+  add_row (ACT_WALLPAPER, ICON_PALETTE, _("Wallpaper & style"), NULL);
+  add_row (ACT_APPS, ICON_APPS, _("Apps list"), NULL);
+  add_row (ACT_HOME_SETTINGS, ICON_SETTING, _("Home settings"), NULL);
   for (int i = 0; i < P.n_rows; i++)
     add_card (i, 1);
   P.w = dp (POP_W_DP);

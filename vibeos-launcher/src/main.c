@@ -88,6 +88,13 @@ wake (void *data)
   wl_schedule (N.wl);
 }
 
+/* the home clock in 12 or 24 hours */
+static void
+clock_format_changed (GSettings *settings, const char *key, gpointer data)
+{
+  home_clock_tick ();
+}
+
 static gboolean
 clock_tick (gpointer data)
 {
@@ -412,6 +419,7 @@ init_gpu (void)
   wallpaper_load ();
   g_signal_connect (A.bg, "changed", G_CALLBACK (wallpaper_changed), NULL);
   g_signal_connect (A.iface, "changed::color-scheme", G_CALLBACK (wallpaper_changed), NULL);
+  g_signal_connect (A.iface, "changed::clock-format", G_CALLBACK (clock_format_changed), NULL);
   int cols, rows;
   layout_forget_old ();
   layout_read (&cols, &rows);
@@ -913,6 +921,9 @@ int
 main (int argc, char **argv)
 {
   setlocale (LC_ALL, "");
+  bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+  textdomain (GETTEXT_PACKAGE);
   migrate_ids ();
   static const WlCallbacks cb = { on_resize, on_frame,  on_touch, on_key,   on_close,
                                   on_shown,  on_suspended, on_text, on_erase, on_submit };

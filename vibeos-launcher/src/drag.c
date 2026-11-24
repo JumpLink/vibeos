@@ -651,8 +651,8 @@ bar_label (void)
 {
   if (!G.font) {
     G.font = text_font_axes ("VibeOS Roboto", 600, dp (BAR_TEXT_SP), "opsz=16");
-    G.remove = text_layout (G.font, "Remove", 0, 1, TEXT_LEFT);
-    G.cancel = text_layout (G.font, "Cancel", 0, 1, TEXT_LEFT);
+    G.remove = text_layout (G.font, _("Remove"), 0, 1, TEXT_LEFT);
+    G.cancel = text_layout (G.font, _("Cancel"), 0, 1, TEXT_LEFT);
     G.glyph = svg_texture (REMOVE_SVG, (int) lroundf (dp (BAR_ICON_DP)));
   }
   return G.from_drawer ? G.cancel : G.remove;

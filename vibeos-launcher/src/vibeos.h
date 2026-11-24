@@ -4,6 +4,7 @@
 #pragma once
 
 #include <gio/gdesktopappinfo.h>
+#include <glib/gi18n.h>
 #include <stdbool.h>
 
 #include "gfx.h"

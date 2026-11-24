@@ -4,6 +4,8 @@
 #include "apps.h"
 #include "legacy-ids.h"
 
+#include <glib/gi18n.h>
+
 #include <string.h>
 
 static const char *android_builtin[] = {
@@ -90,7 +92,7 @@ app_name (GAppInfo *info)
   if (!info)
     return "";
   if (!g_strcmp0 (g_app_info_get_id (info), ANDROID_SETTINGS))
-    return "Android Settings";
+    return _("Android Settings");
   return g_app_info_get_display_name (info) ?: "";
 }
 

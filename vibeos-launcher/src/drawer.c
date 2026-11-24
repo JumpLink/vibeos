@@ -192,7 +192,7 @@ drawer_layout (void)
   if (!D.hint) {
     D.query = g_string_new (NULL);
     D.search_font = text_font_axes ("VibeOS Roboto", 400, dp (SEARCH_TEXT_SP), "opsz=16");
-    D.hint = text_layout (D.search_font, "Search apps", 0, 1, TEXT_LEFT);
+    D.hint = text_layout (D.search_font, _("Search apps"), 0, 1, TEXT_LEFT);
     int px = (int) lroundf (dp (24));
     RsvgHandle *h = rsvg_handle_new_from_data ((const guint8 *) SEARCH_SVG, sizeof SEARCH_SVG - 1, NULL);
     if (h) {
@@ -322,7 +322,8 @@ search_filter (void)
       if (!name_matches (N.sorted->pdata[i]) && others_match (N.sorted->pdata[i]))
         g_ptr_array_add (D.found, N.sorted->pdata[i]);
     if (!D.found->len) {
-      g_autofree char *s = g_strdup_printf ("No apps found matching “%s”", D.query->str);
+      /* TRANSLATORS: %s is what was typed into the search; quote it as the language does */
+      g_autofree char *s = g_strdup_printf (_("No apps found matching “%s”"), D.query->str);
       D.none = text_layout (D.search_font, s, D.sw - 2 * dp (24), 3, TEXT_CENTER);
     }
   }
