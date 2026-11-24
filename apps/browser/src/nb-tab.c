@@ -532,7 +532,7 @@ nb_tab_show_certificate (NbTab *t)
     g_autofree char *cn = dn_part (who[i].dn, "CN"), *o = dn_part (who[i].dn, "O"), *ou = dn_part (who[i].dn, "OU");
     cert_value (box, _("Common Name (CN)"), cn);
     cert_value (box, _("Organization (O)"), o);
-    cert_value (box, _("Organizational Unit (UN)"), ou);
+    cert_value (box, _("Organizational Unit (OU)"), ou);
   }
   cert_section (box, _("Validity Period"));
   g_autofree char *on = format_date (from), *off = format_date (until);

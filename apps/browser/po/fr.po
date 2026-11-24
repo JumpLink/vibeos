@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-browser\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:43+0100\n"
+"POT-Creation-Date: 2026-11-24 14:32+0100\n"
 "PO-Revision-Date: 2026-11-24 03:43+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: French\n"
@@ -58,7 +58,9 @@ msgstr "Téléchargement terminé"
 msgid ""
 "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, "
 "under the GNU LGPL 2.1 and BSD licences."
-msgstr "Les pages Web sont affichées par <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, sous licences GNU LGPL 2.1 et BSD."
+msgstr ""
+"Les pages Web sont affichées par <a href=\"https://webkitgtk.org/"
+"\">WebKitGTK</a>, sous licences GNU LGPL 2.1 et BSD."
 
 # android: Jelly menu_desktop_mode
 #: src/nb-menu.c
@@ -174,7 +176,9 @@ msgstr "Raccourci non ajouté"
 
 #: src/nb-menu.c
 msgid "Touch & hold the shortcut to move it around the home screen"
-msgstr "Appuyez de manière prolongée sur le raccourci pour le déplacer sur l'écran d'accueil"
+msgstr ""
+"Appuyez de manière prolongée sur le raccourci pour le déplacer sur l'écran "
+"d'accueil"
 
 # android: Framework cancel (short)
 #: src/nb-menu.c src/nb-pages.c src/nb-settings.c src/nb-tab.c src/nb-widgets.c
@@ -209,8 +213,12 @@ msgstr "Suppression de l'historique en cours…"
 
 # android: Jelly history_delete_message
 #: src/nb-pages.c
-msgid "You're going to delete all the history, this action cannot be undone. Do you want to proceed?"
-msgstr "Vous êtes sur le point de supprimer tout l’historique de navigation, cette action ne peut pas être annulée. Confirmer la suppression ?"
+msgid ""
+"You're going to delete all the history, this action cannot be undone. Do you "
+"want to proceed?"
+msgstr ""
+"Vous êtes sur le point de supprimer tout l’historique de navigation, cette "
+"action ne peut pas être annulée. Confirmer la suppression ?"
 
 # android: Jelly history_delete_positive
 #: src/nb-pages.c
@@ -220,7 +228,8 @@ msgstr "Effacer"
 # android: Jelly history_empty
 #: src/nb-pages.c
 msgid "There's nothing here, browse on the internet to see your history here"
-msgstr "Il n’y a rien ici, naviguez sur internet pour voir votre historique ici"
+msgstr ""
+"Il n’y a rien ici, naviguez sur internet pour voir votre historique ici"
 
 # android: Jelly favorite_edit_error
 #: src/nb-pages.c
@@ -346,7 +355,9 @@ msgstr "Mode Accès simplifié"
 # android: Jelly pref_reach_mode_summary
 #: src/nb-settings.c
 msgid "Relocate interface elements for easier one-hand usage"
-msgstr "Modifier l'emplacement des éléments de l'interface pour faciliter l'utilisation à une main"
+msgstr ""
+"Modifier l'emplacement des éléments de l'interface pour faciliter "
+"l'utilisation à une main"
 
 # android: Jelly pref_fullscreen_shortcuts_title
 #: src/nb-settings.c
@@ -370,7 +381,8 @@ msgstr "Popups dynamiques"
 # android: Jelly pref_dynamic_popup_summary
 #: src/nb-settings.c
 msgid "Allow JavaScript to open popups without user interaction"
-msgstr "Autoriser JavaScript à ouvrir des popups sans interaction de l'utilisateur"
+msgstr ""
+"Autoriser JavaScript à ouvrir des popups sans interaction de l'utilisateur"
 
 # android: Jelly pref_js_summary
 #: src/nb-settings.c
@@ -395,7 +407,8 @@ msgstr "Ne pas me pister"
 # android: Jelly pref_do_not_track_summary (quotes added)
 #: src/nb-settings.c
 msgid "Send a Do Not Track request to websites you visit"
-msgstr "Envoyer une requête « Ne pas me pister » aux sites Web que vous visitez"
+msgstr ""
+"Envoyer une requête « Ne pas me pister » aux sites Web que vous visitez"
 
 # android: Jelly pref_cookie_title
 #: src/nb-settings.c
@@ -616,10 +629,9 @@ msgstr "Nom commun (CN)"
 msgid "Organization (O)"
 msgstr "Organisation (O)"
 
-# android: Jelly ssl_cert_dialog_organizational_unit
 #: src/nb-tab.c
-msgid "Organizational Unit (UN)"
-msgstr "Unité organisationnelle (UN)"
+msgid "Organizational Unit (OU)"
+msgstr "Unité organisationnelle (OU)"
 
 # android: Jelly ssl_cert_dialog_validity
 #: src/nb-tab.c

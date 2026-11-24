@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-browser\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:43+0100\n"
+"POT-Creation-Date: 2026-11-24 14:32+0100\n"
 "PO-Revision-Date: 2026-11-24 03:43+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Dutch\n"
@@ -608,10 +608,9 @@ msgstr "Algemene naam (CN)"
 msgid "Organization (O)"
 msgstr "Organisatie (O)"
 
-# android: Jelly ssl_cert_dialog_organizational_unit
 #: src/nb-tab.c
-msgid "Organizational Unit (UN)"
-msgstr "Organisatie-afdeling (UN)"
+msgid "Organizational Unit (OU)"
+msgstr "Organisatie-afdeling (OU)"
 
 # android: Jelly ssl_cert_dialog_validity
 #: src/nb-tab.c

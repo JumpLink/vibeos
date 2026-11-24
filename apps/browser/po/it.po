@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-browser\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:43+0100\n"
+"POT-Creation-Date: 2026-11-24 14:32+0100\n"
 "PO-Revision-Date: 2026-11-24 03:43+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -58,7 +58,9 @@ msgstr "Download completato"
 msgid ""
 "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, "
 "under the GNU LGPL 2.1 and BSD licences."
-msgstr "Le pagine web sono mostrate da <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, con licenze GNU LGPL 2.1 e BSD."
+msgstr ""
+"Le pagine web sono mostrate da <a href=\"https://webkitgtk.org/\">WebKitGTK</"
+"a>, con licenze GNU LGPL 2.1 e BSD."
 
 # android: Jelly menu_desktop_mode
 #: src/nb-menu.c
@@ -173,7 +175,8 @@ msgstr "Collegamento non aggiunto"
 
 #: src/nb-menu.c
 msgid "Touch & hold the shortcut to move it around the home screen"
-msgstr "Tocca e tieni premuto il collegamento per spostarlo nella schermata Home"
+msgstr ""
+"Tocca e tieni premuto il collegamento per spostarlo nella schermata Home"
 
 # android: Framework cancel (short)
 #: src/nb-menu.c src/nb-pages.c src/nb-settings.c src/nb-tab.c src/nb-widgets.c
@@ -208,8 +211,12 @@ msgstr "Pulizia cronologia in corso…"
 
 # android: Jelly history_delete_message
 #: src/nb-pages.c
-msgid "You're going to delete all the history, this action cannot be undone. Do you want to proceed?"
-msgstr "Stai per eliminare tutta la cronologia, quest'azione non può essere annullata. Vuoi procedere?"
+msgid ""
+"You're going to delete all the history, this action cannot be undone. Do you "
+"want to proceed?"
+msgstr ""
+"Stai per eliminare tutta la cronologia, quest'azione non può essere "
+"annullata. Vuoi procedere?"
 
 # android: Settings proxy_clear_text (other app, several translations, short)
 #: src/nb-pages.c
@@ -345,7 +352,9 @@ msgstr "Modalità una mano"
 # android: Jelly pref_reach_mode_summary
 #: src/nb-settings.c
 msgid "Relocate interface elements for easier one-hand usage"
-msgstr "Riposiziona gli elementi dell'interfaccia per facilitare l'utilizzo ad una sola mano"
+msgstr ""
+"Riposiziona gli elementi dell'interfaccia per facilitare l'utilizzo ad una "
+"sola mano"
 
 # android: Jelly pref_fullscreen_shortcuts_title
 #: src/nb-settings.c
@@ -616,10 +625,9 @@ msgstr "Nome comune (CN)"
 msgid "Organization (O)"
 msgstr "Organizzazione (O)"
 
-# android: Jelly ssl_cert_dialog_organizational_unit
 #: src/nb-tab.c
-msgid "Organizational Unit (UN)"
-msgstr "Unità Organizzativa (UN)"
+msgid "Organizational Unit (OU)"
+msgstr "Unità Organizzativa (OU)"
 
 # android: Jelly ssl_cert_dialog_validity
 #: src/nb-tab.c
