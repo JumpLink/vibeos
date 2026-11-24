@@ -1535,11 +1535,12 @@ tool_device_undo (JsonObject *undo, ToolRun *run, char **done, GError **error)
 #define SEARCH_TIMEOUT_S 10
 #define SEARCH_MAX       8
 
-/* the search's address: the gateway's (talk-brain, "https://…/v1") with /search; NULL with a model on the phone */
+/* an endpoint of the gateway: its address (talk-brain, "https://…/v1") with `path`, or the address in the variable
+ * `env` (the tests'); NULL with a model on the phone */
 static char *
-search_url (void)
+gate_url (const char *env, const char *path)
 {
-  const char *url = g_getenv ("DICTATE_SEARCH_URL");
+  const char *url = g_getenv (env);
   g_autoptr (GSettings) settings = NULL;
   g_autofree char *brain = NULL;
 
@@ -1551,7 +1552,46 @@ search_url (void)
     return NULL;
   while (*brain && brain[strlen (brain) - 1] == '/')
     brain[strlen (brain) - 1] = '\0';
-  return g_strconcat (brain, "/search", NULL);
+  return g_strconcat (brain, path, NULL);
+}
+
+/* `body` (JSON) posted to the gateway at `url` as this phone (its device id and secret, as every question to the
+ * gateway has them, dictate-device.h): the reply, with its status (0 for none), or NULL */
+static GBytes *
+gate_post (const char *url, const char *body, guint timeout_s, ToolRun *run, guint *status)
+{
+  g_autoptr (SoupSession) session = soup_session_new_with_options ("timeout", timeout_s, "user-agent", "vibeos-agent",
+                                                                   NULL);
+  g_autoptr (SoupMessage) msg = soup_message_new ("POST", url);
+  g_autofree char *bearer = NULL;
+  g_autoptr (GBytes) sent = NULL;
+  GBytes *reply;
+
+  *status = 0;
+  if (!msg)
+    return NULL;
+  bearer = g_strconcat ("Bearer ", dictate_device_secret (), NULL);
+  soup_message_headers_replace (soup_message_get_request_headers (msg), "X-Vibeos-Device", dictate_device_id ());
+  soup_message_headers_replace (soup_message_get_request_headers (msg), "Authorization", bearer);
+  sent = g_bytes_new (body, strlen (body));
+  soup_message_set_request_body_from_bytes (msg, "application/json", sent);
+  reply = soup_session_send_and_read (session, msg, tool_run_cancellable (run), NULL);
+  *status = reply ? soup_message_get_status (msg) : 0;
+  return reply;
+}
+
+/* the "retry_after" of a 429's body, 0 for none */
+static gint64
+retry_after (GBytes *reply)
+{
+  g_autoptr (JsonParser) parser = json_parser_new ();
+
+  if (!reply || !g_bytes_get_size (reply)
+      || !json_parser_load_from_data (parser, g_bytes_get_data (reply, NULL), g_bytes_get_size (reply), NULL)
+      || !JSON_NODE_HOLDS_OBJECT (json_parser_get_root (parser)))
+    return 0;
+  return json_object_get_int_member_with_default (json_node_get_object (json_parser_get_root (parser)),
+                                                  "retry_after", 0);
 }
 
 JsonNode *
@@ -1560,10 +1600,8 @@ tool_web_search (JsonObject *args, ToolRun *run, GError **error)
   const char *query = tool_arg_string (args, "query");
   const char *language = tool_run_language (run);
   gint64 count = CLAMP (tool_arg_int (args, "count", 5), 1, SEARCH_MAX);
-  g_autofree char *url = search_url ();
-  g_autofree char *bearer = NULL, *body = NULL;
-  g_autoptr (SoupSession) session = NULL;
-  g_autoptr (SoupMessage) msg = NULL;
+  g_autofree char *url = gate_url ("DICTATE_SEARCH_URL", "/search");
+  g_autofree char *body = NULL;
   g_autoptr (GBytes) reply = NULL;
   g_autoptr (JsonBuilder) q = json_builder_new ();
   g_autoptr (JsonNode) root = NULL;
@@ -1594,25 +1632,9 @@ tool_web_search (JsonObject *args, ToolRun *run, GError **error)
   root = json_builder_get_root (q);
   body = json_to_string (root, FALSE);
 
-  session = soup_session_new_with_options ("timeout", SEARCH_TIMEOUT_S, "user-agent", "vibeos-agent", NULL);
-  msg = soup_message_new ("POST", url);
-  if (!msg)
-    {
-      tool_error (error, "Web search cannot be reached.");
-      return NULL;
-    }
-  /* who the phone is, as with every question to the gateway (dictate-device.h) */
-  bearer = g_strconcat ("Bearer ", dictate_device_secret (), NULL);
-  soup_message_headers_replace (soup_message_get_request_headers (msg), "X-Vibeos-Device", dictate_device_id ());
-  soup_message_headers_replace (soup_message_get_request_headers (msg), "Authorization", bearer);
-  {
-    g_autoptr (GBytes) sent = g_bytes_new (body, strlen (body));
-    soup_message_set_request_body_from_bytes (msg, "application/json", sent);
-  }
   tool_run_add_sent (run, "the search words, to VibeOS's web search on its server");
-  reply = soup_session_send_and_read (session, msg, tool_run_cancellable (run), NULL);
-  status = soup_message_get_status (msg);
-  if (!reply || status == 0)
+  reply = gate_post (url, body, SEARCH_TIMEOUT_S, run, &status);
+  if (status == 0)
     {
       tool_error (error, "Web search cannot be reached just now.");
       return NULL;
@@ -1620,16 +1642,10 @@ tool_web_search (JsonObject *args, ToolRun *run, GError **error)
   if (status == 429)
     {
       /* the server's burst limit, or the day's searches used up: retry_after counts to midnight UTC then */
-      gint64 retry = 0;
-
-      if (g_bytes_get_size (reply) > 0
-          && json_parser_load_from_data (parser, g_bytes_get_data (reply, NULL), g_bytes_get_size (reply), NULL)
-          && JSON_NODE_HOLDS_OBJECT (json_parser_get_root (parser)))
-        retry = json_object_get_int_member_with_default (json_node_get_object (json_parser_get_root (parser)),
-                                                         "retry_after", 0);
-      tool_error (error, retry > 300 ? "Today's web searches are used up: tell the user they can search again "
-                                       "tomorrow."
-                                     : "Too many web searches just now: tell the user to try again in a minute.");
+      tool_error (error, retry_after (reply) > 300 ? "Today's web searches are used up: tell the user they can search "
+                                                     "again tomorrow."
+                                                   : "Too many web searches just now: tell the user to try again in "
+                                                     "a minute.");
       return NULL;
     }
   if (status == 401 || status == 403)
@@ -1681,5 +1697,325 @@ tool_web_search (JsonObject *args, ToolRun *run, GError **error)
   json_builder_end_array (b);
   if (!results || !json_array_get_length (results))
     add_string (b, "found", "nothing");
+  return finish (b);
+}
+
+/* ---------------- places: Navi's place search, and their opening hours on VibeOS's server ---------------- */
+
+#define PLACE_TIMEOUT_S 8
+#define PLACE_FOUND     5       /* places asked of the search */
+#define PLACE_OTHERS    3       /* the others' names given to the model */
+
+JsonArray *
+tool_place_search (JsonParser *parser, const char *query, const char *language, guint limit, ToolRun *run,
+                   gboolean *reached)
+{
+  const char *server = g_getenv ("NAVI_SERVER");
+  g_autofree char *escaped = g_uri_escape_string (query, NULL, FALSE);
+  g_autofree char *url = g_strdup_printf ("%s/photon/api?q=%s&limit=%u&lang=%s",
+                                          server && *server ? server : "https://navi.vibeos.top", escaped, limit,
+                                          language && (!strcmp (language, "de") || !strcmp (language, "fr"))
+                                          ? language : "en");
+  g_autoptr (SoupSession) session = soup_session_new_with_options ("timeout", PLACE_TIMEOUT_S, "user-agent",
+                                                                   "vibeos-agent", NULL);
+  g_autoptr (SoupMessage) msg = soup_message_new ("GET", url);
+  g_autoptr (GBytes) body = NULL;
+  JsonObject *root;
+  JsonArray *features;
+
+  *reached = FALSE;
+  if (!msg)
+    return NULL;
+  body = soup_session_send_and_read (session, msg, tool_run_cancellable (run), NULL);
+  if (!body || soup_message_get_status (msg) != SOUP_STATUS_OK || g_bytes_get_size (body) == 0
+      || !json_parser_load_from_data (parser, g_bytes_get_data (body, NULL), g_bytes_get_size (body), NULL))
+    return NULL;
+  *reached = TRUE;
+  root = JSON_NODE_HOLDS_OBJECT (json_parser_get_root (parser)) ? json_node_get_object (json_parser_get_root (parser))
+                                                                 : NULL;
+  features = root && json_object_has_member (root, "features")
+             && JSON_NODE_HOLDS_ARRAY (json_object_get_member (root, "features"))
+             ? json_object_get_array_member (root, "features") : NULL;
+  return features && json_array_get_length (features) ? features : NULL;
+}
+
+/* a place's name and where it is ("Bode Museum, Mitte, Berlin"), from a found feature; NULL for one without a name */
+static char *
+place_label (JsonObject *feature)
+{
+  JsonObject *props = json_object_has_member (feature, "properties")
+                      && JSON_NODE_HOLDS_OBJECT (json_object_get_member (feature, "properties"))
+                      ? json_object_get_object_member (feature, "properties") : NULL;
+  const char *keys[] = { "name", "street", "housenumber", "district", "city" };
+  GString *label;
+
+  if (!props || !*json_object_get_string_member_with_default (props, "name", ""))
+    return NULL;
+  label = g_string_new (NULL);
+  for (guint i = 0; i < G_N_ELEMENTS (keys); i++)
+    {
+      const char *v = json_object_get_string_member_with_default (props, keys[i], NULL);
+
+      if (!v || !*v)
+        continue;
+      if (!strcmp (keys[i], "housenumber"))
+        g_string_append_printf (label, " %s", v);
+      else
+        g_string_append_printf (label, "%s%s", label->len ? ", " : "", v);
+    }
+  return g_string_free (label, FALSE);
+}
+
+/* the feature's OpenStreetMap object, as the hours are kept by it: "R4211594"; NULL for none */
+static char *
+place_key (JsonObject *feature)
+{
+  JsonObject *props = json_object_has_member (feature, "properties")
+                      && JSON_NODE_HOLDS_OBJECT (json_object_get_member (feature, "properties"))
+                      ? json_object_get_object_member (feature, "properties") : NULL;
+  const char *type = props ? json_object_get_string_member_with_default (props, "osm_type", NULL) : NULL;
+  gint64 id = props ? json_object_get_int_member_with_default (props, "osm_id", 0) : 0;
+
+  if (!type || strlen (type) != 1 || !strchr ("NWR", type[0]) || id <= 0)
+    return NULL;
+  return g_strdup_printf ("%c%" G_GINT64_FORMAT, type[0], id);
+}
+
+static const char *const DAY_NAMES[] = { "", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+
+/* "2026-11-24T18:00+01:00" (the hours' times have no seconds, which GLib's parser wants) */
+static GDateTime *
+iso_time (const char *text)
+{
+  GDateTime *t;
+
+  if (!text || !*text)
+    return NULL;
+  t = g_date_time_new_from_iso8601 (text, NULL);
+  if (!t && strlen (text) > 16 && text[13] == ':' && strchr ("+-Z", text[16]))
+    {
+      g_autofree char *whole = g_strdup_printf ("%.16s:00%s", text, text + 16);
+      t = g_date_time_new_from_iso8601 (whole, NULL);
+    }
+  return t;
+}
+
+/* a time the hours give ("2026-11-24T18:00+01:00", the place's own): "18:00", or "Tue 10:00" when it is not on the
+ * day `now` is there */
+static char *
+place_when (const char *when, const char *now)
+{
+  g_autoptr (GDateTime) w = iso_time (when);
+  g_autoptr (GDateTime) n = iso_time (now);
+  g_autofree char *clock = w ? g_date_time_format (w, "%H:%M") : NULL;
+  int y1, m1, d1, y2 = 0, m2 = 0, d2 = 0;
+
+  if (!w)
+    return NULL;
+  g_date_time_get_ymd (w, &y1, &m1, &d1);
+  if (n)
+    g_date_time_get_ymd (n, &y2, &m2, &d2);
+  if (y1 == y2 && m1 == m2 && d1 == d2)
+    return g_steal_pointer (&clock);
+  return g_strdup_printf ("%s %s", DAY_NAMES[g_date_time_get_day_of_week (w)], clock);
+}
+
+/* the hours' days ([{"day", "open": [...], "unknown": [...]}]) for the model: "Tue (today): 10:00-17:00" */
+static void
+add_week (JsonBuilder *b, JsonArray *days)
+{
+  json_builder_set_member_name (b, "week");
+  json_builder_begin_array (b);
+  for (guint i = 0; days && i < json_array_get_length (days); i++)
+    {
+      JsonNode *node = json_array_get_element (days, i);
+      JsonObject *d = JSON_NODE_HOLDS_OBJECT (node) ? json_node_get_object (node) : NULL;
+      JsonArray *open = d && json_object_has_member (d, "open") ? json_object_get_array_member (d, "open") : NULL;
+      JsonArray *unknown = d && json_object_has_member (d, "unknown") ? json_object_get_array_member (d, "unknown")
+                                                                      : NULL;
+      g_autoptr (GString) line = g_string_new (NULL);
+
+      if (!d)
+        continue;
+      g_string_append_printf (line, "%s%s: ", json_object_get_string_member_with_default (d, "day", "?"),
+                              i == 0 ? " (today)" : "");
+      for (guint j = 0; open && j < json_array_get_length (open); j++)
+        g_string_append_printf (line, "%s%s", j ? ", " : "", json_array_get_string_element (open, j));
+      if (!open || !json_array_get_length (open))
+        g_string_append (line, "closed");
+      for (guint j = 0; unknown && j < json_array_get_length (unknown); j++)
+        g_string_append_printf (line, "%s%s not known", j ? ", " : "; ", json_array_get_string_element (unknown, j));
+      json_builder_add_string_value (b, line->str);
+    }
+  json_builder_end_array (b);
+}
+
+JsonNode *
+tool_get_place_hours (JsonObject *args, ToolRun *run, GError **error)
+{
+  const char *query = tool_arg_string (args, "place");
+  g_autofree char *url = gate_url ("DICTATE_PLACE_HOURS_URL", "/place-hours");
+  g_autoptr (JsonParser) found = json_parser_new ();
+  g_autoptr (JsonParser) parser = json_parser_new ();
+  g_autoptr (JsonBuilder) q = json_builder_new ();
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autoptr (JsonNode) asked = NULL;
+  g_autoptr (GPtrArray) others = g_ptr_array_new_with_free_func (g_free);
+  g_autoptr (GBytes) reply = NULL;
+  g_autofree char *key = NULL, *label = NULL, *name = NULL, *body = NULL;
+  JsonArray *features;
+  JsonObject *data = NULL;
+  gboolean reached;
+  guint status;
+
+  if (!query || !*query || g_utf8_strlen (query, -1) > 200)
+    {
+      tool_error (error, "place is missing, or longer than 200 characters.");
+      return NULL;
+    }
+  if (!url)
+    {
+      tool_error (error, "Opening hours need Vibe's server, and Vibe answers on the phone just now.");
+      return NULL;
+    }
+  tool_run_add_sent (run, "the place's name, to Navi's place search on VibeOS's server");
+  features = tool_place_search (found, query, tool_run_language (run), PLACE_FOUND, run, &reached);
+  if (!reached)
+    {
+      tool_error (error, "Places cannot be looked up right now.");
+      return NULL;
+    }
+  /* the first found with an OpenStreetMap object is the one; the others' names, for the model to say which it was */
+  for (guint i = 0; features && i < json_array_get_length (features); i++)
+    {
+      JsonNode *node = json_array_get_element (features, i);
+      JsonObject *f = JSON_NODE_HOLDS_OBJECT (node) ? json_node_get_object (node) : NULL;
+      g_autofree char *l = f ? place_label (f) : NULL;
+      g_autofree char *k = l ? place_key (f) : NULL;
+
+      if (!l)
+        continue;
+      if (!key && k)
+        {
+          key = g_steal_pointer (&k);
+          label = g_steal_pointer (&l);
+          name = g_strdup (json_object_get_string_member (json_object_get_object_member (f, "properties"), "name"));
+        }
+      else if (others->len < PLACE_OTHERS && g_strcmp0 (l, label))
+        g_ptr_array_add (others, g_steal_pointer (&l));
+    }
+  if (!key)
+    {
+      tool_error (error, "No place called \"%s\" was found: ask the user for its street or town.", query);
+      return NULL;
+    }
+  json_builder_begin_object (q);
+  add_string (q, "osm", key);
+  json_builder_end_object (q);
+  asked = json_builder_get_root (q);
+  body = json_to_string (asked, FALSE);
+  tool_run_add_sent (run, "which place it is, to VibeOS's opening hours on its server");
+  reply = gate_post (url, body, PLACE_TIMEOUT_S, run, &status);
+  if (status == 0)
+    {
+      tool_error (error, "Opening hours cannot be looked up just now.");
+      return NULL;
+    }
+  if (status == 429)
+    {
+      tool_error (error, "Too many questions about opening hours just now: tell the user to try again in a minute.");
+      return NULL;
+    }
+  if (status == 401 || status == 403)
+    {
+      tool_error (error, "Vibe's server did not let this phone look up opening hours.");
+      return NULL;
+    }
+  if (status == 200 && g_bytes_get_size (reply) > 0
+      && json_parser_load_from_data (parser, g_bytes_get_data (reply, NULL), g_bytes_get_size (reply), NULL)
+      && JSON_NODE_HOLDS_OBJECT (json_parser_get_root (parser))
+      && json_object_has_member (json_node_get_object (json_parser_get_root (parser)), "data")
+      && JSON_NODE_HOLDS_OBJECT (json_object_get_member (json_node_get_object (json_parser_get_root (parser)), "data")))
+    data = json_object_get_object_member (json_node_get_object (json_parser_get_root (parser)), "data");
+  if (!data)
+    {
+      tool_error (error, "Opening hours are not available right now: use web_search for them.");
+      return NULL;
+    }
+
+  json_builder_begin_object (b);
+  add_string (b, "place", label);
+  if (!json_object_get_boolean_member_with_default (data, "found", FALSE))
+    {
+      add_string (b, "hours", "not known");
+      add_string (b, "note", "OpenStreetMap has no opening hours for this place: look them up with web_search, or "
+                             "say they are not known.");
+      tool_run_fact (run, name, _("Opening hours not known"));
+    }
+  else
+    {
+      const char *state = json_object_get_string_member_with_default (data, "state", "unknown");
+      const char *now = json_object_get_string_member_with_default (data, "now", NULL);
+      const char *comment = json_object_get_string_member_with_default (data, "comment", "");
+      const char *checked = json_object_get_string_member_with_default (data, "checked", NULL);
+      const char *from = json_object_get_string_member_with_default (data, "data_from", "");
+      g_autofree char *when = place_when (json_object_get_string_member_with_default (data, "until", NULL), now);
+      g_autofree char *shown = NULL;
+      g_autofree char *source = g_strdup_printf ("From OpenStreetMap, as mapped by its volunteers (data of %.10s); "
+                                                 "public holidays are counted. Hours change: if it matters, say they "
+                                                 "are from OpenStreetMap.", from);
+      g_autoptr (GDateTime) there = iso_time (now);
+      g_autoptr (GDateTime) here = g_date_time_new_now_local ();
+
+      if (!strcmp (state, "unparsed"))
+        {
+          add_string (b, "hours_as_written", json_object_get_string_member_with_default (data, "hours", ""));
+          add_string (b, "note", "These hours are written in a way that cannot be read as times: say them as they "
+                                 "are, in the user's language.");
+          tool_run_fact (run, name, _("Opening hours as written by the map"));
+        }
+      else
+        {
+          gboolean open = !strcmp (state, "open"), closed = !strcmp (state, "closed");
+
+          add_string (b, "open_now", open ? "yes" : closed ? "no" : "not known");
+          if (open)
+            add_string (b, "until", when ? when : "at least the whole coming week");
+          else if (closed)
+            add_string (b, "opens", when ? when : "not in the coming week");
+          else if (when)
+            add_string (b, "known_from", when);
+          if (*comment)
+            add_string (b, "comment", comment);
+          /* the place's own time, when it is not the phone's */
+          if (there && g_date_time_get_utc_offset (there) != g_date_time_get_utc_offset (here))
+            {
+              g_autofree char *clock = g_date_time_format (there, "%H:%M");
+              add_string (b, "time_there", clock);
+              add_string (b, "time_zone", json_object_get_string_member_with_default (data, "timezone", ""));
+            }
+          if (json_object_has_member (data, "days") && JSON_NODE_HOLDS_ARRAY (json_object_get_member (data, "days")))
+            add_week (b, json_object_get_array_member (data, "days"));
+          shown = open && when ? g_strdup_printf (_("Open until %s"), when)
+                  : open ? g_strdup (_("Open"))
+                  : closed && when ? g_strdup_printf (_("Closed · opens %s"), when)
+                  : closed ? g_strdup (_("Closed this week"))
+                  : g_strdup (_("Opening hours not known"));
+          tool_run_fact (run, name, shown);
+        }
+      if (checked && *checked)
+        add_string (b, "last_checked", checked);
+      add_string (b, "source", source);
+    }
+  if (others->len)
+    {
+      json_builder_set_member_name (b, "other_places");
+      json_builder_begin_array (b);
+      for (guint i = 0; i < others->len; i++)
+        json_builder_add_string_value (b, others->pdata[i]);
+      json_builder_end_array (b);
+      add_string (b, "others_note", "Other places the name may mean: if the user could mean one of them, say which "
+                                    "one these hours are for.");
+    }
   return finish (b);
 }

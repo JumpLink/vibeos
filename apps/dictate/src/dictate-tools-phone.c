@@ -2121,31 +2121,20 @@ open_app (JsonObject *args, ToolRun *run, GError **error)
 static gboolean
 geocode (const char *query, ToolRun *run, char **name, double *lat, double *lon, GError **error)
 {
-  const char *server = g_getenv ("NAVI_SERVER");
-  g_autofree char *escaped = g_uri_escape_string (query, NULL, FALSE);
-  g_autofree char *url = g_strdup_printf ("%s/photon/api?q=%s&limit=1&lang=en",
-                                          server && *server ? server : "https://navi.vibeos.top", escaped);
-  g_autoptr (SoupSession) session = soup_session_new_with_options ("timeout", 8, "user-agent", "vibeos-agent", NULL);
-  g_autoptr (SoupMessage) msg = soup_message_new ("GET", url);
-  g_autoptr (GBytes) body = NULL;
   g_autoptr (JsonParser) parser = json_parser_new ();
-  JsonObject *root, *feature, *props;
+  JsonObject *feature, *props;
   JsonArray *features, *coords;
   GString *label;
   const char *keys[] = { "name", "street", "housenumber", "city", "country" };
+  gboolean reached;
 
-  body = soup_session_send_and_read (session, msg, tool_run_cancellable (run), error);
-  if (!body || soup_message_get_status (msg) != SOUP_STATUS_OK
-      || !json_parser_load_from_data (parser, g_bytes_get_data (body, NULL), g_bytes_get_size (body), NULL))
+  features = tool_place_search (parser, query, "en", 1, run, &reached);
+  if (!reached)
     {
-      g_clear_error (error);
       tool_error (error, "Places cannot be looked up right now.");
       return FALSE;
     }
-  root = json_node_get_object (json_parser_get_root (parser));
-  features = root && json_object_has_member (root, "features") ? json_object_get_array_member (root, "features")
-                                                               : NULL;
-  if (!features || json_array_get_length (features) == 0)
+  if (!features)
     {
       tool_error (error, "No place called \"%s\" was found. Ask the user for an address.", query);
       return FALSE;
@@ -4210,6 +4199,14 @@ static const DictateTool TOOLS[] = {
     "\"name\":{\"type\":\"string\",\"description\":\"The app's name, such as Camera, Clock or Settings.\"}"
     "},\"required\":[\"name\"]}", open_app,
     DICTATE_TIER_UNDOABLE, N_("opened an app"), FALSE },
+  { "get_place_hours", "access-location", N_("Looking up the opening hours…"),
+    "A place's opening hours, from OpenStreetMap: whether it is open now, until when or when it opens, and the "
+    "hours of the coming week, in the place's own time. For a shop, a museum, a restaurant or any other place.",
+    "{\"type\":\"object\",\"properties\":{"
+    "\"place\":{\"type\":\"string\",\"description\":\"The place's name, with its street or town when the user "
+    "said one: \\\"Bode Museum Berlin\\\", \\\"Lidl Oranienstraße\\\".\"}"
+    "},\"required\":[\"place\"]}", tool_get_place_hours,
+    DICTATE_TIER_READ, N_("looked up opening hours"), TRUE },
   { "navigate_to", "access-location", N_("Finding the way…"),
     "Opens Navi, the maps app, with routes to a place: an address or the name of a place, or the user's Home or "
     "Work as saved in Navi (\"take me home\", \"navigate to work\").",

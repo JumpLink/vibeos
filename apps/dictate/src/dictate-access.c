@@ -102,7 +102,9 @@ dictate_access_prompt (GSettings *settings, DictateAccessHasTools has_tools)
                           "Hause\"), call navigate_to with saved set to home or work, never with the word as a "
                           "place's name, and never say an address for their home you were not given. The weather's "
                           "town is where the Weather app looks, not where the user is: never tell them where they "
-                          "are from it.");
+                          "are from it. Whether a place is open, until when or when it opens: call get_place_hours "
+                          "with its name and the street or town the user said; when it has no hours, use "
+                          "web_search if you can.");
   if (g_settings_get_boolean (settings, "access-web") && has_tools ("access-web"))
     g_string_append (out, " For what you cannot know yourself or that changes (news, opening hours, prices, events, "
                           "what someone said lately), call web_search. Answer from its results in a sentence or two, "

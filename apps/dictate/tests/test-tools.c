@@ -504,6 +504,76 @@ on_search (SoupServer *server, SoupServerMessage *msg, const char *path, GHashTa
   soup_server_message_set_response (msg, "application/json", SOUP_MEMORY_STATIC, answer, strlen (answer));
 }
 
+/* Navi's place search, stood in for: a museum with a café of the same name, a place closed for long, a kiosk with
+ * no hours, a café in another time zone, a shop whose hours are asked too often; anything else is not found */
+static void
+on_photon (SoupServer *server, SoupServerMessage *msg, const char *path, GHashTable *query, gpointer data)
+{
+  const char *q = query ? g_hash_table_lookup (query, "q") : NULL;
+  const char *answer = "{\"features\":[]}";
+
+#define FEATURE(type, id, name) "{\"type\":\"Feature\",\"geometry\":{\"type\":\"Point\",\"coordinates\":[13.39,52.52]}," \
+                                "\"properties\":{\"osm_type\":\"" type "\",\"osm_id\":" id ",\"name\":\"" name "\"," \
+                                "\"district\":\"Mitte\",\"city\":\"Berlin\"}}"
+  if (q && strstr (q, "Bode"))
+    answer = "{\"features\":[" FEATURE ("R", "4211594", "Bode Museum") "," FEATURE ("N", "9862135619", "Café im Bode-Museum")
+             "]}";
+  else if (q && strstr (q, "Pergamon"))
+    answer = "{\"features\":[" FEATURE ("W", "313659704", "Pergamonmuseum") "]}";
+  else if (q && strstr (q, "Kiosk"))
+    answer = "{\"features\":[" FEATURE ("N", "77", "Kiosk") "]}";
+  else if (q && strstr (q, "Karachi"))
+    answer = "{\"features\":[" FEATURE ("N", "88", "Karachi Cafe") "]}";
+  else if (q && strstr (q, "Busy"))
+    answer = "{\"features\":[" FEATURE ("N", "99", "Busy Shop") "]}";
+#undef FEATURE
+  soup_server_message_set_status (msg, 200, NULL);
+  soup_server_message_set_response (msg, "application/json", SOUP_MEMORY_STATIC, answer, strlen (answer));
+}
+
+/* VibeOS's opening hours, stood in for: what the server gives for each of on_photon's places */
+static void
+on_hours (SoupServer *server, SoupServerMessage *msg, const char *path, GHashTable *query, gpointer data)
+{
+  Search *s = data;
+  SoupMessageHeaders *headers = soup_server_message_get_request_headers (msg);
+  SoupMessageBody *request = soup_server_message_get_request_body (msg);
+  g_autoptr (GBytes) bytes = soup_message_body_flatten (request);
+  const char *said = g_bytes_get_data (bytes, NULL);
+  const char *answer = "{\"data\":{\"found\":false,\"data_from\":\"2026-11-23T21:21:17Z\"}}";
+
+  s->identified = soup_message_headers_get_one (headers, "X-Vibeos-Device")
+                  && g_str_has_prefix (soup_message_headers_get_one (headers, "Authorization") ?: "", "Bearer ");
+  if (!said || strcmp (soup_server_message_get_method (msg), "POST"))
+    {
+      soup_server_message_set_status (msg, 405, NULL);
+      return;
+    }
+  if (strstr (said, "\"R4211594\""))
+    answer = "{\"data\":{\"found\":true,\"name\":\"Bode-Museum\",\"hours\":\"Mo off; Tu-Fr 10:00-17:00\","
+             "\"checked\":\"2026-05-15\",\"timezone\":\"Europe/Berlin\",\"now\":\"2026-11-24T04:54+01:00\","
+             "\"state\":\"closed\",\"comment\":\"\",\"until\":\"2026-11-24T10:00+01:00\",\"days\":["
+             "{\"date\":\"2026-11-24\",\"day\":\"Tue\",\"open\":[\"10:00-17:00\"]},"
+             "{\"date\":\"2026-11-30\",\"day\":\"Mon\",\"open\":[]}],\"data_from\":\"2026-11-23T21:21:17Z\"}}";
+  else if (strstr (said, "\"W313659704\""))
+    answer = "{\"data\":{\"found\":true,\"name\":\"Pergamonmuseum\",\"hours\":\"off\",\"checked\":null,"
+             "\"timezone\":\"Europe/Berlin\",\"now\":\"2026-11-24T04:54+01:00\",\"state\":\"closed\","
+             "\"comment\":\"\",\"until\":null,\"days\":[{\"date\":\"2026-11-24\",\"day\":\"Tue\",\"open\":[]}],"
+             "\"data_from\":\"2026-11-23T21:21:17Z\"}}";
+  else if (strstr (said, "\"N88\""))
+    answer = "{\"data\":{\"found\":true,\"name\":\"Karachi Cafe\",\"hours\":\"Mo-Su 08:00-22:00\",\"checked\":null,"
+             "\"timezone\":\"Asia/Karachi\",\"now\":\"2026-11-24T08:54+05:00\",\"state\":\"open\","
+             "\"comment\":\"\",\"until\":\"2026-11-24T22:00+05:00\",\"days\":[],"
+             "\"data_from\":\"2026-11-23T21:21:17Z\"}}";
+  else if (strstr (said, "\"N99\""))
+    {
+      soup_server_message_set_status (msg, 429, NULL);
+      return;
+    }
+  soup_server_message_set_status (msg, 200, NULL);
+  soup_server_message_set_response (msg, "application/json", SOUP_MEMORY_STATIC, answer, strlen (answer));
+}
+
 static gpointer
 search_thread (gpointer data)
 {
@@ -515,6 +585,8 @@ search_thread (gpointer data)
   g_main_context_push_thread_default (context);
   server = soup_server_new (NULL, NULL);
   soup_server_add_handler (server, "/v1/search", on_search, s, NULL);
+  soup_server_add_handler (server, "/photon/api", on_photon, s, NULL);
+  soup_server_add_handler (server, "/v1/place-hours", on_hours, s, NULL);
   g_assert_true (soup_server_listen_local (server, 0, SOUP_SERVER_LISTEN_IPV4_ONLY, NULL));
   uris = soup_server_get_uris (server);
   g_mutex_lock (&s->lock);
@@ -569,6 +641,68 @@ test_web (void)
   g_cond_clear (&s.ready);
 }
 
+/* a place's hours: the place found by Navi's search, its hours from the server as the phone, said for the model in
+ * the place's own time, the others of the name named; none, a long closure, another time zone, too many asked */
+static void
+test_place_hours (void)
+{
+  Seen seen_ = { NULL, g_ptr_array_new_with_free_func (g_free) };
+  DictateToolContext ctx = { .areas = areas_without (NULL), .language = "en", .data = &seen_, .show = seen_show };
+  Search s = { 0 };
+  GThread *thread;
+  g_autofree char *base = NULL, *url = NULL, *bode = NULL, *closed = NULL, *karachi = NULL, *kiosk = NULL;
+  g_autofree char *nowhere = NULL, *busy = NULL, *empty = NULL;
+
+  g_mutex_init (&s.lock);
+  g_cond_init (&s.ready);
+  thread = g_thread_new ("places", search_thread, &s);
+  g_mutex_lock (&s.lock);
+  while (!s.loop)
+    g_cond_wait (&s.ready, &s.lock);
+  g_mutex_unlock (&s.lock);
+  base = g_strdup_printf ("http://127.0.0.1:%u", s.port);
+  url = g_strdup_printf ("%s/v1/place-hours", base);
+  g_setenv ("NAVI_SERVER", base, TRUE);
+  g_setenv ("DICTATE_PLACE_HOURS_URL", url, TRUE);
+
+  bode = dictate_tools_run ("get_place_hours", "{\"place\":\"Bode Museum\"}", &ctx, 10000);
+  g_assert_true (s.identified);
+  g_assert_nonnull (strstr (bode, "\"place\":\"Bode Museum, Mitte, Berlin\""));
+  g_assert_nonnull (strstr (bode, "\"open_now\":\"no\""));
+  g_assert_nonnull (strstr (bode, "\"opens\":\"10:00\""));
+  g_assert_nonnull (strstr (bode, "Tue (today): 10:00-17:00"));
+  g_assert_nonnull (strstr (bode, "Mon: closed"));
+  g_assert_nonnull (strstr (bode, "\"last_checked\":\"2026-05-15\""));
+  g_assert_nonnull (strstr (bode, "OpenStreetMap"));
+  g_assert_nonnull (strstr (bode, "Café im Bode-Museum, Mitte, Berlin"));
+  g_assert_true (seen (&seen_, "facts: Bode Museum, Closed · opens 10:00"));
+  closed = dictate_tools_run ("get_place_hours", "{\"place\":\"Pergamonmuseum\"}", &ctx, 10000);
+  g_assert_nonnull (strstr (closed, "\"opens\":\"not in the coming week\""));
+  g_assert_null (strstr (closed, "other_places"));
+  karachi = dictate_tools_run ("get_place_hours", "{\"place\":\"Karachi Cafe\"}", &ctx, 10000);
+  g_assert_nonnull (strstr (karachi, "\"until\":\"22:00\""));
+  g_assert_nonnull (strstr (karachi, "\"time_there\":\"08:54\""));
+  g_assert_nonnull (strstr (karachi, "Asia/Karachi"));
+  kiosk = dictate_tools_run ("get_place_hours", "{\"place\":\"Kiosk\"}", &ctx, 10000);
+  g_assert_nonnull (strstr (kiosk, "\"hours\":\"not known\""));
+  g_assert_nonnull (strstr (kiosk, "web_search"));
+  nowhere = dictate_tools_run ("get_place_hours", "{\"place\":\"Nowhere\"}", &ctx, 10000);
+  g_assert_nonnull (strstr (nowhere, "No place called"));
+  busy = dictate_tools_run ("get_place_hours", "{\"place\":\"Busy Shop\"}", &ctx, 10000);
+  g_assert_nonnull (strstr (busy, "Too many questions"));
+  empty = dictate_tools_run ("get_place_hours", "{}", &ctx, 10000);
+  g_assert_nonnull (strstr (empty, "\"error\""));
+  g_unsetenv ("NAVI_SERVER");
+  g_unsetenv ("DICTATE_PLACE_HOURS_URL");
+
+  g_main_loop_quit (s.loop);
+  g_thread_join (thread);
+  g_main_loop_unref (s.loop);
+  g_mutex_clear (&s.lock);
+  g_cond_clear (&s.ready);
+  g_ptr_array_unref (seen_.shown);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -587,5 +721,6 @@ main (int argc, char **argv)
   g_test_add_func ("/tools/files", test_files);
   g_test_add_func ("/tools/cards", test_cards);
   g_test_add_func ("/tools/web", test_web);
+  g_test_add_func ("/tools/place-hours", test_place_hours);
   return g_test_run ();
 }

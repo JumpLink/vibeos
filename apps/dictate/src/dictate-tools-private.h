@@ -81,6 +81,11 @@ JsonNode *tool_get_location       (JsonObject *args, ToolRun *run, GError **erro
 JsonNode *tool_find_files         (JsonObject *args, ToolRun *run, GError **error);
 JsonNode *tool_open_file          (JsonObject *args, ToolRun *run, GError **error);
 JsonNode *tool_web_search         (JsonObject *args, ToolRun *run, GError **error);
+JsonNode *tool_get_place_hours    (JsonObject *args, ToolRun *run, GError **error);
+/* Navi's place search (our own Photon): the features found for `query`, at most `limit`, owned by `parser`; NULL
+ * for none, and `reached` FALSE when the search could not be asked */
+JsonArray *tool_place_search      (JsonParser *parser, const char *query, const char *language, guint limit,
+                                   ToolRun *run, gboolean *reached);
 /* the undo of one of them ("device" in `undo`): FALSE when it is not theirs; else `done` says what is so again, or
  * `error` why not */
 gboolean  tool_device_undo        (JsonObject *undo, ToolRun *run, char **done, GError **error);
