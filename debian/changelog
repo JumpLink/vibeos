@@ -45,6 +45,11 @@ vibeos (1:0.1.4.1) unstable; urgency=medium
     has it in Console's dock slot, and the launcher shows it instead of
     Console and puts it in Console's places on a home already set up.
     Console stays installed where it was.
+  * Video: full screen plays under the camera hole, the hole inside the
+    picture, instead of beside a black bar. Settings (in the menu) has Black
+    bar at the camera to bring the bar back, live while a film plays. The
+    shell keeps the other apps clear of the hole; vibeos.Shell's
+    cutout-extend-apps lists the apps that go under it.
 
  -- pulpoff <pashkovsky@gmail.com>  Tue, 24 Nov 2026 04:53:21 +0100
 
