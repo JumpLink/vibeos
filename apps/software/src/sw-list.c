@@ -9,6 +9,7 @@
 #include "sw-widgets.h"
 #include "sw-window.h"
 
+#include <glib/gi18n.h>
 #include <spongy-gtk.h>
 
 #define NEAR_END 600
@@ -100,7 +101,7 @@ on_more (SwApiResult *result, const SwApiError *error, gpointer data)
     {
       GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
       g_autofree char *text = sw_api_error_describe (error);
-      GtkWidget *label = sw_label_new (text, "sw-list-error"), *button = sw_button_new ("Retry", SW_BUTTON_TONAL);
+      GtkWidget *label = sw_label_new (text, "sw-list-error"), *button = sw_button_new (_("Retry"), SW_BUTTON_TONAL);
 
       gtk_label_set_justify (GTK_LABEL (label), GTK_JUSTIFY_CENTER);
       gtk_label_set_xalign (GTK_LABEL (label), 0.5);
@@ -168,7 +169,7 @@ on_first (SwApiResult *result, const SwApiError *error, gpointer data)
   if (list->meta_func)
     list->meta_func (list->list, result->meta, list->meta_data);
   if (!items || !json_array_get_length (items))
-    sw_status_empty (SW_STATUS (list->status), "sw-apps-symbolic", list->empty ? list->empty : "No apps here yet.",
+    sw_status_empty (SW_STATUS (list->status), "sw-apps-symbolic", list->empty ? list->empty : _("No apps here yet."),
                      NULL, NULL, NULL);
   else
     {
@@ -274,7 +275,7 @@ sw_app_list_set_header (GtkWidget *widget, GtkWidget *header)
 GtkWidget *
 sw_list_page_new (const char *title, const char *path)
 {
-  GtkWidget *page = sw_page_new (title ? title : "Apps");
+  GtkWidget *page = sw_page_new (title ? title : _("Apps"));
 
   sw_page_set_body (page, sw_app_list_new (path));
   return page;
@@ -324,7 +325,7 @@ on_categories (SwApiResult *result, const SwApiError *error, gpointer data)
       /* empty categories have nothing to open */
       if (!category || count <= 0)
         continue;
-      summary = g_strdup_printf (count == 1 ? "%" G_GINT64_FORMAT " app" : "%" G_GINT64_FORMAT " apps", count);
+      summary = g_strdup_printf (g_dngettext (NULL, "%d app", "%d apps", count), (int) MIN (count, G_MAXINT));
       row = vibeos_list_row_new (sw_json_string (category, "name"), summary);
       icon = g_strdup_printf ("sw-fa-%s-symbolic", sw_json_string (category, "icon"));
       if (!gtk_icon_theme_has_icon (gtk_icon_theme_get_for_display (gdk_display_get_default ()), icon))
@@ -377,7 +378,7 @@ sw_categories_page_new (const char *type)
   Categories *c = g_new0 (Categories, 1);
 
   c->type = g_strdup (!g_strcmp0 (type, "games") ? "games" : "apps");
-  c->page = sw_page_new (!g_strcmp0 (c->type, "games") ? "Game categories" : "App categories");
+  c->page = sw_page_new (!g_strcmp0 (c->type, "games") ? _("Game categories") : _("App categories"));
   c->cards = vibeos_card_list_new ();
   vibeos_card_list_set_margins (VIBEOS_CARD_LIST (c->cards), 8, 24);
   c->status = sw_status_new (sw_scroll_new (c->cards));

@@ -10,6 +10,7 @@
 #include "sw-widgets.h"
 #include "sw-window.h"
 
+#include <glib/gi18n.h>
 #include <spongy-gtk.h>
 
 #define MAX_TEXT 500
@@ -56,7 +57,8 @@ helpful_update (Card *c)
 {
   gint64 count = sw_json_int (c->review, "helpful_count", 0);
   gboolean mine = sw_json_bool (c->review, "helpful_by_me", FALSE);
-  g_autofree char *text = count > 0 ? g_strdup_printf ("Helpful · %" G_GINT64_FORMAT, count) : g_strdup ("Helpful");
+  g_autofree char *text = count > 0 ? g_strdup_printf (_("Helpful · %d"), (int) MIN (count, G_MAXINT))
+                                      : g_strdup (_("Helpful"));
   GtkWidget *box = vibeos_pressable_get_child (VIBEOS_PRESSABLE (c->helpful));
   GtkWidget *icon = gtk_widget_get_first_child (box);
 
@@ -96,7 +98,7 @@ on_helpful (GtkWidget *button, Card *c)
 
   if (!sw_account_is_signed_in (sw_account_get_default ()))
     {
-      sw_window_toast (button, "Sign in to mark reviews as helpful.");
+      sw_window_toast (button, _("Sign in to mark reviews as helpful."));
       return;
     }
   if (c->busy)
@@ -132,10 +134,10 @@ on_card_more (GtkWidget *button, Card *c)
   if (sw_json_bool (c->review, "mine", FALSE))
     {
       if (c->app_id)
-        sw_menu_append (menu, "Edit", menu_edit, c);
+        sw_menu_append (menu, _("Edit"), menu_edit, c);
     }
   else
-    sw_menu_append (menu, "Report", menu_report, c);
+    sw_menu_append (menu, _("Report"), menu_report, c);
   sw_menu_present (menu, button);
 }
 
@@ -164,11 +166,11 @@ sw_review_card_new (JsonObject *review, const char *app_id, const char *app_name
   gtk_widget_add_css_class (initial, "sw-review-initial");
   gtk_widget_set_valign (initial, GTK_ALIGN_CENTER);
   gtk_box_append (GTK_BOX (top), initial);
-  gtk_box_append (GTK_BOX (who), sw_label_new (name ? name : "Someone", "sw-review-author"));
+  gtk_box_append (GTK_BOX (who), sw_label_new (name ? name : _("Someone"), "sw-review-author"));
   gtk_box_append (GTK_BOX (line), sw_stars_new (sw_json_int (review, "rating", 0), 12, 1, FALSE));
   if (date)
     {
-      g_autofree char *when = sw_json_bool (review, "edited", FALSE) ? g_strdup_printf ("%s · edited", date)
+      g_autofree char *when = sw_json_bool (review, "edited", FALSE) ? g_strdup_printf (_("%s · edited"), date)
                                                                      : g_strdup (date);
 
       gtk_box_append (GTK_BOX (line), sw_label_new (when, "sw-caption"));
@@ -176,7 +178,7 @@ sw_review_card_new (JsonObject *review, const char *app_id, const char *app_name
   gtk_box_append (GTK_BOX (who), line);
   gtk_widget_set_hexpand (who, TRUE);
   gtk_box_append (GTK_BOX (top), who);
-  more = sw_icon_button_new ("sw-more-symbolic", "More");
+  more = sw_icon_button_new ("sw-more-symbolic", _("More"));
   gtk_widget_set_valign (more, GTK_ALIGN_START);
   g_signal_connect (more, "clicked", G_CALLBACK (on_card_more), c);
   gtk_box_append (GTK_BOX (top), more);
@@ -186,7 +188,7 @@ sw_review_card_new (JsonObject *review, const char *app_id, const char *app_name
     gtk_box_append (GTK_BOX (card), sw_label_new (text, "sw-review-text"));
   if (sw_json_string (review, "app_version"))
     {
-      g_autofree char *version = g_strdup_printf ("Version %s", sw_json_string (review, "app_version"));
+      g_autofree char *version = g_strdup_printf (_("Version %s"), sw_json_string (review, "app_version"));
 
       gtk_box_append (GTK_BOX (card), sw_label_new (version, "sw-caption"));
     }
@@ -201,7 +203,7 @@ sw_review_card_new (JsonObject *review, const char *app_id, const char *app_name
   c->helpful = vibeos_pressable_new (helpful_box);
   gtk_widget_add_css_class (c->helpful, "sw-helpful");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (c->helpful), VIBEOS_RIPPLE_BOUNDED, 16);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (c->helpful), GTK_ACCESSIBLE_PROPERTY_LABEL, "Helpful", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (c->helpful), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Helpful"), -1);
   /* nobody votes for their own review */
   gtk_widget_set_visible (c->helpful, !sw_json_bool (review, "mine", FALSE));
   g_signal_connect (c->helpful, "clicked", G_CALLBACK (on_helpful), c);
@@ -216,10 +218,12 @@ sw_review_card_new (JsonObject *review, const char *app_id, const char *app_name
 static const struct {
   const char *label, *sort;
 } sorts[] = {
-  { "Most helpful", "helpful" },
-  { "Newest", "newest" },
-  { "Highest", "rating_high" },
-  { "Lowest", "rating_low" },
+  { N_("Most helpful"), "helpful" },
+  { N_("Newest"), "newest" },
+  /* TRANSLATORS: reviews sorted by their stars, the most first */
+  { N_("Highest"), "rating_high" },
+  /* TRANSLATORS: reviews sorted by their stars, the fewest first */
+  { N_("Lowest"), "rating_low" },
 };
 
 typedef struct {
@@ -291,7 +295,7 @@ on_reviews (SwApiResult *result, const SwApiError *error, gpointer data)
   g_free (r->cursor);
   r->cursor = g_strdup (result->next_cursor);
   if (first && !gtk_widget_get_first_child (r->rows))
-    sw_status_empty (SW_STATUS (r->status), "sw-star-outline-symbolic", "No reviews yet.", NULL, NULL, NULL);
+    sw_status_empty (SW_STATUS (r->status), "sw-star-outline-symbolic", _("No reviews yet."), NULL, NULL, NULL);
   else
     sw_status_show (SW_STATUS (r->status));
 }
@@ -361,7 +365,7 @@ sw_reviews_page_new (const char *app_id, const char *app_name)
   r->app_id = g_strdup (app_id);
   r->app_name = g_strdup (app_name);
   r->seen = g_hash_table_new (NULL, NULL);
-  r->page = sw_page_new (app_name ? app_name : "Reviews");
+  r->page = sw_page_new (app_name ? app_name : _("Reviews"));
   g_object_set_data_full (G_OBJECT (r->page), "sw-reviews", r, reviews_free);
   g_signal_connect (r->page, "destroy", G_CALLBACK (on_reviews_destroy), r);
 
@@ -369,7 +373,7 @@ sw_reviews_page_new (const char *app_id, const char *app_name)
   gtk_widget_add_css_class (chips, "sw-chips");
   for (guint i = 0; i < G_N_ELEMENTS (sorts); i++)
     {
-      r->chips[i] = sw_filter_chip_new (sorts[i].label);
+      r->chips[i] = sw_filter_chip_new (_(sorts[i].label));
       sw_filter_chip_set_selected (r->chips[i], i == 0);
       g_signal_connect (r->chips[i], "clicked", G_CALLBACK (on_sort), r);
       gtk_box_append (GTK_BOX (chips), r->chips[i]);
@@ -456,7 +460,7 @@ on_sent (SwApiResult *result, const SwApiError *error, gpointer data)
       return;
     }
   sw_reviews_changed (e->app_id);
-  sw_window_toast (e->page, e->had_review ? "Your review is changed" : "Thank you for your review");
+  sw_window_toast (e->page, e->had_review ? _("Your review is changed") : _("Thank you for your review"));
   sw_window_pop (e->page);
 }
 
@@ -499,7 +503,7 @@ on_deleted (SwApiResult *result, const SwApiError *error, gpointer data)
       return;
     }
   sw_reviews_changed (e->app_id);
-  sw_window_toast (e->page, "Your review is deleted");
+  sw_window_toast (e->page, _("Your review is deleted"));
   sw_window_pop (e->page);
 }
 
@@ -518,11 +522,11 @@ on_delete_response (VibeosDialog *dialog, int response, Editor *e)
 static void
 on_delete (GtkWidget *button, Editor *e)
 {
-  VibeosDialog *dialog = vibeos_dialog_new ("Delete your review?");
+  VibeosDialog *dialog = vibeos_dialog_new (_("Delete your review?"));
 
-  vibeos_dialog_set_message (dialog, "Your stars and text go, and the app's rating no longer counts them.");
-  vibeos_dialog_add_button (dialog, "Cancel", VIBEOS_RESPONSE_CANCEL);
-  vibeos_dialog_add_button (dialog, "Delete", VIBEOS_RESPONSE_OK);
+  vibeos_dialog_set_message (dialog, _("Your stars and text go, and the app's rating no longer counts them."));
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("Delete"), VIBEOS_RESPONSE_OK);
   g_signal_connect (dialog, "response", G_CALLBACK (on_delete_response), e);
   vibeos_dialog_present (dialog, e->page);
 }
@@ -531,7 +535,7 @@ GtkWidget *
 sw_review_editor_new (const char *app_id, const char *app_name, int rating, JsonObject *review)
 {
   Editor *e = g_new0 (Editor, 1);
-  g_autofree char *title = app_name ? g_strdup_printf ("Rate %s", app_name) : g_strdup ("Rate the app");
+  g_autofree char *title = app_name ? g_strdup_printf (_("Rate %s"), app_name) : g_strdup (_("Rate the app"));
   GtkWidget *column = sw_column_new (16), *frame = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *scroll;
   GtkWidget *label_row, *label;
   GtkTextBuffer *buffer;
@@ -542,7 +546,7 @@ sw_review_editor_new (const char *app_id, const char *app_name, int rating, Json
   g_object_set_data_full (G_OBJECT (e->page), "sw-editor", e, editor_free);
   gtk_widget_add_css_class (column, "sw-form");
 
-  gtk_box_append (GTK_BOX (column), sw_label_new ("Your rating", "sw-subtitle"));
+  gtk_box_append (GTK_BOX (column), sw_label_new (_("Your rating"), "sw-subtitle"));
   e->stars = sw_stars_new (rating, 40, 16, TRUE);
   gtk_widget_set_halign (e->stars, GTK_ALIGN_START);
   g_signal_connect (e->stars, "changed", G_CALLBACK (on_editor_changed), e);
@@ -550,7 +554,7 @@ sw_review_editor_new (const char *app_id, const char *app_name, int rating, Json
 
   /* the label, and how much of the 500 characters is used, over the field */
   label_row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
-  label = sw_label_new ("Your review (if you want to say more)", "sw-field-label");
+  label = sw_label_new (_("Your review (if you want to say more)"), "sw-field-label");
   gtk_widget_set_hexpand (label, TRUE);
   gtk_box_append (GTK_BOX (label_row), label);
   e->counter = gtk_label_new (NULL);
@@ -563,7 +567,7 @@ sw_review_editor_new (const char *app_id, const char *app_name, int rating, Json
   gtk_text_view_set_accepts_tab (GTK_TEXT_VIEW (e->view), FALSE);
   gtk_text_view_set_input_hints (GTK_TEXT_VIEW (e->view),
                                  GTK_INPUT_HINT_SPELLCHECK | GTK_INPUT_HINT_UPPERCASE_SENTENCES);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (e->view), GTK_ACCESSIBLE_PROPERTY_LABEL, "Your review", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (e->view), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Your review"), -1);
   buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (e->view));
   if (sw_json_string (review, "text"))
     gtk_text_buffer_set_text (buffer, sw_json_string (review, "text"), -1);
@@ -576,19 +580,19 @@ sw_review_editor_new (const char *app_id, const char *app_name, int rating, Json
   gtk_box_append (GTK_BOX (frame), scroll);
   gtk_box_append (GTK_BOX (column), frame);
   gtk_box_append (GTK_BOX (column),
-                  sw_label_new ("Your review shows with your account's name. Be kind, and say what you think of the "
-                                "app.", "sw-caption"));
+                  sw_label_new (_("Your review shows with your account's name. Be kind, and say what you think of "
+                                  "the app."), "sw-caption"));
   e->error = sw_label_new (NULL, "sw-form-error");
   gtk_widget_set_visible (e->error, FALSE);
   gtk_box_append (GTK_BOX (column), e->error);
 
-  e->send = sw_button_new (review ? "Save" : "Send", SW_BUTTON_FILLED);
+  e->send = sw_button_new (review ? _("Save") : _("Send"), SW_BUTTON_FILLED);
   gtk_widget_add_css_class (e->send, "large");
   g_signal_connect (e->send, "clicked", G_CALLBACK (on_send), e);
   gtk_box_append (GTK_BOX (column), e->send);
   if (review)
     {
-      GtkWidget *remove = sw_button_new ("Delete my review", SW_BUTTON_TEXT);
+      GtkWidget *remove = sw_button_new (_("Delete my review"), SW_BUTTON_TEXT);
 
       gtk_widget_set_halign (remove, GTK_ALIGN_CENTER);
       g_signal_connect (remove, "clicked", G_CALLBACK (on_delete), e);
@@ -604,11 +608,11 @@ sw_review_editor_new (const char *app_id, const char *app_name, int rating, Json
 static const struct {
   const char *label, *reason;
 } reasons[] = {
-  { "Spam or an advert", "spam" },
-  { "Offensive", "offensive" },
-  { "Not about this app", "off_topic" },
-  { "Fake or misleading", "fake" },
-  { "Something else", "other" },
+  { N_("Spam or an advert"), "spam" },
+  { N_("Offensive"), "offensive" },
+  { N_("Not about this app"), "off_topic" },
+  { N_("Fake or misleading"), "fake" },
+  { N_("Something else"), "other" },
 };
 
 typedef struct {
@@ -631,7 +635,7 @@ on_report_sent (SwApiResult *result, const SwApiError *error, gpointer data)
       gtk_widget_set_visible (r->error, TRUE);
       return;
     }
-  sw_window_toast (r->from, "Thank you. The store team will look at the review.");
+  sw_window_toast (r->from, _("Thank you. The store team will look at the review."));
   vibeos_sheet_close (VIBEOS_SHEET (r->sheet));
 }
 
@@ -682,33 +686,33 @@ sw_report_present (GtkWidget *from, gint64 review_id)
 
   if (!sw_account_is_signed_in (sw_account_get_default ()))
     {
-      sw_window_toast (from, "Sign in to report reviews.");
+      sw_window_toast (from, _("Sign in to report reviews."));
       return;
     }
   r = g_new0 (Report, 1);
   r->from = from;
   r->review_id = review_id;
-  r->sheet = vibeos_sheet_new ("Report the review");
+  r->sheet = vibeos_sheet_new (_("Report the review"));
   g_object_set_data_full (G_OBJECT (r->sheet), "sw-report", r, g_free);
   column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
   gtk_widget_add_css_class (column, "sw-sheet-column");
-  gtk_box_append (GTK_BOX (column), sw_label_new ("What is wrong with it?", "sw-body-text"));
+  gtk_box_append (GTK_BOX (column), sw_label_new (_("What is wrong with it?"), "sw-body-text"));
   cards = vibeos_card_list_new ();
   for (guint i = 0; i < G_N_ELEMENTS (reasons); i++)
     {
-      r->rows[i] = vibeos_list_row_new (reasons[i].label, NULL);
+      r->rows[i] = vibeos_list_row_new (_(reasons[i].label), NULL);
       g_signal_connect (r->rows[i], "clicked", G_CALLBACK (on_reason), r);
       vibeos_card_list_append (VIBEOS_CARD_LIST (cards), r->rows[i]);
     }
   gtk_box_append (GTK_BOX (column), cards);
   on_reason (r->rows[0], r);
-  r->comment = sw_field_new ("More about it (if you want)", SW_FIELD_TEXT);
+  r->comment = sw_field_new (_("More about it (if you want)"), SW_FIELD_TEXT);
   gtk_text_set_max_length (GTK_TEXT (sw_field_get_text_widget (r->comment)), MAX_TEXT);
   gtk_box_append (GTK_BOX (column), r->comment);
   r->error = sw_label_new (NULL, "sw-form-error");
   gtk_widget_set_visible (r->error, FALSE);
   gtk_box_append (GTK_BOX (column), r->error);
-  r->send = sw_button_new ("Send the report", SW_BUTTON_FILLED);
+  r->send = sw_button_new (_("Send the report"), SW_BUTTON_FILLED);
   gtk_widget_add_css_class (r->send, "large");
   g_signal_connect (r->send, "clicked", G_CALLBACK (on_report_send), r);
   gtk_box_append (GTK_BOX (column), r->send);

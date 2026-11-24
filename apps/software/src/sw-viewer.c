@@ -32,6 +32,7 @@
 #include "sw-json.h"
 
 #include <math.h>
+#include <glib/gi18n.h>
 #include <spongy-gtk.h>
 #include <vibeos.h>
 
@@ -1146,7 +1147,7 @@ sw_viewer_init (SwViewer *self)
   gtk_widget_add_css_class (self->back, "sw-viewer-back");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->back), VIBEOS_RIPPLE_CIRCLE, 20);
   vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->back), &scrim, FALSE);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_LABEL, "Back", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->back), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Back"), -1);
   g_signal_connect (self->back, "clicked", G_CALLBACK (on_back_clicked), self);
   gtk_widget_set_parent (self->back, widget);
 
@@ -1155,7 +1156,7 @@ sw_viewer_init (SwViewer *self)
   gtk_widget_add_css_class (self->close, "sw-viewer-back");
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->close), VIBEOS_RIPPLE_CIRCLE, 20);
   vibeos_pressable_set_fill (VIBEOS_PRESSABLE (self->close), &scrim, FALSE);
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self->close), GTK_ACCESSIBLE_PROPERTY_LABEL, "Close", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self->close), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Close"), -1);
   g_signal_connect (self->close, "clicked", G_CALLBACK (on_close_clicked), self);
   gtk_widget_set_parent (self->close, widget);
 
@@ -1217,7 +1218,7 @@ sw_viewer_present (GtkWidget *thumb, JsonArray *shots, guint index, GPtrArray *t
     }
   if (n_pages (self))
     sw_viewer_page_want_full (page_at (self, MIN (index, n_pages (self) - 1)));
-  gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL, "Screenshots", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (self), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Screenshots"), -1);
 
   /* from the thumbnail, where it is now */
   self->has_thumb = gtk_widget_compute_bounds (thumb, GTK_WIDGET (overlay), &self->thumb);

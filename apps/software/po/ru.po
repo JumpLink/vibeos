@@ -1,0 +1,1293 @@
+# Russian translations of vibeos-software.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-software\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:43+0100\n"
+"PO-Revision-Date: 2026-11-24 03:43+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Russian\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: data/vibeos.Software.desktop.in src/sw-account-pages.c src/sw-window.c
+msgid "Software"
+msgstr ""
+
+#: data/vibeos.Software.desktop.in
+msgid "Find, install and update apps and games"
+msgstr ""
+
+#: data/vibeos.Software.desktop.in
+msgid "Store;Apps;Games;Install;Update;Uninstall;Review;"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "You are signed in"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Enter your email address."
+msgstr ""
+
+# android: SystemUI biometric_dialog_enter_password (adapted, other app)
+#: src/sw-account-pages.c
+msgid "Enter your password."
+msgstr "Введите пароль."
+
+# android: Settings private_space_retry_signin_title (several translations, short)
+#: src/sw-account-pages.c src/sw-app-page.c src/sw-mine.c
+msgid "Sign in"
+msgstr "Войти"
+
+#: src/sw-account-pages.c
+msgid ""
+"Sign in to rate and review apps, and to see your apps on all your devices."
+msgstr ""
+
+# android: SystemUI keyboard_shortcut_group_applications_email (other app, several translations, short)
+#: src/sw-account-pages.c
+msgid "Email"
+msgstr "Эл. почта"
+
+# android: Settings unlock_set_unlock_password_title (short)
+#: src/sw-account-pages.c
+msgid "Password"
+msgstr "Пароль"
+
+# android: Settings lockpassword_forgot_password
+#: src/sw-account-pages.c
+msgid "Forgot your password?"
+msgstr "Забыли пароль?"
+
+#: src/sw-account-pages.c
+msgid "No account yet?"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Create an account"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Enter a name. It shows on your reviews."
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid ""
+"With an account you can rate and review apps, and see your apps on all your "
+"devices. The store emails you a code to confirm the address."
+msgstr ""
+
+# android: Settings security_settings_fingerprint_enroll_dialog_name_label (several translations, short)
+#: src/sw-account-pages.c
+msgid "Name"
+msgstr "Название"
+
+#: src/sw-account-pages.c
+msgid "Shown on your reviews"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "At least 8 characters"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Create the account"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Send a new code"
+msgstr ""
+
+#. TRANSLATORS: %d is the seconds left until a new code can be asked for, "s" the abbreviation of seconds
+#: src/sw-account-pages.c
+#, c-format
+msgid "Send a new code in %d s"
+msgstr ""
+
+#. TRANSLATORS: %s is the store's message (a whole sentence), %d how many more codes may be tried
+#: src/sw-account-pages.c
+#, c-format
+msgid "%s %d try left."
+msgid_plural "%s %d tries left."
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#. TRANSLATORS: %d is the code's length in digits, %s the email address
+#: src/sw-account-pages.c
+#, c-format
+msgid ""
+"The store sent a %d-digit code to %s. Enter it here to confirm the address. "
+"It works for 15 minutes."
+msgstr ""
+
+#. TRANSLATORS: %d is the code's length in digits, %s the email address
+#: src/sw-account-pages.c
+#, c-format
+msgid ""
+"Confirm your address to rate and review apps: enter the %d-digit code the "
+"store emailed to %s, or ask for a new one."
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "A new code is on its way"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Your address is confirmed"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Confirm your email"
+msgstr ""
+
+# android: Settings security_settings_remoteauth_enroll_enrolling_agree (several translations, short)
+#: src/sw-account-pages.c
+msgid "Confirm"
+msgstr "Подтвердить"
+
+# android: Aperture location_permission_dialog_later (other app, short)
+#: src/sw-account-pages.c
+msgid "Later"
+msgstr "Позже"
+
+#: src/sw-account-pages.c
+msgid "Your password is changed, and you are signed in"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid ""
+"Enter the address you signed up with. If it has an account, the store emails "
+"a code to it to set a new password."
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Send the code"
+msgstr ""
+
+#. TRANSLATORS: %s is the email address (partly hidden), %d the code's length in digits
+#: src/sw-account-pages.c
+#, c-format
+msgid ""
+"If %s has an account, a %d-digit code is on its way to it. Enter it here."
+msgstr ""
+
+# android: Settings next_label (several translations, short)
+#: src/sw-account-pages.c
+msgid "Next"
+msgstr "Далее"
+
+#: src/sw-account-pages.c
+msgid ""
+"Choose a new password. Every device signed in to the account is signed out, "
+"and this one signed in."
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "New password"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Set the password"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "On Wi-Fi only"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Not on a network that counts the data (a phone's mobile data)"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "On any network"
+msgstr ""
+
+#. TRANSLATORS: Mine is the tab of the apps on the device, "Check for updates" its button
+#: src/sw-account-pages.c
+msgid "Only when I ask"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Mine's Check for updates"
+msgstr ""
+
+#. TRANSLATORS: the theme: light or dark as the system's
+#: src/sw-account-pages.c
+msgid "As the system"
+msgstr ""
+
+# android: Etar preferences_light_theme (other app, short)
+#: src/sw-account-pages.c
+msgid "Light"
+msgstr "Светлая"
+
+# android: Etar preferences_dark_theme (other app, short)
+#: src/sw-account-pages.c
+msgid "Dark"
+msgstr "Тёмная"
+
+#: src/sw-account-pages.c
+msgid "Software's settings are not installed."
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Look for updates"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid ""
+"Software looks for updates when it starts and when apps change. It does not "
+"install them by itself: update from Mine."
+msgstr ""
+
+# android: Etar preferences_theme (other app, short)
+#: src/sw-account-pages.c
+msgid "Theme"
+msgstr "Тема"
+
+#: src/sw-account-pages.c
+msgid "VibeOS apps only"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "None of Debian's in the store's lists"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "About Software"
+msgstr ""
+
+# android: PackageInstaller external_sources_settings (several translations, short)
+#: src/sw-account-pages.c
+msgid "Settings"
+msgstr "Настройки"
+
+#: src/sw-account-pages.c
+msgid "The catalog"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid ""
+"The apps, their descriptions and pictures come from the store at vibeos.top, "
+"which takes them from Debian's and VibeOS's software sources and the apps' "
+"own AppStream data."
+msgstr ""
+
+#. TRANSLATORS: keep the links' markup as it is
+#: src/sw-account-pages.c
+msgid ""
+"The category icons are Font Awesome Free 7.0.0 by Fonticons, Inc. (solid "
+"style, unchanged), under the <a href=\"https://creativecommons.org/licenses/"
+"by/4.0/\">Creative Commons Attribution 4.0</a> licence. <a href=\"https://"
+"fontawesome.com\">fontawesome.com</a>"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "You are signed out"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Sign out?"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Your reviews and your apps stay. Sign in again to write reviews."
+msgstr ""
+
+# android: PackageInstaller cancel (several translations, short)
+#: src/sw-account-pages.c src/sw-app-page.c src/sw-reviews.c
+msgid "Cancel"
+msgstr "Отмена"
+
+# android: LatinIME account_select_sign_out (other app, short)
+#: src/sw-account-pages.c
+msgid "Sign out"
+msgstr "Выйти"
+
+#: src/sw-account-pages.c
+msgid "Signed in"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Confirm your email address"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Needed to rate and review apps"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "My reviews"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Delete the account"
+msgstr ""
+
+#: src/sw-account-pages.c src/sw-mine.c
+msgid "Account and settings"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Your account is deleted"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Enter your password to delete the account."
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid ""
+"The store deletes the account, its devices, the list of apps it had and its "
+"helpful votes. It cannot be undone. Your apps stay installed."
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "Delete my reviews too"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid ""
+"Otherwise they stay, under \"Deleted account\", and nobody can change them"
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "A moderator hid this review: only you see it."
+msgstr ""
+
+#: src/sw-account-pages.c
+msgid "You have not reviewed any apps yet. An app's page has its stars to tap."
+msgstr ""
+
+# android: Settings request_manage_credentials_more (several translations, short)
+#: src/sw-account-pages.c
+msgid "Show more"
+msgstr "Показать больше"
+
+#: src/sw-account.c
+msgid ""
+"Software could not keep your sign-in in the keyring. You will need to sign "
+"in again next time."
+msgstr ""
+
+#. TRANSLATORS: the keyring entry's name, as a password manager shows it; %s is the store's address
+#: src/sw-account.c
+#, c-format
+msgid "VibeOS Software: the store account on %s"
+msgstr ""
+
+#: src/sw-account.c
+msgid "You were signed out of the store. Sign in again to review apps."
+msgstr ""
+
+#. TRANSLATORS: %u is the HTTP status code
+#: src/sw-api.c
+#, c-format
+msgid "The store is not working right now (error %u). Try again later."
+msgstr ""
+
+#. TRANSLATORS: %u is the HTTP status code
+#: src/sw-api.c
+#, c-format
+msgid "The store answered with error %u."
+msgstr ""
+
+#: src/sw-api.c
+msgid "The store's answer could not be read. Try again later."
+msgstr ""
+
+#: src/sw-api.c
+#, c-format
+msgid "%s Try again in %d minute."
+msgid_plural "%s Try again in %d minutes."
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: src/sw-api.c
+#, c-format
+msgid "%s Try again in %d second."
+msgid_plural "%s Try again in %d seconds."
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+# android: Dialer vvm3_error_vms_dns_failure_title (adapted, other app, several translations)
+#: src/sw-api.c
+msgid "Something went wrong."
+msgstr "Ошибка."
+
+#: src/sw-api.c
+msgid ""
+"Software cannot reach the store. Check the internet connection and try again."
+msgstr ""
+
+#: src/sw-api.c
+msgid "The store's address is not valid."
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "This app has no window of its own to open."
+msgstr ""
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-app-page.c
+#, c-format
+msgid "Uninstall %s?"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "The app goes. What it keeps in your home folder stays."
+msgstr ""
+
+# android: Settings uninstall_text (short)
+#: src/sw-app-page.c
+msgid "Uninstall"
+msgstr "Удалить"
+
+# android: PackageInstaller install
+#: src/sw-app-page.c src/sw-widgets.c
+msgid "Install"
+msgstr "Установить"
+
+# android: PackageInstaller update
+#: src/sw-app-page.c src/sw-widgets.c
+msgid "Update"
+msgstr "Обновить"
+
+# android: PackageInstaller launch
+#: src/sw-app-page.c src/sw-widgets.c src/sw-window.c
+msgid "Open"
+msgstr "Открыть"
+
+# android: Settings installed (several translations, short)
+#: src/sw-app-page.c
+msgid "Installed"
+msgstr "Установлено"
+
+#. TRANSLATORS: %s is the new version's number, then the size of its download
+#: src/sw-app-page.c
+#, c-format
+msgid "Version %s is out · %s"
+msgstr ""
+
+#: src/sw-app-page.c
+#, c-format
+msgid "Version %s is out"
+msgstr ""
+
+#. TRANSLATORS: under the number of the app's installs
+#: src/sw-app-page.c
+msgid "installs"
+msgstr ""
+
+# android: Messaging action_download (adapted, other app, several translations, short)
+#. TRANSLATORS: under the size of the app's download
+#: src/sw-app-page.c
+msgid "download"
+msgstr "скачать"
+
+#. TRANSLATORS: under the app's age rating ("12+")
+#: src/sw-app-page.c
+msgid "age rating"
+msgstr ""
+
+#: src/sw-app-page.c
+#, c-format
+msgid "Screenshot %u of %u"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "About this app"
+msgstr ""
+
+# android: Settings page_agnostic_notification_action (short)
+#: src/sw-app-page.c
+msgid "Read more"
+msgstr "Ещё"
+
+#: src/sw-app-page.c
+msgid "What's new"
+msgstr ""
+
+#. TRANSLATORS: the version's number, then the date it came out
+#: src/sw-app-page.c
+#, c-format
+msgid "Version %s · %s"
+msgstr ""
+
+# android: Settings vpn_version_info
+#: src/sw-app-page.c src/sw-mine.c src/sw-reviews.c
+#, c-format
+msgid "Version %s"
+msgstr "Версия %s"
+
+#: src/sw-app-page.c
+msgid "The developer did not say what changed."
+msgstr ""
+
+# android: Settings permissions_label (short)
+#: src/sw-app-page.c
+msgid "Permissions"
+msgstr "Разрешения"
+
+#: src/sw-app-page.c
+msgid ""
+"What the app says it uses. VibeOS's own apps are part of the system: they do "
+"not run in a sandbox."
+msgstr ""
+
+#: src/sw-app-page.c
+msgid ""
+"What the app asks for. VibeOS enforces these permissions: the app runs in a "
+"sandbox, and you allow or deny each one in Settings. Taking one away stops "
+"the app."
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "The app declares no permissions."
+msgstr ""
+
+#: src/sw-app-page.c
+msgid ""
+"The app declares no permissions. Until you change them in Settings, it may "
+"use the network, and you are asked before it gets your location or the "
+"camera, or runs in the background."
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Permissions in Settings"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Allow or deny each one for this app"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Confirm your email address to rate and review apps."
+msgstr ""
+
+#: src/sw-app-page.c
+msgid ""
+"Install the app to rate it: the store takes reviews from people who have had "
+"it on one of their devices."
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "The store does not take a review of this app from your account."
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Sign in to rate and review apps."
+msgstr ""
+
+#: src/sw-app-page.c src/sw-reviews.c
+msgid "Your review"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "A moderator hid your review: only you see it."
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Confirm the address"
+msgstr ""
+
+#: src/sw-app-page.c src/sw-reviews.c
+msgid "Rate the app"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Write a review"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Ratings and reviews"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "All reviews"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Similar apps"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Information"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Developer"
+msgstr ""
+
+# android: Settings vpn_version (short)
+#: src/sw-app-page.c
+msgid "Version"
+msgstr "Версия"
+
+#: src/sw-app-page.c
+msgid "Installed version"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Released"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Download size"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Size when installed"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Category"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Licence"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Comes from"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "The VibeOS software sources"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Debian's software sources"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Fits a phone"
+msgstr ""
+
+# android: Settings wifi_hidden_entries[1] (short)
+#: src/sw-app-page.c
+msgid "Yes"
+msgstr "Да"
+
+#. TRANSLATORS: whether the app fits a phone: not known to fit one
+#: src/sw-app-page.c
+msgid "Not known to"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Package"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "Homepage"
+msgstr ""
+
+#: src/sw-app-page.c
+msgid "This app is not in the store any more."
+msgstr ""
+
+# android: Settings security_settings_face_enroll_introduction_more (several translations, short)
+#: src/sw-app-page.c src/sw-reviews.c
+msgid "More"
+msgstr "Ещё"
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-check.c
+#, c-format
+msgid "%s can be updated"
+msgstr ""
+
+#. TRANSLATORS: %s is the new version's number
+#: src/sw-check.c
+#, c-format
+msgid "Version %s is ready to install."
+msgstr ""
+
+#: src/sw-check.c
+msgid "A new version is ready to install."
+msgstr ""
+
+#: src/sw-check.c
+#, c-format
+msgid "%u app can be updated"
+msgid_plural "%u apps can be updated"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+# android: Settings zen_mode_calls_summary_two (several translations)
+#. TRANSLATORS: two apps' names
+#: src/sw-check.c
+#, c-format
+msgid "%s and %s"
+msgstr "%s и %s"
+
+#. TRANSLATORS: three apps' names
+#: src/sw-check.c
+#, c-format
+msgid "%s, %s and %s"
+msgstr ""
+
+#. TRANSLATORS: three apps' names, then how many more apps can be updated
+#: src/sw-check.c
+#, c-format
+msgid "%s, %s, %s and %u more"
+msgid_plural "%s, %s, %s and %u more"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+# android: Settings previous_connected_see_all (several translations, short)
+#: src/sw-featured.c
+msgid "See all"
+msgstr "Показать все"
+
+#: src/sw-featured.c
+#, c-format
+msgid "%u category"
+msgid_plural "%u categories"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+# android: Dialer helpline_categories (other app, short)
+#: src/sw-featured.c
+msgid "Categories"
+msgstr "Категории"
+
+#: src/sw-featured.c
+msgid "Nothing here yet. Come back later."
+msgstr ""
+
+# android: Settings retry (several translations, short)
+#: src/sw-featured.c src/sw-list.c src/sw-mine.c src/sw-widgets.c
+msgid "Retry"
+msgstr "Повторить попытку"
+
+#: src/sw-featured.c src/sw-search.c
+msgid "Search apps and games"
+msgstr ""
+
+# android: Launcher3 all_apps_search_bar_hint (other app, short)
+#: src/sw-featured.c src/sw-search.c
+msgid "Search apps"
+msgstr "Поиск приложений"
+
+#: src/sw-featured.c src/sw-search.c
+msgid "Search games"
+msgstr ""
+
+#: src/sw-featured.c
+msgid "Recommended"
+msgstr ""
+
+#: src/sw-featured.c
+msgid "Popular"
+msgstr ""
+
+#: src/sw-installer.c
+msgid "Stopping…"
+msgstr ""
+
+#: src/sw-installer.c
+msgid "Queued"
+msgstr ""
+
+#: src/sw-installer.c
+msgid "Starting…"
+msgstr ""
+
+#: src/sw-installer.c
+#, c-format
+msgid "Downloading %d%%"
+msgstr ""
+
+#: src/sw-installer.c
+msgid "Downloading…"
+msgstr ""
+
+#: src/sw-installer.c
+#, c-format
+msgid "Installing %d%%"
+msgstr ""
+
+# android: PackageInstaller installing
+#: src/sw-installer.c
+msgid "Installing…"
+msgstr "Установка…"
+
+# android: PackageInstaller uninstalling
+#: src/sw-installer.c
+msgid "Uninstalling…"
+msgstr "Удаление…"
+
+#: src/sw-installer.c
+msgid "Waiting for your password"
+msgstr ""
+
+#: src/sw-installer.c
+msgid "Waiting for another install to finish"
+msgstr ""
+
+#: src/sw-installer.c
+msgid "Waiting for your answer"
+msgstr ""
+
+#: src/sw-installer.c
+msgid "Refreshing the software sources…"
+msgstr ""
+
+# android: Framework lockscreen_glogin_checking_password (short)
+#: src/sw-installer.c
+msgid "Checking…"
+msgstr "Проверка…"
+
+#: src/sw-installer.c
+msgid "Finishing…"
+msgstr ""
+
+#: src/sw-installer.c
+msgid ""
+"App Installer is not installed. Software installs and uninstalls apps "
+"through it."
+msgstr ""
+
+#. TRANSLATORS: %s is the error's own message
+#: src/sw-installer.c
+#, c-format
+msgid "App Installer could not start: %s"
+msgstr ""
+
+#: src/sw-installer.c
+msgid "Software cannot reach the session bus to ask App Installer."
+msgstr ""
+
+#: src/sw-installer.c
+msgid "App Installer stopped before it was done. Try again."
+msgstr ""
+
+#: src/sw-installer.c
+msgid "No session bus."
+msgstr ""
+
+#: src/sw-json.c
+msgid "No ratings yet"
+msgstr ""
+
+#. an int for gettext's sake (the format of a translated string cannot name gint64's)
+#: src/sw-json.c
+#, c-format
+msgid "%d rating"
+msgid_plural "%d ratings"
+msgstr[0] ""
+msgstr[1] ""
+msgstr[2] ""
+
+#: src/sw-list.c
+msgid "No apps here yet."
+msgstr ""
+
+# android: Settings running_processes_header_apps_prefix (short)
+#: src/sw-list.c src/sw-window.c
+msgid "Apps"
+msgstr "Приложения"
+
+# android: Settings enterprise_privacy_number_packages
+#: src/sw-list.c
+#, c-format
+msgid "%d app"
+msgid_plural "%d apps"
+msgstr[0] "%d приложение"
+msgstr[1] "%d приложения"
+msgstr[2] "%d приложений"
+
+#: src/sw-list.c
+msgid "Game categories"
+msgstr ""
+
+#: src/sw-list.c
+msgid "App categories"
+msgstr ""
+
+# android: Framework in_progress (adapted, short)
+#: src/sw-mine.c
+msgid "In progress"
+msgstr "В процессе"
+
+#. TRANSLATORS: %s is how far the job has got ("Downloading 42%")
+#: src/sw-mine.c
+#, c-format
+msgid "Uninstalling · %s"
+msgstr ""
+
+#: src/sw-mine.c
+#, c-format
+msgid "Updating · %s"
+msgstr ""
+
+#: src/sw-mine.c
+#, c-format
+msgid "Installing · %s"
+msgstr ""
+
+# android: Settings safety_center_system_and_updates_summary (short)
+#: src/sw-mine.c
+msgid "Updates"
+msgstr "Обновления"
+
+#: src/sw-mine.c
+msgid "Update all"
+msgstr ""
+
+#: src/sw-mine.c
+msgid "Your apps are up to date."
+msgstr ""
+
+#: src/sw-mine.c
+msgid "Check again"
+msgstr ""
+
+#: src/sw-mine.c
+msgid "Software has not looked for updates yet."
+msgstr ""
+
+#: src/sw-mine.c
+msgid "Check for updates"
+msgstr ""
+
+#: src/sw-mine.c src/sw-window.c
+msgid "Mine"
+msgstr ""
+
+# android: Settings filter_all_apps (several translations, short)
+#: src/sw-mine.c
+msgid "All apps"
+msgstr "Все приложения"
+
+#: src/sw-mine.c
+msgid "On this device and on your others"
+msgstr ""
+
+#: src/sw-mine.c
+msgid "None of the apps on this device are in the store."
+msgstr ""
+
+#: src/sw-mine.c
+msgid "Nothing is installed."
+msgstr ""
+
+#: src/sw-mine.c
+msgid "On another of your devices"
+msgstr ""
+
+#. TRANSLATORS: %s is a date
+#: src/sw-mine.c
+#, c-format
+msgid "Last installed %s"
+msgstr ""
+
+#: src/sw-mine.c
+msgid "Every app your account had is on this device."
+msgstr ""
+
+#: src/sw-mine.c
+msgid ""
+"Sign in to see the apps your account had on your other devices, or before."
+msgstr ""
+
+#: src/sw-mine.c
+msgid "On this device"
+msgstr ""
+
+#: src/sw-mine.c
+msgid "Not on this device"
+msgstr ""
+
+#: src/sw-reviews.c
+#, c-format
+msgid "Helpful · %d"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Helpful"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Sign in to mark reviews as helpful."
+msgstr ""
+
+# android: Settings edit (short)
+#: src/sw-reviews.c
+msgid "Edit"
+msgstr "Изменить"
+
+# android: Framework report (several translations, short)
+#: src/sw-reviews.c
+msgid "Report"
+msgstr "Отправить отчет"
+
+#: src/sw-reviews.c
+msgid "Someone"
+msgstr ""
+
+#: src/sw-reviews.c
+#, c-format
+msgid "%s · edited"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Most helpful"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Newest"
+msgstr ""
+
+#. TRANSLATORS: reviews sorted by their stars, the most first
+#: src/sw-reviews.c
+msgid "Highest"
+msgstr ""
+
+#. TRANSLATORS: reviews sorted by their stars, the fewest first
+#: src/sw-reviews.c
+msgid "Lowest"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "No reviews yet."
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Reviews"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Your review is changed"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Thank you for your review"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Your review is deleted"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Delete your review?"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Your stars and text go, and the app's rating no longer counts them."
+msgstr ""
+
+# android: Settings security_settings_fingerprint_enroll_dialog_delete (several translations, short)
+#: src/sw-reviews.c
+msgid "Delete"
+msgstr "Удалить"
+
+#: src/sw-reviews.c
+#, c-format
+msgid "Rate %s"
+msgstr ""
+
+#: src/sw-reviews.c src/sw-widgets.c
+msgid "Your rating"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Your review (if you want to say more)"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid ""
+"Your review shows with your account's name. Be kind, and say what you think "
+"of the app."
+msgstr ""
+
+# android: Settings save (short)
+#: src/sw-reviews.c
+msgid "Save"
+msgstr "Сохранить"
+
+# android: Framework whichSendToApplicationLabel (short)
+#: src/sw-reviews.c
+msgid "Send"
+msgstr "Отправить"
+
+#: src/sw-reviews.c
+msgid "Delete my review"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Spam or an advert"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Offensive"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Not about this app"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Fake or misleading"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Something else"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Thank you. The store team will look at the review."
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Sign in to report reviews."
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Report the review"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "What is wrong with it?"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "More about it (if you want)"
+msgstr ""
+
+#: src/sw-reviews.c
+msgid "Send the report"
+msgstr ""
+
+#. TRANSLATORS: %s is the search as the store corrected it; keep the markup
+#: src/sw-search.c
+#, c-format
+msgid "Showing results for <b>%s</b>"
+msgstr ""
+
+# android: Settings locale_search_menu (several translations, short)
+#: src/sw-search.c
+msgid "Search"
+msgstr "Поиск"
+
+#. TRANSLATORS: %s is what was searched for; quote it as the language does
+#: src/sw-search.c
+#, c-format
+msgid "Nothing in the store matches “%s”. Try other words."
+msgstr ""
+
+#: src/sw-search.c
+msgid "Put it in the search field"
+msgstr ""
+
+#: src/sw-search.c
+msgid "Recent searches"
+msgstr ""
+
+# android: Settings proxy_clear_text (several translations, short)
+#: src/sw-search.c
+msgid "Clear"
+msgstr "Очистить"
+
+# android: Settings wizard_back (short)
+#: src/sw-viewer.c
+msgid "Back"
+msgstr "Назад"
+
+# android: PackageInstaller close (several translations, short)
+#: src/sw-viewer.c
+msgid "Close"
+msgstr "Закрыть"
+
+# android: SystemUI notification_channel_screenshot (other app, short)
+#: src/sw-viewer.c
+msgid "Screenshots"
+msgstr "Скриншоты"
+
+# android: Settings mobile_data_no_connection (several translations, short)
+#: src/sw-widgets.c
+msgid "No connection"
+msgstr "Нет подключения"
+
+# android: Launcher3 something_went_wrong (other app, several translations)
+#: src/sw-widgets.c
+msgid "Something went wrong"
+msgstr "Что-то пошло не так."
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-widgets.c
+#, c-format
+msgid "%s has no window of its own to open."
+msgstr ""
+
+#: src/sw-widgets.c
+msgid "Hide the password"
+msgstr ""
+
+#: src/sw-widgets.c
+msgid "Show the password"
+msgstr ""
+
+#: src/sw-widgets.c
+msgid "The code"
+msgstr ""
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-window.c
+#, c-format
+msgid "%s is uninstalled"
+msgstr ""
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-window.c
+#, c-format
+msgid "%s is updated"
+msgstr ""
+
+#: src/sw-window.c
+#, c-format
+msgid "%s is installed"
+msgstr ""
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-window.c
+#, c-format
+msgid "%s was not uninstalled"
+msgstr ""
+
+#: src/sw-window.c
+#, c-format
+msgid "%s was not installed"
+msgstr ""
+
+#: src/sw-window.c
+msgid "The app could not be uninstalled."
+msgstr ""
+
+#: src/sw-window.c
+msgid "The app could not be installed."
+msgstr ""
+
+# android: Launcher3 featured_widgets_tab_label (other app, short)
+#: src/sw-window.c
+msgid "Featured"
+msgstr "Рекомендуемые"
+
+# android: Settings storage_games (short)
+#: src/sw-window.c
+msgid "Games"
+msgstr "Игры"

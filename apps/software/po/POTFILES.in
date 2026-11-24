@@ -1,0 +1,17 @@
+# the files with translatable strings
+data/vibeos.Software.desktop.in
+src/sw-account-pages.c
+src/sw-account.c
+src/sw-api.c
+src/sw-app-page.c
+src/sw-check.c
+src/sw-featured.c
+src/sw-installer.c
+src/sw-json.c
+src/sw-list.c
+src/sw-mine.c
+src/sw-reviews.c
+src/sw-search.c
+src/sw-viewer.c
+src/sw-widgets.c
+src/sw-window.c

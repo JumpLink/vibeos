@@ -1,9 +1,11 @@
 project('vibeos-software', 'c', version: '0.1.1', meson_version: '>= 1.0',
         default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])
 add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers',
-                      '-DSW_VERSION="@0@"'.format(meson.project_version()), language: 'c')
+                      '-DSW_VERSION="@0@"'.format(meson.project_version()), '-DGETTEXT_PACKAGE="vibeos-software"',
+                      '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')), language: 'c')
 
 gnome = import('gnome')
+i18n = import('i18n')
 gio = dependency('gio-unix-2.0', version: '>= 2.76')
 soup = dependency('libsoup-3.0', version: '>= 3.0')
 json = dependency('json-glib-1.0', version: '>= 1.6')
@@ -35,7 +37,8 @@ configure_file(input: 'data/vibeos.Software.service.in', output: 'vibeos.Softwar
 configure_file(input: 'data/vibeos-software-updates.service.in', output: 'vibeos-software-updates.service',
                configuration: service, install_dir: get_option('prefix') / 'lib/systemd/user')
 install_data('data/vibeos-software-updates.timer', install_dir: get_option('prefix') / 'lib/systemd/user')
-install_data('data/vibeos.Software.desktop', install_dir: datadir / 'applications')
+i18n.merge_file(input: 'data/vibeos.Software.desktop.in', output: 'vibeos.Software.desktop', type: 'desktop',
+                po_dir: 'po', install: true, install_dir: datadir / 'applications')
 install_data('data/vibeos.Software.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 # vibeos.Software: when to look for updates, light or dark, the recent searches
 install_data('data/vibeos.Software.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
@@ -45,6 +48,9 @@ schemas = custom_target('schemas', input: 'data/vibeos.Software.gschema.xml', ou
                         command: [find_program(dependency('gio-2.0').get_variable('glib_compile_schemas')), '--strict',
                                   '--targetdir', meson.current_build_dir(), meson.current_source_dir() / 'data'],
                         build_by_default: true)
+
+# the translations, and their checks
+subdir('po')
 
 test('api', executable('test-api', 'tests/test-api.c', include_directories: src, link_with: core,
                        dependencies: [gio, soup, json, vibeos]), timeout: 60)

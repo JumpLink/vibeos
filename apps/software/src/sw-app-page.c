@@ -30,6 +30,7 @@
 #include "sw-window.h"
 
 #include <gio/gdesktopappinfo.h>
+#include <glib/gi18n.h>
 #include <math.h>
 
 /* the page's column on a tablet: the head, the Install button and the details in the middle, rather than a button
@@ -128,7 +129,7 @@ on_open (GtkWidget *button, Page *p)
 {
   if (p->launcher && sw_installer_launch (p->launcher, button))
     return;
-  sw_window_toast (button, "This app has no window of its own to open.");
+  sw_window_toast (button, _("This app has no window of its own to open."));
 }
 
 static void
@@ -147,12 +148,13 @@ on_uninstall_response (VibeosDialog *dialog, int response, Page *p)
 static void
 on_uninstall (GtkWidget *button, Page *p)
 {
-  g_autofree char *title = g_strdup_printf ("Uninstall %s?", name_of (p));
+  /* TRANSLATORS: %s is the app's name */
+  g_autofree char *title = g_strdup_printf (_("Uninstall %s?"), name_of (p));
   VibeosDialog *dialog = vibeos_dialog_new (title);
 
-  vibeos_dialog_set_message (dialog, "The app goes. What it keeps in your home folder stays.");
-  vibeos_dialog_add_button (dialog, "Cancel", VIBEOS_RESPONSE_CANCEL);
-  vibeos_dialog_add_button (dialog, "Uninstall", VIBEOS_RESPONSE_OK);
+  vibeos_dialog_set_message (dialog, _("The app goes. What it keeps in your home folder stays."));
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("Uninstall"), VIBEOS_RESPONSE_OK);
   g_signal_connect (dialog, "response", G_CALLBACK (on_uninstall_response), p);
   vibeos_dialog_present (dialog, p->page);
 }
@@ -195,7 +197,7 @@ update_action (Page *p)
       row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 16);
       gtk_widget_set_valign (bar, GTK_ALIGN_CENTER);
       gtk_box_append (GTK_BOX (row), bar);
-      cancel = sw_button_new ("Cancel", SW_BUTTON_TONAL);
+      cancel = sw_button_new (_("Cancel"), SW_BUTTON_TONAL);
       gtk_widget_set_sensitive (cancel, sw_job_can_cancel (job));
       g_signal_connect (cancel, "clicked", G_CALLBACK (on_cancel), p);
       gtk_box_append (GTK_BOX (row), cancel);
@@ -207,24 +209,26 @@ update_action (Page *p)
   gtk_box_append (GTK_BOX (p->action), row);
   if (state == SW_APP_NOT_INSTALLED)
     {
-      gtk_box_append (GTK_BOX (row), action_button ("Install", SW_BUTTON_FILLED, G_CALLBACK (on_install), p));
+      gtk_box_append (GTK_BOX (row), action_button (_("Install"), SW_BUTTON_FILLED, G_CALLBACK (on_install), p));
       return;
     }
   /* installed: Uninstall (not for VibeOS's own apps), and Update or Open */
   if (!system)
-    gtk_box_append (GTK_BOX (row), action_button ("Uninstall", SW_BUTTON_TONAL, G_CALLBACK (on_uninstall), p));
+    gtk_box_append (GTK_BOX (row), action_button (_("Uninstall"), SW_BUTTON_TONAL, G_CALLBACK (on_uninstall), p));
   if (state == SW_APP_UPDATABLE)
-    gtk_box_append (GTK_BOX (row), action_button ("Update", SW_BUTTON_FILLED, G_CALLBACK (on_install), p));
+    gtk_box_append (GTK_BOX (row), action_button (_("Update"), SW_BUTTON_FILLED, G_CALLBACK (on_install), p));
   else if (!p->launcher_known || p->launcher)
-    gtk_box_append (GTK_BOX (row), action_button ("Open", SW_BUTTON_FILLED, G_CALLBACK (on_open), p));
+    gtk_box_append (GTK_BOX (row), action_button (_("Open"), SW_BUTTON_FILLED, G_CALLBACK (on_open), p));
   else if (system)
-    gtk_box_append (GTK_BOX (row), sw_label_new ("Installed", "sw-installed-note"));
+    gtk_box_append (GTK_BOX (row), sw_label_new (_("Installed"), "sw-installed-note"));
   if (state == SW_APP_UPDATABLE)
     {
       JsonObject *update = sw_updates_get (sw_updates_get_default (), package);
       g_autofree char *size = sw_format_size (sw_json_int (update, "download_size", 0));
-      g_autofree char *text = g_strdup_printf ("Version %s is out%s%s", sw_json_string (update, "version"),
-                                               *size ? " · " : "", size);
+      /* TRANSLATORS: %s is the new version's number, then the size of its download */
+      g_autofree char *text = *size ? g_strdup_printf (_("Version %s is out · %s"), sw_json_string (update, "version"),
+                                                       size)
+                                    : g_strdup_printf (_("Version %s is out"), sw_json_string (update, "version"));
 
       gtk_box_append (GTK_BOX (p->action), sw_label_new (text, "sw-update-note"));
     }
@@ -302,12 +306,15 @@ stats (Page *p)
   caption = sw_format_ratings_count (count);
   gtk_box_append (GTK_BOX (row), stat (value, isnan (average) ? NULL : "sw-star-symbolic", caption));
   gtk_box_append (GTK_BOX (row), stat (sw_json_string (installs, "label") ? sw_json_string (installs, "label") : "0",
-                                       NULL, "installs"));
+                                       /* TRANSLATORS: under the number of the app's installs */
+                                       NULL, _("installs")));
   size = sw_format_size (sw_json_int (package, "download_size", 0));
   if (*size)
-    gtk_box_append (GTK_BOX (row), stat (size, NULL, "download"));
+    /* TRANSLATORS: under the size of the app's download */
+    gtk_box_append (GTK_BOX (row), stat (size, NULL, _("download")));
   if (age)
-    gtk_box_append (GTK_BOX (row), stat (age, NULL, "age rating"));
+    /* TRANSLATORS: under the app's age rating ("12+") */
+    gtk_box_append (GTK_BOX (row), stat (age, NULL, _("age rating")));
   return row;
 }
 
@@ -339,7 +346,7 @@ screenshots (JsonArray *list)
       int height = 220, width = (int) (w > 0 && h > 0 ? height * w / h : height * 0.5);
       GtkWidget *image = sw_image_new (MIN (width, 320), height, 12), *button;
       const char *caption = sw_json_string (shot, "caption");
-      g_autofree char *label = caption ? g_strdup (caption) : g_strdup_printf ("Screenshot %u of %u", i + 1, n);
+      g_autofree char *label = caption ? g_strdup (caption) : g_strdup_printf (_("Screenshot %u of %u"), i + 1, n);
 
       sw_image_set_url (SW_IMAGE (image), sw_json_string (shot, "url"));
       button = vibeos_pressable_new (image);
@@ -402,7 +409,7 @@ description (Page *p)
   const char *summary = sw_json_string (p->app, "summary");
   int length = 0;
 
-  section (p->details, "About this app");
+  section (p->details, _("About this app"));
   if (summary)
     gtk_box_append (GTK_BOX (p->details), sw_label_new (summary, "sw-summary"));
   /* the first blocks up to about 300 characters show, the rest behind Read more */
@@ -430,7 +437,7 @@ description (Page *p)
       gtk_revealer_set_child (GTK_REVEALER (revealer), rest);
       gtk_revealer_set_transition_type (GTK_REVEALER (revealer), GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
       gtk_box_append (GTK_BOX (p->details), revealer);
-      p->more_button = sw_button_new ("Read more", SW_BUTTON_TEXT);
+      p->more_button = sw_button_new (_("Read more"), SW_BUTTON_TEXT);
       gtk_widget_set_halign (p->more_button, GTK_ALIGN_START);
       gtk_widget_add_css_class (p->more_button, "sw-read-more");
       g_signal_connect (p->more_button, "clicked", G_CALLBACK (on_read_more), revealer);
@@ -450,16 +457,17 @@ whats_new (Page *p)
 
   if (!release || (!version && (!notes || !json_array_get_length (notes))))
     return;
-  section (p->details, "What's new");
-  line = version && date ? g_strdup_printf ("Version %s · %s", version, date)
-         : version ? g_strdup_printf ("Version %s", version) : g_strdup (date);
+  section (p->details, _("What's new"));
+  /* TRANSLATORS: the version's number, then the date it came out */
+  line = version && date ? g_strdup_printf (_("Version %s · %s"), version, date)
+         : version ? g_strdup_printf (_("Version %s"), version) : g_strdup (date);
   if (line)
     gtk_box_append (GTK_BOX (p->details), sw_label_new (line, "sw-caption"));
   box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
   gtk_widget_add_css_class (box, "sw-description");
   add_blocks (box, notes);
   if (!notes || !json_array_get_length (notes))
-    gtk_box_append (GTK_BOX (box), sw_label_new ("The developer did not say what changed.", "sw-body-text"));
+    gtk_box_append (GTK_BOX (box), sw_label_new (_("The developer did not say what changed."), "sw-body-text"));
   gtk_box_append (GTK_BOX (p->details), box);
 }
 
@@ -537,21 +545,21 @@ permissions (Page *p)
   GtkWidget *cards, *row;
   gboolean system = sw_json_bool (p->app, "system_app", FALSE);
 
-  section (p->details, "Permissions");
+  section (p->details, _("Permissions"));
   gtk_box_append (GTK_BOX (p->details),
-                  sw_label_new (system ? "What the app says it uses. VibeOS's own apps are part of the system: they "
-                                         "do not run in a sandbox."
-                                       : "What the app asks for. VibeOS enforces these permissions: the app runs in "
-                                         "a sandbox, and you allow or deny each one in Settings. Taking one away "
-                                         "stops the app.", "sw-caption"));
+                  sw_label_new (system ? _("What the app says it uses. VibeOS's own apps are part of the system: "
+                                           "they do not run in a sandbox.")
+                                       : _("What the app asks for. VibeOS enforces these permissions: the app runs "
+                                           "in a sandbox, and you allow or deny each one in Settings. Taking one away "
+                                           "stops the app."), "sw-caption"));
   /* an app that names none in its package may be given any: vibeos-sandbox's defaults hold until the user changes
    * them (the network allowed; the location, the camera and running in the background asked for; nothing else) */
   if (!list || !json_array_get_length (list))
     gtk_box_append (GTK_BOX (p->details),
-                    sw_label_new (system ? "The app declares no permissions."
-                                         : "The app declares no permissions. Until you change them in Settings, it "
-                                           "may use the network, and you are asked before it gets your location or "
-                                           "the camera, or runs in the background.", "sw-body-text"));
+                    sw_label_new (system ? _("The app declares no permissions.")
+                                         : _("The app declares no permissions. Until you change them in Settings, it "
+                                             "may use the network, and you are asked before it gets your location or "
+                                             "the camera, or runs in the background."), "sw-body-text"));
   else
     {
       cards = vibeos_card_list_new ();
@@ -572,7 +580,7 @@ permissions (Page *p)
     }
   /* installed: a row to the app's page in Settings, where they are changed */
   p->permission_link = vibeos_card_list_new ();
-  row = vibeos_list_row_new ("Permissions in Settings", "Allow or deny each one for this app");
+  row = vibeos_list_row_new (_("Permissions in Settings"), _("Allow or deny each one for this app"));
   vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-settings-symbolic");
   vibeos_list_row_set_chevron (VIBEOS_LIST_ROW (row));
   g_signal_connect (row, "clicked", G_CALLBACK (on_permission_settings), p);
@@ -665,10 +673,11 @@ static const char *
 reason_text (const char *reason)
 {
   if (!g_strcmp0 (reason, "email_not_verified"))
-    return "Confirm your email address to rate and review apps.";
+    return _("Confirm your email address to rate and review apps.");
   if (!g_strcmp0 (reason, "not_installed"))
-    return "Install the app to rate it: the store takes reviews from people who have had it on one of their devices.";
-  return "The store does not take a review of this app from your account.";
+    return _("Install the app to rate it: the store takes reviews from people who have had it on one of their "
+             "devices.");
+  return _("The store does not take a review of this app from your account.");
 }
 
 static void
@@ -691,8 +700,8 @@ update_review_box (Page *p)
                                              != (gsize) sw_json_int (mine, "id", -1));
   if (!sw_account_is_signed_in (account))
     {
-      gtk_box_append (GTK_BOX (p->review_box), sw_label_new ("Sign in to rate and review apps.", "sw-body-text"));
-      button = sw_button_new ("Sign in", SW_BUTTON_TONAL);
+      gtk_box_append (GTK_BOX (p->review_box), sw_label_new (_("Sign in to rate and review apps."), "sw-body-text"));
+      button = sw_button_new (_("Sign in"), SW_BUTTON_TONAL);
       gtk_widget_set_halign (button, GTK_ALIGN_START);
       g_signal_connect (button, "clicked", G_CALLBACK (on_sign_in), p);
       gtk_box_append (GTK_BOX (p->review_box), button);
@@ -702,10 +711,10 @@ update_review_box (Page *p)
     return;
   if (mine)
     {
-      gtk_box_append (GTK_BOX (p->review_box), sw_label_new ("Your review", "sw-subtitle"));
+      gtk_box_append (GTK_BOX (p->review_box), sw_label_new (_("Your review"), "sw-subtitle"));
       if (sw_json_bool (p->my, "hidden", FALSE))
         gtk_box_append (GTK_BOX (p->review_box),
-                        sw_label_new ("A moderator hid your review: only you see it.", "sw-caption"));
+                        sw_label_new (_("A moderator hid your review: only you see it."), "sw-caption"));
       gtk_box_append (GTK_BOX (p->review_box), sw_review_card_new (mine, p->id, name_of (p)));
       return;
     }
@@ -716,7 +725,7 @@ update_review_box (Page *p)
       gtk_box_append (GTK_BOX (p->review_box), sw_label_new (reason_text (reason), "sw-body-text"));
       if (!g_strcmp0 (reason, "email_not_verified"))
         {
-          button = sw_button_new ("Confirm the address", SW_BUTTON_TONAL);
+          button = sw_button_new (_("Confirm the address"), SW_BUTTON_TONAL);
           gtk_widget_set_halign (button, GTK_ALIGN_START);
           g_signal_connect (button, "clicked", G_CALLBACK (on_confirm_email), p);
           gtk_box_append (GTK_BOX (p->review_box), button);
@@ -726,11 +735,11 @@ update_review_box (Page *p)
   {
     GtkWidget *stars = sw_stars_new (0, 36, 16, TRUE);
 
-    gtk_box_append (GTK_BOX (p->review_box), sw_label_new ("Rate the app", "sw-subtitle"));
+    gtk_box_append (GTK_BOX (p->review_box), sw_label_new (_("Rate the app"), "sw-subtitle"));
     gtk_widget_set_halign (stars, GTK_ALIGN_START);
     g_signal_connect (stars, "changed", G_CALLBACK (on_rate), p);
     gtk_box_append (GTK_BOX (p->review_box), stars);
-    button = sw_button_new ("Write a review", SW_BUTTON_TONAL);
+    button = sw_button_new (_("Write a review"), SW_BUTTON_TONAL);
     gtk_widget_set_halign (button, GTK_ALIGN_START);
     g_signal_connect (button, "clicked", G_CALLBACK (on_write), p);
     gtk_box_append (GTK_BOX (p->review_box), button);
@@ -810,7 +819,7 @@ reviews (Page *p)
   JsonObject *rating = sw_json_object (p->app, "rating");
   JsonArray *preview = sw_json_array (p->app, "reviews_preview");
 
-  section (p->details, "Ratings and reviews");
+  section (p->details, _("Ratings and reviews"));
   gtk_box_append (GTK_BOX (p->details), histogram (rating));
   p->review_box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
   gtk_widget_add_css_class (p->review_box, "sw-review-box");
@@ -827,7 +836,7 @@ reviews (Page *p)
     }
   if (sw_json_int (rating, "count", 0) > 0)
     {
-      GtkWidget *all = sw_button_new ("All reviews", SW_BUTTON_OUTLINED);
+      GtkWidget *all = sw_button_new (_("All reviews"), SW_BUTTON_OUTLINED);
 
       gtk_widget_add_css_class (all, "sw-all-reviews");
       g_signal_connect (all, "clicked", G_CALLBACK (on_all_reviews), p);
@@ -843,7 +852,7 @@ similar (Page *p)
 
   if (!list || !json_array_get_length (list))
     return;
-  section (p->details, "Similar apps");
+  section (p->details, _("Similar apps"));
   strip = sw_strip_new (&box);
   for (guint i = 0; i < json_array_get_length (list); i++)
     if (sw_json_array_object (list, i))
@@ -891,22 +900,24 @@ information (Page *p)
         g_string_append (names, ", ");
       g_string_append (names, sw_json_string (sw_json_array_object (categories, i), "name") ?: "");
     }
-  section (p->details, "Information");
-  info_row (cards, "Developer", sw_json_string (p->app, "developer"));
-  info_row (cards, "Version", sw_json_string (package, "version"));
-  info_row (cards, "Installed version", installed);
-  info_row (cards, "Released", updated);
-  info_row (cards, "Download size", download);
-  info_row (cards, "Size when installed", size);
-  info_row (cards, "Category", names->str);
-  info_row (cards, "Licence", sw_json_string (p->app, "license"));
-  info_row (cards, "Comes from", !g_strcmp0 (source, "vibeos") ? "The VibeOS software sources"
-                                 : !g_strcmp0 (source, "debian") ? "Debian's software sources" : NULL);
-  info_row (cards, "Fits a phone", sw_json_bool (p->app, "phone_friendly", FALSE) ? "Yes" : "Not known to");
-  info_row (cards, "Package", package_of (p));
+  section (p->details, _("Information"));
+  info_row (cards, _("Developer"), sw_json_string (p->app, "developer"));
+  info_row (cards, _("Version"), sw_json_string (package, "version"));
+  info_row (cards, _("Installed version"), installed);
+  info_row (cards, _("Released"), updated);
+  info_row (cards, _("Download size"), download);
+  info_row (cards, _("Size when installed"), size);
+  info_row (cards, _("Category"), names->str);
+  info_row (cards, _("Licence"), sw_json_string (p->app, "license"));
+  info_row (cards, _("Comes from"), !g_strcmp0 (source, "vibeos") ? _("The VibeOS software sources")
+                                 : !g_strcmp0 (source, "debian") ? _("Debian's software sources") : NULL);
+  info_row (cards, _("Fits a phone"), sw_json_bool (p->app, "phone_friendly", FALSE) ? _("Yes")
+                                 /* TRANSLATORS: whether the app fits a phone: not known to fit one */
+                                 : _("Not known to"));
+  info_row (cards, _("Package"), package_of (p));
   if (sw_json_string (p->app, "homepage"))
     {
-      GtkWidget *row = vibeos_list_row_new ("Homepage", sw_json_string (p->app, "homepage"));
+      GtkWidget *row = vibeos_list_row_new (_("Homepage"), sw_json_string (p->app, "homepage"));
 
       vibeos_list_row_set_end_icon (VIBEOS_LIST_ROW (row), "sw-public-symbolic");
       g_signal_connect (row, "clicked", G_CALLBACK (on_homepage), p);
@@ -1036,7 +1047,7 @@ on_loaded (SwApiResult *result, const SwApiError *error, gpointer data)
     {
       if (error->status == 404)
         sw_status_empty (SW_STATUS (p->status), "sw-apps-symbolic",
-                         "This app is not in the store any more.", NULL, NULL, NULL);
+                         _("This app is not in the store any more."), NULL, NULL, NULL);
       else if (!p->app)
         sw_status_error (SW_STATUS (p->status), error, (SwRetryFunc) load, p);
       return;
@@ -1081,9 +1092,9 @@ on_more (GtkWidget *button, Page *p)
   SwMenu *menu = sw_menu_new ();
   SwAppState state = sw_app_state (package_of (p));
 
-  sw_menu_append (menu, "All reviews", menu_reviews, p);
+  sw_menu_append (menu, _("All reviews"), menu_reviews, p);
   if ((state == SW_APP_INSTALLED || state == SW_APP_UPDATABLE) && !sw_json_bool (p->app, "system_app", FALSE))
-    sw_menu_append (menu, "Uninstall", menu_uninstall, p);
+    sw_menu_append (menu, _("Uninstall"), menu_uninstall, p);
   sw_menu_present (menu, button);
 }
 
@@ -1099,7 +1110,7 @@ sw_app_page_new (const char *app_id, JsonObject *summary)
   p->page = sw_page_new (NULL);
   g_object_set_data_full (G_OBJECT (p->page), "sw-app-page", p, page_free);
   more = vibeos_top_bar_add_action (sw_page_get_bar (p->page), "sw-more-symbolic");
-  gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, "More", -1);
+  gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More"), -1);
   g_signal_connect (more, "clicked", G_CALLBACK (on_more), p);
 
   p->column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);

@@ -3,6 +3,7 @@
 #include "sw-dpkg.h"
 
 #include <gio/gdesktopappinfo.h>
+#include <glib/gi18n.h>
 #include <string.h>
 #ifdef GDK_WINDOWING_WAYLAND
 #include <gdk/wayland/gdkwayland.h>
@@ -209,32 +210,32 @@ sw_job_describe (const SwJob *job)
   const char *s = job->status;
 
   if (job->cancelling)
-    return g_strdup ("Stopping…");
+    return g_strdup (_("Stopping…"));
   if (job->state == SW_JOB_QUEUED)
-    return g_strdup ("Queued");
+    return g_strdup (_("Queued"));
   if (job->state == SW_JOB_STARTING || !s)
-    return g_strdup ("Starting…");
+    return g_strdup (_("Starting…"));
   if (!strcmp (s, "downloading"))
-    return job->percent >= 0 ? g_strdup_printf ("Downloading %d%%", job->percent) : g_strdup ("Downloading…");
+    return job->percent >= 0 ? g_strdup_printf (_("Downloading %d%%"), job->percent) : g_strdup (_("Downloading…"));
   if (!strcmp (s, "installing"))
-    return job->percent >= 0 ? g_strdup_printf ("Installing %d%%", job->percent) : g_strdup ("Installing…");
+    return job->percent >= 0 ? g_strdup_printf (_("Installing %d%%"), job->percent) : g_strdup (_("Installing…"));
   if (!strcmp (s, "removing"))
-    return g_strdup ("Uninstalling…");
+    return g_strdup (_("Uninstalling…"));
   if (!strcmp (s, "waiting-for-auth"))
-    return g_strdup ("Waiting for your password");
+    return g_strdup (_("Waiting for your password"));
   if (!strcmp (s, "waiting-for-lock"))
-    return g_strdup ("Waiting for another install to finish");
+    return g_strdup (_("Waiting for another install to finish"));
   if (!strcmp (s, "asking"))
-    return g_strdup ("Waiting for your answer");
+    return g_strdup (_("Waiting for your answer"));
   if (!strcmp (s, "refreshing"))
-    return g_strdup ("Refreshing the software sources…");
+    return g_strdup (_("Refreshing the software sources…"));
   if (!strcmp (s, "reading") || !strcmp (s, "checking"))
-    return g_strdup ("Checking…");
+    return g_strdup (_("Checking…"));
   if (!strcmp (s, "finishing"))
-    return g_strdup ("Finishing…");
+    return g_strdup (_("Finishing…"));
   if (!strcmp (s, "stopping"))
-    return g_strdup ("Stopping…");
-  return g_strdup ("Starting…");
+    return g_strdup (_("Stopping…"));
+  return g_strdup (_("Starting…"));
 }
 
 static void
@@ -279,9 +280,10 @@ call_error_message (GError *error)
   if (remote && (!strcmp (remote, "org.freedesktop.DBus.Error.ServiceUnknown")
                  || !strcmp (remote, "org.freedesktop.DBus.Error.UnknownObject")
                  || !strcmp (remote, "org.freedesktop.DBus.Error.UnknownInterface")))
-    return g_strdup ("App Installer is not installed. Software installs and uninstalls apps through it.");
+    return g_strdup (_("App Installer is not installed. Software installs and uninstalls apps through it."));
   g_dbus_error_strip_remote_error (error);
-  return g_strdup_printf ("App Installer could not start: %s", error->message);
+  /* TRANSLATORS: %s is the error's own message */
+  return g_strdup_printf (_("App Installer could not start: %s"), error->message);
 }
 
 typedef struct {
@@ -369,7 +371,7 @@ start_job (SwInstaller *self, SwJob *job)
   g_signal_emit (self, signals[CHANGED], 0, job->package);
   if (!self->bus)
     {
-      end_job (self, job, "failed", "Software cannot reach the session bus to ask App Installer.");
+      end_job (self, job, "failed", _("Software cannot reach the session bus to ask App Installer."));
       return;
     }
 #ifdef GDK_WINDOWING_WAYLAND
@@ -503,7 +505,7 @@ on_name_vanished (GDBusConnection *bus, const char *name, gpointer data)
       SwJob *job = g_ptr_array_index (self->jobs, i - 1);
 
       if (job->state == SW_JOB_RUNNING && self->service_seen)
-        end_job (self, job, "failed", "App Installer stopped before it was done. Try again.");
+        end_job (self, job, "failed", _("App Installer stopped before it was done. Try again."));
     }
   self->service_seen = FALSE;
 }
@@ -560,7 +562,7 @@ sw_installer_get_state (SwInstaller *self, const char *package, GCancellable *ca
   call->cancellable = cancellable ? g_object_ref (cancellable) : NULL;
   if (!self->bus)
     {
-      callback (NULL, NULL, NULL, "No session bus.", data);
+      callback (NULL, NULL, NULL, _("No session bus."), data);
       g_clear_object (&call->cancellable);
       g_free (call);
       return;

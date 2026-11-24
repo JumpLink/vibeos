@@ -9,6 +9,8 @@
 #include "sw-widgets.h"
 #include "sw-window.h"
 
+#include <glib/gi18n.h>
+
 #define CODE_LENGTH 6
 
 static GSettings *
@@ -121,7 +123,7 @@ on_signed_in (SwApiResult *result, const SwApiError *error, gpointer data)
       sw_window_replace (s->page, sw_verify_page_new (FALSE));
       return;
     }
-  sw_window_toast (s->page, "You are signed in");
+  sw_window_toast (s->page, _("You are signed in"));
   sw_window_pop_account_flow (s->page);
 }
 
@@ -133,12 +135,12 @@ on_sign_in (GtkWidget *button, SignIn *s)
   gtk_widget_set_visible (s->error, FALSE);
   if (!*email)
     {
-      sw_field_set_error (s->email, "Enter your email address.");
+      sw_field_set_error (s->email, _("Enter your email address."));
       return;
     }
   if (!*sw_field_get_text (s->password))
     {
-      sw_field_set_error (s->password, "Enter your password.");
+      sw_field_set_error (s->password, _("Enter your password."));
       return;
     }
   gtk_widget_set_sensitive (s->button, FALSE);
@@ -164,24 +166,24 @@ sw_sign_in_page_new (void)
   SignIn *s = g_new0 (SignIn, 1);
   GtkWidget *column;
 
-  s->page = flow_page ("Sign in");
+  s->page = flow_page (_("Sign in"));
   g_object_set_data_full (G_OBJECT (s->page), "sw-sign-in", s, g_free);
   column = form (s->page);
   gtk_box_append (GTK_BOX (column),
-                  sw_label_new ("Sign in to rate and review apps, and to see your apps on all your devices.",
+                  sw_label_new (_("Sign in to rate and review apps, and to see your apps on all your devices."),
                                 "sw-body-text"));
-  s->email = sw_field_new ("Email", SW_FIELD_EMAIL);
+  s->email = sw_field_new (_("Email"), SW_FIELD_EMAIL);
   gtk_box_append (GTK_BOX (column), s->email);
-  s->password = sw_field_new ("Password", SW_FIELD_PASSWORD);
+  s->password = sw_field_new (_("Password"), SW_FIELD_PASSWORD);
   gtk_box_append (GTK_BOX (column), s->password);
   s->error = form_error (column);
-  s->button = big_button (column, "Sign in", SW_BUTTON_FILLED, G_CALLBACK (on_sign_in), s);
+  s->button = big_button (column, _("Sign in"), SW_BUTTON_FILLED, G_CALLBACK (on_sign_in), s);
   submit_on_enter (s->email, s->button);
   submit_on_enter (s->password, s->button);
-  link_button (column, "Forgot your password?", G_CALLBACK (on_forgot), s);
+  link_button (column, _("Forgot your password?"), G_CALLBACK (on_forgot), s);
   gtk_box_append (GTK_BOX (column), sw_divider_new ());
-  gtk_box_append (GTK_BOX (column), sw_label_new ("No account yet?", "sw-subtitle"));
-  big_button (column, "Create an account", SW_BUTTON_TONAL, G_CALLBACK (on_create), s);
+  gtk_box_append (GTK_BOX (column), sw_label_new (_("No account yet?"), "sw-subtitle"));
+  big_button (column, _("Create an account"), SW_BUTTON_TONAL, G_CALLBACK (on_create), s);
   return s->page;
 }
 
@@ -216,12 +218,12 @@ on_register (GtkWidget *button, Register *r)
   gtk_widget_set_visible (r->error, FALSE);
   if (!*name)
     {
-      sw_field_set_error (r->name, "Enter a name. It shows on your reviews.");
+      sw_field_set_error (r->name, _("Enter a name. It shows on your reviews."));
       return;
     }
   if (!*email)
     {
-      sw_field_set_error (r->email, "Enter your email address.");
+      sw_field_set_error (r->email, _("Enter your email address."));
       return;
     }
   gtk_widget_set_sensitive (r->button, FALSE);
@@ -235,22 +237,22 @@ sw_register_page_new (void)
   Register *r = g_new0 (Register, 1);
   GtkWidget *column;
 
-  r->page = flow_page ("Create an account");
+  r->page = flow_page (_("Create an account"));
   g_object_set_data_full (G_OBJECT (r->page), "sw-register", r, g_free);
   column = form (r->page);
   gtk_box_append (GTK_BOX (column),
-                  sw_label_new ("With an account you can rate and review apps, and see your apps on all your "
-                                "devices. The store emails you a code to confirm the address.", "sw-body-text"));
-  r->name = sw_field_new ("Name", SW_FIELD_NAME);
-  sw_field_set_hint (r->name, "Shown on your reviews");
+                  sw_label_new (_("With an account you can rate and review apps, and see your apps on all your "
+                                  "devices. The store emails you a code to confirm the address."), "sw-body-text"));
+  r->name = sw_field_new (_("Name"), SW_FIELD_NAME);
+  sw_field_set_hint (r->name, _("Shown on your reviews"));
   gtk_box_append (GTK_BOX (column), r->name);
-  r->email = sw_field_new ("Email", SW_FIELD_EMAIL);
+  r->email = sw_field_new (_("Email"), SW_FIELD_EMAIL);
   gtk_box_append (GTK_BOX (column), r->email);
-  r->password = sw_field_new ("Password", SW_FIELD_NEW_PASSWORD);
-  sw_field_set_hint (r->password, "At least 8 characters");
+  r->password = sw_field_new (_("Password"), SW_FIELD_NEW_PASSWORD);
+  sw_field_set_hint (r->password, _("At least 8 characters"));
   gtk_box_append (GTK_BOX (column), r->password);
   r->error = form_error (column);
-  r->button = big_button (column, "Create the account", SW_BUTTON_FILLED, G_CALLBACK (on_register), r);
+  r->button = big_button (column, _("Create the account"), SW_BUTTON_FILLED, G_CALLBACK (on_register), r);
   submit_on_enter (r->password, r->button);
   return r->page;
 }
@@ -273,11 +275,12 @@ on_cooldown_tick (gpointer data)
   if (--c->left <= 0)
     {
       c->timeout = 0;
-      sw_button_set_label (c->button, "Send a new code");
+      sw_button_set_label (c->button, _("Send a new code"));
       gtk_widget_set_sensitive (c->button, TRUE);
       return G_SOURCE_REMOVE;
     }
-  text = g_strdup_printf ("Send a new code in %d s", c->left);
+  /* TRANSLATORS: %d is the seconds left until a new code can be asked for, "s" the abbreviation of seconds */
+  text = g_strdup_printf (_("Send a new code in %d s"), c->left);
   sw_button_set_label (c->button, text);
   return G_SOURCE_CONTINUE;
 }
@@ -315,8 +318,9 @@ code_error (GtkWidget *code, GtkWidget *label, const SwApiError *error)
   if (!g_strcmp0 (error->code, "code_invalid") && error->attempts_left >= 0)
     {
       g_free (text);
-      text = g_strdup_printf ("%s %d %s left.", error->message, error->attempts_left,
-                              error->attempts_left == 1 ? "try" : "tries");
+      /* TRANSLATORS: %s is the store's message (a whole sentence), %d how many more codes may be tried */
+      text = g_strdup_printf (g_dngettext (NULL, "%s %d try left.", "%s %d tries left.", error->attempts_left),
+                              error->message, error->attempts_left);
     }
   gtk_label_set_text (GTK_LABEL (label), text);
   gtk_widget_set_visible (label, TRUE);
@@ -342,14 +346,16 @@ verify_intro (Verify *v)
 {
   g_autofree char *email = sw_mask_email (sw_account_get_email (sw_account_get_default ()));
   g_autofree char *text = v->sent
-    ? g_strdup_printf ("The store sent a %d-digit code to %s. Enter it here to confirm the address. It works for 15 "
-                       "minutes.", CODE_LENGTH, email)
-    : g_strdup_printf ("Confirm your address to rate and review apps: enter the %d-digit code the store emailed to "
-                       "%s, or ask for a new one.", CODE_LENGTH, email);
+    /* TRANSLATORS: %d is the code's length in digits, %s the email address */
+    ? g_strdup_printf (_("The store sent a %d-digit code to %s. Enter it here to confirm the address. It works for 15 "
+                         "minutes."), CODE_LENGTH, email)
+    /* TRANSLATORS: %d is the code's length in digits, %s the email address */
+    : g_strdup_printf (_("Confirm your address to rate and review apps: enter the %d-digit code the store emailed to "
+                         "%s, or ask for a new one."), CODE_LENGTH, email);
 
   /* the field is there either way: a code emailed at sign-up still works */
   gtk_label_set_text (GTK_LABEL (v->intro), text);
-  sw_button_set_label (v->send, "Send a new code");
+  sw_button_set_label (v->send, _("Send a new code"));
   if (v->sent)
     gtk_widget_grab_focus (v->code);
 }
@@ -371,7 +377,7 @@ on_resent (SwApiResult *result, const SwApiError *error, gpointer data)
   gtk_widget_set_visible (v->error, FALSE);
   sw_code_field_clear (v->code);
   verify_intro (v);
-  sw_window_toast (v->page, "A new code is on its way");
+  sw_window_toast (v->page, _("A new code is on its way"));
   cooldown_start (&v->cooldown, seconds_until (sw_json_node_object (result->data), "resend_available_at", 60));
 }
 
@@ -393,7 +399,7 @@ on_verified (SwApiResult *result, const SwApiError *error, gpointer data)
       code_error (v->code, v->error, error);
       return;
     }
-  sw_window_toast (v->page, "Your address is confirmed");
+  sw_window_toast (v->page, _("Your address is confirmed"));
   sw_window_pop_account_flow (v->page);
 }
 
@@ -431,7 +437,7 @@ sw_verify_page_new (gboolean just_sent)
   GtkWidget *column;
 
   v->sent = just_sent;
-  v->page = flow_page ("Confirm your email");
+  v->page = flow_page (_("Confirm your email"));
   g_object_set_data_full (G_OBJECT (v->page), "sw-verify", v, verify_free);
   column = form (v->page);
   v->intro = sw_label_new (NULL, "sw-body-text");
@@ -440,10 +446,10 @@ sw_verify_page_new (gboolean just_sent)
   g_signal_connect (v->code, "complete", G_CALLBACK (on_code_complete), v);
   gtk_box_append (GTK_BOX (column), v->code);
   v->error = form_error (column);
-  v->confirm = big_button (column, "Confirm", SW_BUTTON_FILLED, G_CALLBACK (on_confirm), v);
-  v->send = link_button (column, "Send a new code", G_CALLBACK (on_send_code), v);
+  v->confirm = big_button (column, _("Confirm"), SW_BUTTON_FILLED, G_CALLBACK (on_confirm), v);
+  v->send = link_button (column, _("Send a new code"), G_CALLBACK (on_send_code), v);
   v->cooldown.button = v->send;
-  link_button (column, "Later", G_CALLBACK (on_later), v);
+  link_button (column, _("Later"), G_CALLBACK (on_later), v);
   verify_intro (v);
   if (just_sent)
     cooldown_start (&v->cooldown, 60);
@@ -492,7 +498,7 @@ on_forgot_sent (SwApiResult *result, const SwApiError *error, gpointer data)
   if (f->step == 0)
     forgot_step (f, 1);
   else
-    sw_window_toast (f->page, "A new code is on its way");
+    sw_window_toast (f->page, _("A new code is on its way"));
   cooldown_start (&f->cooldown, seconds_until (sw_json_node_object (result->data), "resend_available_at", 60));
 }
 
@@ -505,7 +511,7 @@ on_forgot_send (GtkWidget *button, Forgot *f)
       f->address = g_strstrip (g_strdup (sw_field_get_text (f->email)));
       if (!*f->address)
         {
-          sw_field_set_error (f->email, "Enter your email address.");
+          sw_field_set_error (f->email, _("Enter your email address."));
           return;
         }
     }
@@ -567,7 +573,7 @@ on_reset (SwApiResult *result, const SwApiError *error, gpointer data)
         forgot_step (f, 1);
       return;
     }
-  sw_window_toast (f->page, "Your password is changed, and you are signed in");
+  sw_window_toast (f->page, _("Your password is changed, and you are signed in"));
   sw_window_pop_account_flow (f->page);
 }
 
@@ -597,18 +603,19 @@ forgot_step (Forgot *f, int step)
     {
     case 0:
       gtk_box_append (GTK_BOX (column),
-                      sw_label_new ("Enter the address you signed up with. If it has an account, the store emails a "
-                                    "code to it to set a new password.", "sw-body-text"));
-      f->email = sw_field_new ("Email", SW_FIELD_EMAIL);
+                      sw_label_new (_("Enter the address you signed up with. If it has an account, the store "
+                                      "emails a code to it to set a new password."), "sw-body-text"));
+      f->email = sw_field_new (_("Email"), SW_FIELD_EMAIL);
       sw_field_set_text (f->email, f->address);
       gtk_box_append (GTK_BOX (column), f->email);
       f->error = form_error (column);
-      f->button = big_button (column, "Send the code", SW_BUTTON_FILLED, G_CALLBACK (on_forgot_send), f);
+      f->button = big_button (column, _("Send the code"), SW_BUTTON_FILLED, G_CALLBACK (on_forgot_send), f);
       submit_on_enter (f->email, f->button);
       break;
     case 1:
       masked = sw_mask_email (f->address);
-      text = g_strdup_printf ("If %s has an account, a %d-digit code is on its way to it. Enter it here.", masked,
+      /* TRANSLATORS: %s is the email address (partly hidden), %d the code's length in digits */
+      text = g_strdup_printf (_("If %s has an account, a %d-digit code is on its way to it. Enter it here."), masked,
                               CODE_LENGTH);
       gtk_box_append (GTK_BOX (column), sw_label_new (text, "sw-body-text"));
       f->code = sw_code_field_new (CODE_LENGTH);
@@ -620,8 +627,8 @@ forgot_step (Forgot *f, int step)
           gtk_label_set_text (GTK_LABEL (f->error), keep_error);
           gtk_widget_set_visible (f->error, TRUE);
         }
-      f->button = big_button (column, "Next", SW_BUTTON_FILLED, G_CALLBACK (on_check_code), f);
-      f->resend = sw_button_new ("Send a new code", SW_BUTTON_TEXT);
+      f->button = big_button (column, _("Next"), SW_BUTTON_FILLED, G_CALLBACK (on_check_code), f);
+      f->resend = sw_button_new (_("Send a new code"), SW_BUTTON_TEXT);
       gtk_widget_set_halign (f->resend, GTK_ALIGN_CENTER);
       g_signal_connect (f->resend, "clicked", G_CALLBACK (on_forgot_send), f);
       gtk_box_append (GTK_BOX (column), f->resend);
@@ -630,13 +637,13 @@ forgot_step (Forgot *f, int step)
       break;
     default:
       gtk_box_append (GTK_BOX (column),
-                      sw_label_new ("Choose a new password. Every device signed in to the account is signed out, "
-                                    "and this one signed in.", "sw-body-text"));
-      f->password = sw_field_new ("New password", SW_FIELD_NEW_PASSWORD);
-      sw_field_set_hint (f->password, "At least 8 characters");
+                      sw_label_new (_("Choose a new password. Every device signed in to the account is signed "
+                                      "out, and this one signed in."), "sw-body-text"));
+      f->password = sw_field_new (_("New password"), SW_FIELD_NEW_PASSWORD);
+      sw_field_set_hint (f->password, _("At least 8 characters"));
       gtk_box_append (GTK_BOX (column), f->password);
       f->error = form_error (column);
-      f->button = big_button (column, "Set the password", SW_BUTTON_FILLED, G_CALLBACK (on_set_password), f);
+      f->button = big_button (column, _("Set the password"), SW_BUTTON_FILLED, G_CALLBACK (on_set_password), f);
       submit_on_enter (f->password, f->button);
       sw_field_grab_focus (f->password);
       break;
@@ -649,7 +656,7 @@ sw_forgot_page_new (const char *email)
   Forgot *f = g_new0 (Forgot, 1);
 
   f->address = g_strdup (email);
-  f->page = flow_page ("New password");
+  f->page = flow_page (_("New password"));
   g_object_set_data_full (G_OBJECT (f->page), "sw-forgot", f, forgot_free);
   f->column = form (f->page);
   forgot_step (f, 0);
@@ -661,17 +668,19 @@ sw_forgot_page_new (const char *email)
 static const struct {
   const char *id, *label, *summary;
 } update_modes[] = {
-  { "wifi", "On Wi-Fi only", "Not on a network that counts the data (a phone's mobile data)" },
-  { "always", "On any network", NULL },
-  { "never", "Only when I ask", "Mine's Check for updates" },
+  { "wifi", N_("On Wi-Fi only"), N_("Not on a network that counts the data (a phone's mobile data)") },
+  { "always", N_("On any network"), NULL },
+  /* TRANSLATORS: Mine is the tab of the apps on the device, "Check for updates" its button */
+  { "never", N_("Only when I ask"), N_("Mine's Check for updates") },
 };
 
 static const struct {
   const char *id, *label;
 } themes[] = {
-  { "system", "As the system" },
-  { "light", "Light" },
-  { "dark", "Dark" },
+  /* TRANSLATORS: the theme: light or dark as the system's */
+  { "system", N_("As the system") },
+  { "light", N_("Light") },
+  { "dark", N_("Dark") },
 };
 
 static const char *
@@ -681,8 +690,8 @@ update_mode_label (GSettings *settings)
 
   for (guint i = 0; i < G_N_ELEMENTS (update_modes); i++)
     if (!g_strcmp0 (mode, update_modes[i].id))
-      return update_modes[i].label;
-  return update_modes[0].label;
+      return _(update_modes[i].label);
+  return _(update_modes[0].label);
 }
 
 static const char *
@@ -692,8 +701,8 @@ theme_label (GSettings *settings)
 
   for (guint i = 0; i < G_N_ELEMENTS (themes); i++)
     if (!g_strcmp0 (theme, themes[i].id))
-      return themes[i].label;
-  return themes[0].label;
+      return _(themes[i].label);
+  return _(themes[0].label);
 }
 
 typedef struct {
@@ -731,7 +740,7 @@ choose (GtkWidget *from, const char *title, const char *text, const char *key, g
   if (!c->settings)
     {
       g_free (c);
-      sw_window_toast (from, "Software's settings are not installed.");
+      sw_window_toast (from, _("Software's settings are not installed."));
       return;
     }
   c->key = key;
@@ -765,12 +774,12 @@ on_updates_row (VibeosListRow *row, gpointer data)
   for (guint i = 0; i < G_N_ELEMENTS (update_modes); i++)
     {
       ids[i] = update_modes[i].id;
-      labels[i] = update_modes[i].label;
-      summaries[i] = update_modes[i].summary;
+      labels[i] = _(update_modes[i].label);
+      summaries[i] = update_modes[i].summary ? _(update_modes[i].summary) : NULL;
     }
-  choose (GTK_WIDGET (row), "Look for updates",
-          "Software looks for updates when it starts and when apps change. It does not install them by itself: "
-          "update from Mine.", "update-mode", G_N_ELEMENTS (update_modes), ids, labels, summaries);
+  choose (GTK_WIDGET (row), _("Look for updates"),
+          _("Software looks for updates when it starts and when apps change. It does not install them by itself: "
+            "update from Mine."), "update-mode", G_N_ELEMENTS (update_modes), ids, labels, summaries);
 }
 
 static void
@@ -781,9 +790,9 @@ on_theme_row (VibeosListRow *row, gpointer data)
   for (guint i = 0; i < G_N_ELEMENTS (themes); i++)
     {
       ids[i] = themes[i].id;
-      labels[i] = themes[i].label;
+      labels[i] = _(themes[i].label);
     }
-  choose (GTK_WIDGET (row), "Theme", NULL, "color-scheme", G_N_ELEMENTS (themes), ids, labels, NULL);
+  choose (GTK_WIDGET (row), _("Theme"), NULL, "color-scheme", G_N_ELEMENTS (themes), ids, labels, NULL);
 }
 
 static void
@@ -810,7 +819,7 @@ settings_rows (GtkWidget *cards, GtkWidget *owner)
 
   if (settings)
     g_object_set_data_full (G_OBJECT (owner), "sw-settings", settings, g_object_unref);
-  row = vibeos_list_row_new ("Look for updates", NULL);
+  row = vibeos_list_row_new (_("Look for updates"), NULL);
   vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-update-symbolic");
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (row), update_mode_label (settings));
   g_object_set_data (G_OBJECT (row), "sw-updates-row", GINT_TO_POINTER (1));
@@ -818,7 +827,7 @@ settings_rows (GtkWidget *cards, GtkWidget *owner)
   if (settings)
     g_signal_connect_object (settings, "changed", G_CALLBACK (on_setting_changed), row, 0);
   vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
-  row = vibeos_list_row_new ("VibeOS apps only", "None of Debian's in the store's lists");
+  row = vibeos_list_row_new (_("VibeOS apps only"), _("None of Debian's in the store's lists"));
   vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-apps-symbolic");
   toggle = vibeos_list_row_set_switch (VIBEOS_LIST_ROW (row), FALSE);
   if (settings)
@@ -826,7 +835,7 @@ settings_rows (GtkWidget *cards, GtkWidget *owner)
   else
     gtk_widget_set_sensitive (row, FALSE);
   vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
-  row = vibeos_list_row_new ("Theme", NULL);
+  row = vibeos_list_row_new (_("Theme"), NULL);
   vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-palette-symbolic");
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (row), theme_label (settings));
   g_object_set_data (G_OBJECT (row), "sw-theme-row", GINT_TO_POINTER (1));
@@ -834,7 +843,7 @@ settings_rows (GtkWidget *cards, GtkWidget *owner)
   if (settings)
     g_signal_connect_object (settings, "changed", G_CALLBACK (on_setting_changed), row, 0);
   vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
-  row = vibeos_list_row_new ("About Software", NULL);
+  row = vibeos_list_row_new (_("About Software"), NULL);
   vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-info-symbolic");
   g_signal_connect (row, "clicked", G_CALLBACK (on_about_row), NULL);
   vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
@@ -843,7 +852,7 @@ settings_rows (GtkWidget *cards, GtkWidget *owner)
 GtkWidget *
 sw_settings_page_new (void)
 {
-  GtkWidget *page = sw_page_new ("Settings"), *cards = vibeos_card_list_new ();
+  GtkWidget *page = sw_page_new (_("Settings")), *cards = vibeos_card_list_new ();
 
   vibeos_card_list_set_margins (VIBEOS_CARD_LIST (cards), 8, 24);
   settings_rows (cards, page);
@@ -855,17 +864,20 @@ void
 sw_about_present (GtkWidget *from)
 {
   static const VibeosAboutSection credits[] = {
-    { "The catalog", "The apps, their descriptions and pictures come from the store at vibeos.top, which takes them "
-                     "from Debian's and VibeOS's software sources and the apps' own AppStream data." },
+    { N_("The catalog"), N_("The apps, their descriptions and pictures come from the store at vibeos.top, which "
+                            "takes them from Debian's and VibeOS's software sources and the apps' own AppStream "
+                            "data.") },
     { NULL, NULL },
   };
   static const VibeosAboutSection legal[] = {
-    { "Font Awesome", "The category icons are Font Awesome Free 7.0.0 by Fonticons, Inc. (solid style, unchanged), "
-                      "under the <a href=\"https://creativecommons.org/licenses/by/4.0/\">Creative Commons Attribution "
-                      "4.0</a> licence. <a href=\"https://fontawesome.com\">fontawesome.com</a>" },
+    /* TRANSLATORS: keep the links' markup as it is */
+    { "Font Awesome", N_("The category icons are Font Awesome Free 7.0.0 by Fonticons, Inc. (solid style, "
+                         "unchanged), under the <a href=\"https://creativecommons.org/licenses/by/4.0/\">Creative "
+                         "Commons Attribution 4.0</a> licence. "
+                         "<a href=\"https://fontawesome.com\">fontawesome.com</a>") },
     { NULL, NULL },
   };
-  VibeosAboutInfo info = { "Software", "vibeos.Software", credits, legal };
+  VibeosAboutInfo info = { N_("Software"), "vibeos.Software", credits, legal };
 
   vibeos_about_present (from, &info);
 }
@@ -907,7 +919,7 @@ on_signed_out (SwApiResult *result, const SwApiError *error, gpointer data)
 {
   Profile *p = data;
 
-  sw_window_toast (p->page, "You are signed out");
+  sw_window_toast (p->page, _("You are signed out"));
 }
 
 static void
@@ -920,11 +932,11 @@ on_sign_out_response (VibeosDialog *dialog, int response, Profile *p)
 static void
 on_sign_out_row (VibeosListRow *row, Profile *p)
 {
-  VibeosDialog *dialog = vibeos_dialog_new ("Sign out?");
+  VibeosDialog *dialog = vibeos_dialog_new (_("Sign out?"));
 
-  vibeos_dialog_set_message (dialog, "Your reviews and your apps stay. Sign in again to write reviews.");
-  vibeos_dialog_add_button (dialog, "Cancel", VIBEOS_RESPONSE_CANCEL);
-  vibeos_dialog_add_button (dialog, "Sign out", VIBEOS_RESPONSE_OK);
+  vibeos_dialog_set_message (dialog, _("Your reviews and your apps stay. Sign in again to write reviews."));
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("Sign out"), VIBEOS_RESPONSE_OK);
   g_signal_connect (dialog, "response", G_CALLBACK (on_sign_out_response), p);
   vibeos_dialog_present (dialog, p->page);
 }
@@ -948,7 +960,7 @@ profile_fill (Profile *p)
   if (sw_account_is_signed_in (account))
     {
       const char *name = sw_account_get_name (account), *email = sw_account_get_email (account);
-      GtkWidget *label = gtk_label_new (name ? name : "Signed in");
+      GtkWidget *label = gtk_label_new (name ? name : _("Signed in"));
 
       gtk_widget_add_css_class (label, "sw-profile-name");
       gtk_box_append (GTK_BOX (card), label);
@@ -961,25 +973,25 @@ profile_fill (Profile *p)
       gtk_box_append (GTK_BOX (p->column), card);
       if (!sw_account_is_verified (account))
         {
-          row = vibeos_list_row_new ("Confirm your email address", "Needed to rate and review apps");
+          row = vibeos_list_row_new (_("Confirm your email address"), _("Needed to rate and review apps"));
           vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-email-symbolic");
           vibeos_list_row_set_chevron (VIBEOS_LIST_ROW (row));
           g_signal_connect (row, "clicked", G_CALLBACK (on_confirm_row), p);
           vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
         }
-      row = vibeos_list_row_new ("My reviews", NULL);
+      row = vibeos_list_row_new (_("My reviews"), NULL);
       vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-star-outline-symbolic");
       vibeos_list_row_set_chevron (VIBEOS_LIST_ROW (row));
       g_signal_connect (row, "clicked", G_CALLBACK (on_reviews_row), p);
       vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
-      vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), "Settings");
+      vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), _("Settings"));
       settings_rows (cards, p->page);
       vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), NULL);
-      row = vibeos_list_row_new ("Sign out", NULL);
+      row = vibeos_list_row_new (_("Sign out"), NULL);
       vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-logout-symbolic");
       g_signal_connect (row, "clicked", G_CALLBACK (on_sign_out_row), p);
       vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
-      row = vibeos_list_row_new ("Delete the account", NULL);
+      row = vibeos_list_row_new (_("Delete the account"), NULL);
       vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "sw-delete-symbolic");
       g_signal_connect (row, "clicked", G_CALLBACK (on_delete_row), p);
       vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
@@ -989,18 +1001,18 @@ profile_fill (Profile *p)
       GtkWidget *buttons = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12), *button;
 
       gtk_box_append (GTK_BOX (card),
-                      sw_label_new ("Sign in to rate and review apps, and to see your apps on all your devices.",
+                      sw_label_new (_("Sign in to rate and review apps, and to see your apps on all your devices."),
                                     "sw-profile-text"));
       gtk_widget_set_halign (buttons, GTK_ALIGN_CENTER);
-      button = sw_button_new ("Sign in", SW_BUTTON_FILLED);
+      button = sw_button_new (_("Sign in"), SW_BUTTON_FILLED);
       g_signal_connect (button, "clicked", G_CALLBACK (on_profile_sign_in), p);
       gtk_box_append (GTK_BOX (buttons), button);
-      button = sw_button_new ("Create an account", SW_BUTTON_TONAL);
+      button = sw_button_new (_("Create an account"), SW_BUTTON_TONAL);
       g_signal_connect (button, "clicked", G_CALLBACK (on_profile_register), p);
       gtk_box_append (GTK_BOX (buttons), button);
       gtk_box_append (GTK_BOX (card), buttons);
       gtk_box_append (GTK_BOX (p->column), card);
-      vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), "Settings");
+      vibeos_card_list_add_group (VIBEOS_CARD_LIST (cards), _("Settings"));
       settings_rows (cards, p->page);
     }
   vibeos_card_list_set_margins (VIBEOS_CARD_LIST (cards), 8, 24);
@@ -1018,7 +1030,7 @@ sw_profile_page_new (void)
 {
   Profile *p = g_new0 (Profile, 1);
 
-  p->page = sw_page_new ("Account and settings");
+  p->page = sw_page_new (_("Account and settings"));
   g_object_set_data_full (G_OBJECT (p->page), "sw-profile", p, g_free);
   p->column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   sw_page_set_body (p->page, sw_scroll_new (p->column));
@@ -1049,7 +1061,7 @@ on_deleted (SwApiResult *result, const SwApiError *error, gpointer data)
         show_error (d->error, error);
       return;
     }
-  sw_window_toast (d->page, "Your account is deleted");
+  sw_window_toast (d->page, _("Your account is deleted"));
   sw_window_pop_to_tabs (d->page);
 }
 
@@ -1058,7 +1070,7 @@ on_delete (GtkWidget *button, Delete *d)
 {
   if (!*sw_field_get_text (d->password))
     {
-      sw_field_set_error (d->password, "Enter your password to delete the account.");
+      sw_field_set_error (d->password, _("Enter your password to delete the account."));
       return;
     }
   gtk_widget_set_visible (d->error, FALSE);
@@ -1074,21 +1086,21 @@ sw_delete_account_page_new (void)
   Delete *d = g_new0 (Delete, 1);
   GtkWidget *column, *cards = vibeos_card_list_new (), *row;
 
-  d->page = sw_page_new ("Delete the account");
+  d->page = sw_page_new (_("Delete the account"));
   g_object_set_data_full (G_OBJECT (d->page), "sw-delete", d, g_free);
   column = form (d->page);
   gtk_box_append (GTK_BOX (column),
-                  sw_label_new ("The store deletes the account, its devices, the list of apps it had and its helpful "
-                                "votes. It cannot be undone. Your apps stay installed.", "sw-body-text"));
-  row = vibeos_list_row_new ("Delete my reviews too",
-                             "Otherwise they stay, under \"Deleted account\", and nobody can change them");
+                  sw_label_new (_("The store deletes the account, its devices, the list of apps it had and its "
+                                  "helpful votes. It cannot be undone. Your apps stay installed."), "sw-body-text"));
+  row = vibeos_list_row_new (_("Delete my reviews too"),
+                             _("Otherwise they stay, under \"Deleted account\", and nobody can change them"));
   d->reviews = vibeos_list_row_set_switch (VIBEOS_LIST_ROW (row), FALSE);
   vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
   gtk_box_append (GTK_BOX (column), cards);
-  d->password = sw_field_new ("Password", SW_FIELD_PASSWORD);
+  d->password = sw_field_new (_("Password"), SW_FIELD_PASSWORD);
   gtk_box_append (GTK_BOX (column), d->password);
   d->error = form_error (column);
-  d->button = big_button (column, "Delete the account", SW_BUTTON_DANGER, G_CALLBACK (on_delete), d);
+  d->button = big_button (column, _("Delete the account"), SW_BUTTON_DANGER, G_CALLBACK (on_delete), d);
   return d->page;
 }
 
@@ -1134,7 +1146,7 @@ on_my_reviews (SwApiResult *result, const SwApiError *error, gpointer data)
         gtk_box_append (GTK_BOX (m->rows), sw_app_row_new (app, NULL));
       if (sw_json_bool (entry, "hidden", FALSE))
         gtk_box_append (GTK_BOX (m->rows),
-                        sw_label_new ("A moderator hid this review: only you see it.", "sw-caption-padded"));
+                        sw_label_new (_("A moderator hid this review: only you see it."), "sw-caption-padded"));
       gtk_box_append (GTK_BOX (m->rows), sw_review_card_new (review, sw_json_string (app, "id"),
                                                              sw_json_string (app, "name")));
     }
@@ -1143,7 +1155,7 @@ on_my_reviews (SwApiResult *result, const SwApiError *error, gpointer data)
   gtk_widget_set_visible (m->more, m->cursor != NULL);
   if (first && !gtk_widget_get_first_child (m->rows))
     sw_status_empty (SW_STATUS (m->status), "sw-star-outline-symbolic",
-                     "You have not reviewed any apps yet. An app's page has its stars to tap.", NULL, NULL, NULL);
+                     _("You have not reviewed any apps yet. An app's page has its stars to tap."), NULL, NULL, NULL);
   else
     sw_status_show (SW_STATUS (m->status));
 }
@@ -1170,12 +1182,12 @@ sw_my_reviews_page_new (void)
   Mine *m = g_new0 (Mine, 1);
   GtkWidget *column = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
 
-  m->page = sw_page_new ("My reviews");
+  m->page = sw_page_new (_("My reviews"));
   g_object_set_data_full (G_OBJECT (m->page), "sw-my-reviews", m, my_reviews_free);
   m->rows = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (m->rows, "sw-reviews");
   gtk_box_append (GTK_BOX (column), m->rows);
-  m->more = sw_button_new ("Show more", SW_BUTTON_TEXT);
+  m->more = sw_button_new (_("Show more"), SW_BUTTON_TEXT);
   gtk_widget_set_halign (m->more, GTK_ALIGN_CENTER);
   gtk_widget_set_visible (m->more, FALSE);
   g_signal_connect (m->more, "clicked", G_CALLBACK (on_more_reviews), m);

@@ -5,6 +5,7 @@
 #include "sw-json.h"
 
 #include <errno.h>
+#include <glib/gi18n.h>
 #include <glib/gstdio.h>
 #include <string.h>
 
@@ -257,8 +258,6 @@ void
 sw_check_notification_text (GPtrArray *entries, GPtrArray *fresh, char **title, char **body)
 {
   g_autoptr (GPtrArray) order = g_ptr_array_new ();
-  g_autoptr (GString) names = NULL;
-  guint shown;
 
   *title = *body = NULL;
   if (!entries || !entries->len)
@@ -281,24 +280,31 @@ sw_check_notification_text (GPtrArray *entries, GPtrArray *fresh, char **title, 
     {
       g_autofree char *version = sw_check_display_version (g_ptr_array_index (order, 0));
 
-      *title = g_strdup_printf ("%s can be updated", entry_name (g_ptr_array_index (order, 0)));
-      *body = *version ? g_strdup_printf ("Version %s is ready to install.", version)
-                       : g_strdup ("A new version is ready to install.");
+      /* TRANSLATORS: %s is the app's name */
+      *title = g_strdup_printf (_("%s can be updated"), entry_name (g_ptr_array_index (order, 0)));
+      /* TRANSLATORS: %s is the new version's number */
+      *body = *version ? g_strdup_printf (_("Version %s is ready to install."), version)
+                       : g_strdup (_("A new version is ready to install."));
       return;
     }
-  *title = g_strdup_printf ("%u apps can be updated", order->len);
+  *title = g_strdup_printf (g_dngettext (NULL, "%u app can be updated", "%u apps can be updated", order->len),
+                            order->len);
   /* three names at most, then how many more */
-  shown = order->len <= 3 ? order->len : 3;
-  names = g_string_new (NULL);
-  for (guint i = 0; i < shown; i++)
-    {
-      if (i)
-        g_string_append (names, i == shown - 1 && shown == order->len ? " and " : ", ");
-      g_string_append (names, entry_name (g_ptr_array_index (order, i)));
-    }
-  if (shown < order->len)
-    g_string_append_printf (names, " and %u more", order->len - shown);
-  *body = g_string_free (g_steal_pointer (&names), FALSE);
+  {
+    const char *a = entry_name (g_ptr_array_index (order, 0)), *b = entry_name (g_ptr_array_index (order, 1));
+    const char *c = order->len > 2 ? entry_name (g_ptr_array_index (order, 2)) : NULL;
+
+    if (order->len == 2)
+      /* TRANSLATORS: two apps' names */
+      *body = g_strdup_printf (_("%s and %s"), a, b);
+    else if (order->len == 3)
+      /* TRANSLATORS: three apps' names */
+      *body = g_strdup_printf (_("%s, %s and %s"), a, b, c);
+    else
+      /* TRANSLATORS: three apps' names, then how many more apps can be updated */
+      *body = g_strdup_printf (g_dngettext (NULL, "%s, %s, %s and %u more", "%s, %s, %s and %u more",
+                                            order->len - 3), a, b, c, order->len - 3);
+  }
 }
 
 /* ---- vibeos-software --check-updates --------------------------------------------------------------------------- */
