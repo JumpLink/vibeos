@@ -124,6 +124,9 @@ export class TouchFocusKeyboard {
         if (this._closeId)
             GLib.source_remove(this._closeId);
         this._closeId = 0;
+        // a close held for those fingers waits no longer (the keyboard's own swipe down takes them too)
+        if (Main.keyboard._keyboard?.__vibeosCloseHeld)
+            this._closeLater(0);
     }
 
     _closeLater(ms) {
