@@ -1,6 +1,8 @@
 project('vibeos-video', 'c', version: '1.0', meson_version: '>= 1.0',
         default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])
-add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: 'c')
+add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers',
+                      '-DGETTEXT_PACKAGE="vibeos-video"',
+                      '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')), language: 'c')
 
 # mpv plays (libmpv, its OpenGL renderer through epoxy); the window, its colours and its text are libvibeos's
 deps = [dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'), dependency('mpv'), dependency('epoxy'),

@@ -9,7 +9,13 @@
  * from there the next time.
  *
  * ⋮ opens the menu: Audio track and Subtitles (when the film has any) open a sheet listing the film's tracks (mpv's
- * track-list), the one playing ticked; About is VibeOS's About sheet.
+ * track-list), the one playing ticked; Settings has one switch, "Black bar at the camera"; About is VibeOS's About
+ * sheet.
+ *
+ * Full screen goes under the camera hole (or notch): the picture fills the panel and the hole sits inside it. The
+ * switch puts the black bar back along the hole, as the shell keeps every other app's full screen clear of it. The
+ * shell reads it from vibeos.Shell's cutout-extend-apps, where this app's id is listed (the default) or not, and
+ * follows a change at once, while the film plays.
  *
  * The button beside ⋮ puts the player full screen (no status bar) and takes it out again. On a screen wider than tall
  * (a phone or tablet turned sideways, a TV) it opens full screen, and turning the screen chooses again: sideways full
@@ -18,6 +24,7 @@
  * shot the other way (a wide film on an upright phone) stays whole: filled, most of it would be cut away. */
 #include <epoxy/egl.h>
 #include <epoxy/gl.h>
+#include <glib/gi18n.h>
 #include <gtk/gtk.h>
 #include <locale.h>
 #include <math.h>
@@ -852,6 +859,69 @@ choose_subtitles (gpointer data)
   choose_track (data, "Subtitles", "sub", "sid");
 }
 
+/* ---- Settings: the black bar at the camera ---- */
+
+#define EXTEND_KEY "cutout-extend-apps"
+
+/* the shell's settings, or NULL where the schema (or the key) is missing: the shell then keeps the bar, and the row
+ * is left out */
+static GSettings *
+shell_settings (void)
+{
+  static GSettings *settings;
+  GSettingsSchemaSource *source = g_settings_schema_source_get_default ();
+  g_autoptr (GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, "vibeos.Shell", TRUE) : NULL;
+  if (!settings && schema && g_settings_schema_has_key (schema, EXTEND_KEY))
+    settings = g_settings_new_full (schema, NULL, NULL);
+  return settings;
+}
+
+/* whether the shell has this app's full screen under the camera */
+static gboolean
+extends_under_camera (GSettings *settings)
+{
+  g_auto (GStrv) apps = g_settings_get_strv (settings, EXTEND_KEY);
+  return g_strv_contains ((const char *const *) apps, APP_ID);
+}
+
+static void
+on_bar_switched (GObject *toggle, GParamSpec *pspec, gpointer data)
+{
+  GSettings *settings = data;
+  gboolean bar = vibeos_switch_get_active (VIBEOS_SWITCH (toggle));
+  if (bar != extends_under_camera (settings))
+    return;
+  g_auto (GStrv) apps = g_settings_get_strv (settings, EXTEND_KEY);
+  g_autoptr (GPtrArray) list = g_ptr_array_new ();
+  for (char **a = apps; *a; a++)
+    if (g_strcmp0 (*a, APP_ID))
+      g_ptr_array_add (list, *a);
+  if (!bar)
+    g_ptr_array_add (list, (gpointer) APP_ID);
+  g_ptr_array_add (list, NULL);
+  g_settings_set_strv (settings, EXTEND_KEY, (const char *const *) list->pdata);
+}
+
+static void
+open_settings (gpointer data)
+{
+  Player *p = data;
+  GSettings *settings = shell_settings ();
+  if (!settings)
+    return;
+  GtkWidget *list = vibeos_card_list_new ();
+  vibeos_card_list_set_margins (VIBEOS_CARD_LIST (list), 0, 16);
+  GtkWidget *row = vibeos_list_row_new (_("Black bar at the camera"),
+                                        _("Keep full screen clear of the camera hole instead of playing under it"));
+  GtkWidget *toggle = vibeos_list_row_set_switch (VIBEOS_LIST_ROW (row), FALSE);
+  vibeos_switch_set_active (VIBEOS_SWITCH (toggle), !extends_under_camera (settings));
+  g_signal_connect (toggle, "notify::active", G_CALLBACK (on_bar_switched), settings);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (list), row);
+  GtkWidget *sheet = vibeos_sheet_new (_("Settings"));
+  vibeos_sheet_set_content (VIBEOS_SHEET (sheet), list);
+  vibeos_sheet_present (VIBEOS_SHEET (sheet), p->win);
+}
+
 static void
 open_menu (Player *p)
 {
@@ -862,6 +932,8 @@ open_menu (Player *p)
     vibeos_menu_append (menu, "Audio track", choose_audio, p);
   if (subs->len > 0)
     vibeos_menu_append (menu, "Subtitles", choose_subtitles, p);
+  if (shell_settings ())
+    vibeos_menu_append (menu, _("Settings"), open_settings, p);
   vibeos_menu_append_about (menu, &video_about);
   vibeos_menu_present (menu, p->more);
   show_controls (p, TRUE);
@@ -1216,6 +1288,10 @@ on_shutdown (GApplication *app, Player *p)
 int
 main (int argc, char **argv)
 {
+  setlocale (LC_ALL, "");
+  bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
+  bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
+  textdomain (GETTEXT_PACKAGE);
   Player p = {.paused = FALSE, .landscape = -1};
   g_autoptr (GtkApplication) app = gtk_application_new (APP_ID, G_APPLICATION_HANDLES_OPEN);
   p.app = app;
