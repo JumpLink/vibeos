@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 15:40+0100\n"
+"POT-Creation-Date: 2026-11-25 00:45+0100\n"
 "PO-Revision-Date: 2026-11-24 03:41+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Spanish\n"
@@ -772,6 +772,11 @@ msgid_plural "Reminder on %s at %s"
 msgstr[0] "Recordatorio el %s a la %s"
 msgstr[1] "Recordatorio el %s a las %s"
 
+#. TRANSLATORS: Navi's voice in Russian; tiny-voca is its name
+#: src/navi-voice.c
+msgid "tiny-voca voice, on this device"
+msgstr "Voz de tiny-voca, en este dispositivo"
+
 #: src/navi-voice.c
 #, c-format
 msgid "Piper voice %s, on this device"
@@ -876,6 +881,24 @@ msgstr ""
 msgid "%s. Nothing of it was kept on the phone."
 msgstr "%s. No se ha guardado nada en el teléfono."
 
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: a quarter done."
+msgstr "Descargando %s: vamos por un cuarto."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: half done."
+msgstr "Descargando %s: vamos por la mitad."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: three quarters done."
+msgstr "Descargando %s: vamos por tres cuartos."
+
 # android: SystemUI screen_record_video_preview_elapsed_time_a11y_template
 #. TRANSLATORS: the progress, two sizes: 12.3 MB of 90.4 MB
 #: ../dictate/src/dictate-download-dialog.c
@@ -934,23 +957,21 @@ msgstr "%s en total"
 msgid "Download %s?"
 msgstr "¿Descargar %s?"
 
-#. TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second an app's name (Navi)
+#. TRANSLATORS: under the title "Download Deutsch?"; %s is an app's name (Navi)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
-msgid "To speak %s, %s needs this on the phone:"
-msgstr "Para hablar %s, %s necesita esto en el teléfono:"
+msgid "To speak this language, %s needs this on the phone:"
+msgstr "Para hablar este idioma, %s necesita esto en el teléfono:"
 
-#. TRANSLATORS: %s is the language's name for itself (Deutsch)
+#. TRANSLATORS: under the title "Download Deutsch?"
 #: ../dictate/src/dictate-download-dialog.c
-#, c-format
-msgid "To hear and speak %s, Vibe needs these on the phone:"
-msgstr "Para oír y hablar %s, Vibe necesita esto en el teléfono:"
+msgid "To hear and speak this language, Vibe needs these on the phone:"
+msgstr "Para entender y hablar este idioma, Vibe necesita esto en el teléfono:"
 
-#. TRANSLATORS: %s is the language's name for itself (Deutsch)
+#. TRANSLATORS: under the title "Download Deutsch?"
 #: ../dictate/src/dictate-download-dialog.c
-#, c-format
-msgid "To hear %s, Dictate needs these on the phone:"
-msgstr "Para oír %s, Dictate necesita esto en el teléfono:"
+msgid "To hear this language, Dictate needs these on the phone:"
+msgstr "Para entender este idioma, Dictado necesita esto en el teléfono:"
 
 #. TRANSLATORS: under it; %s is its Debian package (vibeos-dictate-vosk)
 #: ../dictate/src/dictate-download-dialog.c
