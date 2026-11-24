@@ -222,6 +222,13 @@ for d in poco s5e; do
 	log "downloads for $d: $(ls "$O/work/downloads/$d" | wc -l) of $(echo $list | wc -w)$( [ -s "$L/download-$d-missing.txt" ] && echo ", missing: $(tr '\n' ' ' < "$L/download-$d-missing.txt")")"
 done
 [ -z "${DOWNLOAD_ONLY:-}" ] || { log "DOWNLOAD_ONLY: stopping after the downloads"; exit 0; }
+# Debian's evolution-data-server where it is (EDS_HOLD, the list releases.html gives for 0.1.4): VibeOS 0.1.4 is built
+# against EDS 3.56, every image's, and not yet against the 3.62 Debian unstable has now, whose upgrade would take
+# VibeOS's apps with it. Exactly the installed part of the list, held before the plan: a dependency that
+# needs a newer EDS then stops the build here instead of upgrading it
+EDS_HOLD=${EDS_HOLD-evolution-data-server evolution-data-server-common libebook-1.2-21t64 libecal-2.0-3 libedata-book-1.2-27t64 libedata-cal-2.0-2t64 libebackend-1.2-11t64 libedataserverui-1.2-4t64 libedataserverui4-1.0-0t64 gir1.2-camel-1.2 gir1.2-ecal-2.0 gir1.2-edataserver-1.2 libfolks26 libfolks-eds26 folks-common}
+EH=$(for p in $EDS_HOLD; do [ "$($CH dpkg-query -W -f '${db:Status-Abbrev}' "$p" 2>/dev/null)" = "ii " ] && echo "$p"; done | tr '\n' ' ')
+[ -z "$EH" ] || { $CH apt-mark hold $EH > /dev/null; add "held: $EH(Debian's EDS, which VibeOS $SV is built against)"; }
 $CH apt-get -s -q --no-install-recommends install $LOCAL $NEW showtime- > "$L/apt-plan.txt" 2>&1 || { tail -30 "$L/apt-plan.txt" >&2; exit 1; }
 # removals: exactly Showtime (the brief: out) and GNOME Settings (vibeos-settings Conflicts/Replaces/Provides it),
 # and with it the gnome-core metapackage (it Depends on gnome-control-center >= 1:51; what it pulled in is marked
@@ -256,12 +263,6 @@ AR=$($CH apt-get -s -q autoremove 2>/dev/null | sed -n 's/^Remv \([^ :]*\).*/\1/
 add "VibeOS $SV: $(echo $OURS | wc -w) packages (debs.sha256), plus $NEW from Debian; gnome-control-center, showtime (and the gnome-core metapackage) removed, gnome-control-center-data kept"
 HOLD=$(echo "$OURS" | grep mutter | tr '\n' ' ')
 $CH apt-mark hold $HOLD > /dev/null; add "held: $HOLD(VibeOS's mutter build)"
-# Debian's evolution-data-server where it is (EDS_HOLD, the list releases.html gives for 0.1.4): VibeOS 0.1.4 is built
-# against EDS 3.56, every image's, and not yet against the 3.62 Debian unstable has now, whose upgrade would take
-# VibeOS's apps with it. Exactly the installed part of the list
-EDS_HOLD=${EDS_HOLD-evolution-data-server evolution-data-server-common libebook-1.2-21t64 libecal-2.0-3 libedata-book-1.2-27t64 libedata-cal-2.0-2t64 libebackend-1.2-11t64 libedataserverui-1.2-4t64 libedataserverui4-1.0-0t64 gir1.2-camel-1.2 gir1.2-ecal-2.0 gir1.2-edataserver-1.2 libfolks26 libfolks-eds26 folks-common}
-EH=$(for p in $EDS_HOLD; do [ "$($CH dpkg-query -W -f '${db:Status-Abbrev}' "$p" 2>/dev/null)" = "ii " ] && echo "$p"; done | tr '\n' ' ')
-[ -z "$EH" ] || { $CH apt-mark hold $EH > /dev/null; add "held: $EH(Debian's EDS, which VibeOS $SV is built against)"; }
 # GNOME's own apps out (the ROM's list, as the S10e/POCO/S20): exactly the installed part of it, or nothing
 RL=$(for p in $(sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$KIT/ourapps-remove"); do
 	[ "$($CH dpkg-query -W -f '${db:Status-Abbrev}' "$p" 2>/dev/null)" = "ii " ] && echo "$p"; done | LC_ALL=C sort -u)
