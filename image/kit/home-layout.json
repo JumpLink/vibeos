@@ -3,7 +3,7 @@
   "vibeos.Dialer.desktop",
   "vibeos.Contacts.desktop",
   null,
-  "org.gnome.Console.desktop",
+  "vibeos.Terminal.desktop",
   "vibeos.Messaging.desktop"
  ],
  "pages": [
