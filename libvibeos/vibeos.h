@@ -12,6 +12,7 @@
  *   vibeos-locale.h       dates and times in the user's language, the 12/24-hour setting, locales' names, the
  *                         session's language changed at once
  *   vibeos-clamp.h        a column no wider than a maximum, centred (a page's content on a tablet)
+ *   vibeos-fit-label.h    a label drawn smaller where its words do not fit, before any breaks
  *
  * Sizes are dp: on the phone (scale 3) one GTK pixel is one dp. */
 #pragma once
@@ -33,6 +34,7 @@
 #include "vibeos-fab-column.h"
 #include "vibeos-list-row.h"
 #include "vibeos-clamp.h"
+#include "vibeos-fit-label.h"
 #include "vibeos-card-list.h"
 #include "vibeos-top-bar.h"
 #include "vibeos-search.h"

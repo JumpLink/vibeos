@@ -35,3 +35,9 @@ test('original-colors', test_original, env: test_env + ['GSETTINGS_SCHEMA_DIR=' 
 # the locale from the session's environment, and dates and times in its language and order
 test_locale = executable('test-locale', 'test-locale.c', test_schemas, dependencies: vibeos_dep)
 test('locale', test_locale, env: test_env + ['GSETTINGS_SCHEMA_DIR=' + meson.current_build_dir()])
+
+# VibeosFitLabel's scale, measured in the font in libvibeos/fonts
+test_fit = executable('test-fit', 'test-fit.c',
+  dependencies: [vibeos_dep, dependency('fontconfig'), dependency('pangocairo')],
+  c_args: ['-DFONT="@0@"'.format(meson.current_source_dir() / '..' / 'fonts' / 'VibeosRoboto.ttf')])
+test('fit', test_fit, env: test_env)

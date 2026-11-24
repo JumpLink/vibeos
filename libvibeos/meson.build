@@ -57,6 +57,7 @@ vibeos_headers = files(
   'vibeos-original-colors.h',
   'vibeos-extended-fab.h',
   'vibeos-clamp.h',
+  'vibeos-fit-label.h',
 )
 # VibeosUnifiedPush, push messages (vibeos-unified-push.h)
 subdir('unifiedpush')
@@ -67,6 +68,7 @@ vibeos_lib = shared_library('vibeos-1',
   'vibeos-pressable.c',
   'vibeos-switch.c',
   'vibeos-clamp.c',
+  'vibeos-fit-label.c',
   'vibeos-nav-bar.c',
   'vibeos-snackbar.c',
   'vibeos-dialog.c',
