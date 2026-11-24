@@ -1,3 +1,22 @@
+vibeos (1:0.1.4.1) unstable; urgency=medium
+
+  * Built against evolution-data-server 3.62, which is in sid: Contacts,
+    Phone, Messages, Calendar and Agent no longer load EDS 3.56's
+    libedataserver beside 3.62's, and 0.1.4's hold of EDS can be lifted.
+    The build requires EDS 3.62 now.
+  * Video: full screen, by a button beside the menu (f and F11 too), and by
+    turning the screen sideways; full screen, a film shot the way the screen
+    is turned is cropped to fill it, and one shot the other way stays
+    whole.
+  * Video: a tap on a control's button no longer hides the controls.
+  * Shell: desktop files are read through GioUnix, so GJS no longer warns
+    that Gio.DesktopAppInfo has moved.
+  * Agent: the call announcer's autostart entry leaves out
+    X-GNOME-Autostart-Phase, which gnome-session warned about at login.
+  * Navi: the package's changelog entry is wrapped at 80 columns.
+
+ -- pulpoff <pashkovsky@gmail.com>  Tue, 24 Nov 2026 01:25:43 +0100
+
 vibeos (1:0.1.4) unstable; urgency=medium
 
   * Agent, a new app in vibeos-dictate (vibeos.Agent): a spoken
