@@ -396,7 +396,7 @@ msgstr "Видео"
 # android: DocumentsUI chip_title_documents
 #: src/fm-home.c
 msgid "Documents"
-msgstr "Доку­менты"
+msgstr "Документы"
 
 # android: DocumentsUI root_info_header_recent
 #: src/fm-home.c src/fm-places.c
@@ -405,11 +405,11 @@ msgstr "Недавние файлы"
 
 #: src/fm-home.c src/fm-window.c
 msgid "Remote"
-msgstr "Уда­лен­ные"
+msgstr "Удаленные"
 
 #: src/fm-home.c src/fm-places.c src/fm-remote-page.c
 msgid "Local Network"
-msgstr "Локаль­ная сеть"
+msgstr "Локальная сеть"
 
 #: src/fm-jobs.c
 msgid "Overwrite"

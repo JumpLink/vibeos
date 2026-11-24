@@ -306,7 +306,7 @@ msgstr "System"
 
 #: src/fm-drawer.c src/fm-home.c src/fm-places.c
 msgid "Recycle Bin"
-msgstr "Papier­korb"
+msgstr "Papierkorb"
 
 # android: Framework action_menu_overflow_description (several translations, short)
 #. a smaller ⋮ than the toolbar's
@@ -374,7 +374,7 @@ msgstr "Verlauf"
 # android: DocumentsUI downloads_label
 #: src/fm-home.c
 msgid "Downloads"
-msgstr "Down­loads"
+msgstr "Downloads"
 
 #: src/fm-home.c
 msgid "Pictures"
@@ -393,12 +393,12 @@ msgstr "Videos"
 # android: DocumentsUI chip_title_documents
 #: src/fm-home.c
 msgid "Documents"
-msgstr "Doku­mente"
+msgstr "Dokumente"
 
-# android: DocumentsUI root_info_header_recent
+# android: DocumentsUI root_recent
 #: src/fm-home.c src/fm-places.c
 msgid "Recent files"
-msgstr "Zuletzt ver­wendete Dateien"
+msgstr "Zuletzt verwendet"
 
 #: src/fm-home.c src/fm-window.c
 msgid "Remote"

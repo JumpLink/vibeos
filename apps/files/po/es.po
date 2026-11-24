@@ -396,7 +396,7 @@ msgstr "Vídeos"
 # android: DocumentsUI chip_title_documents
 #: src/fm-home.c
 msgid "Documents"
-msgstr "Docu­mentos"
+msgstr "Documentos"
 
 # android: DocumentsUI root_info_header_recent
 #: src/fm-home.c src/fm-places.c
