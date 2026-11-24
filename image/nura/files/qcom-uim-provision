@@ -1,0 +1,25 @@
+#!/bin/sh
+# qcom-uim-provision: open the modem's primary GW provisioning session on the first USIM application, when the
+# modem left it closed. Some Qualcomm modems (OnePlus 6T on mainline) see the card but start no session: the card
+# reads "present", the USIM "detected", and ModemManager reports sim-missing. Android's RIL opens the session; on
+# mainline nothing does. Waits up to 60 s for the card, does nothing when a session exists or no USIM is there.
+set -u
+DEV=${QMI_DEVICE:-qrtr://0}
+status() { qmicli -d "$DEV" --uim-get-card-status 2>/dev/null; }
+for i in $(seq 1 "${UIM_TRIES:-30}"); do
+	s=$(status)
+	case "$s" in *"Card state: 'present'"*) break ;; esac
+	s=
+	sleep "${UIM_SLEEP:-2}"
+done
+[ -n "$s" ] || { echo "no card present"; exit 0; }
+printf '%s\n' "$s" | grep -q "Primary GW:   session doesn't exist" || { echo "primary GW session already open"; exit 0; }
+# the slot of the first present card and the AID of its first USIM application
+set -- $(printf '%s\n' "$s" | awk '
+	/^Slot \[/ { slot = $2; gsub(/[^0-9]/, "", slot); present = 0 }
+	/Card state: .present./ { present = 1 }
+	present && /Application type:.*usim/ { want = 1; next }
+	want && /Application ID:/ { getline; gsub(/[ \t]/, ""); print slot, $0; exit }')
+[ $# = 2 ] || { echo "no USIM application"; exit 0; }
+qmicli -d "$DEV" "--uim-change-provisioning-session=slot=$1,activate=yes,session-type=primary-gw-provisioning,aid=$2" &&
+	echo "primary GW session opened on slot $1"

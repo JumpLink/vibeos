@@ -35,7 +35,9 @@ It writes, in `--out` (default: the current directory):
 - **Payload**: the kernel's modules (each one's vermagic checked), all the device's firmware, and the device's
   settings in the form a Debian/systemd system reads: ALSA UCM, udev rules and hwdb, modprobe and modules-load files,
   UPower, WirePlumber, feedbackd themes, the sensors' mount matrix, hexagonrpcd's firmware directory, and the units
-  postmarketOS enables or disables. As a package, `vibeos-device-nura-<device>`.
+  postmarketOS enables or disables. With a Qualcomm modem (rmtfs) also our `qcom-uim-provision` unit: it opens the
+  SIM's provisioning session when the modem left it closed, which Android's RIL would do (the 6T's modem otherwise
+  sees the card and ModemManager reports `sim-missing`). As a package, `vibeos-device-nura-<device>`.
 - **Debian's builds** of the Qualcomm services Nura runs (rmtfs, tqftpserv, qrtr, pd-mapper, hexagonrpcd, qbootctl,
   81voltd), downloaded from the Debian archive and checked against its signature (gpgv, debian-archive-keyring), for
   the first boot to install offline.
@@ -86,6 +88,8 @@ Phones with a header v3 or v4 boot image (a `vendor_boot` partition) are not sup
 - `test/qemu-boot.sh BOOT.img KIND` boots the boot image's kernel and initramfs in qemu-system-aarch64 against a
   stand-in root, to check that the initramfs finds the root and switches to it.
 - `test/compare-boot.py` compares a converted boot image with Nura's, field by field.
+- `test/uim-provision-test.sh` runs `files/qcom-uim-provision` against a stand-in `qmicli` with the 6T's card
+  status: the session opened on the USIM's slot and AID, nothing done with a session open, no card or no USIM.
 
 Both shell tests need `NURA_WORK` (a work directory, about 20 GB), qemu-user-static with binfmt, and `sudo -n`.
 
