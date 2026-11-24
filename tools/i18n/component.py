@@ -20,6 +20,9 @@ XGETTEXT_ARGS = [
     # added by every po/meson.build: the file without line numbers, which would change every translation at each edit
     '--add-location=file',
 ]
+# a component's own keywords and flags, in its po/meson.build's i18n.gettext(args: [...]): a function of its own that
+# translates ("--keyword=dictate_l10n_n:2,3")
+OWN_ARG = re.compile(r"'(--(?:keyword|flag)=[^']+)'")
 
 # the files that call gettext: a call to one of these, a word of its own
 GETTEXT_CALL = re.compile(r'(?<![\w.])(_|N_|C_|NC_|ngettext|dgettext|g_dgettext|g_dngettext|g_dpgettext2|pgettext)\s*\(')
@@ -32,10 +35,11 @@ class Component:
         self.srcdir = os.path.abspath(srcdir)
         self.podir = os.path.join(self.srcdir, 'po')
         build = open(os.path.join(self.podir, 'meson.build'), encoding='utf-8').read()
-        m = re.search(r"\.gettext\(\s*'([^']+)'", build)
+        m = re.search(r"\.gettext\(\s*'([^']+)'([^)]*)\)", build)
         if not m:
             raise SystemExit(f'{self.podir}/meson.build: no i18n.gettext()')
         self.domain = m.group(1)
+        self.own_args = OWN_ARG.findall(m.group(2))
 
     def languages(self):
         return [w for line in open(os.path.join(self.podir, 'LINGUAS'), encoding='utf-8')
@@ -74,7 +78,7 @@ class Component:
         try:
             subprocess.run(['xgettext', '--package-name=' + self.domain,
                             '--msgid-bugs-address=https://github.com/pulpoff/vibeos/issues', '-D', self.srcdir,
-                            '-f', listing, '-o', out] + XGETTEXT_ARGS, check=True)
+                            '-f', listing, '-o', out] + XGETTEXT_ARGS + self.own_args, check=True)
         finally:
             os.unlink(listing)
 
