@@ -523,10 +523,9 @@ msgstr "Speichern in"
 msgid "Text copied"
 msgstr "Text kopiert"
 
-# android: Contacts editor_uneditable_section_title
 #: src/ct-editor.c
 msgid "Can’t update this info"
-msgstr "Diese Informationen können nicht aktualisiert werden"
+msgstr "Kann nicht geändert werden"
 
 # android: Contacts contactSavedErrorToast
 #: src/ct-editor.c

@@ -525,7 +525,7 @@ msgstr "Tekst gekopieerd"
 
 #: src/ct-editor.c
 msgid "Can’t update this info"
-msgstr "Je kunt deze informatie niet updaten"
+msgstr "Kan niet worden gewijzigd"
 
 # android: Contacts contactSavedErrorToast
 #: src/ct-editor.c
