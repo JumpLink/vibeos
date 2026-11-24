@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-messaging\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:43+0100\n"
+"POT-Creation-Date: 2026-11-24 14:30+0100\n"
 "PO-Revision-Date: 2026-11-24 03:43+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -128,8 +128,12 @@ msgstr "Bloccare il numero %s?"
 
 # android: Messaging block_confirmation_message
 #: src/conversation-list.c src/conversation-view.c src/people-options.c
-msgid "You'll continue to receive messages from this number but won't be notified anymore. This conversation will be archived."
-msgstr "Continuerai a ricevere messaggi da questo numero ma non riceverai più notifiche. Questa conversazione verrà archiviata."
+msgid ""
+"You'll continue to receive messages from this number but won't be notified "
+"anymore. This conversation will be archived."
+msgstr ""
+"Continuerai a ricevere messaggi da questo numero ma non riceverai più "
+"notifiche. Questa conversazione verrà archiviata."
 
 # android: Framework httpErrorOk (several translations, short)
 #: src/conversation-list.c src/conversation-view.c src/people-options.c
@@ -319,7 +323,8 @@ msgstr "Il mittente non può ricevere risposte. Contattalo direttamente."
 
 #: src/conversation-view.c
 msgid "Can't make a voice call to emergency services here."
-msgstr "Impossibile effettuare una chiamata vocale ai servizi di emergenza da qui."
+msgstr ""
+"Impossibile effettuare una chiamata vocale ai servizi di emergenza da qui."
 
 # android: Settings memory_details (other app, short)
 #: src/conversation-view.c
@@ -558,20 +563,35 @@ msgstr[1] "%d nuovi messaggi"
 msgid "Message not sent"
 msgstr "Messaggio non inviato"
 
-#. TRANSLATORS: %d is the number of messages not sent (two or more); Android's notification_send_failures
-#. * with one conversation
-#. the same string, its form for the number of conversations
+#. TRANSLATORS: %d is the number of messages not sent (two or more), all in one conversation; Android's
+#. * notification_send_failures
 #: src/sms-service.c
 #, c-format
-msgid "%d messages in one conversation"
-msgid_plural "%d messages in %d conversations"
-msgstr[0] "%d messaggi in una conversazione"
-msgstr[1] "%d messaggi in %d conversazioni"
+msgid "%d message in one conversation"
+msgid_plural "%d messages in one conversation"
+msgstr[0] "%d messaggio in una conversazione"
+msgstr[1] "%d messaggi in una conversazione"
+
+#. TRANSLATORS: the messages not sent, as "%s" in the next string: "5 messages"
+#: src/sms-service.c
+#, c-format
+msgid "%d message"
+msgid_plural "%d messages"
+msgstr[0] "%d messaggio"
+msgstr[1] "%d messaggi"
 
 # android: Messaging notification_send_failures_line1_plural
 #: src/sms-service.c
 msgid "Some messages not sent in Messaging"
 msgstr "Alcuni messaggi non inviati in Messaggi"
+
+#. TRANSLATORS: %s is the messages not sent ("5 messages"), %u the conversations they are in (two or more)
+#: src/sms-service.c
+#, c-format
+msgid "%s in %u conversation"
+msgid_plural "%s in %u conversations"
+msgstr[0] "%s in %u conversazione"
+msgstr[1] "%s in %u conversazioni"
 
 # android: Dialer add_contact_not_available
 #: ../dialer/src/contacts-app.c

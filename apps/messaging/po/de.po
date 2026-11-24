@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-messaging\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:43+0100\n"
+"POT-Creation-Date: 2026-11-24 14:30+0100\n"
 "PO-Revision-Date: 2026-11-24 03:43+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: German\n"
@@ -562,19 +562,34 @@ msgstr[1] "%d neue Nachrichten"
 msgid "Message not sent"
 msgstr "Nachricht nicht gesendet"
 
-#. TRANSLATORS: %d is the number of messages not sent (two or more); Android's notification_send_failures
-#. * with one conversation
-#. the same string, its form for the number of conversations
+#. TRANSLATORS: %d is the number of messages not sent (two or more), all in one conversation; Android's
+#. * notification_send_failures
 #: src/sms-service.c
 #, c-format
-msgid "%d messages in one conversation"
-msgid_plural "%d messages in %d conversations"
-msgstr[0] "%d Nachrichten in einer Unterhaltung"
-msgstr[1] "%d Nachrichten in %d Unterhaltungen"
+msgid "%d message in one conversation"
+msgid_plural "%d messages in one conversation"
+msgstr[0] "%d Nachricht in einer Unterhaltung"
+msgstr[1] "%d Nachrichten in einer Unterhaltung"
+
+#. TRANSLATORS: the messages not sent, as "%s" in the next string: "5 messages"
+#: src/sms-service.c
+#, c-format
+msgid "%d message"
+msgid_plural "%d messages"
+msgstr[0] "%d Nachricht"
+msgstr[1] "%d Nachrichten"
 
 #: src/sms-service.c
 msgid "Some messages not sent in Messaging"
 msgstr "Einige Nachrichten in „Nachrichten“ wurden nicht gesendet"
+
+#. TRANSLATORS: %s is the messages not sent ("5 messages"), %u the conversations they are in (two or more)
+#: src/sms-service.c
+#, c-format
+msgid "%s in %u conversation"
+msgid_plural "%s in %u conversations"
+msgstr[0] "%s in %u Unterhaltung"
+msgstr[1] "%s in %u Unterhaltungen"
 
 # android: Dialer add_contact_not_available
 #: ../dialer/src/contacts-app.c

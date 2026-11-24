@@ -293,18 +293,20 @@ update_failures (Service *self, gboolean alert)
           body = one ? conversation_name (self, one) : g_strdup ("");
         }
       else
-        /* TRANSLATORS: %d is the number of messages not sent (two or more); Android's notification_send_failures
-         * with one conversation */
-        body = g_strdup_printf (g_dngettext (NULL, "%d messages in one conversation", "%d messages in %d conversations",
-                                             1), messages, 1);
+        /* TRANSLATORS: %d is the number of messages not sent (two or more), all in one conversation; Android's
+         * notification_send_failures */
+        body = g_strdup_printf (g_dngettext (NULL, "%d message in one conversation", "%d messages in one conversation",
+                                             messages), messages);
     }
   else
     {
+      guint n = g_hash_table_size (conversations);
+      /* TRANSLATORS: the messages not sent, as "%s" in the next string: "5 messages" */
+      g_autofree char *count = g_strdup_printf (g_dngettext (NULL, "%d message", "%d messages", messages), messages);
+
       title = g_strdup (_("Some messages not sent in Messaging"));
-      /* the same string, its form for the number of conversations */
-      body = g_strdup_printf (g_dngettext (NULL, "%d messages in one conversation", "%d messages in %d conversations",
-                                           g_hash_table_size (conversations)),
-                              messages, g_hash_table_size (conversations));
+      /* TRANSLATORS: %s is the messages not sent ("5 messages"), %u the conversations they are in (two or more) */
+      body = g_strdup_printf (g_dngettext (NULL, "%s in %u conversation", "%s in %u conversations", n), count, n);
     }
   self->failure_notification = notifier_notify (self->notifier, self->failure_notification, title, body, actions,
                                                 NOTIFIER_URGENCY_NORMAL,
