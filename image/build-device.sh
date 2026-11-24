@@ -536,6 +536,15 @@ s20)
 	identity r8s "Galaxy S20 FE" Samsung "Galaxy S20 FE"
 	cp "$G/out/boot-r8s-ub13.img" "$W/boot/boot-r8s-ub13.img"
 	[ "$(sha256sum < "$W/boot/boot-r8s-ub13.img" | cut -c1-16)" = 4a82c5e3c5db7ab4 ] || { echo "ub13 is not 4a82c5e3" >&2; exit 1; }
+	# the power-on logo, which s20-install-from-pc.sh puts into up_param as the S10e's device zip does: src/s10e-logo
+	# (the same tar rewrite; up_param is the S10e's format) and the S20's pictures, logo.jpg being the S10e's swirl
+	# at 1080x2400; on the S20 since 11-17 (up_param abf985d0)
+	[ "$(od -An -tx1 -j 16 -N 4 "$T/src/s10e-logo" 2>/dev/null | tr -d ' \n')" = 0200b700 ] ||
+		{ echo "no static aarch64 $T/src/s10e-logo: make -C $T/src" >&2; exit 1; }
+	cp "$T/src/s10e-logo" "$W/boot/s10e-logo"; mkdir -p "$W/boot/boot-logo"
+	cp "$G/boot-logo/logo.jpg" "$G/boot-logo/svb_orange.jpg" "$G/boot-logo/booting_warning.jpg" "$W/boot/boot-logo/"
+	[ "$(cd "$W/boot/boot-logo" && cat logo.jpg svb_orange.jpg booting_warning.jpg | sha256sum | cut -c1-16)" = e05fc7e1b43ad160 ] ||
+		{ echo "$G/boot-logo: not the S20's pictures of 11-17" >&2; exit 1; }
 	DESC="Galaxy S20 FE (r8s, G780F): the modules of kernel #51 (7.2.15-r8s+, in BOOT with U-Boot ub13), Wi-Fi and Bluetooth firmware, the modem stack, sleep, the quiet boot, the r8s settings (USB network, watchdog, sensors, UCM, panel cutout, GPU)"
 	;;
 *) echo "unknown device $DEV" >&2; exit 1 ;;
