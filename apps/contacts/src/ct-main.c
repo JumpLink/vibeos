@@ -306,7 +306,7 @@ on_contact_picked (GPtrArray *uids, gpointer data)
 {
   PickRequest *request = data;
   CtEntry *entry = uids->len ? ct_store_lookup (store, uids->pdata[0]) : NULL;
-  g_autofree char *vcard = entry ? e_vcard_to_string (E_VCARD (entry->contact), EVC_FORMAT_VCARD_30) : NULL;
+  g_autofree char *vcard = entry ? e_vcard_convert_to_string (E_VCARD (entry->contact), E_VCARD_VERSION_30) : NULL;
 
   if (entry)
     answer (request, entry->uid, vcard);

@@ -101,7 +101,7 @@ ct_vcard_export (GPtrArray *contacts)
       if (!e_vcard_get_attribute (E_VCARD (copy), "X-SKYPE-USERNAME"))
         rename_property (E_VCARD (copy), EVC_X_SKYPE, "X-SKYPE-USERNAME", TRUE);
       e_vcard_remove_attributes (E_VCARD (copy), NULL, EVC_X_BOOK_UID);
-      text = e_vcard_to_string (E_VCARD (copy), EVC_FORMAT_VCARD_30);
+      text = e_vcard_convert_to_string (E_VCARD (copy), E_VCARD_VERSION_30);
       g_string_append (out, text);
       /* EVCard ends a card without a line break: the next BEGIN must start a line */
       if (!g_str_has_suffix (text, "\r\n"))

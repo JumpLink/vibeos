@@ -145,7 +145,9 @@ static Contact *
 contact_from_econtact (Contacts *self, EContact *econtact)
 {
   Contact *contact = g_new0 (Contact, 1);
-  g_autolist(EVCardAttribute) tels = e_contact_get_attributes (econtact, E_CONTACT_TEL);
+  /* the attributes are the contact's: only the list is freed */
+  g_autoptr (GList) tels = e_vcard_get_attributes_by_name (E_VCARD (econtact),
+                                                           e_contact_vcard_attribute (E_CONTACT_TEL));
   EContactPhoto *photo = e_contact_get (econtact, E_CONTACT_PHOTO);
 
   contact->uid = e_contact_get (econtact, E_CONTACT_UID);

@@ -255,7 +255,7 @@ test_items_round_trip (void)
       ct_contact_set_items (contact, kind, items);
       /* through the vCard text and back, as the address book stores it */
       {
-        g_autofree char *text = e_vcard_to_string (E_VCARD (contact), EVC_FORMAT_VCARD_30);
+        g_autofree char *text = e_vcard_convert_to_string (E_VCARD (contact), E_VCARD_VERSION_30);
         g_autoptr(EContact) reread = e_contact_new_from_vcard (text);
 
         back = ct_contact_get_items (reread, kind);
