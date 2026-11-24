@@ -1,4 +1,5 @@
 usr/bin/vibeos-compass
 usr/share/applications/vibeos.Compass.desktop
+usr/share/dbus-1/services/vibeos.Compass.service
 usr/share/icons/hicolor/scalable/apps/vibeos.Compass.svg
 usr/share/locale/*/LC_MESSAGES/vibeos-compass.mo

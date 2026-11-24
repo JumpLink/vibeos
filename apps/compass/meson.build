@@ -11,6 +11,10 @@ executable('vibeos-compass', 'main.c', dependencies: deps, install: true)
 i18n = import('i18n')
 i18n.merge_file(input: 'data/vibeos.Compass.desktop.in', output: 'vibeos.Compass.desktop', type: 'desktop',
                 po_dir: 'po', install: true, install_dir: get_option('datadir') / 'applications')
+# started by its D-Bus name, with the session's activation environment (a language changed in Settings)
+configure_file(input: 'data/vibeos.Compass.service.in', output: 'vibeos.Compass.service',
+               configuration: {'bindir': get_option('prefix') / get_option('bindir')},
+               install_dir: get_option('datadir') / 'dbus-1/services')
 install_data('data/vibeos.Compass.svg', install_dir: get_option('datadir') / 'icons/hicolor/scalable/apps')
 
 # the translations, and their checks

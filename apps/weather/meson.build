@@ -15,6 +15,10 @@ resources = gnome.compile_resources('wx-resources', 'src/vibeos-weather.gresourc
 executable('vibeos-weather', 'src/main.c', 'src/wx-menu.c', resources, dependencies: deps, install: true)
 i18n.merge_file(input: 'data/vibeos.Weather.desktop.in', output: 'vibeos.Weather.desktop', type: 'desktop', po_dir: 'po',
                 install: true, install_dir: get_option('datadir') / 'applications')
+# started by its D-Bus name, with the session's activation environment (a language changed in Settings)
+configure_file(input: 'data/vibeos.Weather.service.in', output: 'vibeos.Weather.service',
+               configuration: {'bindir': get_option('prefix') / get_option('bindir')},
+               install_dir: get_option('datadir') / 'dbus-1/services')
 install_data('data/vibeos.Weather.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')
 # vibeos.Weather: the city chosen in Set City
 install_data('data/vibeos.Weather.gschema.xml', install_dir: get_option('datadir') / 'glib-2.0/schemas')

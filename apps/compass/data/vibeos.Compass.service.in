@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=vibeos.Compass
+Exec=@bindir@/vibeos-compass --gapplication-service

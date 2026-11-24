@@ -22,6 +22,10 @@ executable('vibeos-browser', 'src/main.c', 'src/nb-app.c', 'src/nb-tab.c', 'src/
            'src/nb-refresh.c', 'src/nb-switcher.c', 'src/store.c', resources, dependencies: deps, install: true)
 i18n.merge_file(input: 'data/vibeos.Browser.desktop.in', output: 'vibeos.Browser.desktop', type: 'desktop',
                 po_dir: 'po', install: true, install_dir: get_option('datadir') / 'applications')
+# started by its D-Bus name, with the session's activation environment (a language changed in Settings)
+configure_file(input: 'data/vibeos.Browser.service.in', output: 'vibeos.Browser.service',
+               configuration: {'bindir': get_option('prefix') / get_option('bindir')},
+               install_dir: get_option('datadir') / 'dbus-1/services')
 install_data('data/vibeos.Browser.svg', install_dir: get_option('datadir') / 'icons/hicolor/scalable/apps')
 
 # the translations, and their checks

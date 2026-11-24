@@ -7,5 +7,6 @@ Icon=vibeos.Compass
 Terminal=false
 Categories=Utility;
 StartupNotify=false
+DBusActivatable=true
 X-Purism-FormFactor=Workstation;Mobile;
 X-GNOME-UsesNotifications=false

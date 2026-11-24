@@ -5,7 +5,9 @@
  *   vibeos-browser --incognito     a new incognito tab (the launcher's long-press "New incognito tab")
  *   vibeos-browser --shortcut=ID URL   a home-screen shortcut (Add shortcut)
  *
- * One process holds every tab; a second start hands its command line to it. */
+ * One process holds every tab; a second start hands its command line to it. Started by its D-Bus name instead (the
+ * desktop entry is DBusActivatable), the same arrive as the service's Activate, Open (the URLs) and the action
+ * app.new-incognito-tab (the desktop entry's action of that name). */
 #include "nb.h"
 
 #include <gst/gst.h>
@@ -35,6 +37,24 @@ on_activate (GApplication *app, gpointer data)
 }
 
 /* an argument as a URL: a URI as it is, a file that exists as its file: URI, anything else through nb_smart_url */
+/* URLs from the D-Bus service's Open: each in a new tab, as vibeos-browser URL… */
+static void
+on_open (GApplication *app, GFile **files, int n_files, const char *hint, gpointer data)
+{
+  g_autoptr (GPtrArray) urls = g_ptr_array_new_with_free_func (g_free);
+  for (int i = 0; i < n_files; i++)
+    g_ptr_array_add (urls, g_file_get_uri (files[i]));
+  g_ptr_array_add (urls, NULL);
+  nb_app_open ((const char *const *) urls->pdata, FALSE, NULL);
+}
+
+/* the desktop entry's "New incognito tab", as vibeos-browser --incognito */
+static void
+on_new_incognito_tab (GSimpleAction *action, GVariant *parameter, gpointer data)
+{
+  nb_app_open (NULL, TRUE, NULL);
+}
+
 static char *
 arg_to_url (GApplicationCommandLine *cmd, const char *arg)
 {
@@ -116,7 +136,8 @@ main (int argc, char **argv)
   textdomain (GETTEXT_PACKAGE);
   /* before anything starts a thread or a web process */
   web_video_in_software ();
-  g_autoptr (GtkApplication) app = gtk_application_new (NB_APP_ID, G_APPLICATION_HANDLES_COMMAND_LINE);
+  g_autoptr (GtkApplication) app =
+    gtk_application_new (NB_APP_ID, G_APPLICATION_HANDLES_COMMAND_LINE | G_APPLICATION_HANDLES_OPEN);
   static const GOptionEntry entries[] = {
     { "incognito", 0, 0, G_OPTION_ARG_NONE, NULL, N_("Open an incognito tab"), NULL },
     { "shortcut", 0, 0, G_OPTION_ARG_STRING, NULL, N_("Open a home-screen shortcut"), N_("ID") },
@@ -125,9 +146,12 @@ main (int argc, char **argv)
   };
 
   g_application_add_main_option_entries (G_APPLICATION (app), entries);
+  static const GActionEntry actions[] = { { "new-incognito-tab", on_new_incognito_tab, NULL, NULL, NULL, { 0 } } };
+  g_action_map_add_action_entries (G_ACTION_MAP (app), actions, G_N_ELEMENTS (actions), NULL);
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   g_signal_connect (app, "shutdown", G_CALLBACK (on_shutdown), NULL);
   g_signal_connect (app, "activate", G_CALLBACK (on_activate), NULL);
   g_signal_connect (app, "command-line", G_CALLBACK (on_command_line), NULL);
+  g_signal_connect (app, "open", G_CALLBACK (on_open), NULL);
   return g_application_run (G_APPLICATION (app), argc, argv);
 }
