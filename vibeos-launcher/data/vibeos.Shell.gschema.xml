@@ -119,8 +119,8 @@
     </key>
     <key name="power-hold-agent" type="b">
       <default>true</default>
-      <summary>Hold power button for Agent</summary>
-      <description>On: holding the power key for half a second has Agent listen until the key is let go (on a locked phone Agent only reads until the phone is unlocked), and the power menu is the power key and volume up together. Off: holding the power key opens the power menu, as it did before. Without the Agent app installed, holding the key opens the power menu.</description>
+      <summary>Hold power button for Vibe</summary>
+      <description>On: holding the power key for half a second has Vibe listen until the key is let go (on a locked phone Vibe only reads until the phone is unlocked), and the power menu is the power key and volume up together. Off: holding the power key opens the power menu, as it did before. Without Vibe installed, holding the key opens the power menu.</description>
     </key>
     <key name="side-key-app" type="s">
       <default>'vibeos.Camera.desktop'</default>
