@@ -9,9 +9,10 @@
  * or always with Announce calls on, when Agent keeps running with no window (--background starts it so, with the
  * session, data/vibeos.Agent-announce.desktop).
  *
- * The shell has Agent listen while the power key is held (its "hold" action: extension/keylaunch.js), its window
- * opened, or on a locked phone with no window, answering aloud and only reading until the phone is unlocked. A hold
- * the shell gives up ("hold-cancel": the key became part of a chord) sends nothing. */
+ * The shell has Agent listen from when the power key is held (its "hold" action: extension/keylaunch.js) until the
+ * speaker pauses after it is let go, its window opened, or on a locked phone with no window, answering aloud and only
+ * reading until the phone is unlocked. A hold the shell gives up ("hold-cancel": the key became part of a chord)
+ * sends nothing. */
 #include "dictate-calls.h"
 #include "dictate-device.h"
 #include "dictate-window.h"
@@ -137,8 +138,8 @@ on_activate (GApplication *app, gpointer data)
 }
 
 /* "hold" (bb): the power key held (pressed) and let go, the phone locked or not (the shell's extension/keylaunch.js).
- * Held, Agent listens until it is let go: its window opened on an unlocked phone (the shell opens it too), none on a
- * locked one, where Agent answers aloud and only reads */
+ * Held, Agent listens, and let go, listens on until the speaker pauses: its window opened on an unlocked phone (the
+ * shell opens it too), none on a locked one, where Agent answers aloud and only reads */
 static void
 on_hold (GSimpleAction *action, GVariant *parameter, gpointer data)
 {

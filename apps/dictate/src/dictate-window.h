@@ -14,8 +14,9 @@ G_BEGIN_DECLS
 GtkWidget *dictate_window_new              (GtkApplication *app, gboolean agent);
 /* what the microphone FAB does: start listening, or stop */
 void       dictate_window_toggle_dictation (GtkWidget *window);
-/* the power key held (`held`) and let go: Agent listens in between, then answers; `locked`: the phone is locked, and
- * Agent only reads until dictate_window_unlocked () (or a hold on the unlocked phone) */
+/* the power key held (`held`) and let go: Agent listens from the hold, through any pause while the key is held, and
+ * once it is let go until the speaker pauses; then answers. `locked`: the phone is locked, and Agent only reads
+ * until dictate_window_unlocked () (or a hold on the unlocked phone) */
 void       dictate_window_hold             (GtkWidget *window, gboolean held, gboolean locked);
 /* the hold given up while the key is still down (it became part of a key chord): listening stops, nothing is sent */
 void       dictate_window_hold_cancel      (GtkWidget *window);
