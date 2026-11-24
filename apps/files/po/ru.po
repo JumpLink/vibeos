@@ -381,7 +381,7 @@ msgstr "Загрузки"
 
 #: src/fm-home.c
 msgid "Pictures"
-msgstr "Изображения"
+msgstr "Изобра­жения"
 
 # android: Framework keyboard_shortcut_group_applications_music (short)
 #: src/fm-home.c
@@ -396,7 +396,7 @@ msgstr "Видео"
 # android: DocumentsUI chip_title_documents
 #: src/fm-home.c
 msgid "Documents"
-msgstr "Документы"
+msgstr "Доку­менты"
 
 # android: DocumentsUI root_info_header_recent
 #: src/fm-home.c src/fm-places.c
@@ -405,11 +405,11 @@ msgstr "Недавние файлы"
 
 #: src/fm-home.c src/fm-window.c
 msgid "Remote"
-msgstr "Удаленные"
+msgstr "Уда­лен­ные"
 
 #: src/fm-home.c src/fm-places.c src/fm-remote-page.c
 msgid "Local Network"
-msgstr "Локальная сеть"
+msgstr "Локаль­ная сеть"
 
 #: src/fm-jobs.c
 msgid "Overwrite"

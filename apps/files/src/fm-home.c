@@ -123,10 +123,12 @@ tile (FmHome *home, FmGlyph glyph, const char *name, GFile *location, GtkWidget 
 
   gtk_label_set_xalign (GTK_LABEL (label), 0.5f);
   gtk_label_set_xalign (GTK_LABEL (info), 0.5f);
-  /* a name too wide for the tile, at a large font size, goes on to a second line, and only then is cut short */
+  /* a name too wide for the tile, at a large font size, goes on to a second line, and only then is cut short. A word
+   * wider than the tile breaks too (where a translation puts a soft hyphen, if it does): left whole, it would set the
+   * three tiles' width, and the window's, past the phone's */
   gtk_label_set_single_line_mode (GTK_LABEL (label), FALSE);
   gtk_label_set_wrap (GTK_LABEL (label), TRUE);
-  gtk_label_set_wrap_mode (GTK_LABEL (label), PANGO_WRAP_WORD);
+  gtk_label_set_wrap_mode (GTK_LABEL (label), PANGO_WRAP_WORD_CHAR);
   gtk_label_set_lines (GTK_LABEL (label), 2);
   gtk_label_set_justify (GTK_LABEL (label), GTK_JUSTIFY_CENTER);
   gtk_widget_set_halign (icon, GTK_ALIGN_CENTER);

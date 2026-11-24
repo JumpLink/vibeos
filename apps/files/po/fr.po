@@ -379,7 +379,7 @@ msgstr "Historique"
 # android: DocumentsUI downloads_label
 #: src/fm-home.c
 msgid "Downloads"
-msgstr "Téléchargements"
+msgstr "Télé­charge­ments"
 
 #: src/fm-home.c
 msgid "Pictures"
@@ -398,7 +398,7 @@ msgstr "Vidéos"
 # android: DocumentsUI chip_title_documents
 #: src/fm-home.c
 msgid "Documents"
-msgstr "Documents"
+msgstr "Docu­ments"
 
 # android: DocumentsUI root_info_header_recent
 #: src/fm-home.c src/fm-places.c
