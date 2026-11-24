@@ -194,10 +194,11 @@ export class Power extends Signals.EventEmitter {
         if (pressed) {
             this._pressedAt = now;
             this._pressedTime = at;
-            // with volume down, a screenshot (chord.js); the press then does nothing more
-            this._chord?.powerDown(this.interactive);
-            // a press with the menu up closes it; the key then does what it would have
+            // a press with the menu up closes it; the key then does what it would have. First: after the chord, it
+            // closed the menu that this very press opened with volume up held (11-24)
             this._menu?.closeNow();
+            // with a volume key, a screenshot or the power menu (chord.js); the press then does nothing more
+            this._chord?.powerDown(this.interactive);
             // the key wakes the screen as it goes down, not on its release
             this._wokeByPress = !this.interactive;
             if (this._wokeByPress)
@@ -253,9 +254,14 @@ export class Power extends Signals.EventEmitter {
         this._menu?.open();
     }
 
-    // power and volume up together (chord.js): the power menu, and the key held on does nothing more
+    // power and volume up together (chord.js): the power menu, and the key held on does nothing more. Agent, listening
+    // since the key was held long enough, stops without acting
     _chordMenu() {
         this._cancelLongPress();
+        if (this._agentHeld) {
+            this._agentHeld = false;
+            this.doublePress?.cancelHold();
+        }
         if (!this.interactive)
             return;
         haptic();
