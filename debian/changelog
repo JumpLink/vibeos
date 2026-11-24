@@ -1,9 +1,30 @@
 vibeos (1:0.1.4.1) unstable; urgency=medium
 
   * Built against evolution-data-server 3.62, which is in sid: Contacts,
-    Phone, Messages, Calendar and Agent no longer load EDS 3.56's
+    Phone, Messages, Calendar and Vibe no longer load EDS 3.56's
     libedataserver beside 3.62's, and 0.1.4's hold of EDS can be lifted.
-    The build requires EDS 3.62 now.
+    The build requires EDS 3.62 now. vCards are written and read through
+    3.62's API (e_vcard_convert_to_string, e_vcard_get_attributes_by_name),
+    which replaced the calls 3.56 had.
+  * Agent is called Vibe where the user sees it: the launcher and the app
+    list (a search for Agent still finds it), its window, its settings,
+    Settings' Gestures and the package's description. The ids stay
+    (vibeos.Agent, vibeos.Dictate, power-hold-agent).
+  * Vibe: a power key hold listens on after the key is let go, until the
+    speaker pauses, as Android's assistant does after its long press; a
+    hold the shell gives up for the power menu sends nothing.
+  * Shell: power and volume up open the power menu when pressed as a hand
+    does, either key first and held.
+  * Shell: a notification's icon is its app's logo in the status bar, on
+    the lock screen and on the always-on display, not a white square.
+  * Shell: a fullscreen app keeps clear of the camera hole, as on Android.
+  * Shell: "Wireless charging" on a charging pad.
+  * Shell: vibeos.Shell has the screen's Brightness and ConfirmOwner, the
+    owner's PIN or pattern asked for by an app.
+  * Keyboard: one closed under a swipe goes, and Back or a touch takes away
+    one left on the screen. Console keeps its size and the keys slide in
+    over it (vibeos.Shell keyboard-slide-apps, or X-Vibeos-Keyboard=slide
+    in an app's desktop file).
   * Video: full screen, by a button beside the menu (f and F11 too), and by
     turning the screen sideways; full screen, a film shot the way the screen
     is turned is cropped to fill it, and one shot the other way stays
@@ -11,11 +32,11 @@ vibeos (1:0.1.4.1) unstable; urgency=medium
   * Video: a tap on a control's button no longer hides the controls.
   * Shell: desktop files are read through GioUnix, so GJS no longer warns
     that Gio.DesktopAppInfo has moved.
-  * Agent: the call announcer's autostart entry leaves out
+  * Vibe: the call announcer's autostart entry leaves out
     X-GNOME-Autostart-Phase, which gnome-session warned about at login.
   * Navi: the package's changelog entry is wrapped at 80 columns.
 
- -- pulpoff <pashkovsky@gmail.com>  Tue, 24 Nov 2026 01:25:43 +0100
+ -- pulpoff <pashkovsky@gmail.com>  Tue, 24 Nov 2026 04:53:21 +0100
 
 vibeos (1:0.1.4) unstable; urgency=medium
 
