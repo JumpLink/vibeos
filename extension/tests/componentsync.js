@@ -39,7 +39,10 @@ class Component {
         this.enabled = true;
     }
 
+    // components/keyring.js's disable() throws when the component is not on (its prompt is already being cancelled)
     disable() {
+        if (!this.enabled)
+            throw new Error('disabled twice');
         this.enabled = false;
     }
 }
@@ -145,6 +148,12 @@ const settle = async () => {
 };
 
 let failed = 0;
+const errors = [];
+const logged = globalThis.logError;
+globalThis.logError = (e, ...rest) => {
+    errors.push(e);
+    logged(e, ...rest);
+};
 const check = (what, ok) => {
     print(`${ok ? 'ok' : 'FAILED'}: ${what}`);
     if (!ok)
@@ -183,6 +192,12 @@ async function run(name, withSync, reverse) {
     mode.set(LOCKED, true);
     await settle();
     check(`${name}: locked again, the keyring off`, !manager._allComponents.keyring.enabled);
+    // syncs with nothing changed turn nothing off again
+    mode.set(LOCKED, true);
+    await settle();
+    mode.set(LOCKED, true);
+    await settle();
+    check(`${name}: repeated syncs, no component turned off twice`, errors.length === 0);
     sync.destroy();
     check(`${name}: destroyed, the manager's own update back`,
         manager._sessionModeUpdated === Manager.prototype._sessionModeUpdated &&

@@ -65,6 +65,7 @@ export class ComponentSync {
         this._unwatch = null;
         this._running = null;
         this._again = false;
+        this._off = new Set();
         this._update = manager._sessionModeUpdated;
         manager._sessionModeUpdated = () => this._sync();
 
@@ -74,6 +75,9 @@ export class ComponentSync {
             enumerable: true,
             get: () => this._enabled,
             set: value => {
+                // ones the manager turned off itself, and ones it may have turned on, change what is off
+                this._enabled.filter(name => !value.includes(name)).forEach(name => this._off.add(name));
+                value.forEach(name => this._off.delete(name));
                 this._enabled = value;
                 if (!this._running)
                     this._sync().catch(logError);
@@ -90,8 +94,15 @@ export class ComponentSync {
     _sweep() {
         const want = this._wanted();
         for (const [name, component] of Object.entries(this._manager._allComponents ?? {})) {
-            if (want.includes(name))
+            if (want.includes(name)) {
+                this._off.delete(name);
                 continue;
+            }
+            // a component is turned off once, not on every sync: the keyring's disable() throws on a second call while
+            // its prompt is still being cancelled (components/keyring.js)
+            if (this._off.has(name))
+                continue;
+            this._off.add(name);
             // one that fails to turn off keeps none of the others on
             try {
                 component.disable();
@@ -114,6 +125,7 @@ export class ComponentSync {
         if (keyring._registered === false && !this._wanted().includes('keyring')) {
             keyring.enable();
             keyring.disable();
+            this._off.add('keyring');
         }
     }
 
