@@ -20,6 +20,18 @@ License: CC0-1.0
 Comment:
  The points of interest's icons are Maki's; see data/poi/LICENSE-maki.txt.
 
+Files: ../dictate/src/dictate-ru*
+Copyright: 2026 Evgeniy Chetvertkov (tiny-voca-ru)
+           2026 Muhammed Nazeem (tiny-voca)
+           2026 pulpoff <pashkovsky@gmail.com> (the port to C)
+License: Apache-2.0
+Comment:
+ The Russian voice's text front end, shared with Agent: a port to C of
+ tiny-voca-ru's (https://github.com/yilbegan/tiny-voca-ru, version 0.2.1),
+ which is based on tiny-voca (https://github.com/n4ze3m/tiny-voca). Its
+ stress data, ruaccent's (MIT License), and the voice are downloaded, not
+ shipped.
+
 Files: maplibre-native/*
 Copyright: 2021 MapLibre contributors
            2018-2021 MapTiler.com

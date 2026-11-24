@@ -252,7 +252,7 @@ push (NaviVoice *self, JobKind kind, const char *model, const char *language, co
 
 /* ---- the voices on the phone ---- */
 
-/* the Piper voice for `language` (short) where Agent's voices are (dictate_voice_find_piper): a voice downloaded in
+/* the voice for `language` (short) where Agent's voices are (dictate_voice_find): a voice downloaded in
  * either app; NULL for none. The answers are kept until navi_voice_rescan (). */
 static const char *
 find_model (NaviVoice *self, const char *language)
@@ -261,7 +261,7 @@ find_model (NaviVoice *self, const char *language)
   const char *known = g_hash_table_lookup (self->models, language);
   if (known)
     return *known ? known : NULL;
-  char *found = dictate_voice_find_piper (language);
+  char *found = dictate_voice_find (language);
   g_autofree char *name = found ? g_path_get_basename (found) : NULL;
   g_debug ("voice: %s: %s", language, name ? name : "no Piper voice");
   g_hash_table_insert (self->models, g_strdup (language), found ? found : g_strdup (""));
@@ -679,6 +679,11 @@ navi_voice_describe (NaviVoice *self, const char *language)
   g_autofree char *lang = short_language (language);
   const char *model = find_model (self, lang);
   g_clear_pointer (&self->description, g_free);
+  if (model && strstr (model, "/tiny-voca/")) {
+    /* TRANSLATORS: Navi's voice in Russian; tiny-voca is its name */
+    self->description = g_strdup (_("tiny-voca voice, on this device"));
+    return self->description;
+  }
   if (model) {
     /* en_US-lessac-medium.onnx: Lessac */
     g_autofree char *base = g_path_get_basename (model);
