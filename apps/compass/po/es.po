@@ -17,11 +17,11 @@ msgstr ""
 
 #: data/vibeos.Compass.desktop.in main.c
 msgid "Compass"
-msgstr ""
+msgstr "Brújula"
 
 #: data/vibeos.Compass.desktop.in
 msgid "Which way you are facing"
-msgstr ""
+msgstr "Hacia dónde estás mirando"
 
 #. GClueAccuracyLevel: exact (the dial prints tenths of a second)
 #. the dial's radius on an upright phone, which the ticks and pointer are drawn for
@@ -29,24 +29,23 @@ msgstr ""
 #: main.c
 msgctxt "direction"
 msgid "N"
-msgstr ""
+msgstr "N"
 
 #: main.c
 msgctxt "direction"
 msgid "NE"
-msgstr ""
+msgstr "NE"
 
 #: main.c
 msgctxt "direction"
 msgid "E"
-msgstr ""
+msgstr "E"
 
 #: main.c
 msgctxt "direction"
 msgid "SE"
-msgstr ""
+msgstr "SE"
 
-# android: Dialer call_details_seconds_abbreviation (adapted, short)
 #: main.c
 msgctxt "direction"
 msgid "S"
@@ -55,38 +54,42 @@ msgstr "S"
 #: main.c
 msgctxt "direction"
 msgid "SW"
-msgstr ""
+msgstr "SO"
 
 #: main.c
 msgctxt "direction"
 msgid "W"
-msgstr ""
+msgstr "O"
 
 #: main.c
 msgctxt "direction"
 msgid "NW"
-msgstr ""
+msgstr "NO"
 
 #: main.c
 msgid "The sensor service is not running, so the compass cannot be read."
 msgstr ""
+"El servicio de sensores no se está ejecutando, por lo que no se puede leer "
+"la brújula."
 
 #: main.c
 msgid "The compass cannot be read right now."
-msgstr ""
+msgstr "Ahora mismo no se puede leer la brújula."
 
 #: main.c
 msgid ""
 "Hold the device flat, away from metal. Move it in a figure 8 to calibrate."
 msgstr ""
+"Sujeta el dispositivo en horizontal, lejos de objetos metálicos. Muévelo "
+"trazando un 8 para calibrarlo."
 
 #: main.c
 msgid "This device has no compass."
-msgstr ""
+msgstr "Este dispositivo no tiene brújula."
 
 #: main.c
 msgid "Location unavailable"
-msgstr ""
+msgstr "Ubicación no disponible"
 
 # android: Framework permgrouplab_location (short)
 #: main.c
@@ -95,7 +98,7 @@ msgstr "Ubicación"
 
 #: main.c
 msgid "Locating…"
-msgstr ""
+msgstr "Buscando ubicación…"
 
 # android: Framework action_menu_overflow_description (short)
 #: main.c
