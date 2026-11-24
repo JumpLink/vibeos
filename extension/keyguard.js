@@ -612,9 +612,8 @@ export class Keyguard extends Signals.EventEmitter {
         this._pill.width = px(this._pillWidth);
         this._placePill();
         sources.slice(0, sources.length > PILL.max + 1 ? PILL.max : n).forEach((source, k) => {
-            const icon = notificationIcon(source, px(PILL.icon));
+            const icon = notificationIcon(source, px(PILL.icon), {glyph: `rgb(${PILL_ICON.join(', ')})`});
             icon.opacity = 255;
-            icon.style = `color: rgb(${PILL_ICON.join(', ')});`;
             icon.set_position(px(PILL.pad + PILL.slot * k + (PILL.slot - PILL.icon) / 2), px((PILL.h - PILL.icon) / 2));
             this._pill.add_child(icon);
         });
