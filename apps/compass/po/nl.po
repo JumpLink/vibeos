@@ -17,11 +17,11 @@ msgstr ""
 
 #: data/vibeos.Compass.desktop.in main.c
 msgid "Compass"
-msgstr ""
+msgstr "Kompas"
 
 #: data/vibeos.Compass.desktop.in
 msgid "Which way you are facing"
-msgstr ""
+msgstr "Welke kant je op kijkt"
 
 #. GClueAccuracyLevel: exact (the dial prints tenths of a second)
 #. the dial's radius on an upright phone, which the ticks and pointer are drawn for
@@ -29,64 +29,66 @@ msgstr ""
 #: main.c
 msgctxt "direction"
 msgid "N"
-msgstr ""
+msgstr "N"
 
 #: main.c
 msgctxt "direction"
 msgid "NE"
-msgstr ""
+msgstr "NO"
 
 #: main.c
 msgctxt "direction"
 msgid "E"
-msgstr ""
+msgstr "O"
 
 #: main.c
 msgctxt "direction"
 msgid "SE"
-msgstr ""
+msgstr "ZO"
 
-# android: Dialer call_details_seconds_abbreviation (adapted, short)
 #: main.c
 msgctxt "direction"
 msgid "S"
-msgstr "S"
+msgstr "Z"
 
 #: main.c
 msgctxt "direction"
 msgid "SW"
-msgstr ""
+msgstr "ZW"
 
 #: main.c
 msgctxt "direction"
 msgid "W"
-msgstr ""
+msgstr "W"
 
 #: main.c
 msgctxt "direction"
 msgid "NW"
-msgstr ""
+msgstr "NW"
 
 #: main.c
 msgid "The sensor service is not running, so the compass cannot be read."
 msgstr ""
+"De sensorservice draait niet, dus het kompas kan niet worden uitgelezen."
 
 #: main.c
 msgid "The compass cannot be read right now."
-msgstr ""
+msgstr "Het kompas kan nu niet worden uitgelezen."
 
 #: main.c
 msgid ""
 "Hold the device flat, away from metal. Move it in a figure 8 to calibrate."
 msgstr ""
+"Houd het apparaat plat, uit de buurt van metaal. Beweeg het in een 8-vorm om "
+"te kalibreren."
 
 #: main.c
 msgid "This device has no compass."
-msgstr ""
+msgstr "Dit apparaat heeft geen kompas."
 
 #: main.c
 msgid "Location unavailable"
-msgstr ""
+msgstr "Locatie niet beschikbaar"
 
 # android: Framework permgrouplab_location (short)
 #: main.c
@@ -95,7 +97,7 @@ msgstr "Locatie"
 
 #: main.c
 msgid "Locating…"
-msgstr ""
+msgstr "Locatie bepalen…"
 
 # android: Framework action_menu_overflow_description (short)
 #: main.c

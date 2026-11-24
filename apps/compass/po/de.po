@@ -17,11 +17,11 @@ msgstr ""
 
 #: data/vibeos.Compass.desktop.in main.c
 msgid "Compass"
-msgstr ""
+msgstr "Kompass"
 
 #: data/vibeos.Compass.desktop.in
 msgid "Which way you are facing"
-msgstr ""
+msgstr "Wohin du gerade schaust"
 
 #. GClueAccuracyLevel: exact (the dial prints tenths of a second)
 #. the dial's radius on an upright phone, which the ticks and pointer are drawn for
@@ -29,24 +29,23 @@ msgstr ""
 #: main.c
 msgctxt "direction"
 msgid "N"
-msgstr ""
+msgstr "N"
 
 #: main.c
 msgctxt "direction"
 msgid "NE"
-msgstr ""
+msgstr "NO"
 
 #: main.c
 msgctxt "direction"
 msgid "E"
-msgstr ""
+msgstr "O"
 
 #: main.c
 msgctxt "direction"
 msgid "SE"
-msgstr ""
+msgstr "SO"
 
-# android: Dialer call_details_seconds_abbreviation (adapted, short)
 #: main.c
 msgctxt "direction"
 msgid "S"
@@ -55,38 +54,41 @@ msgstr "S"
 #: main.c
 msgctxt "direction"
 msgid "SW"
-msgstr ""
+msgstr "SW"
 
 #: main.c
 msgctxt "direction"
 msgid "W"
-msgstr ""
+msgstr "W"
 
 #: main.c
 msgctxt "direction"
 msgid "NW"
-msgstr ""
+msgstr "NW"
 
 #: main.c
 msgid "The sensor service is not running, so the compass cannot be read."
 msgstr ""
+"Der Sensordienst läuft nicht, daher kann der Kompass nicht ausgelesen werden."
 
 #: main.c
 msgid "The compass cannot be read right now."
-msgstr ""
+msgstr "Der Kompass kann gerade nicht ausgelesen werden."
 
 #: main.c
 msgid ""
 "Hold the device flat, away from metal. Move it in a figure 8 to calibrate."
 msgstr ""
+"Halte das Gerät flach und fern von Metall. Bewege es zum Kalibrieren in Form "
+"einer 8."
 
 #: main.c
 msgid "This device has no compass."
-msgstr ""
+msgstr "Dieses Gerät hat keinen Kompass."
 
 #: main.c
 msgid "Location unavailable"
-msgstr ""
+msgstr "Standort nicht verfügbar"
 
 # android: Framework permgrouplab_location (several translations, short)
 #: main.c
@@ -95,7 +97,7 @@ msgstr "Standort"
 
 #: main.c
 msgid "Locating…"
-msgstr ""
+msgstr "Standort wird ermittelt…"
 
 # android: Framework action_menu_overflow_description (several translations, short)
 #: main.c
