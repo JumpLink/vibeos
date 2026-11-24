@@ -15,7 +15,7 @@
 // edge for back); released past COMMIT_DP it goes, short of it it springs back. A finger resting on a strip for
 // 250 ms without moving is the app's, as back.js gives it back (a game's buttons sit near the edges).
 import Clutter from 'gi://Clutter';
-import Gio from 'gi://Gio';
+import GioUnix from 'gi://GioUnix';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
@@ -215,7 +215,7 @@ export class SidewaysGestures {
     // and a key added since (as Quake's was, with Quake running) is not in it
     _closes(win) {
         const file = Shell.WindowTracker.get_default().get_window_app(win)?.get_app_info()?.get_filename();
-        const info = file ? Gio.DesktopAppInfo.new_from_filename(file) : null;
+        const info = file ? GioUnix.DesktopAppInfo.new_from_filename(file) : null;
         return info?.get_string('X-Phone-Leave') === 'close';
     }
 

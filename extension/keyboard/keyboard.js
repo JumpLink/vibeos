@@ -10,6 +10,7 @@
 // KeyboardSwap puts it in place of the shell's, and back, as vibeos.Shell keyboard says ('vibeos' or 'gnome').
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
+import GioUnix from 'gi://GioUnix';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
@@ -215,7 +216,7 @@ const OVERLAY_KEY = 'X-Vibeos-Keyboard';
 
 export function keyboardOverlays(window) {
     const info = window && Shell.WindowTracker.get_default().get_window_app(window)?.get_app_info();
-    return info instanceof Gio.DesktopAppInfo && info.has_key(OVERLAY_KEY) && info.get_string(OVERLAY_KEY) === 'overlay';
+    return info instanceof GioUnix.DesktopAppInfo && info.has_key(OVERLAY_KEY) && info.get_string(OVERLAY_KEY) === 'overlay';
 }
 
 export const VibeosKeyboard = GObject.registerClass(
