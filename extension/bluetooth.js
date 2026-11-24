@@ -537,6 +537,9 @@ export class Bluetooth {
         const bondedNow = 'Bonded' in props ? names.includes('Bonded') && props.Bonded
             : names.includes('Paired') && props.Paired;
         if (bondedNow) {
+            // a bonding has the user's yes behind it (a question answered here, or Pair tapped in Settings): its
+            // services connect unasked until Trusted is in
+            this._answered.add(path);
             if (this._showing?.device === path)
                 this._closeShown();
             if (!props.Trusted && !props.Blocked) {
