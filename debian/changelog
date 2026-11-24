@@ -1,3 +1,47 @@
+vibeos (1:0.1.4.3) unstable; urgency=medium
+
+  * VibeOS in German, Spanish, French, Italian, Dutch and Russian, as well
+    as English: the phone shell, the lock screen, the launcher, the
+    session and every app. The language picked in Settings applies at
+    once to what starts from then on, and the session starts in it;
+    apps already open change after a restart, which the Language page
+    offers. Dates, times, numbers, units and the first day of the week
+    follow the language and the Formats region. The shell's font has
+    Cyrillic letters.
+  * Long words fit: page titles in Settings and App Installer start large
+    and go under the top bar as the page scrolls, and a title, a tile's
+    name or a label that does not fit is drawn smaller before a word
+    breaks or is cut short.
+  * Bluetooth pairs from anywhere, not only from Settings' Bluetooth page:
+    a car or headset that asks for a PIN, a passkey or a code gets
+    Android's pairing dialog. A request turns the screen on, and on a
+    locked phone the lock screen says what waits on the unlock; a pairing
+    the other device gave up on can be started again from its
+    notification for five minutes. A device paired here is trusted and
+    reconnects by itself, and Settings lets in only paired devices.
+  * A car's hands-free kit gets the phone's calls: it shows the call and
+    the caller, rings, and answers and hangs up with its own buttons
+    (from the next boot after the upgrade).
+  * The status bar shows the Bluetooth icon while a device is connected,
+    and nothing for Bluetooth that is only on.
+  * Video Player pauses when the car or the headphones it plays to go
+    away, as an Android player does.
+  * Phone: Call recording in its settings (Record every call, Announce
+    recording, Storage location) and a Record button on the in-call
+    screen, with the announcement in all seven languages. Recording needs
+    the phone's sound card to offer the call's sound, which no supported
+    phone does yet, so the switch is shown dimmed with the reason.
+  * The assistant is called Vibe. It has a new design, an introduction
+    after an install or update, and new things it can do: the torch and
+    the phone's switches, a web search, a place's opening hours from
+    OpenStreetMap, and a call stays on top while something is asked
+    during it. Russian is spoken by tiny-voca-ru, with a male or a female
+    voice, and the old Russian voice is removed once the new one is in.
+    Voice match is not offered yet.
+  * Terminal in the six languages too.
+
+ -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 00:48:14 +0100
+
 vibeos (1:0.1.4.2) unstable; urgency=medium
 
   * Home always lands on the home screen. The swipe up, back from an app's
