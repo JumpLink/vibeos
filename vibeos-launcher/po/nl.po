@@ -17,7 +17,7 @@ msgstr ""
 
 #: src/apps.c
 msgid "Android Settings"
-msgstr ""
+msgstr "Android-instellingen"
 
 # android: Launcher3 taskbar_drag_to_unpin_title
 #: src/drag.c src/popup.c
@@ -34,12 +34,11 @@ msgstr "Annuleren"
 msgid "Search apps"
 msgstr "Apps zoeken"
 
-# android: Launcher3 all_apps_no_search_results
 #. TRANSLATORS: %s is what was typed into the search; quote it as the language does
 #: src/drawer.c
 #, c-format
 msgid "No apps found matching “%s”"
-msgstr "Er zijn geen apps gevonden die overeenkomen met '%s'"
+msgstr "Geen apps gevonden voor “%s”"
 
 # android: Launcher3 app_info_drop_target_label
 #: src/popup.c
@@ -64,9 +63,8 @@ msgstr "Lijst met apps"
 # android: Launcher3 settings_button_text
 #: src/popup.c
 msgid "Home settings"
-msgstr "Instellingen Start"
+msgstr "Instellingen startscherm"
 
-# android: Launcher3 taskbar_button_home (several translations, short)
 #: src/wl.c
 msgid "Home"
-msgstr "Home"
+msgstr "Startscherm"

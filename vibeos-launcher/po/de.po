@@ -17,7 +17,7 @@ msgstr ""
 
 #: src/apps.c
 msgid "Android Settings"
-msgstr ""
+msgstr "Android-Einstellungen"
 
 # android: Launcher3 taskbar_drag_to_unpin_title
 #: src/drag.c src/popup.c
