@@ -126,7 +126,9 @@ DEPS= DESC= KVER= POSTINST_EXTRA= POSTINST_SH= REGDB_KERNEL= REGDB_RD=
 case $DEV in
 s10e)
 	# The S10e's device stage (device.sh, read from the running phone 11-12..16; kernel 7.2.15-s10e and its 461
-	# modules checked identical to the phone by md5 on 11-16, + updates/exynos9820-decon-kms.ko)
+	# modules checked identical to the phone by md5 on 11-16, + updates/exynos9820-decon-kms.ko). From 0.1.4.3:
+	# clean/device-20261124, whose sleep keeps Bluetooth on (s10e-minimal) and stays awake while Bluetooth audio
+	# runs (s10e-sleepd); its README-stage.txt has the rest
 	ST=${S10E_STAGE:?set S10E_STAGE}
 	K=${S10E_KIT:?set S10E_KIT}
 	(cd "$ST/root" && tar -cf - .) | tar -C "$P" -xpf - --no-same-owner

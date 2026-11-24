@@ -1,16 +1,19 @@
 // Bluetooth's questions (bluetooth.js), as a phone asks them: an alert dialog over a dim, for a PIN or passkey to
-// type, a code to compare or to type on the other device, a yes or no. While the phone is locked the question waits
-// behind a notification, and the dialog opens once it is unlocked (a question is never answered for the user); a lock
-// that comes while a dialog is up puts it back behind one.
+// type, a code to compare or to type on the other device, a yes or no. A question turns the screen on, as Android's
+// pairing request does. While the phone is locked it waits behind an urgent notification and a line on the lock
+// screen, and the dialog opens the moment the phone is unlocked (a question is never answered for the user); a lock
+// that comes while a dialog is up puts it back behind one. A pairing that BlueZ gave up on unanswered (a car waits
+// 30 s for its PIN) leaves a notification once the phone is unlocked, whose tap starts it again from the phone.
 //
-// ask(question) -> {answer, close(), update(entered)}: `answer` resolves to the reply (the PIN typed, the passkey as
-// a number, true) or null for no (Cancel, Don't allow, a notification swiped away); close() takes the question away
-// unanswered (BlueZ cancelled it), resolving null.
+// ask(question) -> {answer, close(reason), update(entered)}: `answer` resolves to the reply (the PIN typed, the
+// passkey as a number, true) or null for no (Cancel, Don't allow, a notification swiped away); close() takes the
+// question away unanswered, resolving null (reason 'canceled': BlueZ gave up on it).
 //
 // The dialog sits in modalDialogGroup, under the on-screen keyboard (the input panel group, which takes input through
 // the dialog's grab), and moves up out of the keyboard's way.
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
@@ -21,6 +24,7 @@ import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import {_} from './l10n.js';
 import {animate, bezier} from './motion.js';
 import {Color, cogl, font, rgba} from './palette.js';
+import {openSettings} from './settings.js';
 import {WIDTH, dp, sp} from './units.js';
 
 // Material 3's alert dialog: 24 dp padding, 28 dp corners, 280-560 dp wide, the headline 24 sp, the text 14 sp,
@@ -350,12 +354,34 @@ class Dialog {
     }
 }
 
-// keyguard: keyguard.js's Keyguard ('changed', showing)
+// how long a pairing BlueZ gave up on can be started again from its notification (a car stays in its pairing mode
+// for a few minutes)
+const RETRY_KEEP_S = 300;
+
+function notice(question) {
+    return (question.kind === 'service'
+        /* TRANSLATORS: the lock screen's line while a Bluetooth device waits to connect; %s is its name */
+        ? _('Unlock to let %s connect')
+        /* TRANSLATORS: the lock screen's line while a Bluetooth device waits to pair; %s is its name */
+        : _('Unlock to pair with %s'))
+        .replace('%s', question.name);
+}
+
+function failed(question) {
+    /* TRANSLATORS: a notification's title when a pairing timed out; %s is the device's name */
+    return _("Couldn't pair with %s").replace('%s', question.name);
+}
+
+// keyguard: keyguard.js's Keyguard ('changed', showing, dismissThen(), setNotice()); power: power.js's Power, set once
+// it exists, which turns the screen on for a question
 export class PairingUI {
     constructor(keyguard) {
         this._keyguard = keyguard;
-        this._current = null;       // {question, dialog, notification, resolve}
+        this.power = null;
+        this._current = null;       // {question, dialog, notification, resolve, answered}
+        this._retry = null;         // a pairing BlueZ gave up on, unanswered: {question, notification, timer}
         this._source = null;
+        this._notice = null;
         keyguard.connectObject('changed', () => this._sync(), this);
     }
 
@@ -365,31 +391,64 @@ export class PairingUI {
 
     ask(question) {
         this._finish(this._current, null);
+        this._dropRetry();
         let resolve;
         const answer = new Promise(r => (resolve = r));
         const current = {question, dialog: null, notification: null, resolve, answered: false};
         this._current = current;
         this._sync();
+        // as Android's pairing request: the screen comes on for it (a car asks once, and waits 30 s at most)
+        this.power?.wakeUp('a Bluetooth request');
         return {
             answer,
-            close: () => this._finish(current, null),
+            close: reason => this._close(current, reason),
             update: () => {},
         };
     }
 
+    // BlueZ took the question away. One that it gave up on before anyone answered (the other device's time ran out,
+    // the phone locked all along) can be started again: a notification does it, posted once the phone is unlocked so
+    // that it shows then
+    _close(current, reason) {
+        const open = this._current === current && !current.answered;
+        this._finish(current, null);
+        if (open && reason === 'canceled' && current.question.retry)
+            this._offerRetry(current.question);
+    }
+
+    // locked: the question behind a notification and a line on the lock screen; unlocked: the dialog, and a pairing
+    // to start again in a notification
     _sync() {
+        const locked = this._keyguard.showing;
         const current = this._current;
-        if (!current)
-            return;
-        if (this._keyguard.showing) {
-            current.dialog?.hide();
-            this._notify(current);
-        } else {
-            this._unnotify(current);
-            if (!current.dialog)
-                current.dialog = new Dialog(current.question, value => this._finish(current, value));
-            current.dialog.show();
+        if (current) {
+            if (locked) {
+                current.dialog?.hide();
+                this._notify(current);
+            } else {
+                this._unnotify(current);
+                if (!current.dialog)
+                    current.dialog = new Dialog(current.question, value => this._finish(current, value));
+                current.dialog.show();
+            }
         }
+        if (this._retry && !locked && !this._retry.notification)
+            this._notifyRetry(this._retry);
+        this._syncNotice();
+    }
+
+    _syncNotice() {
+        let text = null;
+        if (this._keyguard.showing) {
+            if (this._current)
+                text = notice(this._current.question);
+            else if (this._retry)
+                text = failed(this._retry.question);
+        }
+        if (text === this._notice)
+            return;
+        this._notice = text;
+        this._keyguard.setNotice?.(text);
     }
 
     _finish(current, value) {
@@ -403,28 +462,38 @@ export class PairingUI {
         current.dialog = null;
         dialog?.close();
         current.resolve(value);
+        this._syncNotice();
     }
 
-    _notify(current) {
-        if (current.notification)
-            return;
+    _ensureSource() {
         if (!this._source) {
             this._source = new MessageTray.Source({title: _('Bluetooth'),
                 icon: new Gio.ThemedIcon({name: 'bluetooth-active-symbolic'})});
             this._source.connect('destroy', () => (this._source = null));
             Main.messageTray.add(this._source);
         }
+        return this._source;
+    }
+
+    _notify(current) {
+        if (current.notification)
+            return;
+        const source = this._ensureSource();
+        // urgent: past Do Not Disturb, and its icon on the lock screen
         const notification = new MessageTray.Notification({
-            source: this._source,
+            source,
             title: title(current.question),
             /* TRANSLATORS: a Bluetooth device's question waits behind this notification while the phone is locked */
             body: _('Unlock the phone to answer.'),
-            urgency: MessageTray.Urgency.HIGH,
+            urgency: MessageTray.Urgency.CRITICAL,
         });
         current.notification = notification;
         // swiped away: no (a tap unlocks, and the dialog opens then)
         let tapped = false;
-        notification.connect('activated', () => (tapped = true));
+        notification.connect('activated', () => {
+            tapped = true;
+            this._keyguard.dismissThen(() => this._sync());
+        });
         notification.connect('destroy', (_n, reason) => {
             if (current.notification !== notification)
                 return;
@@ -432,7 +501,7 @@ export class PairingUI {
             if (!tapped && reason === MessageTray.NotificationDestroyedReason.DISMISSED)
                 this._finish(current, null);
         });
-        this._source.addNotification(notification);
+        source.addNotification(notification);
     }
 
     _unnotify(current) {
@@ -441,9 +510,72 @@ export class PairingUI {
         notification?.destroy(MessageTray.NotificationDestroyedReason.SOURCE_CLOSED);
     }
 
+    _offerRetry(question) {
+        this._dropRetry();
+        const retry = {question, notification: null, timer: 0};
+        retry.timer = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, RETRY_KEEP_S, () => {
+            retry.timer = 0;
+            this._dropRetry(retry);
+            return GLib.SOURCE_REMOVE;
+        });
+        this._retry = retry;
+        this._sync();
+    }
+
+    // a tap: the pairing again from the phone (its question comes up at once), or, the device forgotten by then,
+    // Settings' Bluetooth page, where it is paired anew
+    _notifyRetry(retry) {
+        const source = this._ensureSource();
+        const notification = new MessageTray.Notification({
+            source,
+            title: failed(retry.question),
+            /* TRANSLATORS: under "Couldn't pair with …": a tap starts the pairing again */
+            body: _('Tap to try again.'),
+            urgency: MessageTray.Urgency.HIGH,
+        });
+        retry.notification = notification;
+        notification.connect('activated', () => {
+            // (the tray takes the notification away itself)
+            retry.notification = null;
+            this._dropRetry(retry);
+            this._keyguard.dismissThen(() => {
+                let started = false;
+                try {
+                    started = retry.question.retry();
+                } catch (e) {
+                    logError(e, 'vibeos: Bluetooth pairing again');
+                }
+                if (!started)
+                    openSettings('bluetooth');
+            });
+        });
+        notification.connect('destroy', () => {
+            if (retry.notification !== notification)
+                return;
+            retry.notification = null;
+            this._dropRetry(retry);
+        });
+        source.addNotification(notification);
+    }
+
+    _dropRetry(retry = this._retry) {
+        if (!retry || this._retry !== retry)
+            return;
+        this._retry = null;
+        if (retry.timer)
+            GLib.source_remove(retry.timer);
+        retry.timer = 0;
+        const notification = retry.notification;
+        retry.notification = null;
+        notification?.destroy(MessageTray.NotificationDestroyedReason.SOURCE_CLOSED);
+        this._syncNotice();
+    }
+
     destroy() {
         this._keyguard.disconnectObject(this);
         this._finish(this._current, null);
+        this._dropRetry();
+        this._keyguard.setNotice?.(null);
         this._source?.destroy();
         this._source = null;
     }

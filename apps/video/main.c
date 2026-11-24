@@ -21,7 +21,11 @@
  * (a phone or tablet turned sideways, a TV) it opens full screen, and turning the screen chooses again: sideways full
  * screen, upright not; the button changes that until the next turn. Full screen, a film shot the way the screen is
  * turned fills it, cropped to the screen's shape (mpv's pan-and-scan), as Android's players zoom a film to fill; one
- * shot the other way (a wide film on an upright phone) stays whole: filled, most of it would be cut away. */
+ * shot the other way (a wide film on an upright phone) stays whole: filled, most of it would be cut away.
+ *
+ * On the session bus the player is an MPRIS one (org.mpris.MediaPlayer2.vibeos.Video), as an Android player has a
+ * media session: what plays and whether it plays, and play, pause and seek from outside. WirePlumber pauses it
+ * there when the car or headphones it plays on go (Android's "becoming noisy"; linking/mpris-pause.lua). */
 #include <epoxy/egl.h>
 #include <epoxy/gl.h>
 #include <glib/gi18n.h>
@@ -60,7 +64,16 @@ typedef struct {
   guint hide_id, tap_id, events_id, shape_id;
   guint inhibit;
   double tap_x;
+  /* MPRIS (see the end): the bus, its object's registrations and name, and what it last told */
+  GDBusConnection *bus;
+  GDBusNodeInfo *mpris_info;
+  guint mpris_root, mpris_player, mpris_name;
+  const char *mpris_status;
+  char *mpris_title;
+  gint64 mpris_length;
 } Player;
+
+static void mpris_sync (Player *p);
 
 /* ---- the controls' icons, drawn as Android's player draws them (Material icons, white) ---- */
 
@@ -331,6 +344,7 @@ drain_events (gpointer data)
       break;
     }
   }
+  mpris_sync (p);
   return G_SOURCE_REMOVE;
 }
 
@@ -1238,6 +1252,7 @@ play_file (Player *p, GFile *file, gboolean mounted)
   const char *args[] = {"loadfile", what, NULL};
   command (p, args);
   show_controls (p, TRUE);
+  mpris_sync (p);
 }
 
 static void
@@ -1257,6 +1272,259 @@ ensure_window (Player *p)
   gtk_window_present (GTK_WINDOW (p->win));
 }
 
+/* ---- MPRIS: org.mpris.MediaPlayer2 and its Player on /org/mpris/MediaPlayer2 ---- */
+
+#define MPRIS_NAME "org.mpris.MediaPlayer2.vibeos.Video"
+#define MPRIS_PATH "/org/mpris/MediaPlayer2"
+#define MPRIS_IFACE "org.mpris.MediaPlayer2"
+#define MPRIS_PLAYER_IFACE "org.mpris.MediaPlayer2.Player"
+#define MPRIS_TRACK "/vibeos/Video/Track"
+#define MPRIS_NO_TRACK "/org/mpris/MediaPlayer2/TrackList/NoTrack"
+
+static const char MPRIS_XML[] =
+  "<node>"
+  " <interface name='org.mpris.MediaPlayer2'>"
+  "  <method name='Raise'/>"
+  "  <method name='Quit'/>"
+  "  <property name='CanQuit' type='b' access='read'/>"
+  "  <property name='CanRaise' type='b' access='read'/>"
+  "  <property name='HasTrackList' type='b' access='read'/>"
+  "  <property name='Identity' type='s' access='read'/>"
+  "  <property name='DesktopEntry' type='s' access='read'/>"
+  "  <property name='SupportedUriSchemes' type='as' access='read'/>"
+  "  <property name='SupportedMimeTypes' type='as' access='read'/>"
+  " </interface>"
+  " <interface name='org.mpris.MediaPlayer2.Player'>"
+  "  <method name='Next'/>"
+  "  <method name='Previous'/>"
+  "  <method name='Pause'/>"
+  "  <method name='PlayPause'/>"
+  "  <method name='Stop'/>"
+  "  <method name='Play'/>"
+  "  <method name='Seek'><arg name='Offset' type='x' direction='in'/></method>"
+  "  <method name='SetPosition'>"
+  "   <arg name='TrackId' type='o' direction='in'/><arg name='Position' type='x' direction='in'/>"
+  "  </method>"
+  "  <method name='OpenUri'><arg name='Uri' type='s' direction='in'/></method>"
+  "  <signal name='Seeked'><arg name='Position' type='x'/></signal>"
+  "  <property name='PlaybackStatus' type='s' access='read'/>"
+  "  <property name='Rate' type='d' access='read'/>"
+  "  <property name='Metadata' type='a{sv}' access='read'/>"
+  "  <property name='Volume' type='d' access='read'/>"
+  "  <property name='Position' type='x' access='read'/>"
+  "  <property name='MinimumRate' type='d' access='read'/>"
+  "  <property name='MaximumRate' type='d' access='read'/>"
+  "  <property name='CanGoNext' type='b' access='read'/>"
+  "  <property name='CanGoPrevious' type='b' access='read'/>"
+  "  <property name='CanPlay' type='b' access='read'/>"
+  "  <property name='CanPause' type='b' access='read'/>"
+  "  <property name='CanSeek' type='b' access='read'/>"
+  "  <property name='CanControl' type='b' access='read'/>"
+  " </interface>"
+  "</node>";
+
+static const char *
+mpris_status (Player *p)
+{
+  if (!p->have_file)
+    return "Stopped";
+  return p->paused || p->ended ? "Paused" : "Playing";
+}
+
+static const char *
+mpris_title (Player *p)
+{
+  return p->have_file && p->title ? gtk_label_get_text (GTK_LABEL (p->title)) : "";
+}
+
+static gint64
+mpris_length (Player *p)
+{
+  return p->have_file && p->duration > 0 ? (gint64) (p->duration * G_USEC_PER_SEC) : 0;
+}
+
+static GVariant *
+mpris_metadata (Player *p)
+{
+  GVariantBuilder b;
+  g_variant_builder_init (&b, G_VARIANT_TYPE_VARDICT);
+  g_variant_builder_add (&b, "{sv}", "mpris:trackid",
+                         g_variant_new_object_path (p->have_file ? MPRIS_TRACK : MPRIS_NO_TRACK));
+  const char *title = mpris_title (p);
+  if (*title)
+    g_variant_builder_add (&b, "{sv}", "xesam:title", g_variant_new_string (title));
+  if (mpris_length (p) > 0)
+    g_variant_builder_add (&b, "{sv}", "mpris:length", g_variant_new_int64 (mpris_length (p)));
+  return g_variant_builder_end (&b);
+}
+
+static GVariant *
+mpris_get (GDBusConnection *bus, const char *sender, const char *path, const char *iface, const char *name,
+           GError **error, gpointer data)
+{
+  Player *p = data;
+  static const char *const none[] = {NULL};
+  static const char *const schemes[] = {"file", "http", "https", "smb", NULL};
+  if (g_str_equal (iface, MPRIS_IFACE)) {
+    if (g_str_equal (name, "CanQuit") || g_str_equal (name, "HasTrackList"))
+      return g_variant_new_boolean (FALSE);
+    if (g_str_equal (name, "CanRaise"))
+      return g_variant_new_boolean (TRUE);
+    if (g_str_equal (name, "Identity"))
+      return g_variant_new_string ("Video Player");
+    if (g_str_equal (name, "DesktopEntry"))
+      return g_variant_new_string (APP_ID);
+    if (g_str_equal (name, "SupportedUriSchemes"))
+      return g_variant_new_strv (schemes, -1);
+    if (g_str_equal (name, "SupportedMimeTypes"))
+      return g_variant_new_strv (none, -1);
+  } else {
+    if (g_str_equal (name, "PlaybackStatus"))
+      return g_variant_new_string (mpris_status (p));
+    if (g_str_equal (name, "Metadata"))
+      return mpris_metadata (p);
+    if (g_str_equal (name, "Position"))
+      return g_variant_new_int64 (p->have_file && p->time > 0 ? (gint64) (p->time * G_USEC_PER_SEC) : 0);
+    if (g_str_equal (name, "Rate") || g_str_equal (name, "Volume") || g_str_equal (name, "MinimumRate") ||
+        g_str_equal (name, "MaximumRate"))
+      return g_variant_new_double (1.0);
+    if (g_str_equal (name, "CanGoNext") || g_str_equal (name, "CanGoPrevious"))
+      return g_variant_new_boolean (FALSE);
+    if (g_str_equal (name, "CanControl"))
+      return g_variant_new_boolean (TRUE);
+    if (g_str_equal (name, "CanPlay") || g_str_equal (name, "CanPause") || g_str_equal (name, "CanSeek"))
+      return g_variant_new_boolean (p->have_file);
+  }
+  g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_PROPERTY, "No property %s", name);
+  return NULL;
+}
+
+static void
+mpris_seek_to (Player *p, double seconds, const char *how)
+{
+  char at[32];
+  g_ascii_dtostr (at, sizeof at, seconds);
+  const char *args[] = {"seek", at, how, NULL};
+  command (p, args);
+}
+
+static void
+mpris_call (GDBusConnection *bus, const char *sender, const char *path, const char *iface, const char *method,
+            GVariant *params, GDBusMethodInvocation *invocation, gpointer data)
+{
+  Player *p = data;
+  if (g_str_equal (method, "Raise")) {
+    ensure_window (p);
+    gtk_window_present (GTK_WINDOW (p->win));
+  } else if (g_str_equal (method, "Pause") || g_str_equal (method, "Stop")) {
+    if (p->have_file && !p->paused) {
+      const char *args[] = {"set", "pause", "yes", NULL};
+      command (p, args);
+    }
+  } else if (g_str_equal (method, "Play")) {
+    if (p->have_file && (p->paused || p->ended))
+      toggle_pause (p);
+  } else if (g_str_equal (method, "PlayPause")) {
+    if (p->have_file)
+      toggle_pause (p);
+  } else if (g_str_equal (method, "Seek")) {
+    gint64 offset;
+    g_variant_get (params, "(x)", &offset);
+    if (p->have_file)
+      mpris_seek_to (p, (double) offset / G_USEC_PER_SEC, "relative+exact");
+  } else if (g_str_equal (method, "SetPosition")) {
+    const char *track;
+    gint64 at;
+    g_variant_get (params, "(&ox)", &track, &at);
+    if (p->have_file && g_str_equal (track, MPRIS_TRACK) && at >= 0 && (p->duration <= 0 || at <= mpris_length (p)))
+      mpris_seek_to (p, (double) at / G_USEC_PER_SEC, "absolute+exact");
+  } else if (g_str_equal (method, "OpenUri")) {
+    const char *uri;
+    g_variant_get (params, "(&s)", &uri);
+    g_autoptr (GFile) file = g_file_new_for_uri (uri);
+    g_application_open (G_APPLICATION (p->app), &file, 1, "");
+  }
+  /* Next, Previous, Quit: nothing (CanGoNext, CanGoPrevious and CanQuit say so) */
+  g_dbus_method_invocation_return_value (invocation, NULL);
+}
+
+static const GDBusInterfaceVTable mpris_vtable = {mpris_call, mpris_get, NULL};
+
+/* what has changed since the last time, to the bus */
+static void
+mpris_sync (Player *p)
+{
+  if (!p->mpris_player)
+    return;
+  const char *status = mpris_status (p);
+  const char *title = mpris_title (p);
+  gint64 length = mpris_length (p);
+  gboolean status_changed = g_strcmp0 (status, p->mpris_status) != 0;
+  gboolean meta_changed = g_strcmp0 (title, p->mpris_title) != 0 || length != p->mpris_length;
+  if (!status_changed && !meta_changed)
+    return;
+  GVariantBuilder changed;
+  g_variant_builder_init (&changed, G_VARIANT_TYPE_VARDICT);
+  if (status_changed) {
+    p->mpris_status = status;
+    g_variant_builder_add (&changed, "{sv}", "PlaybackStatus", g_variant_new_string (status));
+    g_variant_builder_add (&changed, "{sv}", "CanPlay", g_variant_new_boolean (p->have_file));
+    g_variant_builder_add (&changed, "{sv}", "CanPause", g_variant_new_boolean (p->have_file));
+    g_variant_builder_add (&changed, "{sv}", "CanSeek", g_variant_new_boolean (p->have_file));
+  }
+  if (meta_changed) {
+    g_free (p->mpris_title);
+    p->mpris_title = g_strdup (title);
+    p->mpris_length = length;
+    g_variant_builder_add (&changed, "{sv}", "Metadata", mpris_metadata (p));
+  }
+  g_dbus_connection_emit_signal (p->bus, NULL, MPRIS_PATH, "org.freedesktop.DBus.Properties", "PropertiesChanged",
+                                 g_variant_new ("(sa{sv}@as)", MPRIS_PLAYER_IFACE, &changed,
+                                                g_variant_new_strv (NULL, 0)), NULL);
+}
+
+static void
+mpris_start (Player *p)
+{
+  GDBusConnection *bus = g_application_get_dbus_connection (G_APPLICATION (p->app));
+  if (!bus)
+    return;
+  g_autoptr (GError) error = NULL;
+  p->mpris_info = g_dbus_node_info_new_for_xml (MPRIS_XML, &error);
+  if (!p->mpris_info) {
+    g_warning ("MPRIS: %s", error->message);
+    return;
+  }
+  p->bus = g_object_ref (bus);
+  p->mpris_root = g_dbus_connection_register_object (bus, MPRIS_PATH, p->mpris_info->interfaces[0], &mpris_vtable,
+                                                     p, NULL, &error);
+  if (p->mpris_root)
+    p->mpris_player = g_dbus_connection_register_object (bus, MPRIS_PATH, p->mpris_info->interfaces[1],
+                                                         &mpris_vtable, p, NULL, &error);
+  if (!p->mpris_player) {
+    g_warning ("MPRIS: %s", error ? error->message : "not registered");
+    return;
+  }
+  p->mpris_status = mpris_status (p);
+  p->mpris_name = g_bus_own_name_on_connection (bus, MPRIS_NAME, G_BUS_NAME_OWNER_FLAGS_NONE, NULL, NULL, NULL, NULL);
+}
+
+static void
+mpris_stop (Player *p)
+{
+  if (p->mpris_name)
+    g_bus_unown_name (p->mpris_name);
+  p->mpris_name = 0;
+  if (p->mpris_player)
+    g_dbus_connection_unregister_object (p->bus, p->mpris_player);
+  if (p->mpris_root)
+    g_dbus_connection_unregister_object (p->bus, p->mpris_root);
+  p->mpris_player = p->mpris_root = 0;
+  g_clear_pointer (&p->mpris_info, g_dbus_node_info_unref);
+  g_clear_pointer (&p->mpris_title, g_free);
+  g_clear_object (&p->bus);
+}
+
 static void
 on_open (GApplication *app, GFile **files, int n, const char *hint, Player *p)
 {
@@ -1274,15 +1542,17 @@ on_activate (GApplication *app, Player *p)
 }
 
 static void
-on_startup (GApplication *app, gpointer data)
+on_startup (GApplication *app, Player *p)
 {
   vibeos_init_full (VIBEOS_INIT_SCALED_TEXT);
   vibeos_css_load_string (CSS, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
+  mpris_start (p);
 }
 
 static void
 on_shutdown (GApplication *app, Player *p)
 {
+  mpris_stop (p);
   if (p->inhibit)
     gtk_application_uninhibit (p->app, p->inhibit);
   p->inhibit = 0;
@@ -1311,7 +1581,7 @@ main (int argc, char **argv)
   Player p = {.paused = FALSE, .landscape = -1};
   g_autoptr (GtkApplication) app = gtk_application_new (APP_ID, G_APPLICATION_HANDLES_OPEN);
   p.app = app;
-  g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
+  g_signal_connect (app, "startup", G_CALLBACK (on_startup), &p);
   g_signal_connect (app, "activate", G_CALLBACK (on_activate), &p);
   g_signal_connect (app, "open", G_CALLBACK (on_open), &p);
   g_signal_connect (app, "shutdown", G_CALLBACK (on_shutdown), &p);

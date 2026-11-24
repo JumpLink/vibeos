@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-shell\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 20:44+0100\n"
+"POT-Creation-Date: 2026-11-25 00:44+0100\n"
 "PO-Revision-Date: 2026-11-24 19:46+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Dutch\n"
@@ -211,6 +211,25 @@ msgstr "Niet toestaan"
 msgid "Allow"
 msgstr "Toestaan"
 
+#. TRANSLATORS: the lock screen's line while a Bluetooth device waits to connect; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Unlock to let %s connect"
+msgstr "Ontgrendel om %s te laten verbinden"
+
+#. TRANSLATORS: the lock screen's line while a Bluetooth device waits to pair; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Unlock to pair with %s"
+msgstr "Ontgrendel om te koppelen met %s"
+
+# android: SettingsLib bluetooth_pairing_error_message
+#. TRANSLATORS: a notification's title when a pairing timed out; %s is the device's name
+#: pairdialog.js
+#, javascript-format
+msgid "Couldn't pair with %s"
+msgstr "Kan niet koppelen aan %s"
+
 #: pairdialog.js qs.js
 msgid "Bluetooth"
 msgstr "Bluetooth"
@@ -219,6 +238,11 @@ msgstr "Bluetooth"
 #: pairdialog.js
 msgid "Unlock the phone to answer."
 msgstr "Ontgrendel de telefoon om te antwoorden."
+
+#. TRANSLATORS: under "Couldn't pair with …": a tap starts the pairing again
+#: pairdialog.js
+msgid "Tap to try again."
+msgstr "Tik om het opnieuw te proberen."
 
 #: powermenu.js
 msgid "Lockdown"

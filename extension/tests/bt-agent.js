@@ -48,6 +48,7 @@ const TYPES = {
 
 const DEVICE_XML = `<node><interface name="org.bluez.Device1">
   <method name="Connect"/>
+  <method name="Pair"/>
   <method name="CancelPairing"/>
   <property name="Alias" type="s" access="read"/>
   <property name="Name" type="s" access="read"/>
@@ -98,10 +99,12 @@ class Props {
         this.set(name, value);
     }
 
-    // a change BlueZ makes, sent as PropertiesChanged
+    // a change BlueZ makes, sent as PropertiesChanged at once, as BlueZ sends each (GJS holds them for an idle, where
+    // a change and its undoing made before it went out as none: the agent never saw the car connect, nor drop)
     set(name, value) {
         this.values[name] = value;
         this.impl.emit_property_changed(name, new GLib.Variant(TYPES[name], value));
+        this.impl.flush();
     }
 
     variants() {
@@ -118,6 +121,7 @@ class Device extends Props {
         this.connects = 0;
         this.connectResults = [];
         this.cancelPairings = 0;
+        this.pairs = 0;
         this.trustWrites = [];
     }
 
@@ -136,6 +140,14 @@ class Device extends Props {
         }
         invocation.return_value(null);
         this.set('Connected', true);
+    }
+
+    // paired from the phone (the agent's question answered at once)
+    PairAsync(_params, invocation) {
+        this.pairs++;
+        invocation.return_value(null);
+        this.set('Paired', true);
+        this.set('Bonded', true);
     }
 
     CancelPairingAsync(_params, invocation) {
@@ -192,7 +204,8 @@ const keyboard = new Device('00_00_00_00_00_03', {Alias: 'Keyboard', UUIDs: [HID
     Trusted: true});
 const newCar = new Device('00_00_00_00_00_04', {Alias: 'New car', UUIDs: [HFP, A2DP_SINK]});
 const speaker = new Device('00_00_00_00_00_05', {Alias: 'Speaker', UUIDs: [A2DP_SINK]});
-const devices = [car, headset, keyboard, newCar, speaker];
+const stereo = new Device('00_00_00_00_00_06', {Alias: 'Stereo', UUIDs: [HFP, A2DP_SINK]});
+const devices = [car, headset, keyboard, newCar, speaker, stereo];
 const manager = new Manager();
 
 const objectManager = {
@@ -250,8 +263,9 @@ const ui = {
         const handle = {
             question, answer, closed: false, entered: null,
             reply: value => resolve(value),
-            close: () => {
+            close: reason => {
                 handle.closed = true;
+                handle.reason = reason ?? null;
                 resolve(null);
             },
             update: entered => (handle.entered = entered),
@@ -310,6 +324,8 @@ async function main() {
     await agentCall('Cancel', null, null);
     r = await reply;
     check(cancelled.closed && r.error === 'org.bluez.Error.Canceled', 'Cancel closes the dialog');
+    check(cancelled.reason === 'canceled' && typeof cancelled.question.retry === 'function',
+        'the dialog told BlueZ gave up, and the pairing can be started again');
 
     // a code to compare
     reply = agentCall('RequestConfirmation', '(ou)', [newCar.path, 1234], null);
@@ -323,6 +339,7 @@ async function main() {
     reply = agentCall('AuthorizeService', '(os)', [speaker.path, HFP.toUpperCase()], null);
     await waitFor(() => ui.questions.length === 5, 'the service question');
     check(ui.last.question.kind === 'service' && ui.last.question.uuid === HFP, 'an unpaired device\'s service asked');
+    check(!ui.last.question.retry, 'a service question is no pairing to start again');
     ui.last.reply(null);
     r = await reply;
     check(r.error === 'org.bluez.Error.Rejected', 'Don\'t allow refuses it');
@@ -406,6 +423,13 @@ async function main() {
     car.drop('org.bluez.Reason.Remote');
     await sleep(1200);
     check(car.connects === before + TIMING.retry.length, 'retries give up after their last step');
+
+    // a pairing BlueZ gave up on, started again from the phone (the notification's tap): Pair, then Connect; a device
+    // BlueZ has forgotten starts nothing
+    check(!bt.pairAgain(`${ADAPTER}/dev_00_00_00_00_00_09`), 'a device BlueZ forgot is not paired again');
+    check(bt.pairAgain(stereo.path), 'a pairing started again from the phone');
+    await waitFor(() => stereo.pairs === 1 && stereo.Connected && stereo.Trusted, 'paired again, connected, trusted');
+    check(stereo.connects === 1, 'the device paired again is connected once');
 
     // BlueZ restarts: registered again
     unownBluez();

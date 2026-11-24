@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-shell\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 20:44+0100\n"
+"POT-Creation-Date: 2026-11-25 00:44+0100\n"
 "PO-Revision-Date: 2026-11-24 19:46+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: French\n"
@@ -199,7 +199,8 @@ msgstr "Code d'association Bluetooth"
 #. TRANSLATORS: over the code shown here, for a keyboard (the other device) to type
 #: pairdialog.js
 msgid "Type this code on the other device, then press Return or Enter."
-msgstr "Saisissez ce code sur l'autre appareil, puis appuyez sur Retour ou Entrée."
+msgstr ""
+"Saisissez ce code sur l'autre appareil, puis appuyez sur Retour ou Entrée."
 
 # android: SystemUI usb_authorization_deny
 #: pairdialog.js
@@ -211,6 +212,25 @@ msgstr "Ne pas autoriser"
 msgid "Allow"
 msgstr "Autoriser"
 
+#. TRANSLATORS: the lock screen's line while a Bluetooth device waits to connect; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Unlock to let %s connect"
+msgstr "Déverrouillez pour que %s se connecte"
+
+#. TRANSLATORS: the lock screen's line while a Bluetooth device waits to pair; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Unlock to pair with %s"
+msgstr "Déverrouillez pour associer à %s"
+
+# android: SettingsLib bluetooth_pairing_error_message
+#. TRANSLATORS: a notification's title when a pairing timed out; %s is the device's name
+#: pairdialog.js
+#, javascript-format
+msgid "Couldn't pair with %s"
+msgstr "Impossible d'associer à %s"
+
 #: pairdialog.js qs.js
 msgid "Bluetooth"
 msgstr "Bluetooth"
@@ -219,6 +239,11 @@ msgstr "Bluetooth"
 #: pairdialog.js
 msgid "Unlock the phone to answer."
 msgstr "Déverrouillez le téléphone pour répondre."
+
+#. TRANSLATORS: under "Couldn't pair with …": a tap starts the pairing again
+#: pairdialog.js
+msgid "Tap to try again."
+msgstr "Appuyez pour réessayer."
 
 #: powermenu.js
 msgid "Lockdown"
