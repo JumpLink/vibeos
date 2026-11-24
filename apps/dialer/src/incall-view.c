@@ -55,13 +55,16 @@
 #define BANNER_ALPHA    0.4
 
 /* the buttons this phone has; the GSM chooser's others (Merge, Manage, Video call, Change SIM) need what the modem or
- * this phone does not have, so they are never allowed. Record is no button here either: a call is recorded or not by
- * Settings' "Record every call" (dialer-settings.c), for every call alike */
+ * this phone does not have, so they are never allowed. Record is LineageOS's: on a phone that can record calls
+ * (CanRecord, the service's), it records this call or stops recording it, whether Settings' "Record every call" is
+ * on or off; checked it reads "Recording call – 00:10". Its first use asks "Enable call recording?" with Lineage's
+ * notice, once */
 typedef enum
 {
   BUTTON_MUTE,
   BUTTON_KEYPAD,
   BUTTON_SPEAKER,
+  BUTTON_RECORD,
   BUTTON_SWAP,                  /* to the held call */
   BUTTON_ADD_CALL,
   BUTTON_HOLD,
@@ -80,6 +83,8 @@ struct _InCallView
   CallState state;
   CallEnd end;
   gint64 connected;
+  gint64 recording;             /* Unix ms when its recording started, 0 when it is not being recorded */
+  guint record_timer;           /* Record's label counts on */
   gboolean secondary;
   char *identifier, *letter_from;
   GdkTexture *photo;
@@ -291,12 +296,13 @@ bottom_label (InCallView *self, const Caller *caller)
 
 /* ---- the buttons ---------------------------------------------------------------------------------------------- */
 
-/* the button slots for a GSM call, each with its buttons in order of preference; the Record slot and the buttons
- * never allowed here are left out */
+/* the button slots for a GSM call, each with its buttons in order of preference; the buttons never allowed here are
+ * left out */
 static const ButtonId slots[][2] = {
   { BUTTON_MUTE, NO_BUTTON },
   { BUTTON_KEYPAD, NO_BUTTON },
   { BUTTON_SPEAKER, NO_BUTTON },
+  { BUTTON_RECORD, NO_BUTTON },
   { BUTTON_SWAP, BUTTON_ADD_CALL },
   { BUTTON_HOLD, NO_BUTTON },
 };
@@ -325,6 +331,41 @@ choose_buttons (InCallView *self, const gboolean allowed[N_BUTTONS], const gbool
     self->placed[n] = NO_BUTTON;
 }
 
+static gboolean on_record_timer (gpointer data);
+
+/* Record's label: "Record call", or how long the recording has run, counting on each second */
+static void
+update_record_label (InCallView *self)
+{
+  InCallButton *button = INCALL_BUTTON (self->buttons[BUTTON_RECORD]);
+
+  g_clear_handle_id (&self->record_timer, g_source_remove);
+  if (self->recording > 0)
+    {
+      gint64 elapsed = MAX (0, g_get_real_time () / 1000 - self->recording);
+      g_autofree char *time = format_elapsed (elapsed / 1000);
+      g_autofree char *label = g_strdup_printf (_("Recording call – %s"), time);
+
+      incall_button_set_label (button, label);
+      gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Stop recording"),
+                                      -1);
+      if (gtk_widget_get_mapped (GTK_WIDGET (self)))
+        self->record_timer = g_timeout_add ((guint) (1000 - elapsed % 1000 + 1), on_record_timer, self);
+    }
+  else
+    incall_button_set_label (button, _("Record call"));
+}
+
+static gboolean
+on_record_timer (gpointer data)
+{
+  InCallView *self = data;
+
+  self->record_timer = 0;
+  update_record_label (self);
+  return G_SOURCE_REMOVE;
+}
+
 /* which buttons are allowed and on, for a GSM call through ModemManager */
 static void
 update_buttons (InCallView *self)
@@ -338,6 +379,9 @@ update_buttons (InCallView *self)
   allowed[BUTTON_MUTE] = allowed[BUTTON_KEYPAD] = allowed[BUTTON_SPEAKER] = TRUE;
   enabled[BUTTON_MUTE] = enabled[BUTTON_SPEAKER] = live;
   enabled[BUTTON_KEYPAD] = live && calls_client_has_feature (client, "dtmf");
+  /* Record on a phone that can record calls, while the call is up (as Lineage has it) */
+  allowed[BUTTON_RECORD] = calls_client_get_can_record (client);
+  enabled[BUTTON_RECORD] = live && self->state == CALL_STATE_ACTIVE;
   /* Swap with a second call, while this one is up; Hold only on a modem that holds */
   allowed[BUTTON_SWAP] = self->secondary && can_hold;
   enabled[BUTTON_SWAP] = live && self->state == CALL_STATE_ACTIVE;
@@ -362,6 +406,8 @@ update_buttons (InCallView *self)
   incall_button_set_checked (INCALL_BUTTON (self->buttons[BUTTON_SPEAKER]), calls_client_get_speaker (client));
   incall_button_set_checked (INCALL_BUTTON (self->buttons[BUTTON_HOLD]), self->state == CALL_STATE_ONHOLD);
   incall_button_set_checked (INCALL_BUTTON (self->buttons[BUTTON_KEYPAD]), self->dialpad_shown);
+  incall_button_set_checked (INCALL_BUTTON (self->buttons[BUTTON_RECORD]), self->recording > 0);
+  update_record_label (self);
   gtk_widget_queue_allocate (GTK_WIDGET (self));
 }
 
@@ -379,6 +425,56 @@ on_speaker (InCallView *self)
   CallsClient *client = calls_client_get ();
 
   calls_client_set_speaker (client, !calls_client_get_speaker (client));
+}
+
+/* "Enable call recording?" answered: Record call records it, and the notice is not shown again */
+static void
+on_record_notice (VibeosDialog *dialog, int response, gpointer data)
+{
+  InCallView *self = data;
+  CallsClient *client = calls_client_get ();
+  CallInfo *call = calls_client_find (client, self->call);
+  g_autoptr(GSettings) settings = NULL;
+
+  if (response != VIBEOS_RESPONSE_OK)
+    return;
+  settings = g_settings_new (DIALER_APP_ID);
+  g_settings_set_boolean (settings, "recording-notice-shown", TRUE);
+  /* written before the in-call screen goes with the call */
+  g_settings_sync ();
+  /* the call may have been held or ended meanwhile */
+  if (call && call->state == CALL_STATE_ACTIVE && !call->recording)
+    calls_client_set_recording (client, call->id, TRUE);
+}
+
+static void
+on_record (InCallView *self)
+{
+  g_autoptr(GSettings) settings = NULL;
+  VibeosDialog *dialog;
+
+  if (!self->call || !is_live (self->state))
+    return;
+  if (self->recording > 0)
+    {
+      calls_client_set_recording (calls_client_get (), self->call, FALSE);
+      return;
+    }
+  settings = g_settings_new (DIALER_APP_ID);
+  if (g_settings_get_boolean (settings, "recording-notice-shown"))
+    {
+      calls_client_set_recording (calls_client_get (), self->call, TRUE);
+      return;
+    }
+  /* LineageOS's legal notice, before the first recording the user starts */
+  dialog = vibeos_dialog_new (_("Enable call recording?"));
+  vibeos_dialog_set_message (dialog, _("Notice: You are responsible for compliance with any laws, regulations and "
+                                       "rules that apply to the use of call recording functionality and the use or "
+                                       "distribution of those recordings."));
+  vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  vibeos_dialog_add_button (dialog, _("Record call"), VIBEOS_RESPONSE_OK);
+  g_signal_connect_object (dialog, "response", G_CALLBACK (on_record_notice), self, 0);
+  vibeos_dialog_present (dialog, GTK_WIDGET (self));
 }
 
 static void
@@ -503,6 +599,7 @@ incall_view_set_calls (InCallView *self, const CallInfo *primary, const Caller *
   self->state = primary->state;
   self->end = primary->end;
   self->connected = primary->connected;
+  self->recording = primary->recording;
   self->secondary = secondary != NULL;
 
   /* the avatar: the contact's photo or letter, else the person glyph */
@@ -675,12 +772,14 @@ incall_view_map (GtkWidget *widget)
 {
   GTK_WIDGET_CLASS (incall_view_parent_class)->map (widget);
   update_bottom (INCALL_VIEW (widget));
+  update_record_label (INCALL_VIEW (widget));
 }
 
 static void
 incall_view_unmap (GtkWidget *widget)
 {
   g_clear_handle_id (&INCALL_VIEW (widget)->timer, g_source_remove);
+  g_clear_handle_id (&INCALL_VIEW (widget)->record_timer, g_source_remove);
   GTK_WIDGET_CLASS (incall_view_parent_class)->unmap (widget);
 }
 
@@ -692,6 +791,7 @@ incall_view_dispose (GObject *object)
 
   g_signal_handlers_disconnect_by_data (calls_client_get (), self);
   g_clear_handle_id (&self->timer, g_source_remove);
+  g_clear_handle_id (&self->record_timer, g_source_remove);
   g_clear_pointer (&self->slide, vibeos_anim_free);
   while ((child = gtk_widget_get_first_child (GTK_WIDGET (self))))
     gtk_widget_unparent (child);
@@ -762,6 +862,8 @@ incall_view_init (InCallView *self)
   add_button (self, BUTTON_MUTE, "dialer-mic-off-symbolic", _("Mute"), G_CALLBACK (on_mute));
   add_button (self, BUTTON_KEYPAD, "dialer-dialpad-symbolic", _("Keypad"), G_CALLBACK (on_keypad));
   add_button (self, BUTTON_SPEAKER, "dialer-volume-up-symbolic", _("Speaker"), G_CALLBACK (on_speaker));
+  add_button (self, BUTTON_RECORD, "dialer-record-symbolic", _("Record call"), G_CALLBACK (on_record));
+  incall_button_set_label_lines (INCALL_BUTTON (self->buttons[BUTTON_RECORD]), 2);
   add_button (self, BUTTON_SWAP, "dialer-swap-calls-symbolic", _("Swap"), G_CALLBACK (on_swap));
   add_button (self, BUTTON_ADD_CALL, "dialer-add-call-symbolic", _("Add call"), G_CALLBACK (on_add_call));
   add_button (self, BUTTON_HOLD, "dialer-pause-symbolic", _("Hold"), G_CALLBACK (on_hold));

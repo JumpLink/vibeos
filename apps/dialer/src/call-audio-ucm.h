@@ -5,9 +5,9 @@
  *   - the "Capture Voice" modifier: a capture PCM that carries the call, both sides: the other person and what the
  *     phone's microphones send;
  *   - the "Play Voice" modifier: a playback PCM that goes into the call's uplink, so the other person hears it.
- * PipeWire makes each modifier a node of the card's "Voice Call" profile, the one callaudiod switches to for a
- * call. A phone whose configuration has no "Capture Voice" cannot record calls; one without "Play Voice" cannot
- * announce a recording to the other person.
+ * PipeWire makes each modifier a node of the card's "Voice Call" profile, the one the call audio daemon (callaudiod,
+ * or a phone's own) switches to for a call. A phone whose configuration has no "Capture Voice" cannot record calls;
+ * one without "Play Voice" cannot announce a recording to the other person.
  *
  * Only read: no verb or modifier is set, and the card stays as it is. */
 #pragma once

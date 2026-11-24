@@ -108,5 +108,11 @@
       <description>The folder the call recordings go into, a path; empty for the default, "Recordings/Call
         recordings" in the home folder</description>
     </key>
+    <key name="recording-notice-shown" type="b">
+      <default>false</default>
+      <summary>Call recording notice shown</summary>
+      <description>The in-call screen's Record button asked "Enable call recording?" (LineageOS's legal notice) and
+        the user went on: it does not ask again</description>
+    </key>
   </schema>
 </schemalist>

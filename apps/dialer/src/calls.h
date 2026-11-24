@@ -3,7 +3,8 @@
  *
  *  - a call comes: it rings (ringer.h), shows the answer screen over the lock screen, or a heads-up with Answer and
  *    Decline when the phone is in use (call-notifications.h);
- *  - a call is up: the call audio is switched in (callaudiod), the ongoing-call notification counts on;
+ *  - a call is up: the call audio is switched in (callaudiod), the ongoing-call notification counts on, and with
+ *    "Record every call" on it is recorded (call-recorder.h) until it is held or ends;
  *  - a call ends: it stays a moment as "Call ended", goes into the call log (call-log.h), and a missed one gets its
  *    notification.
  *
@@ -23,6 +24,8 @@ typedef struct {
   void (*changed) (gpointer data);
   /* a row came into the call log or went: the apps read it again */
   void (*log_changed) (gpointer data);
+  /* call @id's recording did not start after all; @message is what the user is told */
+  void (*recording_failed) (guint id, const char *message, gpointer data);
 } CallsCallbacks;
 
 Calls      *calls_new (GDBusConnection *session, GDBusConnection *system, GSettings *settings, CallLog *log,
@@ -31,8 +34,9 @@ void        calls_free (Calls *self);
 
 /* the calls as the service hands them out: aa{sv}, oldest first. Each has "id" (u), "number" (s), "presentation"
  * (u, Presentation), "direction" (u, CallDirection), "state" (u, CallState), "end" (u, CallEnd), "created" and
- * "connected" (x, Unix ms; connected is 0 until the call is first up), "multiparty" (b) and "post-dial-wait" (s: the
- * tones after a wait in the number dialled, "Send the following tones?"; "" when it is not waiting) */
+ * "connected" (x, Unix ms; connected is 0 until the call is first up), "multiparty" (b), "post-dial-wait" (s: the
+ * tones after a wait in the number dialled, "Send the following tones?"; "" when it is not waiting) and "recording"
+ * (x, Unix ms when its recording started; 0 when it is not being recorded) */
 GVariant   *calls_get_calls (Calls *self);
 gboolean    calls_get_muted (Calls *self);
 gboolean    calls_get_speaker (Calls *self);
@@ -42,6 +46,9 @@ const char *calls_get_status (Calls *self);
 GStrv       calls_get_features (Calls *self);
 /* the network's country, "DE"; "" while unknown */
 const char *calls_get_country (Calls *self);
+/* a call can be recorded: the sound card has the call's capture (call-audio-ucm.h), and with "Announce recording"
+ * on, the announcement can be played into the call (it has the PCM for it, and the announcement's sound) */
+gboolean    calls_get_can_record (Calls *self);
 
 /* gsm2sip took the modem (its gateway mode) or gave it back: the service stands aside meanwhile */
 void        calls_set_gateway (Calls *self, gboolean gateway);
@@ -59,6 +66,9 @@ gboolean    calls_send_dtmf (Calls *self, guint id, const char *tones, GError **
 gboolean    calls_continue_post_dial (Calls *self, guint id, gboolean proceed, GError **error);
 void        calls_set_muted (Calls *self, gboolean muted);
 void        calls_set_speaker (Calls *self, gboolean speaker);
+/* the Record button: the call, which is up, recorded from now on (another call's recording ends: one at a time), or
+ * its recording ended. A recording the user ended is not started again by "Record every call" */
+gboolean    calls_set_recording (Calls *self, guint id, gboolean recording, GError **error);
 /* the ringing stops, the call goes on ringing silently (a volume key) */
 void        calls_silence_ringer (Calls *self);
 /* Settings' ringtone preview (NULL stops it) and the main dialpad's keypad tones (ringer.h); none while there is a

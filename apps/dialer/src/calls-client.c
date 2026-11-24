@@ -8,8 +8,8 @@ struct _CallsClient
   GDBusProxy *proxy;
   GPtrArray *calls;             /* CallInfo */
   /* the properties as last read, to tell which of them a PropertiesChanged (which carries them all) changed */
-  GVariant *last[7];
-  gboolean muted, speaker;
+  GVariant *last[8];
+  gboolean muted, speaker, can_record;
   char *status;
   GStrv features;
   char *country;
@@ -30,6 +30,7 @@ static const struct { const char *name; guint signal; } properties[] = {
   { "Features", STATUS_CHANGED },
   { "Country", STATUS_CHANGED },
   { "MissedCount", MISSED_CHANGED },
+  { "CanRecord", STATUS_CHANGED },
 };
 
 static void
@@ -57,6 +58,7 @@ call_from_variant (GVariant *dict)
   g_variant_lookup (dict, "created", "x", &call->created);
   g_variant_lookup (dict, "connected", "x", &call->connected);
   g_variant_lookup (dict, "multiparty", "b", &call->multiparty);
+  g_variant_lookup (dict, "recording", "x", &call->recording);
   if (!g_variant_lookup (dict, "post-dial-wait", "s", &call->post_dial_wait))
     call->post_dial_wait = g_strdup ("");
   return call;
@@ -105,6 +107,9 @@ read_property (CallsClient *self, guint i, GVariant *value)
     case 6:
       self->missed = value ? g_variant_get_uint32 (value) : 0;
       break;
+    case 7:
+      self->can_record = value && g_variant_get_boolean (value);
+      break;
     }
 }
 
@@ -142,6 +147,15 @@ on_signal (GDBusProxy *proxy, const char *sender, const char *name, GVariant *pa
 {
   if (g_str_equal (name, "CallLogChanged"))
     g_signal_emit (self, signals[CALL_LOG_CHANGED], 0);
+  /* a recording asked for, or one of "Record every call", did not start after all: told as SetRecording's refusal */
+  else if (g_str_equal (name, "RecordingFailed") && g_variant_is_of_type (parameters, G_VARIANT_TYPE ("(us)")))
+    {
+      guint id;
+      const char *message;
+
+      g_variant_get (parameters, "(u&s)", &id, &message);
+      g_signal_emit (self, signals[FAILED], 0, "SetRecording", id, message);
+    }
 }
 
 /* the service went (it restarts on failure) or came back: its calls are none, then whatever it has now */
@@ -297,6 +311,12 @@ calls_client_get_country (CallsClient *self)
   return self->country;
 }
 
+gboolean
+calls_client_get_can_record (CallsClient *self)
+{
+  return self->can_record;
+}
+
 guint
 calls_client_get_missed_count (CallsClient *self)
 {
@@ -438,6 +458,12 @@ void
 calls_client_set_muted (CallsClient *self, gboolean muted)
 {
   call (self, "SetMuted", 0, g_variant_new ("(b)", muted));
+}
+
+void
+calls_client_set_recording (CallsClient *self, guint id, gboolean recording)
+{
+  call (self, "SetRecording", id, g_variant_new ("(ub)", id, recording));
 }
 
 void

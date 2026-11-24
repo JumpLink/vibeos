@@ -17,6 +17,9 @@ void       incall_button_set_checked (InCallButton *self, gboolean checked);
 gboolean   incall_button_get_checked (InCallButton *self);
 void       incall_button_set_icon (InCallButton *self, const char *icon_name);
 void       incall_button_set_label (InCallButton *self, const char *label);
+/* the label takes up to @lines lines (one by default), wrapped, and the button keeps room for them all: for a label
+ * that grows, Record's "Recording call – 00:10" */
+void       incall_button_set_label_lines (InCallButton *self, int lines);
 
 /* Signals: "clicked" () */
 

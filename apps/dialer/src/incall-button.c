@@ -21,6 +21,7 @@ struct _InCallButton
   GtkWidget parent;
   char *icon_name;
   PangoLayout *label;
+  int lines;                    /* the label's lines at most, all of them kept free */
   gboolean checked, pressed;
   VibeosRipple ripple;
 };
@@ -41,13 +42,25 @@ update_label_font (InCallButton *self)
   pango_layout_set_font_description (self->label, font);
 }
 
+/* the label as wide as a button @width wide has it: at most 9 ems */
+static void
+set_label_width (InCallButton *self, double width)
+{
+  pango_layout_set_width (self->label,
+                          (int) (MIN (width - 2 * PADDING, LABEL_MAX_EMS * vibeos_sp (LABEL_SIZE)) * PANGO_SCALE));
+}
+
+/* the label's height, as many lines as it may take: a label that grows a line does not move the grid */
 static double
 label_height (InCallButton *self)
 {
-  int width, height;
+  int width, height, lines;
 
   update_label_font (self);
   pango_layout_get_size (self->label, &width, &height);
+  lines = MAX (1, pango_layout_get_line_count (self->label));
+  if (lines < self->lines)
+    height = height / lines * self->lines;
   return PAD_TOP (vibeos_sp (LABEL_SIZE)) + height / (double) PANGO_SCALE + PAD_BOTTOM (vibeos_sp (LABEL_SIZE));
 }
 
@@ -63,7 +76,11 @@ incall_button_measure (GtkWidget *widget, GtkOrientation orientation, int for_si
       *natural = WIDTH;
     }
   else
-    *minimum = *natural = (int) ceil (PADDING + ICON_VIEW + LABEL_GAP + label_height (self) + PADDING);
+    {
+      if (for_size > 0)
+        set_label_width (self, for_size);
+      *minimum = *natural = (int) ceil (PADDING + ICON_VIEW + LABEL_GAP + label_height (self) + PADDING);
+    }
 }
 
 static void
@@ -71,10 +88,9 @@ incall_button_size_allocate (GtkWidget *widget, int width, int height, int basel
 {
   InCallButton *self = INCALL_BUTTON (widget);
 
-  /* one line, at most 9 ems, ellipsized at the end */
+  /* one line (or the lines it is given), at most 9 ems, ellipsized at the end */
   update_label_font (self);
-  pango_layout_set_width (self->label,
-                          (int) (MIN (width - 2 * PADDING, LABEL_MAX_EMS * vibeos_sp (LABEL_SIZE)) * PANGO_SCALE));
+  set_label_width (self, width);
 }
 
 static void
@@ -202,6 +218,7 @@ incall_button_init (InCallButton *self)
 
   vibeos_ripple_init (&self->ripple, GTK_WIDGET (self));
   self->label = gtk_widget_create_pango_layout (GTK_WIDGET (self), NULL);
+  self->lines = 1;
   update_label_font (self);
   pango_layout_set_ellipsize (self->label, PANGO_ELLIPSIZE_END);
   pango_layout_set_alignment (self->label, PANGO_ALIGN_CENTER);
@@ -246,6 +263,15 @@ incall_button_set_icon (InCallButton *self, const char *icon_name)
   g_free (self->icon_name);
   self->icon_name = g_strdup (icon_name);
   gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+void
+incall_button_set_label_lines (InCallButton *self, int lines)
+{
+  self->lines = MAX (1, lines);
+  pango_layout_set_height (self->label, -self->lines);
+  pango_layout_set_wrap (self->label, PANGO_WRAP_WORD_CHAR);
+  gtk_widget_queue_resize (GTK_WIDGET (self));
 }
 
 void
