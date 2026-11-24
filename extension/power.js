@@ -35,8 +35,8 @@ const WAKE_FROM_OFF_MS = 667;
 const DECELERATE = t => 1 - (1 - t) * (1 - t);
 // the lock screen's and the bouncer's own screen timeout: shorter than the session's, nobody is using the phone
 const KEYGUARD_TIMEOUT_MS = 10000;
-// a press of the power key held this long is a long press: Agent listens while it is held on (keylaunch.js), else the
-// power menu
+// a press of the power key held this long is a long press: Agent listens from then on (keylaunch.js), else the power
+// menu
 const LONG_PRESS_MS = 500;
 // a press whose down comes less than this after a short press's down is a double press (keylaunch.js), as Android's
 // GestureLauncherService counts one, down to down
@@ -89,7 +89,7 @@ export class Power extends Signals.EventEmitter {
         if (chord)
             chord.onPowerMenu = () => this._chordMenu();
         this._longPressId = 0;
-        this._agentHeld = false;    // the key held now has Agent listening (keylaunch.js hold): its up ends that
+        this._agentHeld = false;    // the key held now has Agent listening (keylaunch.js hold): its up lets go
         // keylaunch.js's KeyLaunch, set by the extension: what a double press of the key opens
         this.doublePress = null;
         this._tapAt = 0;            // the last short press's down (the event's time, ms), for a double press
@@ -203,8 +203,9 @@ export class Power extends Signals.EventEmitter {
             this._wokeByPress = !this.interactive;
             if (this._wokeByPress)
                 this.wakeUp('power');
-            // ... and held, has Agent listen until it is let go (Settings > System > Gestures, on by default; on a
-            // locked phone too, where Agent only reads), else opens the power menu; either with a long-press tick
+            // ... and held, has Agent listen, on after it is let go until the speaker pauses (Settings > System >
+            // Gestures, on by default; on a locked phone too, where Agent only reads), else opens the power menu;
+            // either with a long-press tick
             this._cancelLongPress();
             this._longPressId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, LONG_PRESS_MS, () => {
                 this._longPressId = 0;
@@ -217,7 +218,7 @@ export class Power extends Signals.EventEmitter {
         const held = (now - (this._pressedAt ?? now)) / 1000;
         this._pressedAt = null;
         const chord = this._chord?.powerUp();
-        // the hold's end: Agent stops listening, and the key does nothing more
+        // the hold's end: Agent listens on until the speaker pauses, and the key does nothing more
         if (this._agentHeld) {
             this._agentHeld = false;
             this.doublePress?.hold(false);
@@ -628,7 +629,7 @@ export class Power extends Signals.EventEmitter {
 
     destroy() {
         this._cancelLongPress();
-        // a hold under way ends with the extension: Agent stops listening
+        // a hold under way is let go with the extension: Agent listens on until the speaker pauses
         if (this._agentHeld)
             this.doublePress?.hold(false);
         this._agentHeld = false;
