@@ -5,6 +5,7 @@
 #include "inst-dpkg.h"
 #include "inst-version.h"
 
+#include <glib/gi18n.h>
 #include <string.h>
 
 #define PK_NAME         "org.freedesktop.PackageKit"
@@ -492,7 +493,7 @@ demo_extras (InstPkTx *tx)
       g_autofree char *name = g_strdup_printf ("libdemo%u", (guint) i + 1);
       g_autofree char *id = demo_id (name, "2.0-1", "debian-unstable-main");
 
-      add_package (tx, INST_PK_INFO_INSTALLING, id, "A library the app needs");
+      add_package (tx, INST_PK_INFO_INSTALLING, id, _("A library the app needs"));
     }
   if (removes)
     {
@@ -694,7 +695,7 @@ demo_resolve (InstPkTx *tx)
         {
           g_autofree char *id = demo_id (names[i], info.version, "installed:debian-unstable-main");
 
-          add_package (tx, INST_PK_INFO_INSTALLED, id, "A sample app");
+          add_package (tx, INST_PK_INFO_INSTALLED, id, _("A sample app"));
         }
       if (!(filters & INST_PK_FILTER_INSTALLED) && g_strcmp0 (info.version, demo_candidate (names[i])))
         {

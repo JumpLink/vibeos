@@ -151,7 +151,7 @@ on_job_finished (InstJob *job, Win *win)
 }
 
 /* ⋮: About, VibeOS's About sheet, as every VibeOS app has it */
-static const VibeosAboutInfo inst_about = { .name = "App Installer", .icon_name = "vibeos.Installer" };
+static const VibeosAboutInfo inst_about = { .name = N_("App Installer"), .icon_name = "vibeos.Installer" };
 
 static void
 on_more (VibeosPressable *button, Win *win)

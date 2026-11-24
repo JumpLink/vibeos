@@ -118,7 +118,13 @@ name_list (GPtrArray *names, guint most)
       g_string_append (text, g_ptr_array_index (names, i));
     }
   if (shown < names->len)
-    g_string_append_printf (text, _(" and %u more"), names->len - shown);
+    {
+      guint more = names->len - shown;
+      g_autofree char *list = g_string_free (text, FALSE);
+
+      /* TRANSLATORS: %s is a list of names ("libfoo, libbar"), %u how many more there are */
+      return g_strdup_printf (g_dngettext (NULL, "%s and %u more", "%s and %u more", more), list, more);
+    }
   return g_string_free (text, FALSE);
 }
 

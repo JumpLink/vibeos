@@ -1,0 +1,10 @@
+# the files with translatable strings
+data/vibeos.Installer.desktop.in
+src/inst-catalog.c
+src/inst-job.c
+src/inst-main.c
+src/inst-pk.c
+src/inst-service.c
+src/inst-sheet.c
+src/inst-view.c
+src/inst-window.c
