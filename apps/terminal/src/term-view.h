@@ -11,13 +11,17 @@
  *   long press  selects the word under the finger (or the one cell, when it is no word's); moving on extends the
  *               selection from it. Once the finger lifts the toolbar offers Copy, Paste and Select all, and a handle
  *               at each end moves that end.
- *   drag        one finger moved past the slop before the long press, or two fingers: scrolls, and flung goes on
- *               under libspongy's fling. The content follows the finger, less the slop (as Android's scroll views:
- *               no jump at the start); two fingers scroll by their centre, and a second finger on a one-finger
- *               scroll takes it over. What a scroll does is what VTE does for a mouse wheel: the history moves, or a
- *               program on the alternate screen (less, man) gets cursor keys, or one that tracks the mouse (htop, mc)
- *               gets wheel buttons, a step per row of travel. The modes come from TermModes, which reads them from
- *               what the program writes on its way here. A finger that stops a fling neither taps nor long-presses.
+ *   drag        one finger moved past the slop before the long press, or two fingers moved along: scrolls, and
+ *               flung goes on under libspongy's fling. The content follows the finger, less the slop (as Android's
+ *               scroll views: no jump at the start); two fingers scroll by their centre, and a second finger on a
+ *               one-finger scroll takes it over. What a scroll does is what VTE does for a mouse wheel: the history
+ *               moves, or a program on the alternate screen (less, man) gets cursor keys, or one that tracks the
+ *               mouse (htop, mc) gets wheel buttons, a step per row of travel. The modes come from TermModes, which
+ *               reads them from what the program writes on its way here. A finger that stops a fling neither taps
+ *               nor long-presses.
+ *   pinch       two fingers moved apart or together before they moved along: the text's size follows their span
+ *               (VteTerminal's font-scale, in steps of 9 % from half the font's size to 2.8 times it), a new grid
+ *               at each step. The program gets nothing of it but its new size.
  *
  * The selection is the app's own (VTE has no call to set one), drawn over the text and copied with
  * vte_terminal_get_text_range_format (). That takes rows counted from the start of VTE's buffer, which VTE does not

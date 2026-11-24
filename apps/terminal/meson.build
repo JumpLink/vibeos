@@ -26,7 +26,8 @@ configure_file(input: 'data/vibeos.Terminal.service.in', output: 'vibeos.Termina
                configuration: configuration_data({'bindir': bindir}), install_dir: datadir / 'dbus-1/services')
 install_data('data/vibeos.Terminal.desktop', install_dir: datadir / 'applications')
 install_data('data/vibeos.Terminal.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
-gnome.post_install(gtk_update_icon_cache: true, update_desktop_database: true)
+install_data('data/vibeos.Terminal.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
+gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
 
 test('modes', executable('test-modes', 'tests/test-modes.c', include_directories: 'src', link_with: core,
                          dependencies: glib))

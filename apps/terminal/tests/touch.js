@@ -5,20 +5,23 @@
 //
 //   A  a tap opens the keyboard over the window (X-Vibeos-Keyboard=overlay): the window keeps its size and its
 //      place, and output to the bottom slides the terminal up inside it, the cursor's line over the extra keys.
-//   B  on the alternate screen (less) two fingers going up 5½ rows send 5 Down keys, and back down 3½ rows 3 Up; one
-//      finger going up 5½ rows past the touch slop 5 more Down keys; with application cursor keys (DECCKM) they are
-//      ESC O B.
+//   B  on the alternate screen (less) two fingers going up 5½ rows past the touch slop send 5 Down keys, and back
+//      down 3½ rows 3 Up; one finger going up 5½ rows 5 more Down keys; with application cursor keys (DECCKM) they
+//      are ESC O B.
 //   C  a flung two-finger scroll goes on after the fingers lift: more keys than the fingers' travel.
 //   D  a program that tracks the mouse (htop) gets wheel buttons, SGR and the original encoding, at the cell under
 //      the fingers, from two fingers and from one; a tap is a click there.
 //   E  a long press selects the word under the finger; Ctrl+Shift+C copies it.
-//   F  two fingers going down 10 rows scroll the history back 10 rows: the word under the same spot is 10 lines up;
-//      one finger going down 10 rows past the slop, 10 more.
+//   F  two fingers going down 10 rows past the slop scroll the history back 10 rows: the word under the same spot
+//      is 10 lines up; one finger going down 10 rows, 10 more.
 //   G  the selection's end handle dragged 2 rows down takes the selection to there.
 //   K  the extra keys stand on the keyboard: Esc, Tab and the cursor keys send theirs, a held cursor key repeats,
 //      Ctrl and Alt are on for the next key only, typed or of the row, and locked on by a long press until tapped
 //      off; with the keyboard down they are gone.
 //   H  a tap ends the selection; Ctrl+Shift+V pastes into the shell.
+//   P  two fingers going twice as far apart double the text's size: the cursor's cell twice as tall, the program
+//      told half the rows and columns and sent nothing else (no wheel, no click), the size kept in the settings;
+//      back together, back to the size it was.
 //
 // The shell's vibeos.Shell service (the extension's service.js) tells an overlay app how much of its window the
 // keyboard covers; this shell runs no extension, so the test serves that one property itself (KeyboardOverlap).
@@ -105,6 +108,22 @@ async function swipe2(x, y, dy, ms, hold = 150) {
     touch.notify_touch_up(now(), 0);
     touch.notify_touch_up(now(), 1);
 }
+// two fingers on a level, `from` px apart and centred on (x, y), going `to` px apart over ms, held still before they lift
+async function pinch(x, y, from, to, ms) {
+    const steps = Math.max(3, Math.round(ms / 16));
+    finger().notify_touch_down(now(), 0, x - from / 2, y);
+    touch.notify_touch_down(now(), 1, x + from / 2, y);
+    await sleep(30);
+    for (let i = 1; i <= steps; i++) {
+        await sleep(ms / steps);
+        const half = (from + (to - from) * i / steps) / 2;
+        touch.notify_touch_motion(now(), 0, x - half, y);
+        touch.notify_touch_motion(now(), 1, x + half, y);
+    }
+    await sleep(150);
+    touch.notify_touch_up(now(), 0);
+    touch.notify_touch_up(now(), 1);
+}
 // one finger going dy from y over ms, held still before it lifts as swipe2's
 async function swipe1(x, y, dy, ms, hold = 150) {
     const steps = Math.max(3, Math.round(ms / 16));
@@ -118,7 +137,7 @@ async function swipe1(x, y, dy, ms, hold = 150) {
         await sleep(hold);
     touch.notify_touch_up(now(), 0);
 }
-// the Terminal's touch slop (term-view.c): a one-finger scroll moves the text by the finger's travel less this
+// the Terminal's touch slop (term-view.c): a scroll moves the text by the fingers' travel less this
 const SLOP = 8;
 // the extra keys' row (terminal.css: 36 dp keys and 4 dp around them), its keys from the left (term-keys.c)
 const KEYS_H = 44;
@@ -237,6 +256,8 @@ export async function run() {
     launcher.setenv('GDK_DEBUG', 'no-portals', true);
     launcher.setenv('GSK_RENDERER', 'cairo', true);
     launcher.setenv('GTK_A11Y', 'none', true);
+    // the Terminal's settings in a key file of the test's, for P to read what it kept
+    launcher.setenv('GSETTINGS_BACKEND', 'keyfile', true);
     launcher.set_cwd(GLib.get_home_dir());
     const proc = launcher.spawnv([readFile(`${DIR}/binary`).trim()]);
     const tracker = Shell.WindowTracker.get_default();
@@ -337,30 +358,30 @@ export async function run() {
     const altLog = `${DIR}/alt.log`;
     check('B: the probe is up on the alternate screen', await runProbe('alt', altLog), readFile(altLog));
     say('INFO', 'grid', JSON.stringify(grid));
-    await swipe2(midX, cellY(25), -5.5 * grid.ch, 400);
+    await swipe2(midX, cellY(25), -(5.5 * grid.ch + SLOP), 400);
     await until(() => count(sent(altLog), '\x1b[B') >= 5, 3000);
     await sleep(300);
     let s = sent(altLog);
-    check('B: two fingers up 5½ rows: 5 Down keys', count(s, '\x1b[B') === 5 && count(s, '\x1b[A') === 0, show(s));
-    await swipe2(midX, cellY(15), 3.5 * grid.ch, 300);
+    check('B: two fingers up 5½ rows past the slop: 5 Down keys', count(s, '\x1b[B') === 5 && count(s, '\x1b[A') === 0, show(s));
+    await swipe2(midX, cellY(15), 3.5 * grid.ch + SLOP, 300);
     await sleep(500);
     s = sent(altLog);
     check('B: down 3½ rows: 3 Up keys', count(s, '\x1b[B') === 5 && count(s, '\x1b[A') === 3, show(s));
     await swipe1(midX, cellY(25), -(5.5 * grid.ch + SLOP), 400);
     await sleep(500);
     s = sent(altLog);
-    check('B: one finger up 5½ rows past the slop: 5 more Down keys',
+    check('B: one finger up 5½ rows: 5 more Down keys',
         count(s, '\x1b[B') === 10 && count(s, '\x1b[A') === 3, show(s));
     await quit(altLog);
     const appLog = `${DIR}/altapp.log`;
     check('B: the probe with application cursor keys', await runProbe('altapp', appLog), readFile(appLog));
-    await swipe2(midX, cellY(25), -2.5 * grid.ch, 300);
+    await swipe2(midX, cellY(25), -(2.5 * grid.ch + SLOP), 300);
     await sleep(500);
     s = sent(appLog);
     check('B: DECCKM: ESC O B', count(s, '\x1bOB') === 2 && !s.includes('\x1b[B'), show(s));
 
     // C
-    await swipe2(midX, cellY(25), -3 * grid.ch, 50, 0);
+    await swipe2(midX, cellY(25), -(3 * grid.ch + SLOP), 50, 0);
     await sleep(2500);
     s = sent(appLog);
     check('C: a fling goes on after the fingers lift', count(s, '\x1bOB') - 2 > 4, show(s));
@@ -370,7 +391,7 @@ export async function run() {
     const mouseLog = `${DIR}/mouse.log`;
     check('D: the probe tracking the mouse', await runProbe('mouse', mouseLog), readFile(mouseLog));
     const centreCol = Math.floor((midX - grid.x) / grid.cw);
-    await swipe2(midX, cellY(20) - grid.ch / 2 + 1, -4.5 * grid.ch, 400);
+    await swipe2(midX, cellY(20) - grid.ch / 2 + 1, -(4.5 * grid.ch + SLOP), 400);
     await sleep(500);
     s = sent(mouseLog);
     // the reports' cell: where the fingers' centre is at each step, a row up each
@@ -389,7 +410,7 @@ export async function run() {
     await quit(mouseLog);
     const legacyLog = `${DIR}/legacy.log`;
     check('D: the probe tracking the mouse, without SGR', await runProbe('mouse-legacy', legacyLog));
-    await swipe2(midX, cellY(20) - grid.ch / 2 + 1, 1.5 * grid.ch, 300);
+    await swipe2(midX, cellY(20) - grid.ch / 2 + 1, 1.5 * grid.ch + SLOP, 300);
     await sleep(500);
     s = sent(legacyLog);
     check('D: a wheel-up report in the original encoding', s.startsWith(`\x1b[M${String.fromCharCode(32 + 64)}`) &&
@@ -493,14 +514,14 @@ export async function run() {
         `${show(copied)} expected ${name(lineAt(row))}`);
 
     // F
-    await swipe2(midX, cellY(10), 10 * grid.ch, 500);
+    await swipe2(midX, cellY(10), 10 * grid.ch + SLOP, 500);
     await sleep(500);
     await longPress(cellX(1), cellY(row), 900);
     await sleep(300);
     await keyCombo([Clutter.KEY_Control_L, Clutter.KEY_Shift_L], Clutter.KEY_C);
     await sleep(300);
     copied = await clipboard();
-    check('F: two fingers down 10 rows: the history 10 lines back', copied === name(lineAt(row) - 10),
+    check('F: two fingers down 10 rows past the slop: the history 10 lines back', copied === name(lineAt(row) - 10),
         `${show(copied)} expected ${name(lineAt(row) - 10)}`);
     await swipe1(midX, cellY(10), 10 * grid.ch + SLOP, 500);
     await sleep(500);
@@ -509,7 +530,7 @@ export async function run() {
     await keyCombo([Clutter.KEY_Control_L, Clutter.KEY_Shift_L], Clutter.KEY_C);
     await sleep(300);
     copied = await clipboard();
-    check('F: one finger down 10 rows past the slop: 10 more', copied === name(lineAt(row) - 20),
+    check('F: one finger down 10 rows: 10 more', copied === name(lineAt(row) - 20),
         `${show(copied)} expected ${name(lineAt(row) - 20)}`);
 
     // G: the end handle (at the word's end, under its row) 2 rows down
@@ -550,6 +571,40 @@ export async function run() {
         cursor.y + cursor.height <= frame0.y + frame0.height;
     await until(onWindow, 5000);
     check('H: typing goes back from the history to the prompt', onWindow(), state());
+
+    // P
+    let sizes = 0;
+    const ttySize = async () => {
+        const file = `${DIR}/size${++sizes}`;
+        type(`stty size > ${file}\r`);
+        await until(() => readFile(file).trim() !== '', 5000);
+        await sleep(300);
+        return readFile(file).trim().split(' ').map(Number);
+    };
+    const kept = () => parseFloat((readFile(`${GLib.get_user_config_dir()}/glib-2.0/settings/keyfile`)
+        .match(/^font-scale=(.*)$/m) ?? [])[1]);
+    const [rows0, columns0] = await ttySize();
+    const height0 = cursor.height;
+    const pinchLog = `${DIR}/pinch.log`;
+    check('P: the probe tracking the mouse', await runProbe('mouse', pinchLog));
+    await pinch(midX, cellY(20), 200, 400, 400);
+    await sleep(800);
+    s = sent(pinchLog);
+    check('P: a pinch sends the program nothing', s === '', show(s));
+    await quit(pinchLog);
+    let [rows, columns] = await ttySize();
+    check('P: apart to twice the span: the text twice the size',
+        cursor.height > 1.8 * height0 && cursor.height < 2.2 * height0, `${height0} -> ${cursor.height}`);
+    check('P: the program told about half the rows and columns', rows > 0.4 * rows0 && rows < 0.6 * rows0 &&
+        columns > 0.4 * columns0 && columns < 0.6 * columns0, `${rows0}x${columns0} -> ${rows}x${columns}`);
+    check('P: the size kept in the settings', Math.abs(kept() - 2) < 0.01, `${kept()}`);
+    await shot('6-zoomed');
+    await pinch(midX, frame0.y + frame0.height / 2, 400, 200, 400);
+    await sleep(800);
+    [rows, columns] = await ttySize();
+    check('P: back together, back to its size', cursor.height === height0 && rows === rows0 && columns === columns0,
+        `${height0} -> ${cursor.height}, ${rows0}x${columns0} -> ${rows}x${columns}`);
+    check('P: and that kept', Math.abs(kept() - 1) < 0.01, `${kept()}`);
     check('the window never changed its size', sameFrame() && resized === 0, state());
     await shot('4-end');
 

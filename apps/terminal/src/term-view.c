@@ -11,6 +11,12 @@
 #define SCROLLBACK_LINES  10000     /* GNOME Console's */
 #define DEFAULT_FONT      "Monospace 11"
 #define TOUCH_SLOP        8         /* px (dp): Android's */
+#define PINCH_SLOP        16        /* px: two fingers this much further apart or closer together are a pinch */
+#define ZOOM_STEPS        8         /* the text sizes a pinch goes through: 8 to a doubling, each 9 % bigger */
+#define ZOOM_MIN          (-8)      /* from half the font's size */
+#define ZOOM_MAX          12        /* to 2.8 times it */
+#define ZOOM_HOLD         0.75      /* steps: how far past a size a pinch goes before it leaves it, so that a size
+                                     * between two does not flicker */
 #define LONG_PRESS_MS     500       /* the shell's TAP_MAX_MS: a lift after a long press is never the shell's tap */
 #define MIN_FLING         50        /* px/s: Android's minimum and maximum fling velocities */
 #define MAX_FLING         8000
@@ -37,7 +43,9 @@ typedef enum {
   TOUCH_PENDING,          /* one finger down, still: a tap or a long press to come */
   TOUCH_SELECT,           /* after a long press: the finger extends the selection */
   TOUCH_HANDLE,           /* a selection handle is being moved */
-  TOUCH_SCROLL,           /* two fingers */
+  TOUCH_TWO,              /* two fingers down, still: a scroll or a pinch to come */
+  TOUCH_SCROLL,           /* one finger or two dragged */
+  TOUCH_ZOOM,             /* two fingers pinching */
   TOUCH_DONE,             /* what the touch was for is over: the rest of it goes nowhere */
 } TouchState;
 
@@ -59,6 +67,11 @@ struct _TermView {
   double          down_x, down_y;
   gboolean        no_tap;                 /* the touch stopped a fling: its lift is no tap */
   guint           long_press;
+
+  /* two fingers: where they came down, the text size then and the size step now */
+  double          two_x, two_y, two_span;
+  double          zoom_from;
+  int             zoom_step;
 
   /* scrolling */
   double          scroll_x, scroll_y;     /* the fingers' centre */
@@ -579,6 +592,12 @@ fingers_centre (TermView *self, double *x, double *y)
   }
 }
 
+static double
+fingers_span (TermView *self)
+{
+  return hypot (self->fingers[1].x - self->fingers[0].x, self->fingers[1].y - self->fingers[0].y);
+}
+
 static void
 scroll_begin (TermView *self, guint32 time)
 {
@@ -619,6 +638,58 @@ scroll_end (TermView *self, guint32 time, gboolean lifted)
   spongy_fling_start (&self->fling, 0, -vy, -INFINITY, INFINITY, gdk_frame_clock_get_frame_time (clock) / 1000.0);
   self->fling_last = 0;
   self->fling_tick = gtk_widget_add_tick_callback (GTK_WIDGET (self), on_fling_tick, self, NULL);
+}
+
+/* ---- zooming ------------------------------------------------------------------------------------------------- */
+
+/* The text's size follows the fingers' span: the size at the pinch's start times how much further apart they are
+ * than they came down, in steps (each one a new grid, and the program told its new size). The window keeps the size
+ * in its settings ("font-scale"). */
+static void
+zoom_update (TermView *self)
+{
+  double steps = log2 (self->zoom_from * fingers_span (self) / MAX (self->two_span, 1)) * ZOOM_STEPS;
+  int step;
+
+  if (fabs (steps - self->zoom_step) < ZOOM_HOLD)
+    return;
+  step = CLAMP ((int) lround (steps), ZOOM_MIN, ZOOM_MAX);
+  if (step == self->zoom_step)
+    return;
+  self->zoom_step = step;
+  vte_terminal_set_font_scale (VTE_TERMINAL (self), exp2 ((double) step / ZOOM_STEPS));
+}
+
+/* two fingers came down: which they do first, move apart (or together) or move along, makes it a pinch or a
+ * scroll */
+static void
+two_begin (TermView *self)
+{
+  self->state = TOUCH_TWO;
+  hide_toolbar (self);
+  fingers_centre (self, &self->two_x, &self->two_y);
+  self->two_span = fingers_span (self);
+  self->zoom_from = vte_terminal_get_font_scale (VTE_TERMINAL (self));
+  self->zoom_step = (int) lround (log2 (self->zoom_from) * ZOOM_STEPS);
+}
+
+static void
+two_update (TermView *self, guint32 time)
+{
+  double x, y;
+
+  fingers_centre (self, &x, &y);
+  if (fabs (fingers_span (self) - self->two_span) > PINCH_SLOP) {
+    self->state = TOUCH_ZOOM;
+    zoom_update (self);
+  } else if (hypot (x - self->two_x, y - self->two_y) > TOUCH_SLOP) {
+    double dy = y - self->two_y;
+
+    /* from where the centre crossed the slop, as one finger's scroll */
+    scroll_begin (self, time);
+    self->scroll_y = self->two_y + copysign (MIN (fabs (dy), TOUCH_SLOP), dy);
+    scroll_update (self, time);
+  }
 }
 
 /* ---- touch ---------------------------------------------------------------------------------------------------- */
@@ -711,12 +782,16 @@ touch_begin (TermView *self, GdkEventSequence *sequence, double x, double y, gui
       self->long_press = g_timeout_add (LONG_PRESS_MS, on_long_press, self);
     return;
   }
-  /* a second finger while the first was a tap to be, or scrolling: the two scroll, from their centre */
+  /* a second finger while the first was a tap to be: a scroll or a pinch; while it scrolled: the two scroll on, from
+   * their centre */
   if (self->n_fingers == 1 && (self->state == TOUCH_PENDING || self->state == TOUCH_SCROLL)) {
     cancel_long_press (self);
     self->fingers[1] = (Finger) { sequence, x, y };
     self->n_fingers = 2;
-    scroll_begin (self, time);
+    if (self->state == TOUCH_SCROLL)
+      scroll_begin (self, time);
+    else
+      two_begin (self);
   }
   /* any further finger is not followed */
 }
@@ -748,8 +823,14 @@ touch_update (TermView *self, GdkEventSequence *sequence, double x, double y, gu
   case TOUCH_HANDLE:
     move_handle (self, x, y);
     break;
+  case TOUCH_TWO:
+    two_update (self, time);
+    break;
   case TOUCH_SCROLL:
     scroll_update (self, time);
+    break;
+  case TOUCH_ZOOM:
+    zoom_update (self);
     break;
   default:
     break;
@@ -772,6 +853,10 @@ touch_end (TermView *self, GdkEventSequence *sequence, double x, double y, guint
     case TOUCH_SELECT:
     case TOUCH_HANDLE:
       self->handle = 0;
+      show_toolbar (self);
+      break;
+    case TOUCH_TWO:
+    case TOUCH_ZOOM:
       show_toolbar (self);
       break;
     case TOUCH_SCROLL:

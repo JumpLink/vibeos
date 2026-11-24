@@ -14,6 +14,7 @@ typedef struct {
   TermView     *view;
   TermSession  *session;
   TermKeys     *keys;           /* the extra keys (a reference of the window's own) */
+  GSettings    *settings;       /* NULL where the schema is not installed (run from a build tree) */
 } Window;
 
 static const VibeosAboutSection term_legal[] = {
@@ -36,7 +37,18 @@ window_free (gpointer data)
   }
   g_clear_object (&self->session);
   g_clear_object (&self->keys);
+  g_clear_object (&self->settings);
   g_free (self);
+}
+
+static GSettings *
+terminal_settings (void)
+{
+  GSettingsSchemaSource *source = g_settings_schema_source_get_default ();
+  g_autoptr (GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, "vibeos.Terminal", TRUE)
+                                              : NULL;
+
+  return schema ? g_settings_new_full (schema, NULL, NULL) : NULL;
 }
 
 static void
@@ -150,6 +162,10 @@ term_window_new (GtkApplication *app)
   gtk_widget_set_vexpand (GTK_WIDGET (self->view), TRUE);
   gtk_widget_set_hexpand (GTK_WIDGET (self->view), TRUE);
   gtk_box_append (GTK_BOX (content), GTK_WIDGET (self->view));
+  /* the text size a pinch sets (term-view.h), kept for the next window, and every window's the same */
+  self->settings = terminal_settings ();
+  if (self->settings)
+    g_settings_bind (self->settings, "font-scale", self->view, "font-scale", G_SETTINGS_BIND_DEFAULT);
 
   /* the keyboard comes up over the window (X-Vibeos-Keyboard=overlay), the extra keys on it */
   self->keys = g_object_ref_sink (term_keys_new ());

@@ -8,7 +8,7 @@
 #
 # Not run by meson: it starts a whole shell, and needs python3 and dbus-daemon. Everything it runs is its own: a
 # session bus and a stand-in system bus, the runtime directory, HOME and XDG directories in a temporary directory,
-# settings in memory; the Terminal's shell starts in that HOME. It never touches a session that is running, and it
+# settings in memory (the Terminal's in a key file there); the Terminal's shell starts in that HOME. It never touches a session that is running, and it
 # can run beside one, as the phone's user. GSETTINGS_SCHEMA_DIR, GI_TYPELIB_PATH and LD_LIBRARY_PATH are passed on (a
 # libvibeos built with the app, where it is not the one installed). GTK asks no portal (none answers on the test's
 # bus, and GTK waits for one).
@@ -25,7 +25,7 @@ mkdir "$t/schemas" "$t/home" "$t/data" "$t/data/applications" "$t/config" "$t/ca
 mkdir -m 700 "$t/run"
 cp -a "$ext" "$t/ext"
 cp "$here/touch.js" "$here/probe.py" "$t/"
-cp "$ext/../vibeos-launcher/data/vibeos.Shell.gschema.xml" "$t/schemas/"
+cp "$ext/../vibeos-launcher/data/vibeos.Shell.gschema.xml" "$here/../data/vibeos.Terminal.gschema.xml" "$t/schemas/"
 glib-compile-schemas "$t/schemas"
 # the desktop file, for the shell to know the window's app (and its X-Vibeos-Keyboard), starting this binary
 sed "s|^Exec=.*|Exec=$binary|" "$here/../data/vibeos.Terminal.desktop" > "$t/data/applications/vibeos.Terminal.desktop"
