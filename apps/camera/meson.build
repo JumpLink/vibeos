@@ -12,6 +12,7 @@ add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers'
                       '-DDATADIR="@0@"'.format(pkgdatadir), language: 'c')
 
 gnome = import('gnome')
+i18n = import('i18n')
 m = meson.get_compiler('c').find_library('m')
 deps = [dependency('gtk4', version: '>= 4.14'), dependency('gio-unix-2.0'), dependency('gdk-pixbuf-2.0'),
         dependency('gstreamer-1.0', version: '>= 1.22'), dependency('gstreamer-app-1.0'),
@@ -28,7 +29,8 @@ executable('vibeos-camera',
 
 configure_file(input: 'data/vibeos.Camera.service.in', output: 'vibeos.Camera.service',
                configuration: configuration_data({'bindir': bindir}), install_dir: datadir / 'dbus-1/services')
-install_data('data/vibeos.Camera.desktop', install_dir: datadir / 'applications')
+i18n.merge_file(input: 'data/vibeos.Camera.desktop.in', output: 'vibeos.Camera.desktop', type: 'desktop', po_dir: 'po',
+                install: true, install_dir: datadir / 'applications')
 install_data('data/vibeos.Camera.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 install_data('data/vibeos.Camera.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 # Aperture's camera sounds (AOSP frameworks/base data/sounds, Apache-2.0) and Droid Sans Mono (Apache-2.0)
@@ -36,6 +38,9 @@ install_data('data/sounds/camera_click.ogg', 'data/sounds/VideoRecord.ogg', 'dat
              install_dir: pkgdatadir / 'sounds')
 install_data('data/fonts/DroidSansMono.ttf', install_dir: pkgdatadir / 'fonts')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
+
+# the translations, and their checks
+subdir('po')
 
 # the QR classifier, without GTK's display
 test('qr-classify', executable('test-qr', 'tests/test-qr.c', 'src/cam-qr-sheet.c',

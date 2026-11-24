@@ -211,12 +211,12 @@ row (GtkWidget *list, const char *title, const char *summary_text, GtkWidget **s
 
 /* About: VibeOS's About sheet, as every VibeOS app has it */
 static const VibeosAboutSection cam_legal[] = {
-  { "libcamera", "The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, under the GNU LGPL 2.1 "
-                 "or later." },
+  { "libcamera", N_("The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, under the GNU LGPL "
+                    "2.1 or later.") },
   { NULL }
 };
 
-static const VibeosAboutInfo cam_about = { .name = "Camera", .icon_name = "vibeos.Camera", .legal = cam_legal };
+static const VibeosAboutInfo cam_about = { .name = N_("Camera"), .icon_name = "vibeos.Camera", .legal = cam_legal };
 
 static void
 on_about (VibeosPressable *pressable, CamSettings *self)

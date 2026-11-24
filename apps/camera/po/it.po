@@ -1,0 +1,463 @@
+# Italian translations of vibeos-camera.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-camera\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Italian\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+# android: Aperture app_name
+#: data/vibeos.Camera.desktop.in src/cam-settings.c src/cam-window.c
+msgid "Camera"
+msgstr "Fotocamera"
+
+#: data/vibeos.Camera.desktop.in
+msgid "Take photos and videos, scan barcodes"
+msgstr ""
+
+#: data/vibeos.Camera.desktop.in
+msgid "Camera;Photo;Video;Picture;Selfie;QR;Barcode;"
+msgstr ""
+
+# android: Aperture cancel_button_description
+#: src/cam-dialogs.c
+msgid "Cancel"
+msgstr "Annulla"
+
+# android: Aperture location_permission_dialog_title
+#: src/cam-dialogs.c
+msgid "Add photo and video locations"
+msgstr "Aggiungi la posizione delle foto e dei video"
+
+# android: Aperture location_permission_dialog_description
+#: src/cam-dialogs.c
+msgid "Map your memories by including location metadata with each capture."
+msgstr "Mappa i tuoi ricordi includendo informazioni sulla posizione in ogni acquisizione."
+
+# android: Aperture location_permission_dialog_later
+#: src/cam-dialogs.c
+msgid "Later"
+msgstr "Più tardi"
+
+# android: Aperture location_permission_dialog_turn_on
+#: src/cam-dialogs.c
+msgid "Turn on"
+msgstr "Attiva"
+
+# android: Aperture camera_mode_photo (adapted)
+#. the mode names, in capitals
+#: src/cam-mode-selector.c
+msgctxt "mode"
+msgid "PHOTO"
+msgstr "Foto"
+
+# android: Aperture video_header (adapted)
+#: src/cam-mode-selector.c
+msgctxt "mode"
+msgid "VIDEO"
+msgstr "Video"
+
+# android: Aperture camera_mode_qr (adapted)
+#: src/cam-mode-selector.c
+msgctxt "mode"
+msgid "SCAN"
+msgstr "Scansione"
+
+# android: Aperture qr_uri_title
+#: src/cam-qr-sheet.c
+msgid "Open URL"
+msgstr "Apri URL"
+
+# android: Aperture qr_address_title
+#: src/cam-qr-sheet.c
+msgid "Add contact"
+msgstr "Aggiungi contatto"
+
+# android: Aperture qr_calendar_title
+#: src/cam-qr-sheet.c
+msgid "Add event to calendar"
+msgstr "Aggiungi evento al calendario"
+
+# android: Aperture qr_email_title
+#: src/cam-qr-sheet.c
+msgid "Send a new email"
+msgstr "Invia una nuova e-mail"
+
+# android: Aperture qr_geo_title
+#: src/cam-qr-sheet.c
+msgid "Open this location"
+msgstr "Apri questa posizione"
+
+# android: Aperture qr_tel_title
+#: src/cam-qr-sheet.c
+msgid "Call phone number"
+msgstr "Chiama numero di telefono"
+
+# android: Aperture qr_sms_title
+#: src/cam-qr-sheet.c
+msgid "Send a new SMS"
+msgstr "Invia un nuovo SMS"
+
+# android: Aperture qr_isbn_title
+#: src/cam-qr-sheet.c
+msgid "Lookup this ISBN"
+msgstr "Ricerca questo ISBN"
+
+# android: Aperture qr_product_title
+#: src/cam-qr-sheet.c
+msgid "Lookup product"
+msgstr "Ricerca prodotto"
+
+# android: Aperture qr_vin_title
+#: src/cam-qr-sheet.c
+msgid "Lookup VIN"
+msgstr "Ricerca VIN"
+
+# android: Aperture qr_text (several translations, short)
+#: src/cam-qr-sheet.c
+msgid "Text"
+msgstr "Testo"
+
+# android: Aperture qr_no_app_available_for_action
+#: src/cam-qr-sheet.c src/cam-window.c
+msgid "No app available to handle this action"
+msgstr "Nessuna app disponibile per eseguire quest'azione"
+
+# android: Aperture qr_copy_description
+#: src/cam-qr-sheet.c
+msgid "Copy to clipboard"
+msgstr "Copia negli appunti"
+
+#: src/cam-settings.c
+msgid ""
+"The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, "
+"under the GNU LGPL 2.1 or later."
+msgstr ""
+
+# android: Aperture title_activity_settings
+#: src/cam-settings.c
+msgid "Settings"
+msgstr "Impostazioni"
+
+# android: Framework wifi_calling_off_summary (several translations, short)
+#: src/cam-settings.c
+msgctxt "mirror"
+msgid "Off"
+msgstr "Off"
+
+# android: Framework accessibility_shortcut_menu_item_status_on (several translations, short)
+#: src/cam-settings.c
+msgctxt "mirror"
+msgid "On"
+msgstr "On"
+
+# android: Aperture video_mirror_mode_on_ffc_only
+#: src/cam-settings.c
+msgid "Front facing camera only"
+msgstr "Solo fotocamera frontale"
+
+# android: Aperture shutter_button_description (several translations, short)
+#: src/cam-settings.c src/cam-widgets.c src/cam-window.c
+msgid "Shutter"
+msgstr "Otturatore"
+
+# android: Aperture gesture_action_focus
+#: src/cam-settings.c
+msgid "Focus"
+msgstr "Messa a fuoco"
+
+# android: Aperture gesture_action_mic_mute
+#: src/cam-settings.c
+msgid "Microphone mute"
+msgstr "Silenzia il microfono"
+
+# android: Aperture gesture_action_zoom
+#: src/cam-settings.c
+msgid "Zoom"
+msgstr "Zoom"
+
+# android: Framework system_locale_title (several translations, short)
+#. the keys keep their usual job: the volume
+#: src/cam-settings.c
+msgid "System default"
+msgstr "Predefinita di sistema"
+
+# android: Aperture gesture_action_nothing (several translations, short)
+#: src/cam-settings.c
+msgid "Nothing"
+msgstr "Niente"
+
+# android: Framework action_bar_up_description (short)
+#: src/cam-settings.c
+msgid "Navigate up"
+msgstr "Vai in alto"
+
+# android: Framework input_method_nav_back_button_desc (short)
+#. the shell's back gesture presses a "Back" button at the window's top over the accessibility bus
+#: src/cam-settings.c
+msgid "Back"
+msgstr "Indietro"
+
+# android: Aperture general_header
+#: src/cam-settings.c
+msgid "General"
+msgstr "Generali"
+
+# android: Aperture bright_screen_title
+#: src/cam-settings.c
+msgid "Bright screen"
+msgstr "Schermo luminoso"
+
+# android: Aperture bright_screen_summary
+#: src/cam-settings.c
+msgid "Locks brightness to 100%"
+msgstr "Fissa la luminosità al 100%"
+
+# android: Aperture save_location_title
+#: src/cam-settings.c
+msgid "Save location data"
+msgstr "Salva dati della posizione"
+
+# android: Aperture save_location_summary
+#: src/cam-settings.c
+msgid "Include GPS location in metadata"
+msgstr "Includi la posizione GPS nei metadati"
+
+# android: Aperture shutter_sound_title
+#: src/cam-settings.c
+msgid "Shutter sound"
+msgstr "Suono otturatore"
+
+# android: Aperture shutter_sound_summary
+#: src/cam-settings.c
+msgid "Play a sound on capture"
+msgstr "Riproduci un suono all'acquisizione"
+
+# android: Aperture leveler_title
+#: src/cam-settings.c
+msgid "Leveler"
+msgstr "Livella"
+
+# android: Aperture leveler_summary
+#: src/cam-settings.c
+msgid "Indicator that shows device orientation"
+msgstr "Indicatore che mostra l'inclinazione del dispositivo"
+
+# android: Aperture gestures_title
+#: src/cam-settings.c
+msgid "Gestures"
+msgstr "Gesti"
+
+# android: Aperture photos_header
+#: src/cam-settings.c
+msgid "Photos"
+msgstr "Foto"
+
+# android: Aperture photo_ffc_mirror_title
+#: src/cam-settings.c
+msgid "Mirror front camera"
+msgstr "Fotocamera frontale a specchio"
+
+# android: Aperture photo_ffc_mirror_summary
+#: src/cam-settings.c
+msgid "Save front camera photos as they appear in the preview"
+msgstr "Salva le foto della fotocamera frontale come appaiono nell'anteprima"
+
+# android: Aperture video_header
+#: src/cam-settings.c
+msgctxt "settings"
+msgid "Video"
+msgstr "Video"
+
+# android: Aperture video_mirror_mode_title
+#: src/cam-settings.c
+msgid "Enable video mirroring"
+msgstr "Abilita la riflessione del video"
+
+#. last, About: the camera has no ⋮ (its top corners are the flash's and the flip's), so it is here
+#: src/cam-settings.c
+msgid "About"
+msgstr ""
+
+#: src/cam-settings.c
+msgid "About Camera"
+msgstr ""
+
+# android: Aperture volume_buttons_title (several translations, short)
+#: src/cam-settings.c
+msgid "Volume buttons"
+msgstr "Tasti volume"
+
+# android: Aperture volume_buttons_action_title
+#: src/cam-settings.c
+msgid "Volume buttons action"
+msgstr "Azione pulsanti volume"
+
+# android: Aperture volume_buttons_invert_title
+#: src/cam-settings.c
+msgid "Invert volume buttons"
+msgstr "Inverti i tasti volume"
+
+# android: Aperture volume_buttons_invert_summary
+#: src/cam-settings.c
+msgid "Invert volume up and down behavior"
+msgstr "Inverti il comportamento dei tasti volume"
+
+# android: Aperture flip_camera_button_description
+#: src/cam-widgets.c src/cam-window.c
+msgid "Flip camera"
+msgstr "Capovolgi fotocamera"
+
+# android: Aperture video_recording_state_button_description
+#: src/cam-widgets.c src/cam-window.c
+msgid "Pause/resume video recording"
+msgstr "Pausa/riprendi registrazione video"
+
+# android: Aperture gallery_button_description
+#: src/cam-widgets.c src/cam-window.c
+msgid "Gallery"
+msgstr "Galleria"
+
+#: src/cam-window.c
+msgid "Camera access is off. Turn it on in Settings, Security and privacy."
+msgstr ""
+
+# android: Aperture force_torch_help
+#: src/cam-window.c
+msgid "On photo mode, you can long press the flash button to switch into torch mode."
+msgstr "In modalità foto, puoi tenere premuto il pulsante del flash per attivare la torcia."
+
+# android: Framework httpErrorOk (several translations, short)
+#: src/cam-window.c
+msgid "OK"
+msgstr "Ok"
+
+# android: Aperture grid_off
+#: src/cam-window.c
+msgid "GRID OFF"
+msgstr "GRIGLIA OFF"
+
+# android: Aperture grid_on_3
+#: src/cam-window.c
+msgid "GRID 3x3"
+msgstr "GRIGLIA 3x3"
+
+# android: Aperture grid_on_4
+#: src/cam-window.c
+msgid "GRID 4x4"
+msgstr "GRIGLIA 4x4"
+
+# android: Aperture grid_on_goldenratio
+#: src/cam-window.c
+msgid "GRID φ"
+msgstr "GRIGLIA φ"
+
+# android: Aperture timer_3
+#: src/cam-window.c
+msgid "TIMER 3s"
+msgstr "TIMER 3s"
+
+# android: Aperture timer_10
+#: src/cam-window.c
+msgid "TIMER 10s"
+msgstr "TIMER 10s"
+
+# android: Aperture timer_off
+#: src/cam-window.c
+msgid "TIMER OFF"
+msgstr "TIMER OFF"
+
+# android: Aperture video_framerate_auto
+#. the camera's own rate: there is no other to choose, so AUTO and disabled, as a single option is shown
+#: src/cam-window.c
+msgid "AUTO FPS"
+msgstr "FPS AUTO"
+
+# android: Aperture mic_on
+#: src/cam-window.c
+msgid "MIC ON"
+msgstr "MICROFONO ON"
+
+# android: Aperture mic_off
+#: src/cam-window.c
+msgid "MIC OFF"
+msgstr "MICROFONO OFF"
+
+# android: Aperture settings
+#: src/cam-window.c
+msgid "SETTINGS"
+msgstr "IMPOSTAZIONI"
+
+# android: Aperture error_stream_config
+#: src/cam-window.c
+msgid "There was an error while preparing the stream. Please report this to the developers."
+msgstr "Si è verificato un errore durante la configurazione della fotocamera. Si prega di segnalarlo agli sviluppatori."
+
+# android: Aperture error_camera_in_use
+#: src/cam-window.c
+msgid "This camera is already in use, try closing the app using it."
+msgstr "Questa fotocamera è già in uso, prova a chiudere l'app che la sta usando."
+
+# android: Aperture error_other_recoverable_error
+#: src/cam-window.c
+msgid "Error while setting up the session. The app will try to recover."
+msgstr "Errore durante l'apertura della sessione. L'applicazione proverà a rimediare."
+
+# android: Aperture camcorder_unsupported_toast
+#: src/cam-window.c
+msgid "No camera supports video recording."
+msgstr "Nessuna fotocamera supporta la registrazione video."
+
+# android: Aperture thermal_status_moderate
+#: src/cam-window.c
+msgid "Moderate thermal throttling, make sure the device isn't under direct sunlight."
+msgstr "Moderata limitazione termica in atto, assicurarsi che il dispositivo non sia sotto la luce solare diretta."
+
+# android: Aperture thermal_status_severe
+#: src/cam-window.c
+msgid "Severe thermal throttling, it is recommended to let the device cool down a bit."
+msgstr "Intensa limitazione termica in atto, si consiglia di lasciare che il dispositivo si raffreddi un po'."
+
+# android: Aperture thermal_status_critical
+#: src/cam-window.c
+msgid "Critical thermal throttling, the app might be closed soon."
+msgstr "Critica limitazione termica in atto, l'app potrebbe venire chiusa a breve."
+
+# android: Aperture thermal_status_emergency
+#: src/cam-window.c
+msgid "Emergency thermal throttling, the app will close now."
+msgstr "Limitazione termica d'emergenza in atto, l'app verrà chiusa ora."
+
+# android: Aperture thermal_status_shutdown
+#: src/cam-window.c
+msgid "Shutdown thermal throttling, the device will power off."
+msgstr "Limitazione termica da spegnimento in atto, il dispositivo si spegnerà."
+
+# android: Aperture save_location_toast
+#: src/cam-window.c
+msgid "Location permissions not granted by the user."
+msgstr "Accesso sulla posizione negato dall'utente."
+
+# android: Aperture pro_button_description
+#: src/cam-window.c
+msgid "Pro settings"
+msgstr "Impostazioni Pro"
+
+# android: Aperture flash_button_description
+#: src/cam-window.c
+msgid "Flash mode"
+msgstr "Flash"
+
+# android: Aperture error_no_cameras_available
+#: src/cam-window.c
+msgid "No cameras were found on the device, cannot start the app."
+msgstr "Nessuna fotocamera trovata sul dispositivo, impossibile avviare l'app."
