@@ -23,6 +23,17 @@ typedef struct {
 
 static void build (Page *p);
 
+/* the saved sample was made for another model than the one installed now: the check is not made until the owner
+ * records it again. dictate_voice_match_stale () is the engine's; until the engine has it, it is a weak reference
+ * and no sample is ever stale */
+gboolean dictate_voice_match_stale (void) __attribute__ ((weak));
+
+static gboolean
+sample_stale (void)
+{
+  return dictate_voice_match_stale && dictate_voice_match_stale ();
+}
+
 /* the strictness's name: 0..33 lenient, ..66 balanced, the rest strict */
 static const char *
 strict_label (int strictness)
@@ -37,6 +48,11 @@ dictate_voicematch_summary (GSettings *settings)
 
   if (!dictate_voice_match_enrolled ())
     return g_strdup (dictate_voice_match_ready () ? _("Off · no voice sample yet") : _("Not on this phone yet"));
+  /* a sample, and nothing to check it with: the model's package removed */
+  if (!dictate_voice_match_ready ())
+    return g_strdup (_("Off · the voice model is not installed"));
+  if (sample_stale ())
+    return g_strdup (_("Record your voice again"));
   if (!g_settings_get_boolean (settings, "voice-match"))
     return g_strdup (_("Off · voice sample saved"));
   /* TRANSLATORS: Settings › Voice match's summary; the %s is how close: lenient, balanced or strict */
@@ -143,6 +159,12 @@ on_rerecord (VibeosListRow *row, Page *p)
 }
 
 static void
+on_record_again (VibeosPressable *button, Page *p)
+{
+  as_owner (p, record);
+}
+
+static void
 delete_sample (Page *p)
 {
   g_autoptr (GError) error = NULL;
@@ -213,8 +235,11 @@ on_setting (GSettings *settings, const char *key, Page *p)
     show_strictness (p);
   else if (!g_strcmp0 (key, "voice-match"))
     vibeos_list_row_set_summary (VIBEOS_LIST_ROW (p->only),
-                                 g_settings_get_boolean (settings, key) ? _("Other voices can't give Vibe commands")
-                                                                        : _("Off, Vibe answers anyone"));
+                                 !g_settings_get_boolean (settings, key) ? _("Off, Vibe answers anyone")
+                                 /* on, but nothing to check a voice with */
+                                 : !dictate_voice_match_ready () || sample_stale () ? _("Not in effect until voices "
+                                                                                        "can be checked again")
+                                 : _("Other voices can't give Vibe commands"));
 }
 
 static GtkWidget *
@@ -342,15 +367,49 @@ build (Page *p)
       GtkWidget *cards = vibeos_card_list_new (), *row, *again, *strict, *top, *scale, *ends, *test;
       g_autofree char *when = recorded_when ();
 
+      /* a sample the check cannot use: the model it was made for has gone, or been replaced by an update */
+      if (!dictate_voice_match_ready ())
+        {
+          GtkWidget *card = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+
+          gtk_widget_add_css_class (card, "dictate-vm-card");
+          gtk_box_append (GTK_BOX (card), label_new ("dictate-vm-card-title", _("The voice model is not installed")));
+          gtk_box_append (GTK_BOX (card), label_new ("dictate-vm-card-sub",
+                                                     _("Your voice sample is kept, but Vibe can't check voices "
+                                                       "until the model is installed again.")));
+          gtk_box_append (GTK_BOX (box), card);
+        }
+      else if (sample_stale ())
+        {
+          GtkWidget *card = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0), *button;
+
+          gtk_widget_add_css_class (card, "dictate-vm-card");
+          gtk_box_append (GTK_BOX (card), label_new ("dictate-vm-card-title", _("Record your voice again")));
+          gtk_box_append (GTK_BOX (card), label_new ("dictate-vm-card-sub",
+                                                     _("Voice match was updated, and your sample was made for the "
+                                                       "earlier version. Vibe can't check voices with it.")));
+          button = pill_new (_("Record again"), TRUE);
+          /* the old sample is still the owner's: replacing it asks for the PIN, as Re-record does */
+          g_signal_connect (button, "clicked", G_CALLBACK (on_record_again), p);
+          gtk_box_append (GTK_BOX (card), button);
+          gtk_box_append (GTK_BOX (box), card);
+        }
+
       p->only = switch_row (p, cards, _("Only answer my voice"), NULL, "voice-match");
       on_setting (p->settings, "voice-match", p);
 
       row = vibeos_list_row_new (_("Voice sample"), when);
-      again = gtk_label_new (_("Re-record"));
-      gtk_widget_add_css_class (again, "dictate-row-action");
-      gtk_widget_set_can_target (again, FALSE);
-      vibeos_list_row_set_end_widget (VIBEOS_LIST_ROW (row), again);
-      g_signal_connect (row, "clicked", G_CALLBACK (on_rerecord), p);
+      /* recorded again only where a recording can be made into a sample; a stale one has its card above for it */
+      if (dictate_voice_match_ready () && !sample_stale ())
+        {
+          again = gtk_label_new (_("Re-record"));
+          gtk_widget_add_css_class (again, "dictate-row-action");
+          gtk_widget_set_can_target (again, FALSE);
+          vibeos_list_row_set_end_widget (VIBEOS_LIST_ROW (row), again);
+          g_signal_connect (row, "clicked", G_CALLBACK (on_rerecord), p);
+        }
+      else
+        vibeos_list_row_set_activatable (VIBEOS_LIST_ROW (row), FALSE);
       vibeos_card_list_append (VIBEOS_CARD_LIST (cards), row);
 
       row = vibeos_list_row_new (_("Delete voice sample"), _("Vibe will answer anyone again"));
@@ -398,10 +457,14 @@ build (Page *p)
       vibeos_card_list_set_margins (VIBEOS_CARD_LIST (cards), 0, 0);
       gtk_box_append (GTK_BOX (box), cards);
 
-      test = pill_new (_("Test voice match"), FALSE);
-      gtk_widget_add_css_class (test, "dictate-vm-test");
-      g_signal_connect (test, "clicked", G_CALLBACK (on_test), p);
-      gtk_box_append (GTK_BOX (box), test);
+      /* a test only where the check can be made */
+      if (dictate_voice_match_ready () && !sample_stale ())
+        {
+          test = pill_new (_("Test voice match"), FALSE);
+          gtk_widget_add_css_class (test, "dictate-vm-test");
+          g_signal_connect (test, "clicked", G_CALLBACK (on_test), p);
+          gtk_box_append (GTK_BOX (box), test);
+        }
     }
   gtk_box_append (GTK_BOX (p->body), vibeos_clamp_new (box, VIBEOS_CLAMP_SETTINGS));
 }
