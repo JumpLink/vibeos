@@ -42,13 +42,25 @@ S10E_CALLAUDIO_FW=			# optional: the call-audio kit's firmware, compared with th
 S10E_UBOOT=				# U-Boot image for recovery (its first 4 MiB are taken)
 POCO_STAGE=				# POCO X3 NFC: device stage
 POCO_K22_IMG=				# its 0.1.1 ROM image (the ESP is read from it)
-POCO_K22_ZIP=				# its 0.1.1 ROM zip (recovery-uboot.img)
+POCO_K22_ZIP=				# its 0.1.1 ROM zip (recovery-uboot.img, which POCO_UBOOT must make again)
+POCO_LINEAGE_ZIP=			# LineageOS 22.2 surya 20261102 (its boot.img, dtbo.img, vbmeta.img, recovery.img)
+POCO_UBOOT=				# u-boot.bin of the POCO's U-Boot (env qcom-phone-linuxpart.env: it boots "linux")
+POCO_AVB=				# a folder with AOSP's avbtool.py and testkey_rsa4096.pem (external/avb)
 S5E_STAGE=				# Galaxy Tab S5e: device stage
-S5E_TABK=				# the tablet's recovery backup, linux-k11-uc.img and later device files
+S5E_TABK=				# the tablet's recovery backup, linux-k11-uc.img, its kernel Image-uc.gz, repack-v2.py
+					# (rewrites a boot image v2 with a new ramdisk) and later device files
 S5E_MODULES=				# its kernel build's modules_install tree (lib/modules)
 S5E_KIT_TOOLS=				# extents, keepmisc and dmlinear (static aarch64 helpers)
+S5E_UBOOT=				# its dual-boot U-Boot, u-boot-nodtb.bin as s5e/build-uboot.sh builds it (s5e/uboot.env)
 S20_DIR=				# Galaxy S20 FE: its kit (build/, kit/rootfs, kit/modem, quietboot/rootfs)
 S20_SLEEP=				# its sleep helper sources
+# SYSIMG=				# the system image whose upstream-signed regulatory.db goes into the initramfs of a
+					# kernel with cfg80211 built in (default: OUT/system/rootfs.img)
+# S10E_IMAGE=				# a rebuild of the S10e's kernel (the same release, so the stage's modules fit) for
+					# /boot/s10e/Image instead of the stage's, e.g. one with a neutral banner
+# S5E_KERNEL=				# the same for the S5e: a gzip -9n Image for the slot image instead of Image-uc.gz
+# POCO_ESP_KERNEL=			# the same for the POCO: a vmlinuz.efi (EFI zboot) of vmlinuz-mobian's size, written
+					# over that file's clusters on the ESP
 
 # ---- test/zip-test.sh, test/setup-test.sh
 # UP_PARAM_IMG=				# a copy of an S10e's up_param (default: a stand-in tar)

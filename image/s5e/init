@@ -1,0 +1,264 @@
+#!/bin/busybox sh
+# gts4lv bring-up initramfs: USB network (NCM + RNDIS) and a serial console
+# (ACM) on the gadget, DHCP for the host; with gts4lv.debug on the command line,
+# root shells on them: telnet + SSH on 172.16.42.1 and the serial console.
+# Nothing here writes to eMMC.
+
+/bin/busybox mkdir -p /bin /sbin /usr/bin /usr/sbin /proc /sys /dev /tmp /run /mnt
+/bin/busybox --install -s
+
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev 2>/dev/null
+mkdir -p /dev/pts && mount -t devpts devpts /dev/pts
+mount -t tmpfs tmpfs /tmp
+mount -t tmpfs tmpfs /run
+mount -t configfs configfs /sys/kernel/config
+mount -t pstore pstore /sys/fs/pstore 2>/dev/null
+
+# Boot splash: the red Debian swirl over ABL's screen, kept until Plymouth and GDM
+# take over. The console is on VT1, which fbcon does not drive (fbcon=vc:2-63).
+[ -e /splash.bgra.gz ] && [ -c /dev/fb0 ] && zcat /splash.bgra.gz > /dev/fb0 2>/dev/null
+
+log() { echo "gts4lv-init: $*" > /dev/kmsg; echo "gts4lv-init: $*" > /dev/tty0 2>/dev/null; }
+log "up, kernel $(uname -r)"
+
+IP=172.16.42.1
+G=/sys/kernel/config/usb_gadget/g1
+
+gadget() {
+	mkdir -p $G && cd $G || return 1
+	echo 0x18d1 > idVendor          # same ids postmarketOS uses for its debug shell
+	echo 0xd001 > idProduct
+	mkdir -p strings/0x409
+	echo "Samsung" > strings/0x409/manufacturer
+	echo "gts4lv mainline debug" > strings/0x409/product
+	cat /proc/device-tree/serial-number 2>/dev/null > strings/0x409/serialnumber || echo gts4lv > strings/0x409/serialnumber
+	mkdir -p configs/c.1/strings/0x409
+	echo "NCM+RNDIS+ACM" > configs/c.1/strings/0x409/configuration
+	echo 500 > configs/c.1/MaxPower
+	for f in ncm.usb0 rndis.usb0 acm.usb0; do
+		mkdir -p functions/$f || continue
+		# fixed MACs (locally administered, the S10e's scheme with e5): the dev box sees the
+		# same enx025e10e50002 every boot instead of a new random enx* name
+		case $f in
+		ncm.*)   echo 02:5e:10:e5:00:01 > functions/$f/dev_addr
+			 echo 02:5e:10:e5:00:02 > functions/$f/host_addr ;;
+		rndis.*) echo 02:5e:10:e5:00:03 > functions/$f/dev_addr
+			 echo 02:5e:10:e5:00:04 > functions/$f/host_addr ;;
+		esac
+		ln -s functions/$f configs/c.1/ 2>/dev/null
+	done
+	cd /
+}
+
+bind_udc() {
+	for i in $(seq 60); do
+		UDC=$(ls /sys/class/udc 2>/dev/null | head -n1)
+		[ -n "$UDC" ] && break
+		sleep 1
+	done
+	if [ -z "$UDC" ]; then log "no UDC after 60 s"; return 1; fi
+	echo "$UDC" > $G/UDC && log "gadget bound to $UDC"
+}
+
+gadget && bind_udc
+
+# SM5705 MUIC is in manual-switch mode (CTRL bit 2 = 0) with MANSW1 open, so
+# D+/D- never reach the SoC. Route both to USB (D- [7:5]=001, D+ [4:2]=001).
+muic_bus() {
+	for d in /sys/bus/i2c/devices/i2c-*; do
+		case "$(cat $d/of_node/name 2>/dev/null)" in i2c-charger) basename $d | cut -d- -f2; return;; esac
+	done
+}
+B=$(muic_bus)
+[ -n "$B" ] && i2cset -y $B 0x25 0x13 0x24 && log "muic: MANSW1 <- 0x24 (USB)"
+
+# Both network functions get the same address; the host uses whichever it speaks.
+for n in usb0 usb1; do
+	ip link set $n up 2>/dev/null
+done
+ip addr add $IP/24 dev usb0 2>/dev/null && log "usb0 $IP"
+ip link set lo up
+
+cat > /tmp/udhcpd.conf <<EOF
+start 172.16.42.2
+end 172.16.42.2
+interface usb0
+option subnet 255.255.255.0
+max_leases 1
+lease_file /tmp/udhcpd.leases
+EOF
+touch /tmp/udhcpd.leases
+udhcpd /tmp/udhcpd.conf
+
+# The login shells, root without a password: telnet and SSH on $IP, and a shell
+# on the ACM serial port. Only with gts4lv.debug on the command line, which
+# U-Boot's "rescue shell" entry passes (Volume Down at power-on); without it
+# nothing here takes a login.
+SHELLS=
+if grep -qw gts4lv.debug /proc/cmdline; then
+	SHELLS=1
+	telnetd -l /bin/sh -b $IP
+	mkdir -p /etc/dropbear
+	dropbear -R -B -p $IP:22 && log "ssh root@$IP"
+
+	# Serial console on the ACM function, respawned.
+	( while true; do
+		[ -c /dev/ttyGS0 ] && setsid sh -c 'exec sh </dev/ttyGS0 >/dev/ttyGS0 2>&1'
+		sleep 1
+	done ) &
+	CONSOLE_LOOP=$!
+fi
+
+[ -n "$(ls /sys/fs/pstore 2>/dev/null)" ] && log "pstore has records: /sys/fs/pstore"
+log "ready"
+
+# --- Mobian ---------------------------------------------------------------
+# Its rootfs is /data/lost+found/mobian/rootfs.img on Android's userdata (that
+# directory is never encrypted). dm-linear maps the file's extents, so /data
+# itself is never mounted here. Boot it unless the command line has gts4lv.stay
+# (U-Boot's "rescue shell" entry). A previous boot that switched to Mobian and
+# never reported GTS4LV-MOBIAN-OK (pstore) is only logged.
+part() {
+	for u in /sys/class/block/*/uevent; do
+		grep -qx "PARTNAME=$1" "$u" && { echo /dev/$(basename $(dirname $u)); return; }
+	done
+}
+# Where rootfs.img lies on userdata: the list the device zip's installer writes into the last 512 KiB of the
+# recovery partition, after a "GTS4LV-EXTENTS 1" line and up to an "END" line. That list only, and only whole:
+# lines of "logical physical length flags" in bytes, contiguous from 0, in 512-byte sectors, all inside userdata
+# ($U). A list from anywhere else (an /etc copy, an earlier install) maps blocks that a new rootfs.img freed and
+# Android's files may hold by now: mounting or checking that writes into them. Prints the list's path, or
+# nothing.
+extents() {
+	r=$(part recovery)
+	[ -n "$r" ] || { log "mobian: no recovery partition, so no extent list"; return; }
+	n=$(cat /sys/class/block/${r#/dev/}/size)
+	dd if=$r bs=512 skip=$((n - 1024)) count=1024 2>/dev/null | tr -d '\000' > /run/tail.txt
+	if [ "$(head -n1 /run/tail.txt)" != "GTS4LV-EXTENTS 1" ] || ! grep -qx END /run/tail.txt; then
+		log "mobian: no extent list at the end of $r"; return
+	fi
+	sed -n '2,/^END$/p' /run/tail.txt | grep -vx END > /run/rootfs-extents.txt
+	awk -v usz=$(( $(cat /sys/class/block/${U#/dev/}/size) * 512 )) '
+		BEGIN { at = 0; n = 0 }
+		NF != 4 || $1 !~ /^[0-9]+$/ || $2 !~ /^[0-9]+$/ || $3 !~ /^[0-9]+$/ { bad = 1; exit }
+		$1 != at || $3 == 0 || $2 % 512 || $3 % 512 || $2 + $3 > usz { bad = 1; exit }
+		{ at = $1 + $3; n++ }
+		END { exit bad || !n }' /run/rootfs-extents.txt || {
+		log "mobian: the extent list at the end of $r is not whole, or runs outside userdata"; return; }
+	echo /run/rootfs-extents.txt
+}
+# fits DEV BYTES: DEV starts with an ext4 superblock whose file system is no bigger than BYTES. What a list maps
+# once its blocks are something else holds neither, as a rule. (Superblock at 1024: s_blocks_count_lo +4,
+# s_log_block_size +24, s_magic +56, s_feature_incompat +96 (64bit 0x80), s_blocks_count_hi +336.)
+u32() { dd if=$1 bs=1 skip=$2 count=4 2>/dev/null | od -An -tu4 | tr -d ' \n'; }
+fits() {
+	[ "$(dd if=$1 bs=1 skip=1080 count=2 2>/dev/null | od -An -tx1 | tr -d ' \n')" = 53ef ] || return 1
+	lo=$(u32 $1 1028) lbs=$(u32 $1 1048) hi=0
+	[ $(( $(u32 $1 1120) & 128 )) = 0 ] || hi=$(u32 $1 1360)
+	[ -n "$lo" ] && [ -n "$lbs" ] && [ "$lbs" -le 6 ] && [ $(( (hi * 4294967296 + lo) * (1024 << lbs) )) -le $2 ]
+}
+# The ext4 volume label of a partition (superblock at 1024, s_volume_name at +120).
+fslabel() { dd if=$1 bs=1 skip=1144 count=16 2>/dev/null | tr -d '\000'; }
+mobian() {
+	# userdata can show up a moment after this runs; dmlinear without it fails.
+	i=0; while [ -z "$(part userdata)" ] && [ $i -lt 10 ]; do sleep 1; i=$((i+1)); done
+	U=$(part userdata)
+	if [ -n "$U" ] && [ "$(fslabel $U)" = gts4lv_root ]; then
+		# Linux only (the "whole tablet" zip): userdata IS the root file system, Android is gone.
+		# Checked before every mount; -p repairs only what is safe to repair unattended.
+		ROOTDEV=$U
+		log "mobian: root is the whole userdata partition ($U)"
+		e2fsck -p $U > /run/e2fsck.log 2>&1; r=$?
+		[ $r -le 1 ] || log "mobian: e2fsck -p $U exited $r (/run/e2fsck.log)"
+		echo userdata > /run/gts4lv-root
+	else
+		# rootfs.img inside Android's userdata, mapped by its extent list. No list that holds, or a mapping
+		# without the file system on it: nothing is mounted or checked, the tablet stays here.
+		[ -n "$U" ] || { log "mobian: no userdata partition"; return 1; }
+		X=$(extents)
+		[ -n "$X" ] || { log "mobian: no extent list for rootfs.img that holds: install the device zip (sideload it) again"; return 1; }
+		[ -b /dev/dm-0 ] || dmlinear mobian $U $X > /run/mobian.dev || {
+			log "mobian: dmlinear failed (userdata: '$U', extents $X)"; return 1; }
+		ROOTDEV=/dev/dm-0
+		fits $ROOTDEV $(awk '{ s += $3 } END { printf "%.0f", s }' $X) || {
+			log "mobian: the extent list maps no rootfs.img (no ext4 file system that fits it): install the device zip (sideload it) again"
+			return 1; }
+		# Android stays beside it: the system's dual-boot parts (keep Linux the default boot, the
+		# "Android" app) start on this marker, an executable file so a .desktop TryExec can test it
+		echo image > /run/gts4lv-root
+		mkdir -p /run/gts4lv && : > /run/gts4lv/dualboot && chmod 755 /run/gts4lv/dualboot
+	fi
+	mkdir -p /mnt/root
+	# A root that does not mount is checked and repaired (e2fsck -y), then mounted again; failing that,
+	# Mobian boots from it read-only. Only a root that mounts in no way at all keeps the tablet here. (The
+	# image's root gets here only through a list that held and a file system that fits its mapping.)
+	if ! mount -t ext4 -o rw,noatime $ROOTDEV /mnt/root 2>/dev/null; then
+		log "mobian: cannot mount $ROOTDEV, running e2fsck -fy (log in /run/e2fsck-y.log)"
+		e2fsck -fy $ROOTDEV > /run/e2fsck-y.log 2>&1
+		log "mobian: e2fsck -fy $ROOTDEV exited $?"
+		if mount -t ext4 -o rw,noatime $ROOTDEV /mnt/root 2>/dev/null; then
+			log "mobian: $ROOTDEV mounted after e2fsck"
+		elif mount -t ext4 -o ro,noatime $ROOTDEV /mnt/root 2>/dev/null; then
+			log "mobian: $ROOTDEV mounted READ-ONLY, booting it so"
+		else
+			log "mobian: no file system on $ROOTDEV that mounts, read-write or read-only"
+			return 1
+		fi
+	fi
+	# The zip ships the file system shrunk to its content: grow it to the whole file or partition
+	# (a no-op once it fills it). Online, so no fsck first; resize2fs reads /etc/mtab.
+	ln -sf /proc/mounts /etc/mtab
+	resize2fs $ROOTDEV > /run/resize2fs.log 2>&1 || log "mobian: resize2fs failed"
+	[ -x /mnt/root/lib/systemd/systemd ] || { log "mobian: rootfs has no systemd"; umount /mnt/root; return 1; }
+	# Logged, never a reason to stay: the S10e's init stayed on its "last boot never finished" marker and kept
+	# the phone out of Linux on every boot after a brown-out on a flat battery (11-20, 11-23). The way into
+	# the rescue shell is U-Boot's rescue entry (gts4lv.stay).
+	grep -qs GTS4LV-SWITCHROOT /sys/fs/pstore/* && ! grep -qs GTS4LV-MOBIAN-OK /sys/fs/pstore/* &&
+		log "mobian: the last boot into it never reported GTS4LV-MOBIAN-OK (pstore)"
+	# No wait: the rescue shell is asked for up front, from U-Boot's menu (Volume Down at power-on).
+	grep -qw gts4lv.stay /proc/cmdline && { log "mobian: staying (gts4lv.stay)"; umount /mnt/root; return 1; }
+	log "GTS4LV-SWITCHROOT"
+	# switch_root deletes this initramfs, sleep included: a loop left running
+	# would spin on "sleep: not found" for the whole Mobian session.
+	kill $CONSOLE_LOOP 2>/dev/null
+	killall dropbear telnetd udhcpd 2>/dev/null
+	for m in /dev /proc /sys /run; do mount --move $m /mnt/root$m 2>/dev/null; done
+	exec switch_root /mnt/root /lib/systemd/systemd
+}
+mobian
+
+# Staying here: show the log on VT2, the first VT fbcon draws.
+chvt 2 2>/dev/null
+log "staying in the initramfs (console on VT2)"
+[ -n "$SHELLS" ] || log "no login here. For a root shell over USB (telnet or ssh root@$IP): restart holding Volume Down, pick \"Linux: rescue shell in the initramfs\""
+
+# Wi-Fi, if this DT has the modem + WCN3990 nodes; logs to /dev/kmsg.
+wifi-up > /run/wifi-up.log 2>&1 &
+
+# Bring-up diagnostics on the screen every 5 s: USB controller state, the
+# MUIC switch GPIO and the SM5705 MUIC's registers (bus "i2c-charger", 0x25).
+mount -t debugfs debugfs /sys/kernel/debug 2>/dev/null
+( while true; do
+	U=$(cat /sys/class/udc/*/state 2>/dev/null) S=$(cat /sys/class/udc/*/current_speed 2>/dev/null)
+	G=$(grep -E "gpio98[ :]" /sys/kernel/debug/gpio 2>/dev/null | tr -s ' ' | cut -c1-40)
+	R=""; [ -n "$B" ] && for r in 2 9 10 11 12 19 20 23 27; do R="$R $(i2cget -y $B 0x25 $r 2>/dev/null | cut -c3-4)"; done
+	log "diag udc=$U/$S g98=[$G] muic(i2c-$B) 02,09,0a,0b,0c,13,14,17,1b:$R"
+	sleep 5
+done ) &
+
+# Unattended testing: if no host has configured the gadget after 180 s, reboot
+# once (the console is in ramoops, readable from the next boot's pstore). A
+# marker in the previous boot's pstore stops a second reboot, so this cannot loop.
+( sleep 180
+  [ "$(cat /sys/class/udc/*/state 2>/dev/null)" = configured ] && exit 0
+  grep -qs GTS4LV-AUTOREBOOT /sys/fs/pstore/* && { log "autoreboot: already done once, staying up"; exit 0; }
+  log "GTS4LV-AUTOREBOOT: no USB host after 180 s, rebooting"
+  sync; sleep 2; reboot -f ) &
+
+# A hang resets the SoC instead of waiting for someone to hold Power.
+[ -e /dev/watchdog ] && watchdog -T 30 -t 5 /dev/watchdog && log "watchdog armed (30 s)"
+
+# PID 1 must never exit.
+while true; do sleep 3600; done

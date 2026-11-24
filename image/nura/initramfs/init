@@ -181,7 +181,13 @@ until find_root; do
 done
 QUIET=
 log "root: $ROOTKIND"
-mount -t ext4 -o ro,noatime $ROOT /newroot 2>> $LOG || fail "cannot mount $ROOT ($ROOTKIND)"
+# read-only (systemd checks it and remounts it read-write). A journal that cannot be replayed (a brown-out) must
+# not stop the boot: without it, read-only, the root still mounts and systemd's check repairs it.
+if ! mount -t ext4 -o ro,noatime $ROOT /newroot 2>> $LOG; then
+	log "cannot mount $ROOT ($ROOTKIND): trying it without replaying its journal (noload)"
+	mount -t ext4 -o ro,noatime,noload $ROOT /newroot 2>> $LOG || fail "cannot mount $ROOT ($ROOTKIND), not even without its journal"
+	log "root mounted without replaying its journal"
+fi
 [ -s /newroot/etc/vibeos/system-image ] || log "WARNING: $ROOT is not a VibeOS system (no /etc/vibeos/system-image)"
 INIT=/sbin/init
 [ -e /newroot$INIT ] || [ -L /newroot$INIT ] || INIT=/lib/systemd/systemd

@@ -21,13 +21,22 @@ SUMS=$T-dsums.txt
 ROOT=$T-mnt
 case $DEV in
 s10e) KINDS=part ;;		# U-Boot boots the partition named linux
-poco) KINDS=nested ;;		# U-Boot boots the GPT inside the partition named linux
+poco) KINDS=nested ;;		# U-Boot (in BOOT) boots the GPT inside the partition named linux
 s5e)  KINDS=image ;;		# the initramfs maps the image file in Android's data by its extents
 esac
 
 # the Tab S5e's root, an image file in Android's data, is opened the way its initramfs opens it: dm-linear over the
 # file's extents on userdata, never through Android's file system (Linux writes to those blocks directly, and the
-# file system still calls the ones fallocate gave it unwritten: read through it they are zeros)
+# file system still calls the ones fallocate gave it unwritten: read through it they are zeros). The map holds
+# userdata: while it exists /data cannot be mounted in this recovery session (this zip again, the system zip's image
+# choice, recovery itself), so close_image_raw removes it at the end and on every way out
+DMN=
+close_image_raw() {
+	[ -n "$DMN" ] || return 0
+	cd /
+	$T-dmlinear -r $DMN 2> $T-dmr.err || return 1
+	DMN=; rm -f $T-dm
+}
 open_image_raw() {
 	mount_data || die "cannot mount Android's data"
 	[ -s "$IMGF" ] || die "no $IMGF"
@@ -41,6 +50,8 @@ open_image_raw() {
 	umount /data 2>/dev/null; umount /data 2>/dev/null
 	! data_mounted || die "Android's data is still mounted"
 	MM=$($T-dmlinear vibeos$$ "$(readlink -f $BY/userdata)" $T-extents.map 2> $T-dm.err) || die "dmlinear: $(cat $T-dm.err)"
+	DMN=vibeos$$
+	trap close_image_raw EXIT
 	rm -f $T-dm; mknod $T-dm b ${MM%%:*} ${MM##*:} || die "cannot make the root's device node"
 	RDEV=$T-dm
 }
@@ -60,6 +71,8 @@ install)
 	KIND=$(get kind) NAME=$(get name) IMGF=$(get image) DEVP=$(get dev)
 	[ -s $T-payload.tar ] || die "payload.tar was not unpacked"
 	check $T-payload.tar payload $SUMS
+	# nested: the root is a loop device over its place in the partition (loops_on: see vibeos-lib.sh)
+	[ $KIND != nested ] || loops_on
 	if [ $KIND = image ]; then open_image_raw; else open_root; fi
 	[ $KIND = image ] || guard "$ODEV"
 	say "  checking the system"
@@ -92,7 +105,12 @@ install)
 	sync
 	umount -D $ROOT || die "cannot unmount the system"
 	fsck_root $RDEV
-	[ $KIND = image ] || close_root
+	if [ $KIND = image ]; then
+		close_image_raw || die "cannot remove the map over Android's data ($(cat $T-dmr.err)): restart recovery before anything else uses /data"
+	else
+		close_root
+	fi
+	loops_off
 	say "  $n packages for the first boot"
 	;;
 boot)
@@ -130,7 +148,11 @@ boot)
 		;;
 	poco)
 		# The ESP inside "linux" (kernel 7.2.15-22surya, its initramfs, the DTBs, systemd-boot: the k22 ROM's,
-		# booting root=LABEL=vibeos), then U-Boot to recovery, last
+		# booting root=LABEL=vibeos); then BOOT = U-Boot (in LineageOS 22.2 20261102's boot.img: its header and DTB,
+		# U-Boot as the kernel), last, so that every power-on starts VibeOS. ABL lays the dtbo PARTITION's overlay
+		# over that DTB, under vbmeta: both must be that build's (its vbmeta has flags 3, verification off), and are
+		# written first where they are not already. The recovery partition is not written: LineageOS's recovery
+		# stays there, for the next sideload (Volume Up + Power).
 		d=$(get dev); [ -b "$d" ] || d=$(part $NAME) || die "no partition $NAME"
 		guard $d
 		set -- $(nested_esp $d)
@@ -142,13 +164,34 @@ boot)
 		sync; blockdev --flushbufs $d 2>/dev/null
 		[ "$(dd if=$d bs=4096 skip=$2 count=$(expr $EB / 4096) 2>/dev/null | sha256sum | cut -d' ' -f1)" = "$(grep '^esp ' $SUMS | cut -d' ' -f3)" ] ||
 			die "the ESP was not written correctly"
-		b=$(part recovery) || die "no recovery partition"
-		guard $b
-		RB=$(grep '^recovery ' $SUMS | cut -d' ' -f2)
-		[ $(blocks4k $b) -ge $((RB / 4096)) ] || die "the recovery partition is smaller than U-Boot's image"
-		say "  U-Boot to recovery"
-		dd if=$T-recovery.img of=$b bs=1048576 2>/dev/null || die "cannot write recovery"
-		check $b recovery $SUMS
+		# put_img NAME PART WHAT: the zip's NAME image at the start of partition PART, the rest of it zeros, read
+		# back; nothing written when the partition holds exactly that already
+		put_img() {
+			b=$(part $2) || die "no $2 partition"
+			guard $b
+			IB=$(grep "^$1 " $SUMS | cut -d' ' -f2)
+			[ -n "$IB" ] || die "no sum for $1"
+			n=$(blocks4k $b)
+			[ $((n * 4096)) -ge $IB ] || die "the $2 partition is smaller than the zip's $1 ($IB bytes)"
+			if [ "$(head -c $IB $b | sha256sum | cut -d' ' -f1)" = "$(grep "^$1 " $SUMS | cut -d' ' -f3)" ] &&
+				[ "$(tail -c +$((IB + 1)) $b | tr -d '\000' | wc -c)" = 0 ]; then
+				say "  $3 in $2: there already"
+				return 0
+			fi
+			say "  $3 to $2"
+			dd if=$T-$1.img of=$b bs=1048576 2>/dev/null || die "cannot write $2"
+			[ $((n * 4096)) = $IB ] || dd if=/dev/zero of=$b bs=4096 seek=$((IB / 4096)) count=$((n - IB / 4096)) 2>/dev/null ||
+				die "cannot clear the rest of $2"
+			check $b $1 $SUMS
+		}
+		put_img dtbo dtbo "LineageOS 20261102's dtbo"
+		put_img vbmeta vbmeta "LineageOS 20261102's vbmeta"
+		put_img boot boot "U-Boot"
+		# a recovery partition still holding the U-Boot an earlier VibeOS put there: LineageOS's recovery goes
+		# back in by hand (only the earlier VibeOS can be started from it)
+		r=$(part recovery) && OB=$(grep '^oldrecovery ' $SUMS | cut -d' ' -f2) && [ -n "$OB" ] &&
+			[ "$(head -c $OB $r | sha256sum | cut -d' ' -f1)" = "$(grep '^oldrecovery ' $SUMS | cut -d' ' -f3)" ] &&
+			say "  NOTE: recovery still holds the earlier U-Boot: flash LineageOS's recovery.img there with fastboot"
 		;;
 	s5e)
 		# The recovery partition: U-Boot (dual boot) and LineageOS recovery in its first 34 MiB, Linux (kernel

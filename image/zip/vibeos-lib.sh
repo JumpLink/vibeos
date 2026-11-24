@@ -29,7 +29,7 @@ say() {
 	case "$OUTFD" in ''|*[!0-9]*) ;; *) echo "ui_print $*" > /proc/$PPID/fd/$OUTFD 2>/dev/null ;; esac
 	echo "$*" >&2
 }
-die() { echo "error=$(echo "$*" | tr '\n' ' ')" >> $P; echo "vibeos: $*" >&2; exit 1; }
+die() { echo "error=$(echo "$*" | tr '\n' ' ')" >> $P; echo "vibeos: $*" >&2; loops_off; exit 1; }
 get() { grep "^$1=" $P 2>/dev/null | tail -n 1 | cut -d= -f2-; }
 put() { echo "$1=$2" >> $P; }
 
@@ -200,6 +200,31 @@ open_root() {
 	[ -b "$RDEV" ] || die "no block device for the root ($KIND $NAME)"
 }
 close_root() { [ -z "$LOOP" ] || { losetup -d $LOOP 2>/dev/null; LOOP=; }; }
+# SELinux and loop devices. In LineageOS recovery the recovery domain is permissive, but the kernel's is not: a loop
+# device's worker thread (domain kernel) may not use the backing file that recovery's losetup opened ("avc: denied
+# { use } ... scontext=u:r:kernel:s0 tcontext=u:r:recovery:s0 tclass=fd permissive=0"), so every read and write
+# through the loop device fails with an I/O error (a POCO, 2026-11-23: "could not write part 1 of 5"). loops_on,
+# before the zips set up their first loop device, makes SELinux permissive if it is enforcing (or stops, nothing
+# changed, where it cannot); loops_off, once they are released (and in die, and after an abort), puts back the mode
+# loops_on found. SEM keeps that mode for this recovery session (the steps are separate shells)
+SEF=/sys/fs/selinux/enforce
+SEM=/tmp/vibeos-selinux
+loops_on() {
+	[ -e $SEF ] || return 0
+	[ -s $SEM ] || cat $SEF > $SEM 2>/dev/null
+	[ "$(cat $SEF 2>/dev/null)" = 0 ] && return 0
+	echo 0 > $SEF 2>/dev/null
+	if [ "$(cat $SEF 2>/dev/null)" != 0 ]; then
+		rm -f $SEM
+		die "SELinux cannot be made permissive in this recovery (a user build?), and its loop devices need it. Nothing was changed"
+	fi
+	say "  SELinux permissive while VibeOS is written (recovery's loop devices need it); enforcing again after"
+}
+loops_off() {
+	[ -s $SEM ] || return 0
+	[ "$(cat $SEM)" = 0 ] || echo 1 > $SEF 2>/dev/null
+	rm -f $SEM
+}
 # newloop: a free loop device (one with no file bound: no loop/ in sysfs), as a node of our own in /tmp: toybox's
 # losetup -f fails when ueventd has not made /dev/block/loopN for a loop device the kernel added on demand
 newloop() {
@@ -242,7 +267,11 @@ check() {
 # 6T's payload ships them as files, and its device zip stopped at "not under '/tmp/vibeos-mnt'"
 unpack() {
 	tar -tvf "$1" > $T-tarlist || return 1
-	sed -n 's/^-[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *//p' $T-tarlist | while IFS= read -r f; do
+	# every file and symlink of the archive: an old symlink there goes first. A file must not be written through
+	# one, and toybox tar (0.8.12) refuses an absolute symlink where one is already ("/dev/null not under ..."):
+	# the second run of a device zip over its own masks and .wants links stopped there. Directories are left
+	sed -n -e 's/^-[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *//p' \
+		-e 's/^l[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *[^ ]*  *\(.*\) -> .*$/\1/p' $T-tarlist | while IFS= read -r f; do
 		if [ -L "$2/$f" ]; then rm -f "$2/$f"; fi
 	done
 	tar -C "$2" -xf "$1"

@@ -25,6 +25,10 @@ OUT=${TEST_OUT:-$O/$DEV}	# TEST_OUT, TEST_W: a test build elsewhere, without the
 W=${TEST_W:-$O/work/device-$DEV}
 L=$O/logs/device-$DEV-$(date +%Y%m%d-%H%M%S); mkdir -p "$L"
 V=0.1.3
+# 0.1.3+1 (2026-11-23): the S10e's and the S5e's initramfs always start Mobian, the oneshots ahead of gdm get start
+# timeouts, and the POCO's package lost the restart into recovery and Android and checks its root with fsck -y.
+# Above the archive's 0.1.3, whose POCO package would bring that restart back (every restart into recovery)
+case $DEV in s10e|s5e|poco) V=0.1.3+1 ;; esac
 P=$W/pkg
 log() { echo "build-device $DEV: $*" | tee -a "$L/build.txt"; }
 [ ! -e "$OUT" ] || { echo "$OUT exists: move it aside first" >&2; exit 1; }
@@ -35,6 +39,14 @@ case "$(readlink -f "$W")" in */research-dl/*) exit 1 ;; esac
 # enable UNIT...: the links "systemctl enable" makes, made in the package's own tree (the zip has no systemctl)
 enable() { systemctl --root="$P" enable "$@" > "$L/enable.txt" 2>&1 || { cat "$L/enable.txt" >&2; exit 1; }; }
 mask() { for u; do mkdir -p "$P/etc/systemd/system"; ln -sfn /dev/null "$P/etc/systemd/system/$u"; done; }
+# not_held UNIT TIME WHY: a start timeout for a oneshot the GUI waits for (they wait for ever by default; a hang
+# would keep gdm from ever starting). Past TIME it is stopped and the boot goes on
+not_held() {
+	install -d "$P/etc/systemd/system/$1.d"
+	printf '%s\n' "# $3" "# A oneshot waits for ever by default, so a hang here would keep the GUI from ever starting; past this" \
+		"# it is stopped and the boot goes on (nothing stops the boot to the GUI)." \
+		"[Service]" "TimeoutStartSec=$2" "TimeoutStopSec=15s" > "$P/etc/systemd/system/$1.d/boot-not-held.conf"
+}
 # fw SRC DST...: firmware files, mode 644
 fw() { s=$1; shift; for f; do install -D -m 644 "$s/$f" "$P/usr/lib/firmware/$f"; echo "$f $(sha256sum < "$s/$f" | cut -c1-16) $s" >> "$L/firmware.txt"; done; }
 # modules KVER SRCDIR: SRCDIR/lib/modules/KVER (a modules_install tree) into the package, depmod'ed
@@ -67,7 +79,49 @@ repack() {
 	dpkg-deb --root-owner-group -Zxz -b "$R" "$W/debs/${1}_$(sed -n 's/^Version: //p' "$R/DEBIAN/control" | sed 's/^[0-9]*://')_all.deb" > /dev/null
 	rm -rf "${R:?}" "$R.files"
 }
-DEPS= DESC= KVER= POSTINST_EXTRA= POSTINST_SH=
+# Wi-Fi's regulatory database. cfg80211 checks regulatory.db against the signers built into the kernel. These
+# kernels have the upstream signers only (sforshee, wens), and Debian's wireless-regdb defaults to its own re-signed
+# copy (regulatory.db-debian, see its README.Debian), so the postinst selects regulatory.db-upstream. A cfg80211
+# built into the kernel asks for the database once, at late_initcall, before any root is mounted, and never again by
+# itself (dmesg "failed to load regulatory.db", then the world domain, whatever cfg80211.ieee80211_regdom says):
+# that kernel's initramfs must carry it. regdb_cpio makes $W/regdb.cpio, a newc archive of lib/firmware/regulatory.db
+# and .p7s (the system image's upstream-signed pair, checked against wireless-regdb's md5sums); regdb_append FILE
+# adds it to an initramfs after zeros to a 4-byte boundary, where the kernel looks for the next archive (it
+# unpacks concatenated archives, compressed or not, one after another).
+SYSIMG=${SYSIMG:-$O/system/rootfs.img}
+signers() {	# FILE: the wireless-regdb signers a cfg80211.ko[.zst|.xz] or a kernel Image (raw or .gz) trusts
+	case $1 in *.zst) zstd -dcq "$1" ;; *.xz) xz -dc "$1" ;; *.gz) gzip -dc "$1" ;; *) cat "$1" ;; esac > "$W/signers.bin"
+	if grep -aq 'benh@debian.org' "$W/signers.bin"; then echo debian
+	elif grep -aq -e sforshee -e wens "$W/signers.bin"; then echo upstream
+	else echo none; fi
+	rm -f "$W/signers.bin"
+}
+regdb_cpio() {
+	RG=$W/regdb; rm -rf "$RG"; mkdir -p "$RG/lib/firmware"
+	[ -s "$SYSIMG" ] || { echo "no $SYSIMG (the system image, for its wireless-regdb)" >&2; exit 1; }
+	debugfs -R "cat /var/lib/dpkg/info/wireless-regdb.md5sums" "$SYSIMG" 2> /dev/null > "$RG.md5"
+	RV=$(debugfs -R "cat /var/lib/dpkg/status" "$SYSIMG" 2> /dev/null | awk '/^Package: wireless-regdb$/ {f = 1} f && /^Version:/ {print $2; exit}')
+	for f in regulatory.db regulatory.db.p7s; do
+		debugfs -R "dump /usr/lib/firmware/$f-upstream $RG/lib/firmware/$f" "$SYSIMG" 2> /dev/null
+		m=$(awk -v p="usr/lib/firmware/$f-upstream" '$2 == p {print $1}' "$RG.md5")
+		[ -n "$m" ] && [ "$(md5sum < "$RG/lib/firmware/$f" | cut -d' ' -f1)" = "$m" ] || { echo "$f-upstream: not wireless-regdb's" >&2; exit 1; }
+		echo "initramfs: lib/firmware/$f = /usr/lib/firmware/$f-upstream of wireless-regdb $RV $(sha256sum < "$RG/lib/firmware/$f" | cut -c1-16) $SYSIMG" >> "$L/firmware.txt"
+	done
+	chmod 755 "$RG/lib/firmware"; chmod 644 "$RG/lib/firmware/regulatory.db" "$RG/lib/firmware/regulatory.db.p7s"
+	touch -d @0 "$RG/lib/firmware/regulatory.db" "$RG/lib/firmware/regulatory.db.p7s" "$RG/lib/firmware"
+	(cd "$RG" && printf '%s\n' lib/firmware lib/firmware/regulatory.db lib/firmware/regulatory.db.p7s |
+		cpio -o -H newc -R 0:0 --reproducible --quiet) > "$W/regdb.cpio"
+	rm -rf "${RG:?}" "$RG.md5"
+}
+regdb_append() {
+	[ -s "$W/regdb.cpio" ] || regdb_cpio
+	n=$(stat -c %s "$1")
+	head -c $(((4 - n % 4) % 4)) /dev/zero >> "$1"
+	cat "$W/regdb.cpio" >> "$1"
+	log "initramfs $(basename "$1"): regulatory.db and .p7s appended (at byte $n, padded to $(((n + 3) / 4 * 4)))"
+	REGDB_RD=done
+}
+DEPS= DESC= KVER= POSTINST_EXTRA= POSTINST_SH= REGDB_KERNEL= REGDB_RD=
 
 case $DEV in
 s10e)
@@ -80,7 +134,36 @@ s10e)
 	echo "stage firmware: $(wc -l < "$L/stage-firmware.txt") files from $ST/root: $(tr '\n' ' ' < "$L/stage-firmware.txt")" >> "$L/firmware.txt"
 	KVER=7.2.15-s10e
 	depmod -b "$P/usr" $KVER 2>> "$L/depmod.txt"
+	# S10E_IMAGE: the same kernel built again (7.2.15-s10e, the stage's modules are its own), e.g. with a neutral
+	# banner, shipped instead of the stage's
+	if [ -n "${S10E_IMAGE:-}" ]; then
+		install -m 755 "$S10E_IMAGE" "$P/boot/s10e/Image"
+		log "/boot/s10e/Image <- $S10E_IMAGE ($(sha256sum < "$S10E_IMAGE" | cut -c1-16))"
+	fi
 	cp "$P/boot/s10e/Image" "$P/boot/s10e/Image.prev"		# U-Boot's second menu entry
+	REGDB_KERNEL=$P/boot/s10e/Image
+	# the initramfs's /init <- s10e/init (11-23, owner: nothing stops the boot to the GUI): Mobian always boots,
+	# a boot-attempt marker left by a boot that died (a brown-out) is only logged, a root that does not mount gets
+	# e2fsck -fy and then a read-only mount; only U-Boot's Rescue entry (s10e.stay) or a root that cannot be started
+	# at all keeps the phone in it. The same initramfs as the 11-23 phone's (cfd2a954); every other member byte for byte.
+	python3 -I "$T/replace-init.py" "$P/boot/s10e/initramfs.cpio.gz" \
+		8587b5dece736170db39596a131f0584d71836e3188f606ceae941cefdaf384f "$T/s10e/init" "$W/initramfs-s10e.cpio.gz"
+	install -m 644 "$W/initramfs-s10e.cpio.gz" "$P/boot/s10e/initramfs.cpio.gz"; rm -f "$W/initramfs-s10e.cpio.gz"
+	log "initramfs: /init <- s10e/init ($(sha256sum < "$T/s10e/init" | cut -c1-16))"
+	regdb_append "$P/boot/s10e/initramfs.cpio.gz"	# both entries' initramfs (U-Boot passes its file size)
+	# the oneshots ordered before gdm wait for ever by default: a hang in one kept the GUI from ever starting
+	for u in s10e-firstboot:5min s10e-gpu-load:2min s10e-touch-bind:1min; do
+		install -d "$P/etc/systemd/system/${u%%:*}.service.d"
+		printf '%s\n' "# Ordered before gdm. A oneshot waits for ever by default, so a hang here would keep the GUI from ever" \
+			"# starting; past this it is stopped and the boot goes on (owner 11-23: nothing stops the boot to the GUI)." \
+			"[Service]" "TimeoutStartSec=${u#*:}" "TimeoutStopSec=15s" > "$P/etc/systemd/system/${u%%:*}.service.d/boot-not-held.conf"
+	done
+	printf '%s\n' "# Wanted by sysinit.target, and a oneshot goes inactive when it ends: every later start job that pulls in" \
+		'# sysinit.target (nearly every service at boot) started it again, until "start-limit-hit" marked it failed and' \
+		"# the system degraded. Run once; a failed run is still retried that way." \
+		"[Service]" "RemainAfterExit=yes" > "$P/etc/systemd/system/s10e-touch-bind.service.d/run-once.conf"
+	install -d "$P/etc/systemd/system/s10e-arm-reset.service.d"	# the same trap: sysinit.target, oneshot, re-run
+	cp "$P/etc/systemd/system/s10e-touch-bind.service.d/run-once.conf" "$P/etc/systemd/system/s10e-arm-reset.service.d/"
 	sed -i 's| dyndbg="[^"]*"||' "$P/boot/s10e/bootargs.env"
 	# Samsung's firmware from the vendor partition (audio DSP, Wi-Fi, Bluetooth, the video codec): what
 	# s10e-firstboot copies on a first boot, bundled here (11-21). Source: a root copy of our S10e (s10e-firstboot's
@@ -93,11 +176,15 @@ s10e)
 	ln -s nvram.txt_CS01_semco_b1 "$P/usr/lib/firmware/brcm/brcmfmac4375b1-pcie.txt"
 	[ -z "${S10E_CALLAUDIO_FW:-}" ] || cmp -s "$YF/AP_AUDIO_SLSI.bin" "$S10E_CALLAUDIO_FW/AP_AUDIO_SLSI.bin" || log "NOTE: AP_AUDIO_SLSI.bin differs from kit/callaudio/fw"
 	install -D -m 644 "$K/clean/60-s10e-gpu.conf" "$P/etc/environment.d/60-s10e-gpu.conf"
+	# Wi-Fi back when its chip drops off PCIe (a brown-out at low battery froze the phone, 11-23): reloads the RC and
+	# brcmfmac as s10e-minimal does, under its lock (s10e-minimal comes from the stage)
+	install -D -m 755 "$T/s10e/s10e-wifi-revive" "$P/usr/local/sbin/s10e-wifi-revive"
+	install -D -m 644 "$T/s10e/s10e-wifi-revive.service" "$P/etc/systemd/system/s10e-wifi-revive.service"
 	install -d -m 700 "$P/var/lib/exynos-cp"; install -d "$P/var/lib/s10e"
 	identity s10e "Galaxy S10e" Samsung "Galaxy S10e"
 	enable exynos-modem.service s10e-sleepd.service s10e-gpu-load.service s10e-touch-bind.service \
 		s10e-bt-addr.service s10e-arm-reset.service s10e-boot-ok.service s10e-usb-net.service s10e-usb-watch.service \
-		s10e-firstboot.service s10e-dp-audio.service s10e-cec-recheck.timer
+		s10e-firstboot.service s10e-dp-audio.service s10e-cec-recheck.timer s10e-wifi-revive.service
 	mask sleep.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
 	# boot: U-Boot (recovery, and boot for a whole-phone install): the first 4 MiB of v51-pinsleep (the S10e
 	# kit's default since 11-1x, r7's zip); the kernel, initramfs and arguments are in /boot/s10e above
@@ -116,6 +203,27 @@ poco)
 	KIMG=${POCO_K22_IMG:?set POCO_K22_IMG}
 	[ -d "$KR/usr/lib/modules/7.2.15-surya" ] || { echo "mount the k22 root at $KR first" >&2; exit 1; }
 	(cd "$ST/root" && tar -cf - .) | tar -C "$P" -xpf - --no-same-owner
+	# The stage's /var/lib/hexagonrpc/surya/persist is our POCO's own sensor registry (copied from its persist
+	# partition on 10-05, then written by its ADSP: calibration among it): never shipped. The directory goes in
+	# empty. On the first boot the postinst seeds it from the registry the payload ships anyway (sensors/registry:
+	# Nura's qcom-sm7150 set, byte for byte, as are the 46 sensors/config files) and gives it to fastrpc (made by
+	# hexagonrpcd's sysusers.d), the user hexagonrpcd-adsp-sensorspd runs as. Its hexagonrpcd (the PR#27 build)
+	# serves sensors/persist, a link to it, read-write; the ADSP crash-loops (audio too) when its registry cannot be
+	# written.
+	SR=usr/share/qcom/sm7150/Xiaomi/surya/sensors
+	rm -rf "${P:?}/var/lib/hexagonrpc/surya/persist" && install -d -m 755 "$P/var/lib/hexagonrpc/surya/persist" || exit 1
+	[ "$(readlink "$P/$SR/persist")" = /var/lib/hexagonrpc/surya/persist ] || { echo "$SR/persist: not the link to the state" >&2; exit 1; }
+	[ "$(ls "$P/$SR/registry" | wc -l)" -gt 100 ] && [ "$(ls "$P/$SR/config" | wc -l)" -gt 10 ] || { echo "no sensor registry or config in $SR" >&2; exit 1; }
+	[ -z "$(find "$P/var" -mindepth 1 ! -type d | head -n 1)" ] || { echo "state left in the stage's /var: $(find "$P/var" -mindepth 1 ! -type d | head -n 3 | tr '\n' ' ')" >&2; exit 1; }
+	# the UCM file's header named the build machine's kernel tree; it names the kernel instead
+	sed -i 's|^# /home/[^ ]*/surya-kernel:$|# the POCO kernel (7.2.15-surya):|' "$P/usr/share/alsa/ucm2/Xiaomi/surya/HiFi.conf"
+	grep -q '^# the POCO kernel (7.2.15-surya):$' "$P/usr/share/alsa/ucm2/Xiaomi/surya/HiFi.conf" || { echo "HiFi.conf: header not changed" >&2; exit 1; }
+	POSTINST_SH='# the sensor registry: a copy the ADSP may write, seeded once from the shipped one, never replaced
+	S=/var/lib/hexagonrpc/surya/persist
+	if getent passwd fastrpc > /dev/null; then
+		[ -n "$(ls -A $S 2> /dev/null)" ] || { mkdir -p $S/registry && cp -a /usr/share/qcom/sm7150/Xiaomi/surya/sensors/registry/. $S/registry/; }
+		chown -R fastrpc:fastrpc $S
+	fi'
 	KVER=7.2.15-surya
 	rm -rf "$P/usr/lib/modules"; modules $KVER "$KR/usr/lib/modules"
 	# the files the k22 root's packages do not own under the stage's firmware are the stage's own (PAYLOAD);
@@ -143,11 +251,21 @@ poco)
 	# initrd.img-7.2.15-surya in /boot, the first boot's firmware packages would have update-initramfs rebuild it
 	# ON the phone, where its hooks pull in qcom_q6v5_pas without modem.mbn and the modem stays off; with none,
 	# update-initramfs finds nothing to update. surya-esp-update (the kernel hooks) still names the k22 root's
-	# UUID: it names the root by its label, as the ESP's entry does, should it ever run.
-	sed -i 's/root=UUID=b2b58066-08bc-40ed-95e7-8da4eac5d02f/root=LABEL=vibeos/' "$P/usr/local/sbin/surya-esp-update"
-	grep -q 'options root=LABEL=vibeos ' "$P/usr/local/sbin/surya-esp-update" && ! grep -q b2b58066 "$P/usr/local/sbin/surya-esp-update" ||
+	# UUID: it names the root by its label, as the ESP's entry does, should it ever run (with fsck.repair=yes: below).
+	sed -i 's/root=UUID=b2b58066-08bc-40ed-95e7-8da4eac5d02f rw /root=LABEL=vibeos fsck.repair=yes fsck.mode=skip ro /' "$P/usr/local/sbin/surya-esp-update"
+	grep -q 'options root=LABEL=vibeos fsck.repair=yes fsck.mode=skip ro ' "$P/usr/local/sbin/surya-esp-update" && ! grep -q b2b58066 "$P/usr/local/sbin/surya-esp-update" ||
 		{ echo "surya-esp-update: root= not changed" >&2; exit 1; }
+	# The root is checked by systemd-fsck-root, not by the initramfs (the ESP's entry: ro fsck.mode=skip, below);
+	# this unit's own credential overrides the command line's skip, and nothing it finds stops the boot
+	install -D -m 644 "$T/poco/vibeos-fsck-in-root.conf" "$P/etc/systemd/system/systemd-fsck-root.service.d/vibeos-fsck-in-root.conf"
 	[ ! -e "$P/boot" ] || { echo "the POCO stage has a /boot: $(ls "$P/boot")" >&2; exit 1; }
+	# U-Boot is in BOOT (since 2026-11-23: VibeOS on the whole phone): every power-on starts VibeOS, and the
+	# recovery partition is LineageOS's recovery again. So no restart names recovery any more: the stage's
+	# tmpfiles.d line did that at every boot, for U-Boot in recovery (and no "Restart into Android", below)
+	[ -f "$P/etc/tmpfiles.d/surya-reboot-linux.conf" ] || { echo "no surya-reboot-linux.conf in the POCO stage" >&2; exit 1; }
+	rm -f "${P:?}/etc/tmpfiles.d/surya-reboot-linux.conf"
+	! grep -rl -E 'reboot-param|surya-boot-android' "$P/etc" "$P/usr/local" "$P/usr/lib/systemd" 2>/dev/null ||
+		{ echo "the POCO stage still names a reboot parameter or the Android restart" >&2; exit 1; }
 	identity poco "POCO X3 NFC" Xiaomi "POCO X3 NFC"
 	DEPS="gdisk, cloud-guest-utils, hexagonrpcd, rmtfs, qrtr-tools, tqftpserv, qcom-phone-utils"
 	# the extra Debian/Mobian packages (k22 versions, fetched by build-system.sh) and the POCO's own builds
@@ -172,20 +290,71 @@ poco)
 		case ${f##*/} in linux-image-*) continue ;; gstreamer1.0-libcamera_*) continue ;; esac	# kernel: files only; gst: system's +surya21
 		cp "$f" "$W/debs/"
 	done
-	# boot: U-Boot in recovery (the kit's recovery-uboot.img, byte for byte the 11-11 zip's) and the k22 ESP,
-	# with one change: the kernel finds the root by its label (root=LABEL=vibeos), not the k22 root's UUID
+	# boot: U-Boot for BOOT, made here by poco/mkrecovery.py from LineageOS 22.2 surya 20261102's boot.img (its
+	# header and DTB byte for byte, gzip(u-boot.bin) as the kernel) and POCO_UBOOT, the U-Boot build whose recovery
+	# image the k22 zip carried (POCOs ran it from recovery since 11-09): checked first, by making that
+	# image again, byte for byte, from LineageOS's recovery.img. With it that build's dtbo.img and vbmeta.img (flags
+	# 3), which ABL reads beside BOOT. The k22 zip's recovery image is not shipped, only its sum (oldrecovery: the
+	# device zip says so when a POCO's recovery partition still holds it). And the k22 ESP, with one change: the
+	# kernel finds the root by its label (root=LABEL=vibeos), not the k22 root's UUID
+	LZ=${POCO_LINEAGE_ZIP:?set POCO_LINEAGE_ZIP}
+	UBB=${POCO_UBOOT:?set POCO_UBOOT}
+	AVB=${POCO_AVB:?set POCO_AVB}
 	ZK=$(mktemp -d "$O/tmp/k22zip.XXXXXX")
-	unzip -q -d "$ZK" "${POCO_K22_ZIP:?set POCO_K22_ZIP}" recovery-uboot.img poco-sums.txt 2>/dev/null ||
-		unzip -q -d "$ZK" "$POCO_K22_ZIP" recovery-uboot.img
-	mv "$ZK/recovery-uboot.img" "$W/boot/recovery-uboot.img"; rm -rf "${ZK:?}"
+	unzip -q -d "$ZK" "${POCO_K22_ZIP:?set POCO_K22_ZIP}" recovery-uboot.img
+	mkdir "$ZK/lin" && unzip -q -d "$ZK/lin" "$LZ" boot.img dtbo.img vbmeta.img recovery.img
+	python3 -I "$T/poco/mkrecovery.py" "$ZK/lin/recovery.img" "$UBB" "$ZK/recovery-again.img" "$AVB/avbtool.py" \
+		"$AVB/testkey_rsa4096.pem" > "$L/mkrecovery.txt"
+	cmp -s "$ZK/recovery-again.img" "$ZK/recovery-uboot.img" ||
+		{ echo "$UBB and LineageOS's recovery.img do not make the k22 zip's recovery-uboot.img again" >&2; exit 1; }
+	python3 -I "$T/poco/mkrecovery.py" "$ZK/lin/boot.img" "$UBB" "$W/boot/boot.img" "$AVB/avbtool.py" >> "$L/mkrecovery.txt"
+	[ "$(od -An -tx1 -j 120 -N 4 "$ZK/lin/vbmeta.img" | tr -d ' \n')" = 00000003 ] ||
+		{ echo "LineageOS's vbmeta.img does not have flags 3" >&2; exit 1; }
+	cp "$ZK/lin/dtbo.img" "$ZK/lin/vbmeta.img" "$W/boot/"
+	echo "oldrecovery $(stat -c %s "$ZK/recovery-uboot.img") $(sha256sum < "$ZK/recovery-uboot.img" | cut -d' ' -f1)" > "$W/boot/oldrecovery.sum"
+	log "BOOT U-Boot $(sha256sum < "$W/boot/boot.img" | cut -c1-16) from $(basename "$LZ")'s boot.img and $(sha256sum < "$UBB" | cut -c1-16)"
+	rm -rf "${ZK:?}"
 	dd if="$KIMG" of="$W/boot/esp.img" bs=4096 skip=2048 count=122880 status=none
 	ME=$(mktemp -d "$O/tmp/esp.XXXXXX")
 	mcopy -i "$W/boot/esp.img" ::/loader/entries/mobian.conf "$ME/mobian.conf"
-	sed 's/root=UUID=[0-9a-f-]*/root=LABEL=vibeos/' "$ME/mobian.conf" > "$ME/new.conf"
-	grep -q 'root=LABEL=vibeos ' "$ME/new.conf" || { echo "ESP: no root= to change" >&2; exit 1; }
+	# fsck.repair=yes (2026-11-23: nothing but an unmountable root stops the boot): the initramfs (initramfs-tools'
+	# init, the k22 ROM's) checked the root with fsck -a, and where that could not fix it (a journal a brown-out
+	# left) it stopped in its shell, "requires a manual fsck". And no check runs there any more (fsck.mode=skip, the
+	# root mounted ro): U-Boot leaves the APSS watchdog running and nothing pets it until qcom_wdt loads from the
+	# root, so a long fsck in the initramfs would reset the phone mid-run, at every boot. The kernel still replays
+	# the journal at the ro mount; systemd-fsck-root then checks the root with fsck -y while PID 1 pets the watchdog
+	# (vibeos-fsck-in-root.conf, above) and systemd-remount-fs makes it read-write. The initrd itself stays the k22
+	# ROM's, byte for byte (rebuilt on the phone it loses the modem)
+	sed 's/root=UUID=[0-9a-f-]* rw /root=LABEL=vibeos fsck.repair=yes fsck.mode=skip ro /' "$ME/mobian.conf" > "$ME/new.conf"
+	grep -q 'root=LABEL=vibeos fsck.repair=yes fsck.mode=skip ro ' "$ME/new.conf" || { echo "ESP: no root= to change" >&2; exit 1; }
 	mcopy -o -i "$W/boot/esp.img" "$ME/new.conf" ::/loader/entries/mobian.conf
 	mcopy -i "$W/boot/esp.img" ::/loader/entries/mobian.conf - | diff "$ME/mobian.conf" - > "$L/esp-entry.diff" || true
 	rm -rf "${ME:?}"
+	# POCO_ESP_KERNEL: the same kernel built again (7.2.15-surya, its EFI zboot vmlinuz.efi), e.g. with a neutral
+	# banner, on the ESP instead of the k22 ROM's. Written over the old file's own clusters, so the FAT, the
+	# directory entry and FSInfo stay as they were: it must be the same size, in one run of clusters
+	if [ -n "${POCO_ESP_KERNEL:-}" ]; then
+		[ "$(mcopy -i "$W/boot/esp.img" ::/vmlinuz-mobian - | wc -c)" = "$(stat -c %s "$POCO_ESP_KERNEL")" ] ||
+			{ echo "ESP: $POCO_ESP_KERNEL is not vmlinuz-mobian's size" >&2; exit 1; }
+		python3 -I - "$W/boot/esp.img" "$POCO_ESP_KERNEL" "$(mshowfat -i "$W/boot/esp.img" ::/vmlinuz-mobian)" <<-'PYEOF'
+		import re, struct, sys
+		img, new, chain = sys.argv[1:4]
+		m = re.fullmatch(r"\S+ <(\d+)-(\d+)>", chain.strip())
+		assert m, "vmlinuz-mobian is not one run of clusters: " + chain
+		first, last = int(m[1]), int(m[2])
+		with open(img, "r+b") as f:
+		    bs = f.read(512)
+		    sec, spc, res, nfat = struct.unpack_from("<HBHB", bs, 11)
+		    fatsz = struct.unpack_from("<I", bs, 36)[0]
+		    clus = sec * spc
+		    data = open(new, "rb").read()
+		    assert len(data) <= (last - first + 1) * clus
+		    f.seek((res + nfat * fatsz) * sec + (first - 2) * clus)
+		    f.write(data)
+		PYEOF
+		mcopy -i "$W/boot/esp.img" ::/vmlinuz-mobian - | cmp -s - "$POCO_ESP_KERNEL" || { echo "ESP: vmlinuz-mobian not replaced" >&2; exit 1; }
+		log "ESP vmlinuz-mobian <- $POCO_ESP_KERNEL ($(sha256sum < "$POCO_ESP_KERNEL" | cut -c1-16)), in its own clusters"
+	fi
 	DESC="POCO X3 NFC (surya): kernel 7.2.15-22surya modules (the kernel and initramfs are on the ESP), the POCO's firmware, hexagonrpcd, sensors, UCM, sleep, cameras and tuning"
 	;;
 s5e)
@@ -217,10 +386,120 @@ s5e)
 	B=$TK/recovery-partition-before-k11-20261119.img
 	[ "$(sha256sum < "$B" | cut -c1-16)" = 0ae284819ec38554 ] || { echo "$B: not the 11-19 recovery backup" >&2; exit 1; }
 	[ "$(sha256sum < "$TK/linux-k11-uc.img" | cut -c1-16)" = e57e083136ad5cb8 ] || { echo "linux-k11-uc.img: not e57e0831" >&2; exit 1; }
+	# the slot image with regulatory.db in its ramdisk (cfg80211 is built in): its kernel must be tabk/Image-uc.gz,
+	# and the kit's repack-v2.py must give the image back byte for byte before it changes the ramdisk
+	SL=$W/slot; mkdir -p "$SL"
+	python3 -I - "$TK/linux-k11-uc.img" "$SL" <<'EOF'
+import struct, sys
+b = open(sys.argv[1], 'rb').read()
+assert b[:8] == b'ANDROID!'
+ks, ka, rs = struct.unpack_from('<III', b, 8)
+ps, = struct.unpack_from('<I', b, 36)
+o = ps + -(-ks // ps) * ps
+open(sys.argv[2] + '/kernel', 'wb').write(b[ps:ps + ks])
+open(sys.argv[2] + '/ramdisk', 'wb').write(b[o:o + rs])
+EOF
+	cmp -s "$SL/kernel" "$TK/Image-uc.gz" || { echo "linux-k11-uc.img: its kernel is not tabk/Image-uc.gz" >&2; exit 1; }
+	python3 -I "$TK/repack-v2.py" "$TK/linux-k11-uc.img" "$SL/same.img" && cmp -s "$SL/same.img" "$TK/linux-k11-uc.img" ||
+		{ echo "repack-v2.py does not give linux-k11-uc.img back" >&2; exit 1; }
+	# S5E_KERNEL: the same kernel built again (7.2.15-gts4lv-uc, gzip -9n of its Image), e.g. with a neutral
+	# banner, in the slot image instead of tabk/Image-uc.gz
+	KG=${S5E_KERNEL:-$TK/Image-uc.gz}
+	REGDB_KERNEL=$KG
+	# the ramdisk's /init <- s5e/init (11-23): the root shells over USB (telnet, SSH, the ACM serial console) only
+	# with gts4lv.debug on the command line, which only U-Boot's rescue entry passes (S5E_UBOOT below). Every other
+	# member of the cpio stays byte for byte; rewritten unchanged, the ramdisk must come back byte for byte first.
+	python3 -I - "$SL/ramdisk" "$T/s5e/init" <<'EOF'
+import subprocess, sys, hashlib, zlib
+rd, new = sys.argv[1:3]
+raw = open(rd, 'rb').read()
+z = zlib.decompressobj(31)
+c = z.decompress(raw)
+assert z.eof and not z.unused_data, "the ramdisk is not one gzip member"
+def members(c):
+    i, out = 0, []
+    while True:
+        h = c[i:i + 110]
+        assert h[:6] == b'070701', "not a newc cpio at %d" % i
+        f = [int(h[6 + 8 * k:14 + 8 * k], 16) for k in range(13)]
+        ns, fs = f[11], f[6]
+        name = c[i + 110:i + 110 + ns - 1]
+        d0 = (i + 110 + ns + 3) & ~3
+        out.append([f, name, c[d0:d0 + fs]])
+        i = (d0 + fs + 3) & ~3
+        if name == b'TRAILER!!!':
+            return out, c[i:]
+def cpio(ms):
+    b = bytearray()
+    for f, name, data in ms:
+        f = f[:6] + [len(data)] + f[7:]
+        b += b'070701' + b''.join(b'%08X' % x for x in f) + name + b'\0'
+        b += b'\0' * (-len(b) % 4) + data
+        b += b'\0' * (-len(b) % 4)
+    return bytes(b + b'\0' * (-len(b) % 512))
+def gz(b):
+    return subprocess.run(['gzip', '-9n'], input=b, stdout=subprocess.PIPE, check=True).stdout
+ms, rest = members(c)
+assert not rest.strip(b'\0') and cpio(ms) == c, "the cpio does not come back byte for byte"
+assert gz(c) == raw, "gzip -9n does not give the ramdisk back byte for byte"
+init = [m for m in ms if m[1] == b'init']
+assert len(init) == 1 and hashlib.sha256(init[0][2]).hexdigest() == \
+    '37febcd00efbb64ec2f66df7cdf83b24eb3b0762475b6c412bfd62ec16d05e48', "the ramdisk's /init is not the 11-11 one"
+init[0][2] = open(new, 'rb').read()
+assert b'gts4lv.debug' in init[0][2]
+open(rd, 'wb').write(gz(cpio(ms)))
+EOF
+	log "initramfs: /init <- s5e/init ($(sha256sum < "$T/s5e/init" | cut -c1-16)): the root shells over USB only with gts4lv.debug"
+	regdb_append "$SL/ramdisk"
+	python3 -I "$TK/repack-v2.py" "$TK/linux-k11-uc.img" "$SL/linux-k11-uc-regdb.img" --ramdisk "$SL/ramdisk" --kernel "$KG"
+	[ -z "${S5E_KERNEL:-}" ] || log "slot image kernel <- $S5E_KERNEL ($(sha256sum < "$S5E_KERNEL" | cut -c1-16))"
 	head -c $((34 * 1048576)) "$B" > "$W/boot/recovery.img"
-	cat "$TK/linux-k11-uc.img" >> "$W/boot/recovery.img"
+	# S5E_UBOOT: the dual-boot U-Boot built by s5e/build-uboot.sh, whose default environment must be s5e/uboot.env
+	# (its rescue entry passes gts4lv.debug), in place of the backup's in the first 4 MiB: the DTB appended to it,
+	# the recovery_dtbo and the header stay (as the kit's swap-uboot.py does it); put back in unchanged, the old
+	# U-Boot must give the backup's 4 MiB back byte for byte first
+	python3 -I - "$W/boot/recovery.img" "${S5E_UBOOT:?set S5E_UBOOT: U-Boot from s5e/build-uboot.sh}" "$T/s5e/uboot.env" <<'EOF'
+import gzip, struct, sys, zlib
+rec, new, envf = sys.argv[1:4]
+PAGE, LIN = 4096, 4 << 20
+d = open(rec, 'rb').read()
+assert d[:8] == b'ANDROID!'
+ks, kaddr, rs, raddr, ss, saddr, taddr, ps, hv = struct.unpack_from('<9I', d, 8)
+assert ps == PAGE and hv == 1 and rs == 0 and ss == 0
+dtbo_size, dtbo_off = struct.unpack_from('<IQ', d, 1632)
+pad = lambda n: n + (-n) % PAGE
+z = zlib.decompressobj(31)
+old = z.decompress(d[PAGE:PAGE + ks])
+dtb = z.unused_data
+assert dtb[:4] == b'\xd0\x0d\xfe\xed' and struct.unpack('>I', dtb[4:8])[0] == len(dtb), "no single DTB after U-Boot"
+assert dtbo_off == PAGE + pad(ks)
+dtbo = d[dtbo_off:dtbo_off + dtbo_size]
+def head(u):
+    k = gzip.compress(u, 9, mtime=0) + dtb
+    h = bytearray(d[:PAGE])
+    struct.pack_into('<I', h, 8, len(k))
+    struct.pack_into('<Q', h, 1636, PAGE + pad(len(k)))
+    img = bytes(h) + k + b'\0' * ((-len(k)) % PAGE) + dtbo + b'\0' * ((-len(dtbo)) % PAGE)
+    assert len(img) <= LIN
+    return img + b'\0' * (LIN - len(img))
+assert head(old) == d[:LIN], "the old U-Boot does not give the first 4 MiB back"
+u = open(new, 'rb').read()
+env = [l for l in open(envf).read().split('\n') if l and not l.startswith('#')]
+assert u.count(b'\0'.join(e.encode() for e in env) + b'\0\0') == 1, "U-Boot's default environment is not s5e/uboot.env"
+assert any(e.startswith('linux_rescue=') and 'gts4lv.debug' in e for e in env)
+open(rec, 'r+b').write(head(u))
+EOF
+	log "recovery.img: U-Boot <- $S5E_UBOOT ($(sha256sum < "$S5E_UBOOT" | cut -c1-16)), environment s5e/uboot.env ($(sha256sum < "$T/s5e/uboot.env" | cut -c1-16))"
+	cat "$SL/linux-k11-uc-regdb.img" >> "$W/boot/recovery.img"
+	log "recovery.img: linux-k11-uc.img with regulatory.db in its ramdisk ($(sha256sum < "$SL/linux-k11-uc-regdb.img" | cut -c1-16))"
+	rm -rf "${SL:?}"
 	[ $(stat -c %s "$W/boot/recovery.img") -le $((72744960 - 524288)) ] || { echo "recovery.img does not leave 512 KiB for the extents" >&2; exit 1; }
 	cp "${S5E_KIT_TOOLS:?set S5E_KIT_TOOLS}/extents" "$S5E_KIT_TOOLS/keepmisc" "$S5E_KIT_TOOLS/dmlinear" "$W/boot/"
+	# gdm starts after systemd-user-sessions, which waits for network.target, which waits for NetworkManager: these
+	# two oneshots, ordered ahead of them, hold the GUI too
+	for u in gts4lv-usbnet gts4lv-wifi-mac; do [ -f "$P/etc/systemd/system/$u.service" ] || { echo "no $u.service in the S5e stage" >&2; exit 1; }; done
+	not_held gts4lv-usbnet.service 1min "Ordered before network.target, which gdm waits for (systemd-user-sessions)."
+	not_held gts4lv-wifi-mac.service 1min "Ordered before NetworkManager, which gdm waits for (network.target, systemd-user-sessions)."
 	DESC="Galaxy Tab S5e (gts4lv): kernel 7.2.15-gts4lv-uc modules (the kernel is in the recovery partition behind U-Boot), the tablet's firmware, modem, audio, touch, power key, USB/OTG, sensors and boot settings"
 	;;
 s20)
@@ -231,6 +510,7 @@ s20)
 	G=${S20_DIR:?set S20_DIR}
 	KVER=7.2.15-r8s+
 	[ "$(sha256sum < "$G/build/arch/arm64/boot/Image" | cut -c1-16)" = beedd01959941df2 ] || { echo "build/ Image is not #51" >&2; exit 1; }
+	REGDB_KERNEL=$G/build/arch/arm64/boot/Image
 	MS=$W/modstage/lib/modules/$KVER
 	mkdir -p "$MS"
 	while read -r o; do
@@ -256,11 +536,42 @@ s20)
 	identity r8s "Galaxy S20 FE" Samsung "Galaxy S20 FE"
 	cp "$G/out/boot-r8s-ub13.img" "$W/boot/boot-r8s-ub13.img"
 	[ "$(sha256sum < "$W/boot/boot-r8s-ub13.img" | cut -c1-16)" = 4a82c5e3c5db7ab4 ] || { echo "ub13 is not 4a82c5e3" >&2; exit 1; }
+	# the power-on logo, which s20-install-from-pc.sh puts into up_param as the S10e's device zip does: src/s10e-logo
+	# (the same tar rewrite; up_param is the S10e's format) and the S20's pictures, logo.jpg being the S10e's swirl
+	# at 1080x2400; on the S20 since 11-17 (up_param abf985d0)
+	[ "$(od -An -tx1 -j 16 -N 4 "$T/src/s10e-logo" 2>/dev/null | tr -d ' \n')" = 0200b700 ] ||
+		{ echo "no static aarch64 $T/src/s10e-logo: make -C $T/src" >&2; exit 1; }
+	cp "$T/src/s10e-logo" "$W/boot/s10e-logo"; mkdir -p "$W/boot/boot-logo"
+	cp "$G/boot-logo/logo.jpg" "$G/boot-logo/svb_orange.jpg" "$G/boot-logo/booting_warning.jpg" "$W/boot/boot-logo/"
+	[ "$(cd "$W/boot/boot-logo" && cat logo.jpg svb_orange.jpg booting_warning.jpg | sha256sum | cut -c1-16)" = e05fc7e1b43ad160 ] ||
+		{ echo "$G/boot-logo: not the S20's pictures of 11-17" >&2; exit 1; }
 	DESC="Galaxy S20 FE (r8s, G780F): the modules of kernel #51 (7.2.15-r8s+, in BOOT with U-Boot ub13), Wi-Fi and Bluetooth firmware, the modem stack, sleep, the quiet boot, the r8s settings (USB network, watchdog, sensors, UCM, panel cutout, GPU)"
 	;;
 *) echo "unknown device $DEV" >&2; exit 1 ;;
 esac
 
+# the regulatory database (see regdb_cpio): the signers this kernel's cfg80211 trusts, and a built-in cfg80211 must
+# have its initramfs carry the database. The S20's initramfs is built into its kernel (BOOT 4a82c5e3, not rebuilt
+# here): it boots in the world domain until a kernel with CONFIG_EXTRA_FIRMWARE or a ramdisk in its FIT
+CF=$(find "$P/usr/lib/modules/$KVER" -name 'cfg80211.ko*' | head -n 1)
+if grep -Eq '(^|/)net/wireless/cfg80211\.ko$' "$P/usr/lib/modules/$KVER/modules.builtin"; then
+	RB=built-in; RK=$REGDB_KERNEL
+	[ -n "$RK" ] || { echo "cfg80211 is built in: no REGDB_KERNEL for $DEV" >&2; exit 1; }
+else
+	RB=module; RK=$CF
+	[ -n "$RK" ] || { echo "no cfg80211.ko for $KVER" >&2; exit 1; }
+fi
+RS=$(signers "$RK")
+[ "$RS" = upstream ] || { echo "cfg80211 ($RB) trusts the $RS signers: the postinst assumes the upstream ones only" >&2; exit 1; }
+log "cfg80211: $RB, trusts the upstream wireless-regdb signers: the postinst selects regulatory.db-upstream"
+if [ $RB = built-in ] && [ "$REGDB_RD" != done ]; then
+	[ $DEV = s20 ] || { echo "cfg80211 is built in, and no initramfs got regulatory.db" >&2; exit 1; }
+	log "NOTE: cfg80211 is built in, and the S20's initramfs is inside its kernel: no regulatory.db at boot (the world domain)"
+fi
+REGDB_SH='# Wi-Fi: this kernel trusts the upstream wireless-regdb signers only, not Debian'"'"'s re-signed copy
+	if [ -e /lib/firmware/regulatory.db-upstream ]; then
+		update-alternatives --set regulatory.db /lib/firmware/regulatory.db-upstream || true
+	fi'
 # a file both this package and a firmware package of debs/ ship would stop dpkg on the first boot ("trying to
 # overwrite"): the firmware package keeps it, when the two are the same bytes (a stage copy of a packaged file)
 for f in "$W"/debs/firmware-*.deb; do
@@ -305,64 +616,26 @@ if [ "\$1" = configure ]; then
 	done
 	depmod -a $KVER || true
 	$POSTINST_SH
+	$REGDB_SH
 	glib-compile-schemas /usr/share/glib-2.0/schemas 2>/dev/null || true
 fi
 exit 0
 EOF
 chmod 755 "$P/DEBIAN/postinst"
+# vibeos-growroot (the system's, the first boot) is a oneshot, and vibeos-device-setup, ordered before gdm, waits for it
+case $DEV in s10e|s5e|poco)
+	not_held vibeos-growroot.service 10min "The system's first-boot grow; vibeos-device-setup, ordered before gdm, comes after it." ;;
+esac
 # /etc/vibeos/android: how the shell's power menu restarts into Android (one line; no file, no menu item):
-# reboot=ARG (systemctl reboot --reboot-argument=ARG) or helper=PATH (run with pkexec). The POCO's helper is the
-# one its "Android" app had on 11-10 (gnome/device/boot-android, POCO branch), under device-named ids
+# reboot=ARG (systemctl reboot --reboot-argument=ARG) or helper=PATH (run with pkexec). The POCO has none since
+# 2026-11-23 (VibeOS on the whole phone); its helper until then (surya-boot-android) is in git history
 case $DEV in
 s10e) A=reboot=android ;;		# S-Boot's normal boot (DT reboot-mode mode-android), LineageOS in boot
 s20)  A=reboot=recovery ;;		# its RECOVERY partition holds LineageOS's boot image
 s5e)  A=helper=/usr/local/sbin/gts4lv-boot-android	# the stage's, polkit de.gts4lv.boot-android
       [ -x "$P/usr/local/sbin/gts4lv-boot-android" ] && [ -f "$P/usr/share/polkit-1/actions/de.gts4lv.boot-android.policy" ] ||
 	{ echo "no gts4lv-boot-android in the S5e stage" >&2; exit 1; } ;;
-poco) A=helper=/usr/local/sbin/surya-boot-android
-      install -d "$P/usr/local/sbin" "$P/usr/share/polkit-1/actions"
-      cat > "$P/usr/local/sbin/surya-boot-android" <<'EOF'
-#!/bin/sh
-# Restart into LineageOS (the boot partition), once. Run as root (pkexec, from the shell's power menu).
-# U-Boot, and so Linux, is in the recovery partition, and two things send a restart there:
-#  - the bootloader message in misc ("boot-recovery"): cleared here;
-#  - the restart reason: the PMIC's PON reason, and Linux names "recovery" at every restart
-#    (/run/systemd/reboot-param, from surya-reboot-linux.conf). That file is set aside, so this restart names
-#    nothing and ABL starts the boot partition.
-# Back to Linux from LineageOS: Restart -> Recovery.
-set -eu
-M=/dev/disk/by-partlabel/misc
-[ -b "$M" ] || { echo "no misc partition" >&2; exit 1; }
-case "$(tr -d '\0' < /proc/device-tree/compatible)" in
-*surya*|*karna*) ;;
-*) echo "not a POCO X3 NFC" >&2; exit 1 ;;
-esac
-head -c 32 /dev/zero | dd of="$M" bs=32 count=1 conv=notrunc,fsync status=none
-[ ! -e /run/systemd/reboot-param ] || mv /run/systemd/reboot-param /run/systemd/reboot-param.linux
-exec systemctl reboot
-EOF
-      chmod 755 "$P/usr/local/sbin/surya-boot-android"
-      cat > "$P/usr/share/polkit-1/actions/vibeos.surya.boot-android.policy" <<'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
- "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
-<policyconfig>
-  <action id="vibeos.surya.boot-android">
-    <description>Restart into Android</description>
-    <message>Authentication is required to restart into Android</message>
-    <defaults>
-      <!-- like an ordinary restart: the user at the phone may, others must authenticate -->
-      <allow_any>auth_admin</allow_any>
-      <allow_inactive>auth_admin</allow_inactive>
-      <allow_active>yes</allow_active>
-    </defaults>
-    <annotate key="org.freedesktop.policykit.exec.path">/usr/local/sbin/surya-boot-android</annotate>
-  </action>
-</policyconfig>
-EOF
-      chmod 644 "$P/usr/share/polkit-1/actions/vibeos.surya.boot-android.policy"
-      sh -n "$P/usr/local/sbin/surya-boot-android"
-      [ -f "$P/etc/tmpfiles.d/surya-reboot-linux.conf" ] || { echo "no surya-reboot-linux.conf in the POCO package" >&2; exit 1; } ;;
+poco) A= ;;			# U-Boot in BOOT, Android gone or never started (since 2026-11-23): no Android entry
 *)    A= ;;
 esac
 [ -z "$A" ] || { install -d "$P/etc/vibeos"; echo "$A" > "$P/etc/vibeos/android"; chmod 644 "$P/etc/vibeos/android"; log "/etc/vibeos/android: $A"; }
@@ -387,14 +660,25 @@ if [ -s "$L/diverted.txt" ] || [ $DEV = poco ]; then
 		[ $DEV != poco ] || printf '\tdpkg-divert --package vibeos-device-poco --local --rename --divert /etc/kernel/zz-qcom-bootimg.off --add /etc/kernel/postinst.d/zz-qcom-bootimg > /dev/null\n'
 		printf 'fi\nexit 0\n'
 	} > "$P/DEBIAN/preinst"
-	{
-		printf '#!/bin/sh\nset -e\nif [ "$1" = remove ] || [ "$1" = abort-install ]; then\n'
-		dv remove
-		printf '\t:\nfi\nexit 0\n'
-	} > "$P/DEBIAN/postrm"
-	chmod 755 "$P/DEBIAN/preinst" "$P/DEBIAN/postrm"
-	sh -n "$P/DEBIAN/preinst" && sh -n "$P/DEBIAN/postrm"
+	chmod 755 "$P/DEBIAN/preinst"
+	sh -n "$P/DEBIAN/preinst"
 fi
+{
+	printf '#!/bin/sh\nset -e\nif [ "$1" = remove ] || [ "$1" = abort-install ]; then\n'
+	dv remove
+	printf '\t:\nfi\n'
+	# Debian's choice of wireless-regdb again
+	printf 'if [ "$1" = remove ] || [ "$1" = purge ]; then\n\tupdate-alternatives --auto regulatory.db 2> /dev/null || true\nfi\nexit 0\n'
+} > "$P/DEBIAN/postrm"
+chmod 755 "$P/DEBIAN/postrm"
+sh -n "$P/DEBIAN/postrm" && sh -n "$P/DEBIAN/postinst"
+# no build machine in a text file: its host name, or the home directory of one of its users (a vendor's own path,
+# such as the /home/qca_main/ in Qualcomm's firmware notices, is not this machine's)
+H=$(hostname -s)
+if grep -rIlwi -e "$H" "$P" | grep .; then echo "the build host's name is in these files" >&2; exit 1; fi
+for u in $(ls /home); do
+	if grep -rIlF "/home/$u/" "$P" | grep .; then echo "this machine's /home/$u is in these files" >&2; exit 1; fi
+done
 # no forbidden content (FORBID), and no identifiers baked in
 if for w in $FORBID; do find "$P" -iname "*$w*"; done | grep .; then echo "forbidden files in the payload" >&2; exit 1; fi
 D=$W/debs/vibeos-device-${DEV}_${V}_arm64.deb
