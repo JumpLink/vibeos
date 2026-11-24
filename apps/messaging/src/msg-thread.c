@@ -2,6 +2,7 @@
 #include "msg-thread.h"
 
 #include <glib/gi18n.h>
+#include <vibeos-locale.h>
 
 #define GAP_IN_RUN      2
 #define GAP_BETWEEN     16
@@ -51,7 +52,7 @@ msg_thread_time_text (gint64 time, gboolean use_24h)
 
   if (!date)
     return g_strdup ("");
-  return g_date_time_format (date, use_24h ? C_("time", "%H:%M") : C_("time", "%-l:%M %p"));
+  return vibeos_format_date (date, use_24h ? "Hm" : "hm");
 }
 
 char *
@@ -77,10 +78,10 @@ msg_thread_separator_text (gint64 time, gint64 now, gboolean use_24h)
     day = g_strdup (_("Today"));
   else if (days == 1)
     day = g_strdup (_("Yesterday"));
-  else if (g_date_time_get_year (date) == g_date_time_get_year (today))
-    day = g_date_time_format (date, C_("separator date", "%A, %b %-d"));
   else
-    day = g_date_time_format (date, C_("separator date", "%A, %b %-d, %Y"));
+    /* "Thursday, Oct 29", with the year when it is not this one */
+    day = vibeos_format_date (date, g_date_time_get_year (date) == g_date_time_get_year (today) ? "MMMEEEEd"
+                                                                                                : "yMMMEEEEd");
   /* the day, a bullet, the time */
   return g_strdup_printf (C_("separator", "%s • %s"), day, clock);
 }

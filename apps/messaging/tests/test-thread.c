@@ -105,7 +105,8 @@ test_words (void)
   g_autofree char *clock = msg_thread_time_text (T0, TRUE);
 
   g_assert_cmpstr (today, ==, "Today • 14:45");
-  g_assert_cmpstr (yesterday, ==, "Yesterday • 2:45 PM");
+  /* ICU writes a narrow no-break space (U+202F) before AM/PM */
+  g_assert_cmpstr (yesterday, ==, "Yesterday • 2:45\u202fPM");
   g_assert_cmpstr (week, ==, "Thursday, Oct 29 • 14:45");
   g_assert_cmpstr (year, ==, "Thursday, Oct 29, 2026 • 14:45");
   g_assert_cmpstr (clock, ==, "14:45");

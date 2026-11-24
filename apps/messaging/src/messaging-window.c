@@ -490,7 +490,7 @@ replace_menu (Shell *shell, GtkWidget *page)
 }
 
 /* About: VibeOS's About sheet, as every VibeOS app has it */
-static const VibeosAboutInfo msg_about = { .name = "Messaging", .icon_name = "vibeos.Messaging" };
+static const VibeosAboutInfo msg_about = { .name = N_("Messaging"), .icon_name = "vibeos.Messaging" };
 
 static void
 on_menu (MsgAccountMenuItem item, gpointer data)

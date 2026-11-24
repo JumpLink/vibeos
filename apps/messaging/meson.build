@@ -10,6 +10,12 @@ sqlite = dependency('sqlite3')
 bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
 
+# dates and times in the user's language: libvibeos's vibeos-locale (GLib and ICU only), which the app has from
+# libvibeos and the tests, without GTK, build in
+icu = [dependency('icu-i18n'), dependency('icu-uc')]
+locale_inc = include_directories('../../libvibeos')
+locale_src = files('../../libvibeos/vibeos-locale.c')
+
 # the Phone's numbers, contacts, notifications and app opening are the Messaging's too, built from the Phone's
 # sources, not copied
 dialer = include_directories('../dialer/src')
@@ -25,6 +31,7 @@ executable('vibeos-messaging-sms', 'src/sms-service.c', 'src/sms-modem.c', link_
 
 # the app: the conversation list, a conversation, the contact picker
 gnome = import('gnome')
+i18n = import('i18n')
 gtk = dependency('gtk4', version: '>= 4.14')
 resources = gnome.compile_resources('messaging-resources', 'src/messaging.gresource.xml', source_dir: ['src', 'data'])
 executable('vibeos-messaging', 'src/messaging-main.c', 'src/messaging-window.c',
@@ -47,11 +54,15 @@ configure_file(input: 'data/vibeos.Messaging.Sms.service.in', output: 'vibeos.Me
                configuration: unit, install_dir: datadir / 'dbus-1/services')
 configure_file(input: 'data/vibeos.Messaging.service.in', output: 'vibeos.Messaging.service',
                configuration: unit, install_dir: datadir / 'dbus-1/services')
-install_data('data/vibeos.Messaging.desktop', install_dir: datadir / 'applications')
+i18n.merge_file(input: 'data/vibeos.Messaging.desktop.in', output: 'vibeos.Messaging.desktop', type: 'desktop', po_dir: 'po',
+                install: true, install_dir: datadir / 'applications')
 install_data('data/vibeos.Messaging.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 install_data('data/vibeos.Messaging.gschema.xml', install_dir: datadir / 'glib-2.0/schemas')
 install_data('data/sounds/message_sent.wav', install_dir: datadir / 'vibeos-messaging/sounds')
 gnome.post_install(glib_compile_schemas: true, gtk_update_icon_cache: true, update_desktop_database: true)
+
+# the translations, and their checks
+subdir('po')
 
 test('sms-store', executable('test-sms-store', 'tests/test-sms-store.c', link_with: store, dependencies: [gio]))
 test('sms-segments', executable('test-sms-segments', 'tests/test-sms-segments.c', 'src/sms-segments.c',
@@ -60,8 +71,9 @@ test('sms-segments', executable('test-sms-segments', 'tests/test-sms-segments.c'
 test('sms-flow', find_program('python3'), timeout: 120,
      args: [files('tests/test-sms.py'), meson.current_build_dir(), meson.current_source_dir()])
 # a conversation's layout: date lines, runs, gaps, the date line's words (in UTC and English)
-test('thread', executable('test-thread', 'tests/test-thread.c', 'src/msg-thread.c', dependencies: [gio]),
-     env: ['TZ=UTC', 'LC_ALL=C.UTF-8'])
+test('thread', executable('test-thread', 'tests/test-thread.c', 'src/msg-thread.c', locale_src,
+                          include_directories: locale_inc, dependencies: [gio, icu]),
+     env: ['TZ=UTC', 'LC_ALL=C.UTF-8', 'LANGUAGE='])
 
 # made-up conversations and contacts for a test rig's private store and address book; not installed
 executable('msg-seed', 'tests/msg-seed.c', include_directories: 'src', link_with: store, dependencies: [gio, ebook])
