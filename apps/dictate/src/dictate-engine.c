@@ -12,7 +12,8 @@
  * Taking turns (dictate_engine_set_turns), the worker wakes every TURN_WAKE_MS and cuts the speech out of the audio
  * with the voice activity detector (dictate-vad.h; the loudness when its model is not installed): only speech goes
  * to the recogniser, from TURN_PREROLL_MS before it starts, and once the speaker has been quiet for TURN_END_MS it
- * ends the turn by itself, as if stopped. */
+ * ends the turn by itself, as if stopped. Held (dictate_engine_set_held), it does not: neither a pause nor a long
+ * wait for the first word ends the turn until it is let go. */
 #include "dictate-engine.h"
 #include "dictate-recogniser.h"
 #include "dictate-vad.h"
@@ -60,6 +61,7 @@ struct _DictateEngine
   GArray *queued;               /* float samples the recogniser has not had */
   gboolean stop;                /* the worker finishes the stream and ends */
   gboolean turns;               /* taking turns, for the next start; the worker's copy is its own */
+  gboolean held;                /* taking turns: the turn does not end by itself (read by the worker as it goes) */
   int level;                    /* atomic: dictate_engine_get_level × 1e6 */
   /* the worker's: the voice activity detector, loaded the first time turns are taken, kept */
   DictateVad *vad;
@@ -327,9 +329,9 @@ speech_likelihood (DictateEngine *self, const float *frame)
 }
 
 /* the new audio frame by frame: speech onto t->speech (with the preroll before it), the turn's end found.
- * `heard`: the recogniser has words for this turn already */
+ * `heard`: the recogniser has words for this turn already; `held`: the turn does not end now, whatever is heard */
 static void
-turn_feed (DictateEngine *self, Turn *t, GArray *audio, gboolean heard)
+turn_feed (DictateEngine *self, Turn *t, GArray *audio, gboolean heard, gboolean held)
 {
   guint preroll = TURN_PREROLL_MS * DICTATE_RATE / 1000;
 
@@ -357,7 +359,7 @@ turn_feed (DictateEngine *self, Turn *t, GArray *audio, gboolean heard)
               g_array_append_vals (t->preroll, frame, DICTATE_VAD_FRAME);
               if (t->preroll->len > preroll)
                 g_array_remove_range (t->preroll, 0, t->preroll->len - preroll);
-              if (t->speech_frames == 0 && t->frames * FRAME_MS >= TURN_WAIT_MS)
+              if (t->speech_frames == 0 && t->frames * FRAME_MS >= TURN_WAIT_MS && !held)
                 t->over = TRUE;
             }
         }
@@ -367,7 +369,8 @@ turn_feed (DictateEngine *self, Turn *t, GArray *audio, gboolean heard)
           g_array_append_vals (t->speech, frame, DICTATE_VAD_FRAME);
           t->speech_frames++;
           t->quiet_frames = p < TURN_GOING ? t->quiet_frames + 1 : 0;
-          if (t->quiet_frames * FRAME_MS >= TURN_END_MS)
+          /* held, a pause is only a pause: let go after one, the turn is over at once */
+          if (t->quiet_frames * FRAME_MS >= TURN_END_MS && !held)
             {
               t->speaking = FALSE;
               /* a blip with no words in it is not a turn: listening goes on */
@@ -391,7 +394,7 @@ work (gpointer data)
   g_autofree char *partial = g_strdup ("");
   g_autofree char *error = NULL;
   gint64 last = 0;
-  gboolean turns, heard = FALSE;
+  gboolean turns, heard = FALSE, was_held = FALSE;
   Turn turn;
 
   g_mutex_lock (&self->lock);
@@ -425,13 +428,14 @@ work (gpointer data)
 
   for (;;)
     {
-      gboolean stop;
+      gboolean stop, held;
       gint64 next = last + (turns ? TURN_WAKE_MS : UPDATE_MS) * G_TIME_SPAN_MILLISECOND;
 
       g_mutex_lock (&self->lock);
       while (!self->stop && g_get_monotonic_time () < next)
         g_cond_wait_until (&self->wake, &self->lock, next);
       stop = self->stop;
+      held = self->held;
       g_mutex_unlock (&self->lock);
       if (stop)
         break;
@@ -440,7 +444,11 @@ work (gpointer data)
         {
           g_autoptr (GArray) audio = take_queued (self);
 
-          turn_feed (self, &turn, audio, heard);
+          /* let go with nothing said yet: the wait for the first word starts now */
+          if (was_held && !held && !turn.speaking && turn.speech_frames == 0)
+            turn.frames = 0;
+          was_held = held;
+          turn_feed (self, &turn, audio, heard, held);
           if (hear_audio (self, stream, turn.speech, &partial))
             heard = TRUE;
           g_array_set_size (turn.speech, 0);
@@ -459,7 +467,7 @@ work (gpointer data)
   else if (!turn.over)
     {
       g_autoptr (GArray) audio = take_queued (self);
-      turn_feed (self, &turn, audio, heard);
+      turn_feed (self, &turn, audio, heard, was_held);
       hear_audio (self, stream, turn.speech, &partial);
     }
   {
@@ -598,6 +606,14 @@ dictate_engine_set_turns (DictateEngine *self, gboolean turns)
 {
   g_mutex_lock (&self->lock);
   self->turns = turns;
+  g_mutex_unlock (&self->lock);
+}
+
+void
+dictate_engine_set_held (DictateEngine *self, gboolean held)
+{
+  g_mutex_lock (&self->lock);
+  self->held = held;
   g_mutex_unlock (&self->lock);
 }
 

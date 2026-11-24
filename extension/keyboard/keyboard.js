@@ -13,6 +13,7 @@ import Gio from 'gi://Gio';
 import GioUnix from 'gi://GioUnix';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
+import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 
@@ -25,7 +26,7 @@ import {click} from '../haptics.js';
 import {gestureTookTouches} from '../oskfocus.js';
 import {openSettings} from '../settings.js';
 import {inHomeStrip} from '../task.js';
-import {SCALE} from '../units.js';
+import {SCALE, dp} from '../units.js';
 import {formFactor, keyAt, measure, moreKeyAt, placeKeys, placeMoreKeys, stripSlots} from './geometry.js';
 import {KeyboardPalette} from './palette.js';
 import {KeysCanvas, labelWidth, MoreKeysPanel, NavCanvas, PressedKey, StripCanvas} from './renderer.js';
@@ -34,6 +35,8 @@ import {atSentenceStart, autocorrection, Learnt, Lexicon, neighboursOf, placeInS
 // shown, the keyboard slides up decelerating; hidden, it slides down accelerating
 const SHOW_MS = 200;
 const HIDE_MS = 190;
+// a window slid up over the keys (keyboardSlides) stops with the text cursor's line this far above their top edge
+const SLIDE_MARGIN_DP = 8;
 // a second tap on shift this soon locks the capitals, and so does holding it this long
 const DOUBLE_TAP_MS = 300;
 const SHIFT_LOCK_MS = 1200;
@@ -210,13 +213,79 @@ function touchId(event) {
 
 // An app whose desktop file says X-Vibeos-Keyboard=overlay keeps its window as it is when the keyboard comes up: the
 // keys go over it, as over a full-screen map (Navi), instead of the window being fitted above them. It learns how
-// much of it the keys cover from vibeos.Shell's KeyboardOverlap (service.js) and makes room itself. Other apps are
-// fitted above the keys, as before.
+// much of it the keys cover from vibeos.Shell's KeyboardOverlap (service.js) and makes room itself.
+//
+// One that says X-Vibeos-Keyboard=slide, or whose id is in vibeos.Shell's keyboard-slide-apps (Console's by default),
+// keeps its size too, and its window slides up over the keys, just far enough to keep the text cursor's line above
+// them, and back down when they close (VibeosKeyboard._kbSlideStart): a terminal fitted above the keys had its text
+// reflowed for the new size, and again when it grew back (owner, 11-24: "keyboard squeezes terminal window instead of
+// opening on top of it"). Other apps are fitted above the keys, as before.
 const OVERLAY_KEY = 'X-Vibeos-Keyboard';
+const SLIDE_APPS_KEY = 'keyboard-slide-apps';
+const SLIDE_APPS_DEFAULT = ['org.gnome.Console'];
+
+function windowApp(window) {
+    return window ? Shell.WindowTracker.get_default().get_window_app(window) : null;
+}
+
+function keyboardKey(app) {
+    const info = app?.get_app_info();
+    return info instanceof GioUnix.DesktopAppInfo && info.has_key(OVERLAY_KEY) ? info.get_string(OVERLAY_KEY) : null;
+}
 
 export function keyboardOverlays(window) {
-    const info = window && Shell.WindowTracker.get_default().get_window_app(window)?.get_app_info();
-    return info instanceof GioUnix.DesktopAppInfo && info.has_key(OVERLAY_KEY) && info.get_string(OVERLAY_KEY) === 'overlay';
+    return keyboardKey(windowApp(window)) === 'overlay';
+}
+
+export function keyboardSlides(window) {
+    const app = windowApp(window);
+    if (!app)
+        return false;
+    if (keyboardKey(app) === 'slide')
+        return true;
+    shellSettings ??= vibeosSettings();
+    const apps = shellSettings?.settings_schema.has_key(SLIDE_APPS_KEY)
+        ? shellSettings.get_strv(SLIDE_APPS_KEY) : SLIDE_APPS_DEFAULT;
+    return apps.includes(app.get_id()?.replace(/\.desktop$/, ''));
+}
+
+// A window's menus (xdg popups, each its own window and actor) are placed by mutter against the window where it is,
+// not where it is drawn slid: while it is slid, or slides back, each is drawn as far up as the window, or higher where
+// the keyboard moved it clear of the keys (_animatePopovers, which measures them unslid).
+const MENU_TYPES = [Meta.WindowType.DROPDOWN_MENU, Meta.WindowType.POPUP_MENU, Meta.WindowType.MENU,
+    Meta.WindowType.COMBO, Meta.WindowType.TOOLTIP];
+
+function liftMenus(window) {
+    const parent = window.get_compositor_private();
+    if (!parent)
+        return;
+    for (const actor of global.get_window_actors()) {
+        const menu = actor.meta_window;
+        if (!menu || menu === window || !MENU_TYPES.includes(menu.get_window_type()) ||
+            menu.find_root_ancestor() !== window)
+            continue;
+        actor.translation_y = Math.min(menu.__vibeosLift ?? 0, parent.translation_y);
+    }
+}
+
+// the window drawn y logical pixels up (y <= 0) after an ease of ms, its menus following it, until it is back down
+function slideWindow(actor, y, ms, mode) {
+    const moving = !!actor.get_transition('translation-y');
+    if (moving ? actor.__vibeosSlideTo === y : actor.translation_y === y)
+        return;
+    actor.__vibeosSlideTo = y;
+    actor.__vibeosMenusId ??= actor.connect('notify::translation-y', () => liftMenus(actor.meta_window));
+    actor.ease({
+        translation_y: y,
+        duration: ms,
+        mode,
+        onStopped: finished => {
+            if (!finished || y !== 0 || !actor.__vibeosMenusId)
+                return;
+            actor.disconnect(actor.__vibeosMenusId);
+            delete actor.__vibeosMenusId;
+        },
+    });
 }
 
 export const VibeosKeyboard = GObject.registerClass(
@@ -224,7 +293,8 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
     // The shell's keyboard is set up, then its looks are taken away and ours put in
     _setupKeyboard() {
         this._kb = {locale: 'en_US', purpose: Clutter.InputContentPurpose.NORMAL, page: 'alphabet', view: null,
-            touches: new Map(), passOn: new Set(), more: null, preview: null, lastShift: 0, manualShift: false, capitals: null};
+            touches: new Map(), passOn: new Set(), more: null, preview: null, lastShift: 0, manualShift: false, capitals: null,
+            hiding: false, unredirect: false};
         this._layers = {default: 'alphabet', shift: 'alphabet-shifted'};
         super._setupKeyboard();
 
@@ -266,6 +336,26 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         this.add_child(this._kbKeys);
         this.add_child(this._kbNav);
 
+        // a keyboard left on the screen closed (_kbStale) goes at the first touch on it, and the keys see nothing of
+        // that touch (or click), to its end: it types nothing
+        const swallowed = new Set();
+        this.connect('captured-event', (_actor, event) => {
+            const T = Clutter.EventType;
+            const type = event.type();
+            const pointer = type === T.BUTTON_PRESS || type === T.BUTTON_RELEASE || type === T.MOTION;
+            const id = pointer ? 'pointer' : touchId(event);
+            if (type === T.TOUCH_BEGIN || type === T.BUTTON_PRESS) {
+                if (!this._kbSettle())
+                    return Clutter.EVENT_PROPAGATE;
+                swallowed.add(id);
+                return Clutter.EVENT_STOP;
+            }
+            if (!swallowed.has(id))
+                return Clutter.EVENT_PROPAGATE;
+            if (type === T.TOUCH_END || type === T.TOUCH_CANCEL || type === T.BUTTON_RELEASE)
+                swallowed.delete(id);
+            return Clutter.EVENT_STOP;
+        });
         this._kbKeys.connect('touch-event', (_actor, event) => this._onTouch(event));
         this._kbKeys.connect('button-press-event', (_actor, event) => this._onButton(event, true));
         this._kbKeys.connect('button-release-event', (_actor, event) => this._onButton(event, false));
@@ -293,11 +383,29 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
             this._updateLevelFromHints(false);
             this._kbSuggestSoon();
         }, 'notify::content-purpose', () => this._kbSuggestSoon(),
-        'notify::content-hints', () => this._kbSuggestSoon(), this);
+        'notify::content-hints', () => this._kbSuggestSoon(),
+        // the text cursor, for a window slid over the keys: mutter's rect of the client's, in the stage, where the
+        // window is when not slid (the window actor's translation left out). The client sends it when the field takes
+        // the focus and whenever it moves. (A rect of NaNs came as Console's menu took the focus: no cursor.)
+        'cursor-location-changed', (_im, rect) => {
+            const y = rect.get_y(), height = rect.get_height();
+            if (!Number.isFinite(y) || !Number.isFinite(height))
+                return;
+            this._kbCursor = {window: global.display.focus_window, y, height};
+            this._kbSlideSoon();
+        }, this);
+        // a menu opened on a window slid over the keys: drawn slid with it from its first frame
+        global.window_manager.connectObject('map', (_wm, actor) => {
+            const window = actor.meta_window?.find_root_ancestor();
+            if (window && window !== actor.meta_window && window.get_compositor_private()?.__vibeosMenusId)
+                liftMenus(window);
+        }, this);
         this._kbRebuild();
     }
 
     _onDestroy() {
+        this._kbGone = true;
+        this._kbSlideEnd(true);
         if (this._kbSuggestId)
             GLib.source_remove(this._kbSuggestId);
         this._kbSuggestId = 0;
@@ -406,14 +514,21 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         return [h, h];
     }
 
-    // A terminal is fitted above the keys at once, and grows back at once: the shell's size-change animation of the
-    // unmaximize and the maximize after it stretched Console's text down the screen and back. (Left full screen with
-    // the keyboard over it instead, a terminal full of output had its prompt under the keys: owner, 11-21, "shrink
+    // A window the keys slide over (keyboardSlides) is slid, not fitted. A terminal that is not one (taken out of
+    // keyboard-slide-apps) is fitted above the keys at once, and grows back at once: the shell's size-change animation
+    // of the unmaximize and the maximize after it stretched Console's text down the screen and back. (Left full screen
+    // with the keyboard over it instead, a terminal full of output had its prompt under the keys: owner, 11-21, "shrink
     // console above keyboard".) Other windows keep the animation.
     _animateWindow(window, show) {
         // an app that has the keys over its window (keyboardOverlays): left as it is
         if (show && keyboardOverlays(window))
             return;
+        if (show && window && !window.__keyboardMoved && keyboardSlides(window)) {
+            this._kbSlideStart(window);
+            return;
+        }
+        if (!show && window && this._kbSlide?.window === window)
+            this._kbSlideEnd();
         const actor = window?.get_compositor_private();
         if (show && actor && window.maximized_vertically && !window.__keyboardMoved && !window.is_alien() &&
             Main.inputMethod.content_purpose === Clutter.InputContentPurpose.TERMINAL) {
@@ -425,6 +540,87 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         if (!show)
             delete window?.__keyboardTerminal;
         super._animateWindow(window, show);
+    }
+
+    // The window in front slid up over the keys, as the keyboard comes up with them, until the text cursor's line is
+    // SLIDE_MARGIN_DP above the keys' top edge, and no further than the window's bottom over it; with no cursor known,
+    // that far. It follows the cursor while the keyboard is up (a terminal's output takes it down the screen, `clear`
+    // back up), and the keyboard's own changes of height. The window keeps its size: nothing in it is laid out again.
+    _kbSlideStart(window) {
+        if (this._kbSlide?.window !== window) {
+            this._kbSlideEnd();
+            const actor = window.get_compositor_private();
+            if (!actor)
+                return;
+            const soon = () => this._kbSlideSoon();
+            this._kbSlide = {
+                window, actor, later: 0,
+                ids: [
+                    window.connect('position-changed', soon),
+                    window.connect('size-changed', soon),
+                    // closing: left where it is, for its close animation
+                    window.connect('unmanaging', () => this._kbSlideEnd(false)),
+                ],
+                heightId: this.connect('notify::height', soon),
+            };
+        }
+        this._kbSlideMove();
+    }
+
+    _kbSlideSoon() {
+        const slide = this._kbSlide;
+        if (!slide || slide.later)
+            return;
+        slide.later = global.compositor.get_laters().add(Meta.LaterType.BEFORE_REDRAW, () => {
+            slide.later = 0;
+            if (this._kbSlide === slide)
+                this._kbSlideMove();
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _kbSlideMove() {
+        const {window, actor} = this._kbSlide;
+        const monitor = Main.layoutManager.keyboardMonitor;
+        if (!monitor)
+            return;
+        const top = monitor.y + monitor.height - this.height;
+        const frame = window.get_frame_rect();
+        const covered = Math.max(0, frame.y + frame.height - top);
+        const cursor = this._kbCursor?.window === window && this._kbCursor.height > 0 ? this._kbCursor : null;
+        const shift = cursor
+            ? Math.min(covered, Math.max(0, cursor.y + cursor.height + dp(SLIDE_MARGIN_DP) - top)) : covered;
+        slideWindow(actor, -Math.round(shift), SHOW_MS, Clutter.AnimationMode.EASE_OUT_CUBIC);
+    }
+
+    // back down with the keys (animate), or left as it is
+    _kbSlideEnd(animate = true) {
+        const slide = this._kbSlide;
+        if (!slide)
+            return;
+        this._kbSlide = null;
+        if (slide.later)
+            global.compositor.get_laters().remove(slide.later);
+        slide.ids.forEach(id => slide.window.disconnect(id));
+        this.disconnect(slide.heightId);
+        if (animate)
+            slideWindow(slide.actor, 0, HIDE_MS, Clutter.AnimationMode.EASE_IN_QUAD);
+    }
+
+    // the shell's lift of each popover clear of the keys, kept for the menus of a window slid over them (liftMenus)
+    _animatePopovers(show) {
+        super._animatePopovers(show);
+        const slid = new Set();
+        for (const popover of this._focusPopovers ?? []) {
+            const actor = popover.get_compositor_private();
+            if (!actor)
+                continue;
+            popover.__vibeosLift = show ? actor.translation_y : 0;
+            const window = popover.find_root_ancestor();
+            if (window !== popover && window.get_compositor_private()?.__vibeosMenusId)
+                slid.add(window);
+        }
+        slid.forEach(liftMenus);
     }
 
     // opened on the letters, in capitals where the field asks for them (at its start, after a full stop)
@@ -453,7 +649,12 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
     }
 
     _animateShow() {
-        global.compositor.disable_unredirect();
+        // the compositor's unredirection stopped once while the keyboard is up, allowed again once it is gone
+        // (_animateHideComplete)
+        if (!this._kb.unredirect)
+            global.compositor.disable_unredirect();
+        this._kb.unredirect = true;
+        this._kb.hiding = false;
         Main.layoutManager.keyboardBox.show();
         this._keyboardVisible = true;
         if (this._focusWindow && !Main.overview.visible)
@@ -476,17 +677,70 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         if (this._focusPopovers.size > 0)
             this._animatePopovers(false);
         this._kbReleaseAll();
+        this._keyboardVisible = false;
+        this._kbSlideAway();
+        this.emit('visibility-changed');
+    }
+
+    // The slide down, and the keyboard gone from the screen at its end. Also when another slide cuts it short: with
+    // the end of a finished slide alone, the shell's swipe down, cancelled by the close, slid the closed keyboard back
+    // up, and it stayed on the screen, closed, over the app and then the launcher (owner, 11-24).
+    _kbSlideAway() {
+        this._kb.hiding = true;
         this.ease({
             translation_y: this.height,
             duration: HIDE_MS,
             mode: Clutter.AnimationMode.EASE_IN_QUAD,
-            onComplete: () => {
+            onStopped: () => {
+                if (this._kbGone)
+                    return;
+                this._kb.hiding = false;
+                if (this._keyboardVisible)
+                    return;
                 this.opacity = 0;
                 this._animateHideComplete();
             },
         });
-        this._keyboardVisible = false;
-        this.emit('visibility-changed');
+    }
+
+    _animateHideComplete() {
+        Main.layoutManager.keyboardBox.hide();
+        if (this._kb.unredirect)
+            global.compositor.enable_unredirect();
+        this._kb.unredirect = false;
+    }
+
+    // Closed, not on its way down, and still on the screen: what a hide cut short left. Back and a touch on it take it
+    // away (keyboardShown, dismissKeyboard, the captured touch in _setupKeyboard).
+    get _kbStale() {
+        return !this._kbGone && !this._keyboardVisible && !this._kb.hiding && !this._gestureInProgress &&
+            Main.layoutManager.keyboardBox.visible && this.mapped && this.opacity > 0 &&
+            this.translation_y < this.height;
+    }
+
+    _kbSettle() {
+        if (!this._kbStale)
+            return false;
+        this._kbReleaseAll();
+        this._kbSlideAway();
+        return true;
+    }
+
+    // The swipe down takes the finger: counted gone, as by the other gestures that take one (gestureTookTouches), so a
+    // close is not held for a lift the stage may never see (oskfocus.js), and one held already comes now
+    _panBegin(gesture) {
+        gestureTookTouches();
+        super._panBegin(gesture);
+    }
+
+    // The swipe down let go, or cancelled. A keyboard closed under the finger (a field losing the focus closes it, and
+    // the close turns the swipe off, which cancels it) is not brought back: the shell's own end slid it back up and
+    // fitted the window above it again, closed.
+    _panEnd(gesture) {
+        if (this._keyboardVisible)
+            super._panEnd(gesture);
+        else
+            this._kbSettle();
     }
 
     // ---- the keyboard's own ----
@@ -1247,12 +1501,14 @@ function vibeosSettings() {
     return schema?.has_key('keyboard') ? new Gio.Settings({settings_schema: schema}) : null;
 }
 
+// vibeos.Shell, for the keys below and keyboard-slide-apps (keyboardSlides)
+let shellSettings = null;
+
 // Settings > Keyboard > Text correction: the strip's words, auto-correction and the next word's suggestions (on where
 // the schema has no such key yet)
-let correctionSettings = null;
 function textCorrection(key) {
-    correctionSettings ??= vibeosSettings();
-    return correctionSettings?.settings_schema.has_key(key) ? correctionSettings.get_boolean(key) : true;
+    shellSettings ??= vibeosSettings();
+    return shellSettings?.settings_schema.has_key(key) ? shellSettings.get_boolean(key) : true;
 }
 
 // The swipe home begun: the keyboard goes at once, with the app. Its touches let go first: a gesture that takes a
@@ -1264,6 +1520,13 @@ export function dismissKeyboard() {
     keyboard?._kbReleaseAll?.();
     gestureTookTouches();
     keyboard?.close();
+    // and one left on the screen closed (Keyboard.close does nothing to a closed one)
+    keyboard?._kbSettle?.();
+}
+
+// Up, for Back: open, or left on the screen closed (which dismissKeyboard takes away)
+export function keyboardShown() {
+    return !!Main.keyboard.visible || !!Main.keyboard._keyboard?._kbStale;
 }
 
 // A keyboard taken out of use: the window it moved put back, the shell's composited state and its swipe gesture
@@ -1275,8 +1538,12 @@ function retire(keyboard) {
     const window = keyboard._focusWindow;
     if (window?.__keyboardMoved)
         keyboard._animateWindow(window, false);
-    if (keyboard._keyboardVisible)
+    keyboard._kbSlideEnd?.();
+    // (ours keeps its own count: a hide that remove_all_transitions cut short has allowed it already)
+    if (keyboard._kb ? keyboard._kb.unredirect : keyboard._keyboardVisible)
         global.compositor.enable_unredirect();
+    if (keyboard._kb)
+        keyboard._kb.unredirect = false;
     keyboard._keyboardVisible = false;
     if (keyboard._surroundingTextId) {
         Main.inputMethod.disconnect(keyboard._surroundingTextId);

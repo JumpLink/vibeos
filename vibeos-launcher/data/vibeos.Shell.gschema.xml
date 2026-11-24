@@ -156,5 +156,10 @@
       <summary>Next-word suggestions</summary>
       <description>Between words the strip suggests the next one, from the words typed before and the language's commonest pairs (LatinIME's "Use previous word in making suggestions").</description>
     </key>
+    <key name="keyboard-slide-apps" type="as">
+      <default>['org.gnome.Console']</default>
+      <summary>Apps the keyboard opens over</summary>
+      <description>App ids (desktop file names without .desktop) whose window keeps its size when the on-screen keyboard comes up: it slides up just far enough to keep the text cursor's line above the keys, and back down when they close. For terminals, whose text is reflowed when the window is resized. Other apps' windows are fitted above the keys. An app can ask for this itself with X-Vibeos-Keyboard=slide in its desktop file.</description>
+    </key>
 </schema>
 </schemalist>

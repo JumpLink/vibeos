@@ -1,7 +1,8 @@
 // The power key's presses and releases handed straight to power.js's handler (power-keys.sh runs it on copies whose
 // GNOME Shell imports are stand-ins): a short press, a hold for Agent (unlocked, locked, the screen off), the switch
-// off, Agent missing, power and volume up for the power menu, power and volume down for a screenshot, a volume key on
-// its own, and the double press. Agent is this test, on the test's own bus: the "hold" actions it is sent are checked.
+// off, Agent missing, power and volume up for the power menu (together, or one held and the other pressed later, with
+// Agent listening already), power and volume down for a screenshot (only together), a volume key on its own, and the
+// double press. Agent is this test, on the test's own bus: the "hold" and "hold-cancel" actions it is sent are checked.
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import System from 'system';
@@ -32,6 +33,7 @@ const FEEDBACK_IFACE = `<node>
 
 const AGENT = 'vibeos.Agent.desktop';
 let holds = [];
+let oldAgent = false;            // an Agent from before "hold-cancel": it refuses that action
 // feedbackd on the test's bus too, so that none is started: the long press's ticks
 let ticks = 0;
 const feedback = Gio.DBusExportedObject.wrapJSObject(FEEDBACK_IFACE, {
@@ -45,7 +47,9 @@ const agent = Gio.DBusExportedObject.wrapJSObject(AGENT_IFACE, {
     Activate() {},
     Open() {},
     ActivateAction(name, params) {
-        holds.push(`${name} ${JSON.stringify(params.map(unpack)[0])}`);
+        if (oldAgent && name === 'hold-cancel')
+            throw new Error('Unknown action');
+        holds.push(params.length ? `${name} ${JSON.stringify(params.map(unpack)[0])}` : name);
     },
 });
 
@@ -64,12 +68,17 @@ function check(what, got, want) {
 
 // a Power with only what the key's handler uses (its constructor builds the screen-off layer and talks to mutter),
 // wired as extension.js wires it: the chord, the power menu, KeyLaunch
-function phone({locked = false, holdAgent = true, agentInstalled = true, asleep = false} = {}) {
+function phone({locked = false, holdAgent = true, agentInstalled = true, asleep = false, oldAgent: old = false} = {}) {
     ticks = 0;
+    oldAgent = old;
     const keyguard = {showing: locked, dismissThen: then => then()};
-    const menu = {opened: 0, open() {
+    // shown: still open after the key's handlers ran (a press closes an open menu)
+    const menu = {opened: 0, shown: false, open() {
         this.opened++;
-    }, closeNow() {}};
+        this.shown = true;
+    }, closeNow() {
+        this.shown = false;
+    }};
     const chord = new ScreenshotChord();
     chord.shots = 0;
     chord._shoot = () => chord.shots++;
@@ -169,7 +178,8 @@ async function main() {
     release(t.power);
     t.chord.volumeRelease();
     await wait(150);
-    check('power, then volume up: the power menu only', [t.menu.opened, key.acted, holds, t.power.slept], [1, 0, [], 0]);
+    check('power, then volume up: the power menu only', [t.menu.opened, t.menu.shown, key.acted, holds, t.power.slept],
+        [1, true, 0, [], 0]);
 
     t = phone();
     key = volume(t.chord, +1);
@@ -179,7 +189,74 @@ async function main() {
     release(t.power);
     t.chord.volumeRelease();
     await wait(150);
-    check('volume up, then power: the power menu only', [t.menu.opened, key.acted, holds, t.power.slept], [1, 0, [], 0]);
+    check('volume up, then power: the power menu only, and it stays open',
+        [t.menu.opened, t.menu.shown, key.acted, holds, t.power.slept], [1, true, 0, [], 0]);
+
+    t = phone();
+    press(t.power);
+    // past the chord's 150 ms, and well before the long press's 500 (a slow machine dispatches both together)
+    await wait(250);
+    key = volume(t.chord, +1);
+    await wait(700);
+    release(t.power);
+    t.chord.volumeRelease();
+    await wait(150);
+    check('power held, volume up 250 ms later: the power menu, the volume as it was, no Agent',
+        [t.menu.shown, key.acted, holds, t.power.slept], [true, 0, [], 0]);
+
+    t = phone();
+    press(t.power);
+    await wait(700);
+    key = volume(t.chord, +1);
+    await wait(150);
+    release(t.power);
+    t.chord.volumeRelease();
+    await wait(150);
+    check('power held, Agent listening, then volume up: the power menu, Agent stops without the key\'s up',
+        [t.menu.shown, key.acted, holds, t.power.slept], [true, 0, ['hold [true,false]', 'hold-cancel'], 0]);
+
+    t = phone({oldAgent: true});
+    press(t.power);
+    await wait(700);
+    volume(t.chord, +1);
+    await wait(150);
+    release(t.power);
+    await wait(150);
+    check('an Agent without hold-cancel is let go instead, once',
+        [t.menu.shown, holds], [true, ['hold [true,false]', 'hold [false,false]']]);
+
+    t = phone();
+    key = volume(t.chord, +1);
+    await wait(400);
+    press(t.power);
+    await wait(700);
+    release(t.power);
+    t.chord.volumeRelease();
+    await wait(150);
+    check('volume up held, power 400 ms later: the power menu, the volume\'s step kept, no Agent, no sleep',
+        [t.menu.shown, key.acted, holds, t.power.slept], [true, 1, [], 0]);
+
+    t = phone();
+    press(t.power);
+    await wait(250);
+    key = volume(t.chord, -1);
+    await wait(200);
+    release(t.power);
+    t.chord.volumeRelease();
+    await wait(150);
+    check('power held, volume down 250 ms later: no screenshot, the volume and the sleep as without a chord',
+        [t.chord.shots, key.acted, t.menu.opened, t.power.slept], [0, 1, 0, 1]);
+
+    t = phone();
+    key = volume(t.chord, -1);
+    await wait(300);
+    press(t.power);
+    await wait(100);
+    release(t.power);
+    t.chord.volumeRelease();
+    await wait(150);
+    check('volume down held, power 300 ms later: no screenshot, the screen goes off',
+        [t.chord.shots, key.acted, t.menu.opened, t.power.slept], [0, 1, 0, 1]);
 
     t = phone();
     key = volume(t.chord, +1);
