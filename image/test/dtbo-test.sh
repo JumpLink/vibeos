@@ -46,4 +46,20 @@ assert got == {'oneplus-fajita': 'clear', 'oneplus-enchilada': None, 'xiaomi-sur
 assert m.device_row('xiaomi-surya')['panels'] == ['huaxing', 'tianma']
 print('dtbo column: %s' % got)
 EOF
+
+echo "the watchdog drop-ins (fajita only):"
+python3 -I - $T/nura/nura-to-vibeos $W > $W/out 2>&1 <<'EOF' && ok "$(cat $W/out)" || bad "$(cat $W/out)"
+import importlib.machinery, importlib.util, os, sys
+spec = importlib.util.spec_from_loader('n', importlib.machinery.SourceFileLoader('n', sys.argv[1]))
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+got = {d: m.device_row(d)['watchdog'] for d in ('oneplus-fajita', 'oneplus-enchilada', 'xiaomi-surya')}
+assert got == {'oneplus-fajita': True, 'oneplus-enchilada': False, 'xiaomi-surya': False}, got
+P = os.path.join(sys.argv[2], 'pkg')
+m.watchdog_dropins(P)
+a = open(os.path.join(P, 'etc/systemd/system.conf.d/90-fajita-watchdog.conf')).read().splitlines()
+b = open(os.path.join(P, 'etc/systemd/system/rmtfs.service.d/90-fajita-stop.conf')).read().splitlines()
+assert '[Manager]' in a and 'RuntimeWatchdogSec=30s' in a and 'RebootWatchdogSec=30s' in a, a
+assert '[Service]' in b and 'TimeoutStopSec=5s' in b, b
+print('watchdog column %s, both drop-ins written' % got)
+EOF
 [ $FAILS = 0 ] && echo "all ok" || { echo "$FAILS failed"; exit 1; }

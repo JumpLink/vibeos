@@ -297,7 +297,8 @@ def device_row(nura_dev):
                     'layout': None if f[3] == '-' else f[3],
                     'panels': [] if len(f) < 5 or f[4] == '-' else f[4].split(','),
                     'dtbo': 'clear' if len(f) > 5 and f[5] == 'clear' else None,
-                    'mask': [] if len(f) < 7 or f[6] == '-' else f[6].split(',')}
+                    'mask': [] if len(f) < 7 or f[6] == '-' else f[6].split(','),
+                    'watchdog': len(f) > 7 and f[7] == 'reset'}
     return None
 
 
@@ -313,6 +314,20 @@ def mask_units(P, units):
             open(os.path.join(d, unit), 'wb').close()
             done.append(unit)
     return done
+
+
+def watchdog_dropins(P):
+    """the two systemd settings of a phone whose reboot can hang in the modem's shutdown path (table column
+    watchdog): the hardware watchdog resets it, and rmtfs's stop no longer waits the default 90 s"""
+    for rel, body in (
+        ('etc/systemd/system.conf.d/90-fajita-watchdog.conf',
+         '# qcom_wdt accepts at most 31 s. A reboot that hangs in the modem/rmtfs shutdown path is reset by the\n'
+         '# hardware watchdog instead of hanging forever.\n[Manager]\nRuntimeWatchdogSec=30s\nRebootWatchdogSec=30s\n'),
+        ('etc/systemd/system/rmtfs.service.d/90-fajita-stop.conf',
+         '# rmtfs blocks its stop for the default 90 s when the modem is gone.\n[Service]\nTimeoutStopSec=5s\n')):
+        os.makedirs(os.path.dirname(os.path.join(P, rel)), exist_ok=True)
+        with open(os.path.join(P, rel), 'w') as f:
+            f.write(body)
 
 
 def kernel_from_vmlinuz(v):
@@ -803,6 +818,10 @@ def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset
             f.write('# from Nura\'s %s (pmOS hexagonrpcd config)\n[Service]\n' % nura.codename)
             for k, v in sorted(hexa.items()):
                 f.write('Environment=%s=%s\n' % (k, v))
+    row = device_row(nura.dev)
+    if row and row['watchdog']:
+        watchdog_dropins(P)
+        pl.carried.append(('systemd watchdog and rmtfs stop drop-ins (table: watchdog reset)', 'vibeos'))
     # the units pmOS's presets disable: masked. An empty unit file masks as a link to /dev/null does (systemd.unit(5)),
     # and unlike that link it can be unpacked over itself: toybox tar in recovery refuses to replace a symlink that
     # points out of the tree, so a second install would stop there
