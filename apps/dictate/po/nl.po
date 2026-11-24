@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-dictate\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 18:27+0100\n"
+"POT-Creation-Date: 2026-11-24 19:39+0100\n"
 "PO-Revision-Date: 2026-11-24 16:47+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Dutch\n"
@@ -101,7 +101,8 @@ msgstr "Aftellen"
 msgid "Wait"
 msgstr "Wachten"
 
-#: src/dictate-confirm-page.c src/dictate-settings.c
+#: src/dictate-confirm-page.c
+msgctxt "how Vibe asks before it acts"
 msgid "In use"
 msgstr "In gebruik"
 
@@ -816,12 +817,20 @@ msgstr "Ik heb niets gehoord."
 msgid "I couldn't listen."
 msgstr "Ik kon niet luisteren."
 
+#. TRANSLATORS: Vibe's first words of Voice match, said aloud; %u is how many short phrases it will ask for (4)
 #: src/dictate-enroll.c
+#, c-format
 msgid ""
-"I'll learn your voice from 4 short phrases, so I only take commands from "
+"I'll learn your voice from %u short phrase, so I only take commands from "
 "you. The sample stays on this phone."
-msgstr ""
-"Ik leer je stem kennen met vier korte zinnen, zodat ik alleen commando's van "
+msgid_plural ""
+"I'll learn your voice from %u short phrases, so I only take commands from "
+"you. The sample stays on this phone."
+msgstr[0] ""
+"Ik leer je stem kennen met %u korte zin, zodat ik alleen commando's van jou "
+"aanneem. Het stemmonster blijft op deze telefoon."
+msgstr[1] ""
+"Ik leer je stem kennen met %u korte zinnen, zodat ik alleen commando's van "
 "jou aanneem. Het stemmonster blijft op deze telefoon."
 
 #: src/dictate-enroll.c src/dictate-voicematch-page.c
@@ -876,37 +885,37 @@ msgstr "Nederlands"
 #. TRANSLATORS: words that go on to the next step of Vibe's introduction, alternatives separated by "|", lower case
 #: src/dictate-onboarding.c
 msgid "continue|next|go on|okay|ok|yes|done"
-msgstr "verder|volgende|ga door|oké|ok|ja|klaar"
+msgstr "verder|doorgaan|ga door|volgende|oké|ok|ja|klaar"
 
 #. TRANSLATORS: words that go back a step in Vibe's introduction, alternatives separated by "|", lower case
 #: src/dictate-onboarding.c
 msgid "back|go back"
-msgstr "terug|ga terug"
+msgstr "terug|ga terug|vorige"
 
 #. TRANSLATORS: words that skip the rest of Vibe's introduction, alternatives separated by "|", lower case
 #: src/dictate-onboarding.c
 msgid "skip"
-msgstr "overslaan|sla over"
+msgstr "overslaan|sla over|sla het over"
 
 #. TRANSLATORS: words for "speak slower" in Vibe's introduction, alternatives separated by "|", lower case
 #: src/dictate-onboarding.c
 msgid "slower|slow down"
-msgstr "langzamer|rustiger"
+msgstr "langzamer|rustiger|vertraag"
 
 #. TRANSLATORS: words for "speak faster" in Vibe's introduction, alternatives separated by "|", lower case
 #: src/dictate-onboarding.c
 msgid "faster|speed up|quicker"
-msgstr "sneller|versnellen"
+msgstr "sneller|vlugger|versnel|versnellen"
 
 #. TRANSLATORS: words for "this speed is fine" in Vibe's introduction, alternatives separated by "|", lower case
 #: src/dictate-onboarding.c
 msgid "that's good|good|fine|perfect|that's fine"
-msgstr "goed zo|goed|prima|perfect|dit is goed"
+msgstr "dat is goed|goed|goed zo|prima|perfect|dat is prima"
 
 #. TRANSLATORS: words that turn something off ("turn off files"), alternatives separated by "|", lower case
 #: src/dictate-onboarding.c
 msgid "off|turn off|switch off|disable"
-msgstr "uit|zet uit|schakel uit|uitzetten"
+msgstr "uit|zet uit|schakel uit|uitzetten|uitschakelen"
 
 #. TRANSLATORS: words that turn something on ("turn on files"), alternatives separated by "|", lower case
 #: src/dictate-onboarding.c
@@ -1004,10 +1013,12 @@ msgid "Tap a language"
 msgstr "Tik op een taal"
 
 #: src/dictate-onboarding.c src/dictate-settings.c
+msgctxt "speech speed"
 msgid "Slower"
 msgstr "Langzamer"
 
 #: src/dictate-onboarding.c src/dictate-settings.c
+msgctxt "speech speed"
 msgid "Normal"
 msgstr "Normaal"
 
@@ -1026,10 +1037,16 @@ msgid "I can go up to three times faster."
 msgstr "Ik kan tot drie keer sneller praten."
 
 #: src/dictate-onboarding.c
+msgctxt "button: speak slower"
+msgid "Slower"
+msgstr "Langzamer"
+
+#: src/dictate-onboarding.c
 msgid "That's good"
 msgstr "Goed zo"
 
 #: src/dictate-onboarding.c
+msgctxt "button: speak faster"
 msgid "Faster"
 msgstr "Sneller"
 
@@ -1184,6 +1201,11 @@ msgstr "Gedownload, %s"
 msgid "Get"
 msgstr "Ophalen"
 
+#: src/dictate-settings.c
+msgctxt "a language Vibe speaks"
+msgid "In use"
+msgstr "In gebruik"
+
 #. TRANSLATORS: Vibe's voice in Settings: a woman speaks (Russian's voice has a man's and a woman's)
 #: src/dictate-settings.c
 msgctxt "voice gender"
@@ -1197,6 +1219,7 @@ msgid "Male"
 msgstr "Mannelijk"
 
 #: src/dictate-settings.c
+msgctxt "reply length"
 msgid "Short"
 msgstr "Kort"
 
@@ -1205,10 +1228,16 @@ msgid "A sentence"
 msgstr "Eén zin"
 
 #: src/dictate-settings.c
+msgctxt "reply length"
+msgid "Normal"
+msgstr "Normaal"
+
+#: src/dictate-settings.c
 msgid "One to three sentences"
 msgstr "Eén tot drie zinnen"
 
 #: src/dictate-settings.c
+msgctxt "reply length"
 msgid "Detailed"
 msgstr "Uitgebreid"
 
@@ -1589,19 +1618,35 @@ msgstr "Dat nummer kan geen berichten ontvangen"
 msgid "Number"
 msgstr "Nummer"
 
-#. in a call, the bar says so, over the call's stage and over what is asked in it
-#: src/dictate-tools-phone.c src/dictate-window.c
+#. TRANSLATORS: the card's title, a call to place (a noun)
+#: src/dictate-tools-phone.c
+msgctxt "title of the card that proposes a call"
 msgid "Call"
 msgstr "Gesprek"
+
+#. TRANSLATORS: the card's button, which places the call (a verb)
+#: src/dictate-tools-phone.c src/dictate-window.c
+msgctxt "button: place a call"
+msgid "Call"
+msgstr "Bellen"
 
 #: src/dictate-tools-phone.c src/dictate-window.c
 msgid "Calling…"
 msgstr "Bellen…"
 
+#. TRANSLATORS: a row of the card, over the name of the person to call
+#: src/dictate-tools-phone.c
+msgctxt "card row: whom to call"
+msgid "Call"
+msgstr "Gesprek met"
+
+#. TRANSLATORS: a suggestion under the messages just read out: reply to the text message of the person
+#. * named, not answer a phone call; %s is their name: Kim
 #: src/dictate-tools-phone.c
 #, c-format
+msgctxt "suggestion: reply to a text message"
 msgid "Answer %s"
-msgstr "Antwoord %s"
+msgstr "Beantwoord %s"
 
 #: src/dictate-tools-phone.c
 msgid "Read them"
@@ -1611,7 +1656,8 @@ msgstr "Voorlezen"
 msgid "Send a message"
 msgstr "Bericht sturen"
 
-#. the action's own verb where it has one: "Sending in three…", "Calling in three…"
+#. the action's own verb where it has one: "Sending in three…", "Calling in three…" (`go` is the button's label, so
+#. * it is compared with the same string in the same context)
 #. K5: it goes by itself; the button does it now, with the action's own verb where it has one
 #: src/dictate-tools-phone.c src/dictate-window.c
 msgid "Send"
@@ -1641,22 +1687,41 @@ msgstr "Aan, niet verbonden"
 msgid "Bluetooth"
 msgstr "Bluetooth"
 
+#. TRANSLATORS: the phone's signal; %1$d is the bars of four (3 or 4), %2$s the network type: 4G
 #: src/dictate-tools-phone.c
 #, c-format
-msgid "%s, %d of 4%s%s"
-msgstr "%s, %d van 4%s%s"
+msgid "Good, %1$d of 4 · %2$s"
+msgstr "Goed, %1$d van 4 · %2$s"
 
+#. TRANSLATORS: the phone's signal; %d is the bars of four (3 or 4)
 #: src/dictate-tools-phone.c
-msgid "Good"
-msgstr "Goed"
+#, c-format
+msgid "Good, %d of 4"
+msgstr "Goed, %d van 4"
 
+#. TRANSLATORS: the phone's signal, a middling one; %1$d is the bars of four (2), %2$s the network type: 4G
 #: src/dictate-tools-phone.c
-msgid "Fair"
-msgstr "Redelijk"
+#, c-format
+msgid "Fair, %1$d of 4 · %2$s"
+msgstr "Redelijk, %1$d van 4 · %2$s"
 
+#. TRANSLATORS: the phone's signal, a middling one; %d is the bars of four (2)
 #: src/dictate-tools-phone.c
-msgid "Weak"
-msgstr "Zwak"
+#, c-format
+msgid "Fair, %d of 4"
+msgstr "Redelijk, %d van 4"
+
+#. TRANSLATORS: the phone's signal, a poor one; %1$d is the bars of four (0 or 1), %2$s the network type: 4G
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Weak, %1$d of 4 · %2$s"
+msgstr "Zwak, %1$d van 4 · %2$s"
+
+#. TRANSLATORS: the phone's signal, a poor one; %d is the bars of four (0 or 1)
+#: src/dictate-tools-phone.c
+#, c-format
+msgid "Weak, %d of 4"
+msgstr "Zwak, %d van 4"
 
 #: src/dictate-tools-phone.c
 msgid "SIM locked"
@@ -2383,8 +2448,10 @@ msgstr ""
 
 #: src/dictate-voicematch.c
 #, c-format
-msgid "A voice sample needs %d recordings"
-msgstr "Een stemmonster heeft %d opnamen nodig"
+msgid "A voice sample needs %d recording"
+msgid_plural "A voice sample needs %d recordings"
+msgstr[0] "Een stemmonster heeft %d opname nodig"
+msgstr[1] "Een stemmonster heeft %d opnamen nodig"
 
 #: src/dictate-voicematch.c
 #, c-format
@@ -2595,7 +2662,9 @@ msgstr "Wat kan ik doen?"
 #: src/dictate-window.c
 msgid "what can i say|what can you do|what can i ask|help"
 msgstr ""
-"wat kan ik zeggen|wat kan ik doen|wat kun je doen|wat kan ik vragen|help"
+"wat kan ik zeggen|wat kan ik doen|wat kan ik vragen|wat kun je doen|wat kan "
+"je doen|wat kun jij doen|wat kan jij doen|wat kun je allemaal doen|wat kan "
+"je allemaal doen|help|hulp"
 
 #: src/dictate-window.c
 msgid "Private number"
@@ -2650,6 +2719,12 @@ msgstr "Tik ergens en zeg “dempen”, “in de wacht”, “luidspreker” of 
 #: src/dictate-window.c
 msgid "Tap anywhere and say “mute”, “speaker” or “hang up”"
 msgstr "Tik ergens en zeg “dempen”, “luidspreker” of “ophangen”"
+
+#. TRANSLATORS: over a call whose person has no name to show (a noun)
+#: src/dictate-window.c
+msgctxt "name of a call with no contact"
+msgid "Call"
+msgstr "Gesprek"
 
 #. TRANSLATORS: the date under Vibe's greeting, a g_date_time_format () string: "Tuesday 24 November"
 #: src/dictate-window.c
@@ -2870,6 +2945,12 @@ msgstr "Weigeren"
 #: src/dictate-window.c
 msgid "Answer"
 msgstr "Opnemen"
+
+#. TRANSLATORS: in a call, the bar says so (a noun), over the call's stage and over what is asked in it
+#: src/dictate-window.c
+msgctxt "screen title: a call in progress"
+msgid "Call"
+msgstr "Gesprek"
 
 #: src/dictate-window.c
 msgid "Text copied"
