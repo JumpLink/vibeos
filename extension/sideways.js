@@ -21,6 +21,7 @@ import Shell from 'gi://Shell';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {TouchClaim} from './claim.js';
 import {NAV_GESTURE_H} from './task.js';
 import {TABLET} from './units.js';
 
@@ -45,6 +46,8 @@ export class SidewaysGestures {
         this._g = null;
         this._longPressId = 0;
         this._closeIds = new Set();
+        // the swipe's touch, once it is one, the system's: the game under it has it cancelled (claim.js)
+        this._claim = new TouchClaim();
         this._gesture = new Clutter.PanGesture({
             name: 'vibeos sideways',
             begin_threshold: SLOP / nav.scale,
@@ -59,6 +62,8 @@ export class SidewaysGestures {
             'cancel', () => this._end(true),
             'notify::state', () => {
                 const state = this._gesture.state;
+                if (state !== Clutter.GestureState.RECOGNIZING)
+                    this._claim.release();
                 if ((state === Clutter.GestureState.CANCELLED || state === Clutter.GestureState.COMPLETED) &&
                     this._g && !this._g.started)
                     this._end(true);
@@ -146,6 +151,7 @@ export class SidewaysGestures {
             return;
         this._clearLongPress();
         g.started = true;
+        this._claim.take();
         g.actor = g.win.get_compositor_private();
         if (g.actor) {
             g.actor.remove_all_transitions();
@@ -175,6 +181,7 @@ export class SidewaysGestures {
     _end(cancelled) {
         const g = this._g;
         this._clearLongPress();
+        this._claim.release();
         if (!g)
             return;
         this._g = null;
@@ -222,6 +229,7 @@ export class SidewaysGestures {
     _toLauncher() {
         const nav = this._nav;
         nav.home.window?.activate(global.get_current_time());
+        nav.home.markHome();
         nav.launcherState('normal');
         nav.statusBarOverApp(null);
     }
@@ -231,6 +239,8 @@ export class SidewaysGestures {
         if (actor)
             Main.wm.skipNextEffect(actor);
         g.win.minimize();
+        // and every other app window on the phone's screen, as the Home key takes them
+        this._nav.home.appsToRecents(true);
         this._whole(actor, false);
         this._toLauncher();
     }
@@ -268,5 +278,6 @@ export class SidewaysGestures {
         this._g = null;
         this._gesture.get_actor()?.remove_action(this._gesture);
         this._gesture.disconnectObject(this);
+        this._claim.release();
     }
 }

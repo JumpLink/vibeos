@@ -20,6 +20,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {EdgeBack} from './back.js';
 import {SidewaysGestures, sideways} from './sideways.js';
 import {capturing} from './capture.js';
+import {TouchClaim} from './claim.js';
 import {FlagFile} from './flagfile.js';
 import {VelocityTracker} from './motion.js';
 import {geometry, SCALE, SCREEN_SCALE, TABLET} from './units.js';
@@ -189,6 +190,8 @@ export class Navigation {
         // what the side button does (keylaunch.js), for recents, which takes the key while it is open
         this.sideKey = null;
 
+        // the swipe's touch, once it is one, the system's: the app under it (or the launcher) has it cancelled
+        this._claim = new TouchClaim();
         this._gesture = new Clutter.PanGesture({
             name: 'vibeos swipe up',
             begin_threshold: TOUCH_SLOP / this.scale,
@@ -196,15 +199,26 @@ export class Navigation {
         });
         this._gesture.connectObject(
             'should-handle-sequence', (_g, event) => this._shouldHandle(event),
-            'recognize', () => this._begin(),
+            'recognize', () => {
+                this._begin();
+                if (this._g)
+                    this._claim.take();
+            },
             'pan-update', () => this._move(),
             'end', () => {
+                this._claim.release();
                 this._release(false);
                 this._watch();
             },
             'cancel', () => {
+                this._claim.release();
                 this._release(true);
                 this._watch();
+            },
+            // (any other way out of the gesture lets the touch go too)
+            'notify::state', () => {
+                if (this._gesture.state !== Clutter.GestureState.RECOGNIZING)
+                    this._claim.release();
             },
             this);
         global.stage.add_action_full('vibeos-swipe-up', Clutter.EventPhase.CAPTURE, this._gesture);
@@ -445,6 +459,7 @@ export class Navigation {
                 win.minimize();
             }
             this.home.window?.activate(global.get_current_time());
+            this.home.markHome();
             this.launcherState('normal');
         }
         this.launcher('Apps', null);
@@ -745,11 +760,15 @@ export class Navigation {
         const t0 = GLib.get_monotonic_time();
         this.launcherState(state, t0, icon ? app.get_id() : '');
 
-        // the app goes to recents and the launcher takes the focus now; the clone flies on
+        // the app goes to recents and the launcher takes the focus now; the clone flies on. Every other app window on
+        // the phone's screen goes too, as with the Home key: one left there (the app a quick switch or a recents card
+        // came from) was in front of the launcher again as the flight ended, and the next swipe home showed the next.
         if (task.actor)
             Main.wm.skipNextEffect(task.actor);
         win.minimize();
+        this.home.appsToRecents(true);
         this.home.window?.activate(global.get_current_time());
+        this.home.markHome();
         this.statusBarOverApp(null);
 
         const startW = start[2] - start[0], startH = start[3] - start[1];
@@ -1034,6 +1053,7 @@ export class Navigation {
         this._keyboard?.run_dispose();
         global.stage.remove_action(this._gesture);
         this._gesture.disconnectObject(this);
+        this._claim.release();
         if (this._edgeDrag)
             this._edgeDrag.enabled = true;
         // the shell's swipes as it keeps them: the overview's while a window is open, the workspaces' with rows

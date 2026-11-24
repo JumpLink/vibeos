@@ -14,6 +14,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
+import {Attention} from './attention.js';
 import {capture, capturing} from './capture.js';
 import {dp} from './units.js';
 
@@ -28,8 +29,6 @@ const SPLASH_REVEAL_DELAY_MS = 83;
 const SPLASH_REVEAL_MS = 266;
 const SPLASH_EXIT_MS = 349;
 const SPLASH_SHIFT_DP = 20;
-const ATTENTION_MS = 10000;             // how long a launched app's windows are its launch's, not GNOME's banner
-const INTENT_MS = 3000;                 // a window asking within this of a tap or key was asked for by the user
 const SPLASH_SOLID = 0.8;               // the vanish gradient is opaque to 0.8 R
 const SPLASH_TIMEOUT_MS = 15000;        // no window by then: the splash goes
 const SPLASH_RGB = [47, 47, 47];        // the splash's flat background
@@ -179,40 +178,15 @@ export function openerOf(win) {
 // ---- the transition -----------------------------------------------------------------------------------------------
 
 export class LaunchTransition {
-    constructor() {
+    // home: home.js's Home, for attention.js
+    constructor(home) {
         this._running = null;
         this._launched = null;
         this._launchedAt = 0;
-        // GNOME's "“Window” is ready" banner (WindowAttentionHandler): a cold start's window maps without focus
-        // (mutter's focus-stealing prevention), the banner showed, and it went again as the window took focus a
-        // moment later. Android has nothing of the kind, so a window of the app just launched gets none; any other
-        // window that asks for attention still gets GNOME's.
-        this._attention = Main.windowAttentionHandler;
-        global.display.disconnectObject(this._attention);
-        global.display.connectObject(
-            'window-demands-attention', (display, win) => this._onAttention(display, win),
-            'window-marked-urgent', (display, win) => this._onAttention(display, win),
-            this);
-    }
-
-    _onAttention(display, win) {
-        const app = win ? Shell.WindowTracker.get_default().get_window_app(win) : null;
-        if (app && app === this._launched && GLib.get_monotonic_time() - this._launchedAt < ATTENTION_MS * 1000) {
-            // under the splash it is focused as the splash goes; after it, now
-            if (this._running?.app !== app && !win.has_focus())
-                Main.activateWindow(win);
-            return;
-        }
-        // One app opening another's screen (the call log's contact, Contacts' Send SMS) is Android's intent: the
-        // screen comes to the front. GTK asks for its activation token as the finger lifts, when mutter no longer
-        // counts the touch, so the window only asked for attention and GNOME put up "“Contacts” is ready" with
-        // the screen pushed behind it, once per tap (owner, 11-10). Right after a tap or key it is the user's.
-        if (win && !win.has_focus() &&
-            display.get_current_time_roundtrip() - display.get_last_user_time() < INTENT_MS) {
-            Main.activateWindow(win);
-            return;
-        }
-        this._attention._onWindowDemandsAttention(display, win);
+        // a window asking for attention: the app just launched comes to the front, GNOME's banner never shows
+        this._attention = new Attention(() => ({
+            app: this._launched, at: this._launchedAt, splash: this._running?.app ?? null,
+        }), home);
     }
 
     _scale() {
@@ -565,10 +539,6 @@ export class LaunchTransition {
     destroy() {
         this._finish();
         global.display.disconnectObject(this);
-        const handler = this._attention;
-        global.display.connectObject(
-            'window-demands-attention', handler._onWindowDemandsAttention.bind(handler),
-            'window-marked-urgent', handler._onWindowDemandsAttention.bind(handler),
-            handler);
+        this._attention.destroy();
     }
 }

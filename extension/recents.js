@@ -1862,6 +1862,7 @@ export class Recents {
             }
         }
         this._nav.home.window?.activate(global.get_current_time());
+        this._nav.home.markHome();
         this._nav.statusBarOverApp(null);
 
         // (in the grid: columns scrolled, and away by as much as the newest column's place)

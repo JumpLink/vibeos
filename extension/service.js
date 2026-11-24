@@ -89,7 +89,7 @@ const IFACE = `<node>
 export class Service {
     constructor(home) {
         this._home = home;
-        this._launch = new LaunchTransition();
+        this._launch = new LaunchTransition(home);
         this._nav = new Navigation(home);
         this._nav.onGestureBegin = () => {
             this._launch.cancelSplash();

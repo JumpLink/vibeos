@@ -25,6 +25,11 @@ if gjs.found() and dbus_run_session.found()
   test('power-keys', find_program('tests/power-keys.sh'), args: [meson.current_source_dir()], timeout: 120)
 endif
 
+# Home's rule and a window asking for attention, with GNOME Shell's stand-ins (tests/home-attention.sh); needs gjs
+if gjs.found()
+  test('home-attention', find_program('tests/home-attention.sh'), args: [meson.current_source_dir()], timeout: 60)
+endif
+
 # every name a module uses is declared or imported (tests/undefined-names.sh); needs TypeScript's checker
 # TypeScript 5 or later: tests/tsconfig.json's moduleResolution "bundler" is 5.0's (4.x refuses the configuration, and
 # 6 no longer reads 4.x's "node"); an older checker leaves the test out
