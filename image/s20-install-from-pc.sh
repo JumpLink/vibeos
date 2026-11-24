@@ -16,7 +16,12 @@
 #      (the S20's only way in: OpenSSH, root by key)
 #   4. BOOT is NOT written: it already holds ub13 (U-Boot + kernel #51, 4a82c5e3, since 11-20 19:52), which is
 #      checked by reading it back; BOOT is only ever written from VibeOS (G780F/kit/flash-boot-linux.sh)
-# Never touches efs, sec_efs, cpefs, radio or any other partition; sets the vibeos partition read-only again.
+#   5. the power-on logo, as the S10e's device zip writes it: S20_DIR/boot/s10e-logo puts boot-logo/'s logo.jpg
+#      (Debian's swirl) and the two unlocked-bootloader warnings (black) into up_param, every other picture and the
+#      partition's last KiB kept. up_param is saved to this PC first (BACKUP_DIR, default the current directory),
+#      and the step never fails the install: "Debian's already" writes nothing
+# Never touches efs, sec_efs, cpefs, radio or any other partition; sets the vibeos and up_param partitions
+# read-only again.
 set -eu
 IMG=${1:?rootfs.img} D=${2:?S20 device dir} OK=${3:-} H=${4:-root@172.16.43.1}
 [ "$OK" = --erase-the-vibeos-partition ] || { echo "this erases the S20's vibeos partition: say --erase-the-vibeos-partition" >&2; exit 1; }
@@ -52,4 +57,34 @@ S "rm -rf /mnt/v/var/lib/vibeos/device/debs && mkdir -p /mnt/v/var/lib/vibeos/de
 for f in "$D"/debs/*.deb; do S "cat > /mnt/v/var/lib/vibeos/device/debs/$(basename "$f")" < "$f"; done
 S "mkdir -p /mnt/v/root/.ssh && chmod 700 /mnt/v/root/.ssh && cat > /mnt/v/root/.ssh/authorized_keys && chmod 600 /mnt/v/root/.ssh/authorized_keys" < "$KEY"
 S "printf 'kind=part\nname=vibeos\nmode=existing\nsize=\nimage=\ndevice=r8s\n' > /mnt/v/etc/vibeos/installed-to; echo device=s20 > /mnt/v/etc/vibeos/device; sync; umount /mnt/v && e2fsck -fn /dev/$P > /dev/null 2>&1; echo e2fsck \$?; blockdev --setro /dev/$P"
+# 5. the power-on logo (not a reason to fail: VibeOS is in)
+logo() {
+	L=$D/boot/s10e-logo LD=$D/boot/boot-logo
+	[ -s "$L" ] && [ -s "$LD/logo.jpg" ] && [ -s "$LD/svb_orange.jpg" ] && [ -s "$LD/booting_warning.jpg" ] ||
+		{ echo "no s10e-logo or boot-logo/ in $D/boot"; return 1; }
+	U=$(S 'for u in /sys/class/block/sd*/uevent; do grep -qx PARTNAME=up_param $u && sed -n "s/^DEVNAME=//p" $u; done')
+	case $U in sd[a-z][0-9]*) ;; *) echo "no single partition named up_param ($U)"; return 1 ;; esac
+	BK=${BACKUP_DIR:-$PWD}/s20-up_param-$(date +%Y%m%d-%H%M%S).img
+	S "cat /dev/$U" > "$BK" || { echo "up_param could not be saved to $BK"; return 1; }
+	[ "$(S "sha256sum < /dev/$U" | cut -d' ' -f1)" = "$(sha256sum < "$BK" | cut -d' ' -f1)" ] &&
+		[ "$(stat -c %s "$BK")" = "$(S "echo \$((\$(cat /sys/class/block/$U/size) * 512))")" ] ||
+		{ echo "the copy of up_param in $BK does not match the phone's"; return 1; }
+	S "rm -rf /tmp/vibeos-logo /tmp/vibeos-boot-logo && mkdir /tmp/vibeos-boot-logo && cat > /tmp/vibeos-logo && chmod 755 /tmp/vibeos-logo" < "$L"
+	for j in logo.jpg svb_orange.jpg booting_warning.jpg; do S "cat > /tmp/vibeos-boot-logo/$j" < "$LD/$j"; done
+	[ "$(S 'cat /tmp/vibeos-logo /tmp/vibeos-boot-logo/logo.jpg /tmp/vibeos-boot-logo/svb_orange.jpg /tmp/vibeos-boot-logo/booting_warning.jpg | sha256sum' | cut -d' ' -f1)" = \
+		"$(cat "$L" "$LD/logo.jpg" "$LD/svb_orange.jpg" "$LD/booting_warning.jpg" | sha256sum | cut -d' ' -f1)" ] ||
+		{ echo "the tool or the pictures did not arrive intact"; return 1; }
+	# s10e-logo: "same" or "written N" on stdout; exit 0 ok, 1 refused (nothing written), 2 written badly; 9: up_param
+	# could not be made writable (nothing written)
+	R=$(S "blockdev --setrw /dev/$U || { echo 9 cannot make up_param writable; exit 0; }
+		/tmp/vibeos-logo apply /dev/$U /tmp/vibeos-boot-logo > /tmp/vibeos-logo.out 2> /tmp/vibeos-logo.err; r=\$?
+		sync; blockdev --setro /dev/$U; echo \$r \$(cat /tmp/vibeos-logo.out /tmp/vibeos-logo.err)")
+	case ${R%% *}:${R#* } in
+	0:same*) echo "the power-on logo is Debian's already (nothing written; up_param saved to $BK)" ;;
+	0:written*) echo "Debian's power-on logo (${R#* }; the old up_param saved to $BK)" ;;
+	1:*|9:*) echo "power-on logo left as it was: ${R#* }" ;;
+	*) echo "WARNING: the power-on logo did not write: ${R#* }. The old up_param is in $BK: dd it back from the rescue shell" ;;
+	esac
+}
+logo || echo "power-on logo left as it was"
 echo "done: on the S20, 'reboot2' starts U-Boot and VibeOS (r8s.root=vibeos); its first boot installs the device packages and restarts once"

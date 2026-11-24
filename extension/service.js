@@ -59,6 +59,9 @@ const IFACE = `<node>
          never covered; one whose app's desktop file says X-Vibeos-Keyboard=overlay is, and the app makes room itself
          (keyboard.js). Changes are announced as the keyboard starts to come up and to go down. -->
     <property name="KeyboardOverlap" type="u" access="read"/>
+    <!-- the screen's brightness as the quick settings' slider shows it and sets it, 0..1; -1 when the phone has no
+         backlight the shell drives. For Agent, which sets it when asked ("brightness to 50 percent") -->
+    <property name="Brightness" type="d" access="readwrite"/>
     <!-- the apps open now, the ones recents shows a card for, the most recently used first: each app's id (its
          desktop file's, without ".desktop") and its name. For Agent, which answers "which apps are open?" -->
     <method name="RunningApps">
@@ -147,6 +150,16 @@ export class Service {
 
     get KeyboardOverlap() {
         return this._overlap;
+    }
+
+    get Brightness() {
+        return Main.brightnessManager.globalScale?.value ?? -1;
+    }
+
+    set Brightness(value) {
+        const scale = Main.brightnessManager.globalScale;
+        if (scale)
+            scale.value = Math.clamp(value, 0, 1);
     }
 
     // The keys' top edge against the bottom of the window in front. The keyboard is measured, not where it is in its

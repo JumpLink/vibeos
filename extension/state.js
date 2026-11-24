@@ -69,6 +69,11 @@ const UP_PENDING_CHARGE = 5;
 // or PD) is what the port offers, used only when no charger chip says what it takes; and a computer's data port
 // (BC1.2 SDP) charges slowly unless a PD contract was made, whatever current its USB-C pins advertise (the Poco said
 // "Super fast charging" on a PC's port, 2026-11-16).
+//
+// A charging pad is a supply of its own, of the kernel's type Wireless (POWER_SUPPLY_TYPE_WIRELESS): no speed is
+// worked out for it, it is "Wireless charging", as on One UI. A cable plugged in on the pad wins, as the charger chip
+// takes its cable input first. UPower knows no Wireless type, and counts such a supply as line power by its online
+// attribute, so the phone is plugged in (not OnBattery) on the pad.
 const POWER_SUPPLY = '/sys/class/power_supply';
 const CHARGE_SLOW_W = 7.5;
 const CHARGE_FAST_W = 12;
@@ -87,9 +92,16 @@ function readSysfs(path) {
 }
 
 // what the lock screen and the AOD say after the percentage: AOSP's "Charging slowly" and "Charging", One UI's
-// "Fast charging" and "Super fast charging"; then, while the battery takes some, how much (the owner asked, 11-08)
+// "Fast charging", "Super fast charging" and "Wireless charging"; then, while the battery takes some, how much (the
+// owner asked, 11-08)
 export function chargingText(speed, amps = null) {
-    const text = {slow: 'Charging slowly', fast: 'Fast charging', superfast: 'Super fast charging'}[speed] ?? 'Charging';
+    const text = {
+        slow: 'Charging slowly',
+        fast: 'Fast charging',
+        superfast: 'Super fast charging',
+        // i18n (vibeos-shell): this one, the three above and 'Charging' get _() once the extension has its domain
+        wireless: 'Wireless charging',
+    }[speed] ?? 'Charging';
     return amps >= 0.05 ? `${text} • ${amps.toFixed(1)} A` : text;
 }
 
@@ -114,19 +126,25 @@ function readChargeCurrent() {
     return amps;
 }
 
-// 'slow', 'normal', 'fast', 'superfast', or null when nothing is plugged in (or the supply says too little to tell)
-function readChargeSpeed() {
-    let volts = 0, limit = 0, chip = 0, offer = 0, plugged = false, computerPort = false, pd = false;
+// 'slow', 'normal', 'fast', 'superfast', 'wireless' (on a pad, no cable in), or null when nothing is plugged in (or
+// the supply says too little to tell). @root: the power supply class, or a test's tree in its place
+export function readChargeSpeed(root = POWER_SUPPLY) {
+    let volts = 0, limit = 0, chip = 0, offer = 0, plugged = false, pad = false, computerPort = false, pd = false;
     let dir;
     try {
-        dir = GLib.Dir.open(POWER_SUPPLY, 0);
+        dir = GLib.Dir.open(root, 0);
     } catch (e) {
         return null;
     }
     for (let name; (name = dir.read_name()) !== null;) {
-        const at = attr => readSysfs(`${POWER_SUPPLY}/${name}/${attr}`);
-        if (at('type') === 'Battery' || at('online') !== '1')
+        const at = attr => readSysfs(`${root}/${name}/${attr}`);
+        const type = at('type');
+        if (type === 'Battery' || at('online') !== '1')
             continue;
+        if (type === 'Wireless') {
+            pad = true;
+            continue;
+        }
         plugged = true;
         // usb_type lists what the supply can tell, the one it found in brackets: "Unknown [SDP] DCP CDP"
         const types = at('usb_type') ?? '';
@@ -146,7 +164,7 @@ function readChargeSpeed() {
     }
     dir.close();
     if (!plugged)
-        return null;
+        return pad ? 'wireless' : null;
     if (computerPort && !pd)
         return 'slow';
     // the charger chip's limit is what the phone draws; a port's current_max is only what it offers

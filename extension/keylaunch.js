@@ -9,10 +9,13 @@
 // is unlocked, as KeyguardManager.requestDismissKeyguard has it.
 //
 // Holding the power key (vibeos.Shell power-hold-agent, on by default) talks to Agent, as Android's "press and hold
-// for the assistant": Agent listens from the long press until the key is let go, then answers. Agent is told through
-// its GApplication action "hold" ((bb): held, locked), which D-Bus activation queues for it while it starts. On an
+// for the assistant": Agent listens from the long press, through any pause while the key is held, and once it is let
+// go until the speaker pauses, as Android's assistant listens on; then it answers. Agent is told through its
+// GApplication action "hold" ((bb): held, locked), which D-Bus activation queues for it while it starts. On an
 // unlocked phone its window opens as an app a key opens; on a locked one nothing is unlocked and no window shows:
 // Agent listens and answers aloud, and only reads (no alarm set, no call, no message) until the phone is unlocked.
+// A hold that becomes part of a chord (volume up for the power menu, chord.js) is given up: Agent's "hold-cancel"
+// stops the listening and drops what was heard.
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
@@ -68,7 +71,8 @@ export class KeyLaunch {
         return this._flag(HOLD_KEY, false) && !!this._app(AGENT);
     }
 
-    // the power key held long enough (held), and let go (!held): Agent listens in between
+    // the power key held long enough (held), and let go (!held): Agent listens from the one until the speaker pauses
+    // after the other
     hold(held) {
         if (held) {
             // the phone as it is at the hold's start: a hold begun locked stays a locked one to its end
@@ -83,13 +87,29 @@ export class KeyLaunch {
             }
         }
         // after the launch's own activation, on the same connection: Agent gets them in this order
+        this._agentAction('hold', [new GLib.Variant('(bb)', [held, !!this._holdLocked])], e =>
+            log(`vibeos: Agent's hold (${held}): ${e.message}`));
+    }
+
+    // the hold given up before the key's up: Agent stops listening and sends nothing. An Agent without the action
+    // (older than the chord's) is let go instead, as at the key's up: it sends what it heard, mostly nothing
+    cancelHold() {
+        log('vibeos: power key hold given up: Agent stops');
+        this._agentAction('hold-cancel', [], e => {
+            log(`vibeos: Agent's hold-cancel: ${e.message}`);
+            this.hold(false);
+        });
+    }
+
+    // one of Agent's GApplication actions, with its parameter ([] for none); onError(e) if Agent refuses it
+    _agentAction(name, parameter, onError) {
         Gio.DBus.session.call(AGENT_NAME, AGENT_PATH, 'org.freedesktop.Application', 'ActivateAction',
-            new GLib.Variant('(sava{sv})', ['hold', [new GLib.Variant('(bb)', [held, !!this._holdLocked])], {}]),
+            new GLib.Variant('(sava{sv})', [name, parameter, {}]),
             null, Gio.DBusCallFlags.NONE, -1, null, (bus, res) => {
                 try {
                     bus.call_finish(res);
                 } catch (e) {
-                    log(`vibeos: Agent's hold (${held}): ${e.message}`);
+                    onError(e);
                 }
             });
     }

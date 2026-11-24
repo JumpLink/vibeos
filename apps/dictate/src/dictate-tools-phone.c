@@ -254,7 +254,7 @@ person_from_contact (EContact *contact)
   }
   p->tels = g_ptr_array_new_with_free_func ((GDestroyNotify) tel_free);
   p->emails = g_ptr_array_new_with_free_func (g_free);
-  attrs = e_contact_get_attributes (contact, E_CONTACT_TEL);
+  attrs = e_vcard_get_attributes_by_name (E_VCARD (contact), e_contact_vcard_attribute (E_CONTACT_TEL));
   for (GList *l = attrs; l; l = l->next)
     {
       g_autofree char *value = e_vcard_attribute_get_value (l->data);
@@ -268,8 +268,8 @@ person_from_contact (EContact *contact)
       tel->digits = digits_of (value);
       g_ptr_array_add (p->tels, tel);
     }
-  g_list_free_full (attrs, (GDestroyNotify) e_vcard_attribute_free);
-  attrs = e_contact_get_attributes (contact, E_CONTACT_EMAIL);
+  g_list_free (attrs); /* the attributes are the contact's */
+  attrs = e_vcard_get_attributes_by_name (E_VCARD (contact), e_contact_vcard_attribute (E_CONTACT_EMAIL));
   for (GList *l = attrs; l; l = l->next)
     {
       char *value = e_vcard_attribute_get_value (l->data);
@@ -278,7 +278,7 @@ person_from_contact (EContact *contact)
       else
         g_free (value);
     }
-  g_list_free_full (attrs, (GDestroyNotify) e_vcard_attribute_free);
+  g_list_free (attrs); /* the attributes are the contact's */
   {
     const char *note = e_contact_get_const (contact, E_CONTACT_NOTE);
     if (note && *note)
@@ -3445,7 +3445,7 @@ propose_contact (JsonObject *args, ToolRun *run, GError **error)
       g_ptr_array_add (lines, g_strdup (email));
     }
   g_ptr_array_add (lines, NULL);
-  vcard = e_vcard_to_string (E_VCARD (contact), EVC_FORMAT_VCARD_30);
+  vcard = e_vcard_convert_to_string (E_VCARD (contact), E_VCARD_VERSION_30);
   about = g_strdup_printf ("the new contact %s", name);
   action = dictate_action_new ("add a contact", _("Add a contact"), (const char *const *) lines->pdata, _("Add"),
                                _("Added"), about, add_contact, NULL, vcard);

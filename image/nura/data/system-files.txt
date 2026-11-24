@@ -2599,3 +2599,6 @@
 /usr/share/wireplumber/wireplumber.conf
 /usr/share/wireplumber/wireplumber.conf.d
 /usr/share/wireplumber/wireplumber.conf.d/alsa-vm.conf
+# not in dpkg's lists, but the system's all the same: wireless-regdb's update-alternatives links (to /etc/alternatives), which toybox tar in recovery will not write through
+/usr/lib/firmware/regulatory.db
+/usr/lib/firmware/regulatory.db.p7s
