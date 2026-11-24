@@ -1,13 +1,16 @@
 /* Bluetooth and Sharing: BlueZ over D-Bus (its ObjectManager, made in the background at start), and hostnamed
- * for the phone's name. While the Bluetooth page is open the phone looks for devices, is visible to them, and
- * answers pairing requests: it is BlueZ's agent then, and asks in a dialog when a code has to be compared or
- * typed. */
+ * for the phone's name. While the Bluetooth page is open the phone looks for devices and is visible to them.
+ * Pairing requests are the shell's: its agent (vibeos.BluetoothAgent on the session bus while it is BlueZ's default)
+ * asks for every app and from anywhere, a Pair tapped here included. Only without it does this page answer them
+ * itself while it is open, as BlueZ's agent then, asking in a dialog when a code has to be compared or typed; it
+ * stands aside again as soon as the shell's comes. */
 #include "ns-caps.h"
 #include "ns-bt.h"
 #include "ns-pages.h"
 #include "ns-ui.h"
 
 #define AGENT_PATH "/vibeos/Settings/agent"
+#define SHELL_AGENT "vibeos.BluetoothAgent"
 
 static GDBusObjectManager *bluez;
 static GPtrArray *waiting;
@@ -111,6 +114,7 @@ static const char agent_xml[] =
   "</interface></node>";
 
 static guint agent_id;
+static guint shell_agent_watch;
 static GtkWidget *agent_parent;      /* the Bluetooth page, for the dialogs */
 static GtkWidget *agent_dialog;
 static GDBusMethodInvocation *pending;
@@ -154,6 +158,20 @@ pin_entered (const char *text, gpointer passkey)
 }
 
 static void
+authorize_paired (GObject *src, GAsyncResult *res, gpointer data)
+{
+  GDBusMethodInvocation *inv = data;
+  g_autoptr (GVariant) r = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, NULL);
+  g_autoptr (GVariant) v = NULL;
+  if (r)
+    g_variant_get (r, "(v)", &v);
+  if (v && g_variant_is_of_type (v, G_VARIANT_TYPE_BOOLEAN) && g_variant_get_boolean (v))
+    g_dbus_method_invocation_return_value (inv, NULL);
+  else
+    g_dbus_method_invocation_return_dbus_error (inv, "org.bluez.Error.Rejected", "Not paired");
+}
+
+static void
 agent_call (GDBusConnection *bus, const char *sender, const char *path, const char *iface, const char *method,
             GVariant *args, GDBusMethodInvocation *inv, gpointer data)
 {
@@ -170,8 +188,12 @@ agent_call (GDBusConnection *bus, const char *sender, const char *path, const ch
     return;
   }
   if (!g_strcmp0 (method, "AuthorizeService")) {
-    /* a paired device's own services: it was trusted at pairing */
-    g_dbus_method_invocation_return_value (inv, NULL);
+    /* a paired device's own services: it was trusted at pairing (BlueZ asks nothing for a trusted one). A device
+     * that is not paired is refused: this page has no question for it. Paired as BlueZ has it now: the page's own
+     * copy of the property can be behind BlueZ's question, as a car connects right after it pairs. */
+    g_dbus_connection_call (bus, "org.bluez", dev, "org.freedesktop.DBus.Properties", "Get",
+                            g_variant_new ("(ss)", "org.bluez.Device1", "Paired"), G_VARIANT_TYPE ("(v)"),
+                            G_DBUS_CALL_FLAGS_NONE, -1, NULL, authorize_paired, inv);
     return;
   }
   if (pending || !agent_parent) {
@@ -214,7 +236,7 @@ agent_call (GDBusConnection *bus, const char *sender, const char *path, const ch
 }
 
 static void
-agent_on (GtkWidget *page)
+agent_register (void)
 {
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
   if (!bus || agent_id)
@@ -224,7 +246,6 @@ agent_on (GtkWidget *page)
     info = g_dbus_node_info_new_for_xml (agent_xml, NULL);
   static const GDBusInterfaceVTable vt = { agent_call, NULL, NULL };
   agent_id = g_dbus_connection_register_object (bus, AGENT_PATH, info->interfaces[0], &vt, NULL, NULL, NULL);
-  agent_parent = page;
   g_dbus_connection_call (bus, "org.bluez", "/org/bluez", "org.bluez.AgentManager1", "RegisterAgent",
                           g_variant_new ("(os)", AGENT_PATH, "KeyboardDisplay"), NULL, G_DBUS_CALL_FLAGS_NONE, -1,
                           NULL, NULL, NULL);
@@ -233,17 +254,51 @@ agent_on (GtkWidget *page)
 }
 
 static void
-agent_off (void)
+agent_unregister (void)
 {
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, NULL);
   agent_reply (NULL);
-  agent_parent = NULL;
   if (!bus || !agent_id)
     return;
   g_dbus_connection_call (bus, "org.bluez", "/org/bluez", "org.bluez.AgentManager1", "UnregisterAgent",
                           g_variant_new ("(o)", AGENT_PATH), NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, NULL, NULL);
   g_dbus_connection_unregister_object (bus, agent_id);
   agent_id = 0;
+}
+
+/* the shell's agent there: it asks, and this page stands aside (BlueZ gives a Pair from here to the default agent) */
+static void
+shell_agent_appeared (GDBusConnection *c, const char *name, const char *owner, gpointer data)
+{
+  if (agent_dialog)
+    ns_dialog_close (agent_dialog);
+  agent_unregister ();
+}
+
+static void
+shell_agent_vanished (GDBusConnection *c, const char *name, gpointer data)
+{
+  if (agent_parent)
+    agent_register ();
+}
+
+static void
+agent_on (GtkWidget *page)
+{
+  agent_parent = page;
+  if (!shell_agent_watch)
+    shell_agent_watch = g_bus_watch_name (G_BUS_TYPE_SESSION, SHELL_AGENT, G_BUS_NAME_WATCHER_FLAGS_NONE,
+                                          shell_agent_appeared, shell_agent_vanished, NULL, NULL);
+}
+
+static void
+agent_off (void)
+{
+  if (shell_agent_watch)
+    g_bus_unwatch_name (shell_agent_watch);
+  shell_agent_watch = 0;
+  agent_unregister ();
+  agent_parent = NULL;
 }
 
 /* ---- Bluetooth ---- */
