@@ -763,7 +763,7 @@ msgstr "Réessayer"
 
 #: src/sw-featured.c src/sw-search.c
 msgid "Search apps and games"
-msgstr "Rechercher des applis et des jeux"
+msgstr "Rechercher applis et jeux"
 
 #: src/sw-featured.c src/sw-search.c
 msgid "Search apps"
