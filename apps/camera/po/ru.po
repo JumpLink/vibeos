@@ -23,11 +23,11 @@ msgstr "Камера"
 
 #: data/vibeos.Camera.desktop.in
 msgid "Take photos and videos, scan barcodes"
-msgstr ""
+msgstr "Фото и видео, сканирование штрихкодов"
 
 #: data/vibeos.Camera.desktop.in
 msgid "Camera;Photo;Video;Picture;Selfie;QR;Barcode;"
-msgstr ""
+msgstr "Камера;Фото;Видео;Снимок;Селфи;QR;Штрихкод;"
 
 # android: Aperture cancel_button_description (several translations, short)
 #: src/cam-dialogs.c
@@ -42,7 +42,9 @@ msgstr "Добавлять данные о местоположении к фо�
 # android: Aperture location_permission_dialog_description
 #: src/cam-dialogs.c
 msgid "Map your memories by including location metadata with each capture."
-msgstr "Составьте карту ваших воспоминаний, включив метаданные о местоположении в каждый снимок."
+msgstr ""
+"Составьте карту ваших воспоминаний, включив метаданные о местоположении в "
+"каждый снимок."
 
 # android: Aperture location_permission_dialog_later
 #: src/cam-dialogs.c
@@ -59,19 +61,19 @@ msgstr "Включить"
 #: src/cam-mode-selector.c
 msgctxt "mode"
 msgid "PHOTO"
-msgstr "Фото"
+msgstr "ФОТО"
 
 # android: Aperture video_header (adapted)
 #: src/cam-mode-selector.c
 msgctxt "mode"
 msgid "VIDEO"
-msgstr "Видео"
+msgstr "ВИДЕО"
 
 # android: Aperture camera_mode_qr (adapted)
 #: src/cam-mode-selector.c
 msgctxt "mode"
 msgid "SCAN"
-msgstr "Сканер"
+msgstr "СКАНЕР"
 
 # android: Aperture qr_uri_title
 #: src/cam-qr-sheet.c
@@ -143,6 +145,8 @@ msgid ""
 "The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, "
 "under the GNU LGPL 2.1 or later."
 msgstr ""
+"Камеры работают через <a href=\"https://libcamera.org/\">libcamera</a> по "
+"лицензии GNU LGPL 2.1 или более поздней версии."
 
 # android: Aperture title_activity_settings (several translations, short)
 #: src/cam-settings.c
@@ -186,11 +190,10 @@ msgstr "Отключение микрофона"
 msgid "Zoom"
 msgstr "Масштаб"
 
-# android: Framework system_locale_title (several translations, short)
 #. the keys keep their usual job: the volume
 #: src/cam-settings.c
 msgid "System default"
-msgstr "Системные настройки по умолчанию"
+msgstr "Как в системе"
 
 # android: Aperture gesture_action_nothing (several translations, short)
 #: src/cam-settings.c
@@ -223,15 +226,13 @@ msgstr "Яркий экран"
 msgid "Locks brightness to 100%"
 msgstr "Фиксация яркости на 100%"
 
-# android: Aperture save_location_title
 #: src/cam-settings.c
 msgid "Save location data"
-msgstr "Сохранить данные о местоположении"
+msgstr "Сохранять местоположение"
 
-# android: Aperture save_location_summary
 #: src/cam-settings.c
 msgid "Include GPS location in metadata"
-msgstr "Включите местоположение GPS в метаданные"
+msgstr "Добавлять GPS-координаты в метаданные"
 
 # android: Aperture shutter_sound_title
 #: src/cam-settings.c
@@ -241,7 +242,7 @@ msgstr "Звук затвора"
 # android: Aperture shutter_sound_summary
 #: src/cam-settings.c
 msgid "Play a sound on capture"
-msgstr "Воспроизвести звук при съемке"
+msgstr "Воспроизводить звук при съемке"
 
 # android: Aperture leveler_title
 #: src/cam-settings.c
@@ -268,10 +269,10 @@ msgstr "Фото"
 msgid "Mirror front camera"
 msgstr "Зеркалировать фронтальную камеру"
 
-# android: Aperture photo_ffc_mirror_summary
 #: src/cam-settings.c
 msgid "Save front camera photos as they appear in the preview"
-msgstr "Сохранять фото с фронтальной камеры в том виде, в котором они отображаются при предварительном просмотре"
+msgstr ""
+"Сохранять фото с фронтальной камеры так, как они выглядят в видоискателе"
 
 # android: Aperture video_header
 #: src/cam-settings.c
@@ -287,11 +288,11 @@ msgstr "Зеркалирование видео"
 #. last, About: the camera has no ⋮ (its top corners are the flash's and the flip's), so it is here
 #: src/cam-settings.c
 msgid "About"
-msgstr ""
+msgstr "О приложении"
 
 #: src/cam-settings.c
 msgid "About Camera"
-msgstr ""
+msgstr "О приложении «Камера»"
 
 # android: Aperture volume_buttons_title
 #: src/cam-settings.c
@@ -331,11 +332,16 @@ msgstr "Галерея"
 #: src/cam-window.c
 msgid "Camera access is off. Turn it on in Settings, Security and privacy."
 msgstr ""
+"Доступ к камере отключен. Включите его в настройках, в разделе «Защита и "
+"конфиденциальность»."
 
 # android: Aperture force_torch_help
 #: src/cam-window.c
-msgid "On photo mode, you can long press the flash button to switch into torch mode."
-msgstr "В режиме фото вы можете удерживать кнопку вспышки, чтобы переключиться в режим фонарика."
+msgid ""
+"On photo mode, you can long press the flash button to switch into torch mode."
+msgstr ""
+"В режиме фото вы можете удерживать кнопку вспышки, чтобы переключиться в "
+"режим фонарика."
 
 # android: Framework httpErrorOk (several translations, short)
 #: src/cam-window.c
@@ -372,10 +378,9 @@ msgstr "ТАЙМЕР 3 сек."
 msgid "TIMER 10s"
 msgstr "ТАЙМЕР 10 сек."
 
-# android: Aperture timer_off
 #: src/cam-window.c
 msgid "TIMER OFF"
-msgstr "АВТОСПУСК ОТКЛЮЧЕН"
+msgstr "ТАЙМЕР ВЫКЛ"
 
 # android: Aperture video_framerate_auto
 #. the camera's own rate: there is no other to choose, so AUTO and disabled, as a single option is shown
@@ -400,13 +405,18 @@ msgstr "НАСТРОЙКИ"
 
 # android: Aperture error_stream_config
 #: src/cam-window.c
-msgid "There was an error while preparing the stream. Please report this to the developers."
-msgstr "При подготовке потока произошла ошибка. Пожалуйста, сообщите об этом разработчикам."
+msgid ""
+"There was an error while preparing the stream. Please report this to the "
+"developers."
+msgstr ""
+"При подготовке потока произошла ошибка. Пожалуйста, сообщите об этом "
+"разработчикам."
 
 # android: Aperture error_camera_in_use
 #: src/cam-window.c
 msgid "This camera is already in use, try closing the app using it."
-msgstr "Эта камера уже используется, попробуйте закрыть использующее ее приложение."
+msgstr ""
+"Эта камера уже используется, попробуйте закрыть использующее ее приложение."
 
 # android: Aperture error_other_recoverable_error
 #: src/cam-window.c
@@ -418,30 +428,31 @@ msgstr "Ошибка при настройке сессии. Приложени�
 msgid "No camera supports video recording."
 msgstr "Ни одна камера не поддерживает видеозапись."
 
-# android: Aperture thermal_status_moderate
 #: src/cam-window.c
-msgid "Moderate thermal throttling, make sure the device isn't under direct sunlight."
-msgstr "Умеренное тепловое воздействие, убедитесь, что устройство не находится под прямыми солнечными лучами."
+msgid ""
+"Moderate thermal throttling, make sure the device isn't under direct "
+"sunlight."
+msgstr ""
+"Умеренный перегрев. Убедитесь, что устройство не находится под прямыми "
+"солнечными лучами."
 
-# android: Aperture thermal_status_severe
 #: src/cam-window.c
-msgid "Severe thermal throttling, it is recommended to let the device cool down a bit."
-msgstr "При сильном тепловом воздействии рекомендуется дать устройству немного остыть."
+msgid ""
+"Severe thermal throttling, it is recommended to let the device cool down a "
+"bit."
+msgstr "Сильный перегрев. Рекомендуется дать устройству немного остыть."
 
-# android: Aperture thermal_status_critical
 #: src/cam-window.c
 msgid "Critical thermal throttling, the app might be closed soon."
-msgstr "Из-за критического теплового воздействия приложение может быть закрыто в ближайшее время."
+msgstr "Критический перегрев. Приложение может скоро закрыться."
 
-# android: Aperture thermal_status_emergency
 #: src/cam-window.c
 msgid "Emergency thermal throttling, the app will close now."
-msgstr "Экстремальное тепловое воздействие, приложение будет закрыто."
+msgstr "Опасный перегрев. Приложение будет закрыто."
 
-# android: Aperture thermal_status_shutdown
 #: src/cam-window.c
 msgid "Shutdown thermal throttling, the device will power off."
-msgstr "Завершение теплового воздействия, устройство выключается."
+msgstr "Перегрев. Устройство выключается."
 
 # android: Aperture save_location_toast
 #: src/cam-window.c
@@ -461,4 +472,5 @@ msgstr "Режим вспышки"
 # android: Aperture error_no_cameras_available
 #: src/cam-window.c
 msgid "No cameras were found on the device, cannot start the app."
-msgstr "На устройстве не обнаружено ни одной камеры, запуск приложения невозможен."
+msgstr ""
+"На устройстве не обнаружено ни одной камеры, запуск приложения невозможен."

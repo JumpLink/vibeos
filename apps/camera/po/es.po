@@ -22,11 +22,11 @@ msgstr "Cámara"
 
 #: data/vibeos.Camera.desktop.in
 msgid "Take photos and videos, scan barcodes"
-msgstr ""
+msgstr "Haz fotos y vídeos, y escanea códigos de barras"
 
 #: data/vibeos.Camera.desktop.in
 msgid "Camera;Photo;Video;Picture;Selfie;QR;Barcode;"
-msgstr ""
+msgstr "Cámara;Foto;Vídeo;Imagen;Selfie;QR;Código de barras;"
 
 # android: Aperture cancel_button_description
 #: src/cam-dialogs.c
@@ -58,19 +58,19 @@ msgstr "Activar"
 #: src/cam-mode-selector.c
 msgctxt "mode"
 msgid "PHOTO"
-msgstr "Foto"
+msgstr "FOTO"
 
 # android: Aperture video_header (adapted)
 #: src/cam-mode-selector.c
 msgctxt "mode"
 msgid "VIDEO"
-msgstr "Vídeo"
+msgstr "VÍDEO"
 
 # android: Aperture camera_mode_qr (adapted)
 #: src/cam-mode-selector.c
 msgctxt "mode"
 msgid "SCAN"
-msgstr "Escanear"
+msgstr "ESCANEAR"
 
 # android: Aperture qr_uri_title
 #: src/cam-qr-sheet.c
@@ -97,10 +97,9 @@ msgstr "Enviar un nuevo correo electrónico"
 msgid "Open this location"
 msgstr "Abrir esta ubicación"
 
-# android: Aperture qr_tel_title
 #: src/cam-qr-sheet.c
 msgid "Call phone number"
-msgstr "Número de teléfono para llamar"
+msgstr "Llamar al número de teléfono"
 
 # android: Aperture qr_sms_title
 #: src/cam-qr-sheet.c
@@ -142,6 +141,8 @@ msgid ""
 "The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, "
 "under the GNU LGPL 2.1 or later."
 msgstr ""
+"Las cámaras funcionan con <a href=\"https://libcamera.org/\">libcamera</a>, "
+"con la licencia GNU LGPL 2.1 o posterior."
 
 # android: Aperture title_activity_settings
 #: src/cam-settings.c
@@ -191,10 +192,9 @@ msgstr "Zoom"
 msgid "System default"
 msgstr "Predeterminado del sistema"
 
-# android: Aperture gesture_action_nothing (several translations, short)
 #: src/cam-settings.c
 msgid "Nothing"
-msgstr "Ninguno"
+msgstr "Nada"
 
 # android: Framework action_bar_up_description (short)
 #: src/cam-settings.c
@@ -270,7 +270,8 @@ msgstr "Voltear cámara frontal"
 # android: Aperture photo_ffc_mirror_summary
 #: src/cam-settings.c
 msgid "Save front camera photos as they appear in the preview"
-msgstr "Guardar las fotos de la cámara frontal como aparecen en la vista previa"
+msgstr ""
+"Guardar las fotos de la cámara frontal como aparecen en la vista previa"
 
 # android: Aperture video_header
 #: src/cam-settings.c
@@ -278,19 +279,18 @@ msgctxt "settings"
 msgid "Video"
 msgstr "Vídeo"
 
-# android: Aperture video_mirror_mode_title
 #: src/cam-settings.c
 msgid "Enable video mirroring"
-msgstr "Habilitar duplicación de vídeo"
+msgstr "Activar efecto espejo en vídeo"
 
 #. last, About: the camera has no ⋮ (its top corners are the flash's and the flip's), so it is here
 #: src/cam-settings.c
 msgid "About"
-msgstr ""
+msgstr "Información"
 
 #: src/cam-settings.c
 msgid "About Camera"
-msgstr ""
+msgstr "Información de Cámara"
 
 # android: Aperture volume_buttons_title (several translations, short)
 #: src/cam-settings.c
@@ -330,11 +330,16 @@ msgstr "Galería"
 #: src/cam-window.c
 msgid "Camera access is off. Turn it on in Settings, Security and privacy."
 msgstr ""
+"El acceso a la cámara está desactivado. Actívalo en Ajustes, Seguridad y "
+"privacidad."
 
 # android: Aperture force_torch_help
 #: src/cam-window.c
-msgid "On photo mode, you can long press the flash button to switch into torch mode."
-msgstr "En el modo foto, puedes mantener pulsado el botón de flash para cambiar al modo de linterna."
+msgid ""
+"On photo mode, you can long press the flash button to switch into torch mode."
+msgstr ""
+"En el modo foto, puedes mantener pulsado el botón de flash para cambiar al "
+"modo de linterna."
 
 # android: Framework httpErrorOk (several translations, short)
 #: src/cam-window.c
@@ -399,13 +404,18 @@ msgstr "AJUSTES"
 
 # android: Aperture error_stream_config
 #: src/cam-window.c
-msgid "There was an error while preparing the stream. Please report this to the developers."
-msgstr "Se produjo un error al preparar el flujo de datos. Informa esto a los desarrolladores."
+msgid ""
+"There was an error while preparing the stream. Please report this to the "
+"developers."
+msgstr ""
+"Se produjo un error al preparar el flujo de datos. Informa esto a los "
+"desarrolladores."
 
 # android: Aperture error_camera_in_use
 #: src/cam-window.c
 msgid "This camera is already in use, try closing the app using it."
-msgstr "Esta cámara ya está en uso, intenta cerrar la aplicación que la está usando."
+msgstr ""
+"Esta cámara ya está en uso, intenta cerrar la aplicación que la está usando."
 
 # android: Aperture error_other_recoverable_error
 #: src/cam-window.c
@@ -415,17 +425,25 @@ msgstr "Error al configurar la sesión. La aplicación intentará recuperarse."
 # android: Aperture camcorder_unsupported_toast
 #: src/cam-window.c
 msgid "No camera supports video recording."
-msgstr "Ninguna cámara soporta grabación de vídeo."
+msgstr "Ninguna cámara admite la grabación de vídeo."
 
 # android: Aperture thermal_status_moderate
 #: src/cam-window.c
-msgid "Moderate thermal throttling, make sure the device isn't under direct sunlight."
-msgstr "Subida de temperatura moderada, asegúrate de que el dispositivo no esté bajo la luz solar directa."
+msgid ""
+"Moderate thermal throttling, make sure the device isn't under direct "
+"sunlight."
+msgstr ""
+"Subida de temperatura moderada, asegúrate de que el dispositivo no esté bajo "
+"la luz solar directa."
 
 # android: Aperture thermal_status_severe
 #: src/cam-window.c
-msgid "Severe thermal throttling, it is recommended to let the device cool down a bit."
-msgstr "Subida de temperatura importante, se recomienda dejar que el dispositivo se enfríe un poco."
+msgid ""
+"Severe thermal throttling, it is recommended to let the device cool down a "
+"bit."
+msgstr ""
+"Subida de temperatura importante, se recomienda dejar que el dispositivo se "
+"enfríe un poco."
 
 # android: Aperture thermal_status_critical
 #: src/cam-window.c
@@ -460,4 +478,6 @@ msgstr "Modo de flash"
 # android: Aperture error_no_cameras_available
 #: src/cam-window.c
 msgid "No cameras were found on the device, cannot start the app."
-msgstr "No se encontraron cámaras en el dispositivo, no se puede iniciar la aplicación."
+msgstr ""
+"No se encontraron cámaras en el dispositivo, no se puede iniciar la "
+"aplicación."
