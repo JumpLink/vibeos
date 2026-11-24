@@ -10,6 +10,7 @@ Build-Depends: debhelper-compat (= 13),
                gir1.2-glib-2.0-dev,
                libglib2.0-dev (>= 2.76),
                libgtk-4-dev (>= 4.14),
+               libvte-2.91-gtk4-dev (>= 0.78),
                libmpv-dev,
                libepoxy-dev,
                gir1.2-gtk-4.0-dev,
@@ -870,3 +871,17 @@ Description: video player for VibeOS
  10 seconds, and where a film was left is remembered. Files on a share play
  through GVfs's FUSE path, the share mounted on demand. It is the default
  application for videos.
+
+Package: vibeos-terminal
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Description: terminal for VibeOS
+ VibeOS Terminal runs the user's shell in GNOME's terminal widget (VTE),
+ made for a touchscreen: a tap brings the keyboard, which opens over the
+ window rather than shrinking it, with a row of Esc, Tab, Ctrl, Alt and the
+ arrow keys on it (Ctrl and Alt sticky, as Termux's); a long press selects a
+ word with handles to widen it and a toolbar to copy or paste; a drag of one
+ finger or two scrolls the history and flings it; and a pinch zooms the
+ text. In less, man or vim scrolling sends the cursor keys, and to a program
+ that takes the mouse, such as htop or mc, the mouse wheel, as a wheel would.
