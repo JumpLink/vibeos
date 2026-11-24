@@ -1,10 +1,17 @@
 project('vibeos-compass', 'c', version: '1.0', meson_version: '>= 1.0',
         default_options: ['warning_level=2', 'c_std=gnu11', 'buildtype=release'])
-add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers', language: 'c')
+add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers',
+                      '-DGETTEXT_PACKAGE="vibeos-compass"',
+                      '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')), language: 'c')
 
 # the window, its colours and its text are libvibeos's
 deps = [dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'), meson.get_compiler('c').find_library('m')]
 
 executable('vibeos-compass', 'main.c', dependencies: deps, install: true)
-install_data('data/vibeos.Compass.desktop', install_dir: get_option('datadir') / 'applications')
+i18n = import('i18n')
+i18n.merge_file(input: 'data/vibeos.Compass.desktop.in', output: 'vibeos.Compass.desktop', type: 'desktop',
+                po_dir: 'po', install: true, install_dir: get_option('datadir') / 'applications')
 install_data('data/vibeos.Compass.svg', install_dir: get_option('datadir') / 'icons/hicolor/scalable/apps')
+
+# the translations, and their checks
+subdir('po')

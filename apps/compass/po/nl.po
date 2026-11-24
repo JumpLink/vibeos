@@ -1,0 +1,103 @@
+# Dutch translations of vibeos-compass.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-compass\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"PO-Revision-Date: 2026-11-24 03:42+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Dutch\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: data/vibeos.Compass.desktop.in main.c
+msgid "Compass"
+msgstr ""
+
+#: data/vibeos.Compass.desktop.in
+msgid "Which way you are facing"
+msgstr ""
+
+#. GClueAccuracyLevel: exact (the dial prints tenths of a second)
+#. the dial's radius on an upright phone, which the ticks and pointer are drawn for
+#. TRANSLATORS: the compass points, as the dial and the heading ("245°SW") show them
+#: main.c
+msgctxt "direction"
+msgid "N"
+msgstr ""
+
+#: main.c
+msgctxt "direction"
+msgid "NE"
+msgstr ""
+
+#: main.c
+msgctxt "direction"
+msgid "E"
+msgstr ""
+
+#: main.c
+msgctxt "direction"
+msgid "SE"
+msgstr ""
+
+# android: Dialer call_details_seconds_abbreviation (adapted, short)
+#: main.c
+msgctxt "direction"
+msgid "S"
+msgstr "S"
+
+#: main.c
+msgctxt "direction"
+msgid "SW"
+msgstr ""
+
+#: main.c
+msgctxt "direction"
+msgid "W"
+msgstr ""
+
+#: main.c
+msgctxt "direction"
+msgid "NW"
+msgstr ""
+
+#: main.c
+msgid "The sensor service is not running, so the compass cannot be read."
+msgstr ""
+
+#: main.c
+msgid "The compass cannot be read right now."
+msgstr ""
+
+#: main.c
+msgid ""
+"Hold the device flat, away from metal. Move it in a figure 8 to calibrate."
+msgstr ""
+
+#: main.c
+msgid "This device has no compass."
+msgstr ""
+
+#: main.c
+msgid "Location unavailable"
+msgstr ""
+
+# android: Framework permgrouplab_location (short)
+#: main.c
+msgid "Location"
+msgstr "Locatie"
+
+#: main.c
+msgid "Locating…"
+msgstr ""
+
+# android: Framework action_menu_overflow_description (short)
+#: main.c
+msgid "More options"
+msgstr "Meer opties"
