@@ -44,8 +44,8 @@ vibe_sources = ['src/dictate-stage.c', 'src/dictate-orb.c', 'src/dictate-history
 
 executable('vibeos-dictate', 'src/dictate-main.c', 'src/dictate-window.c', 'src/dictate-mic.c',
            'src/dictate-engine.c', 'src/dictate-models.c', 'src/dictate-moonshine.c', 'src/dictate-vosk.c',
-           'src/dictate-vad.c', 'src/dictate-talk.c', 'src/dictate-voicematch.c', 'src/dictate-voice.c',
-           'src/dictate-phonemes.c', brain_sources,
+           'src/dictate-vad.c', 'src/dictate-talk.c', 'src/dictate-voicematch.c', 'src/dictate-fbank.c',
+           'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources,
            'src/dictate-download.c', 'src/dictate-download-dialog.c', 'src/dictate-pk.c', 'src/dictate-package.c',
            'src/dictate-access.c', 'src/dictate-settings.c', 'src/dictate-cues.c', vibe_sources, tools_sources, resources,
            link_with: text, install: true,
@@ -84,8 +84,8 @@ executable('brain-bench', 'tests/brain-bench.c', brain_sources, include_director
 # Agent's whole loop on recorded questions, timed (tests/talk-bench.c)
 executable('talk-bench', 'tests/talk-bench.c', 'src/dictate-engine.c', 'src/dictate-models.c',
            'src/dictate-moonshine.c', 'src/dictate-vosk.c', 'src/dictate-vad.c', 'src/dictate-talk.c',
-           'src/dictate-voicematch.c', 'src/dictate-access.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c',
-           brain_sources, tools_sources,
+           'src/dictate-voicematch.c', 'src/dictate-fbank.c', 'src/dictate-access.c', 'src/dictate-voice.c',
+           'src/dictate-phonemes.c', brain_sources, tools_sources,
            include_directories: 'src',
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(library_dir)],
            dependencies: [dependency('gio-2.0'), dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'),
@@ -94,7 +94,8 @@ executable('talk-bench', 'tests/talk-bench.c', 'src/dictate-engine.c', 'src/dict
 
 # Agent's loop from typed text: the model's reply spoken on the speaker (tests/agent-say.c)
 executable('agent-say', 'tests/agent-say.c', 'src/dictate-talk.c', 'src/dictate-voicematch.c',
-           'src/dictate-access.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources, tools_sources,
+           'src/dictate-fbank.c', 'src/dictate-access.c', 'src/dictate-voice.c', 'src/dictate-phonemes.c', brain_sources,
+           tools_sources,
            include_directories: 'src',
            c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(library_dir)],
            dependencies: [dependency('gio-2.0'), dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'),
@@ -112,6 +113,16 @@ executable('agent-eval', 'tests/agent-eval.c', 'tests/agent-eval-mock.c', 'src/d
                           dependency('json-glib-1.0'), cc.find_library('m'), cc.find_library('dl')] + agent_deps
                           + remote_deps + tools_deps)
 
+# Voice Match on recordings, timed (not run by meson test: it needs the models and recordings)
+executable('voicematch-bench', 'tests/voicematch-bench.c', 'src/dictate-fbank.c', include_directories: 'src',
+           c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"',
+           dependencies: [dependency('glib-2.0'), dependency('gio-2.0'), cc.find_library('m'), onnxruntime])
+# Voice Match and its filterbank, with a stand-in model the test writes (tests/test-voicematch.c)
+test('voicematch', executable('test-voicematch', 'tests/test-voicematch.c', 'src/dictate-voicematch.c',
+                              'src/dictate-fbank.c', include_directories: 'src',
+                              c_args: '-DGETTEXT_PACKAGE="vibeos-dictate"',
+                              dependencies: [dependency('glib-2.0'), dependency('gio-2.0'), cc.find_library('m'),
+                                             onnxruntime]))
 test('text', executable('test-text', 'tests/test-text.c', include_directories: 'src', link_with: text,
                         dependencies: dependency('glib-2.0')))
 # what a download unpacks and removes (archives made by the test, nothing fetched), and the table of packs
