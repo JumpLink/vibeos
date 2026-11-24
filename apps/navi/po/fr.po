@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:41+0100\n"
+"POT-Creation-Date: 2026-11-24 14:31+0100\n"
 "PO-Revision-Date: 2026-11-24 03:41+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: French\n"
@@ -187,8 +187,8 @@ msgstr "À définir une seule fois"
 msgid "Planned drive"
 msgstr "Trajet planifié"
 
-# android: Settings wifi_add_app_single_network_saved_summary (short)
 #: src/navi-panels.c
+msgctxt "heading over the saved places"
 msgid "Saved"
 msgstr "Enregistrés"
 
@@ -207,7 +207,9 @@ msgstr "Aucun résultat"
 
 #: src/navi-panels.c
 msgid "Search is unavailable right now. These are from the map, nearby."
-msgstr "La recherche est indisponible pour le moment. Voici des lieux de la carte, à proximité."
+msgstr ""
+"La recherche est indisponible pour le moment. Voici des lieux de la carte, à "
+"proximité."
 
 #: src/navi-panels.c
 msgid "None along the route"
@@ -279,14 +281,16 @@ msgid "Drive to %s?"
 msgstr "Aller à %s ?"
 
 #: src/navi-panels.c
-msgid "this place"
-msgstr "ce lieu"
+msgid "Drive to this place?"
+msgstr "Aller à ce lieu ?"
 
 #: src/navi-panels.c
 msgid ""
 "Add it as a stop on the way, or make it the new destination and cancel the "
 "current route."
-msgstr "Ajoutez-le comme étape, ou faites-en la nouvelle destination et annulez l'itinéraire actuel."
+msgstr ""
+"Ajoutez-le comme étape, ou faites-en la nouvelle destination et annulez "
+"l'itinéraire actuel."
 
 #: src/navi-panels.c
 msgid "Add a stop"
@@ -515,7 +519,9 @@ msgstr "Alertes radars"
 msgid ""
 "Where the law allows them: never in Switzerland, only danger zones in "
 "France, and in Germany not for the driver while driving"
-msgstr "Là où la loi les autorise : jamais en Suisse, seulement les zones de danger en France, et en Allemagne pas pour le conducteur pendant la conduite"
+msgstr ""
+"Là où la loi les autorise : jamais en Suisse, seulement les zones de danger "
+"en France, et en Allemagne pas pour le conducteur pendant la conduite"
 
 #: src/navi-panels.c
 msgid "The speedometer turns red above the limit"
@@ -664,6 +670,11 @@ msgid "Go"
 msgstr "Y aller"
 
 #: src/navi-panels.c
+msgctxt "the place is a saved one"
+msgid "Saved"
+msgstr "Enregistré"
+
+#: src/navi-panels.c
 msgid "Your Home"
 msgstr "Votre domicile"
 
@@ -713,7 +724,9 @@ msgid ""
 "\n"
 "You can turn them off in Settings at any time."
 msgstr ""
-"Non autorisées partout. En Allemagne, le conducteur ne peut pas les utiliser pendant la conduite (§23 (1c) StVO) ; un passager le peut. En Suisse, Navi ne les affiche jamais, et en France seulement les zones de danger.\n"
+"Non autorisées partout. En Allemagne, le conducteur ne peut pas les utiliser "
+"pendant la conduite (§23 (1c) StVO) ; un passager le peut. En Suisse, Navi "
+"ne les affiche jamais, et en France seulement les zones de danger.\n"
 "\n"
 "Vous pouvez les désactiver à tout moment dans les paramètres."
 
@@ -736,23 +749,31 @@ msgstr "Il est temps de partir pour %s"
 msgid "Tap for the routes from where you are."
 msgstr "Appuyez pour voir les itinéraires depuis votre position."
 
-#. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"
+#. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"; the form follows the time's hour as shown
+#. * (the singular for 1:00), for words that change with it
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder at %s"
-msgstr "Rappel à %s"
+msgid_plural "Reminder at %s"
+msgstr[0] "Rappel à %s"
+msgstr[1] "Rappel à %s"
 
-#. TRANSLATORS: "Reminder tomorrow at 08:15"
+#. TRANSLATORS: "Reminder tomorrow at 08:15"; the form follows the time's hour, as above
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder tomorrow at %s"
-msgstr "Rappel demain à %s"
+msgid_plural "Reminder tomorrow at %s"
+msgstr[0] "Rappel demain à %s"
+msgstr[1] "Rappel demain à %s"
 
-#. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"
+#. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"; the form follows the time's hour, as
+#. * above
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder on %s at %s"
-msgstr "Rappel le %s à %s"
+msgid_plural "Reminder on %s at %s"
+msgstr[0] "Rappel le %s à %s"
+msgstr[1] "Rappel le %s à %s"
 
 #: src/navi-voice.c
 #, c-format
@@ -785,11 +806,15 @@ msgstr "Navigation en cours"
 
 #: src/navi-window.c
 msgid "Navi cannot reach a road there. Choose a place on a road in Europe."
-msgstr "Navi ne trouve pas de route à cet endroit. Choisissez un lieu sur une route en Europe."
+msgstr ""
+"Navi ne trouve pas de route à cet endroit. Choisissez un lieu sur une route "
+"en Europe."
 
 #: src/navi-window.c
 msgid "No route found there. Choose a place on a road."
-msgstr "Aucun itinéraire trouvé jusqu'à cet endroit. Choisissez un lieu sur une route."
+msgstr ""
+"Aucun itinéraire trouvé jusqu'à cet endroit. Choisissez un lieu sur une "
+"route."
 
 #: src/navi-window.c
 msgid "The route server cannot be reached. Check the connection."
@@ -845,7 +870,9 @@ msgstr "%s n'a pas été téléchargé"
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "%s. %s was installed, but none of the files were kept on the phone."
-msgstr "%s. %s a été installé, mais aucun des fichiers n'a été conservé sur le téléphone."
+msgstr ""
+"%s. %s a été installé, mais aucun des fichiers n'a été conservé sur le "
+"téléphone."
 
 #. TRANSLATORS: %s is what went wrong
 #: ../dictate/src/dictate-download-dialog.c
@@ -921,13 +948,17 @@ msgstr "Pour parler en %s, %s a besoin de ceci sur le téléphone :"
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "To hear and speak %s, Agent needs these on the phone:"
-msgstr "Pour comprendre et parler en %s, Agent a besoin de ces éléments sur le téléphone :"
+msgstr ""
+"Pour comprendre et parler en %s, Agent a besoin de ces éléments sur le "
+"téléphone :"
 
 #. TRANSLATORS: %s is the language's name for itself (Deutsch)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "To hear %s, Dictate needs these on the phone:"
-msgstr "Pour reconnaître la parole en %s, Dictate a besoin de ces éléments sur le téléphone :"
+msgstr ""
+"Pour reconnaître la parole en %s, Dictate a besoin de ces éléments sur le "
+"téléphone :"
 
 #. TRANSLATORS: under it; %s is its Debian package (vibeos-dictate-vosk)
 #: ../dictate/src/dictate-download-dialog.c
@@ -960,7 +991,9 @@ msgstr "%s n'est pas disponible"
 msgid ""
 "%s is heard by %s, which is not installed on this phone. Install the %s "
 "package, then choose %s again."
-msgstr "%s est reconnu par %s, qui n'est pas installé sur ce téléphone. Installez le paquet %s, puis choisissez à nouveau %s."
+msgstr ""
+"%s est reconnu par %s, qui n'est pas installé sur ce téléphone. Installez le "
+"paquet %s, puis choisissez à nouveau %s."
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "There is nothing to download for it."
@@ -988,7 +1021,8 @@ msgstr "%s n'est pas arrivé complet"
 #: ../dictate/src/dictate-download.c
 #, c-format
 msgid "%s is not the file it should be: its checksum does not match"
-msgstr "%s n'est pas le fichier attendu : sa somme de contrôle ne correspond pas"
+msgstr ""
+"%s n'est pas le fichier attendu : sa somme de contrôle ne correspond pas"
 
 #. TRANSLATORS: %s is a file's name
 #: ../dictate/src/dictate-download.c

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:41+0100\n"
+"POT-Creation-Date: 2026-11-24 14:31+0100\n"
 "PO-Revision-Date: 2026-11-24 03:41+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -188,8 +188,8 @@ msgstr "Impostalo una volta sola"
 msgid "Planned drive"
 msgstr "Viaggio pianificato"
 
-# android: Settings wifi_add_app_single_network_saved_summary (several translations, short)
 #: src/navi-panels.c
+msgctxt "heading over the saved places"
 msgid "Saved"
 msgstr "Salvati"
 
@@ -208,7 +208,9 @@ msgstr "Nessun risultato"
 
 #: src/navi-panels.c
 msgid "Search is unavailable right now. These are from the map, nearby."
-msgstr "La ricerca non è disponibile al momento. Questi provengono dalla mappa, nelle vicinanze."
+msgstr ""
+"La ricerca non è disponibile al momento. Questi provengono dalla mappa, "
+"nelle vicinanze."
 
 #: src/navi-panels.c
 msgid "None along the route"
@@ -280,14 +282,16 @@ msgid "Drive to %s?"
 msgstr "Andare a %s?"
 
 #: src/navi-panels.c
-msgid "this place"
-msgstr "questo luogo"
+msgid "Drive to this place?"
+msgstr "Andare a questo luogo?"
 
 #: src/navi-panels.c
 msgid ""
 "Add it as a stop on the way, or make it the new destination and cancel the "
 "current route."
-msgstr "Aggiungilo come tappa lungo il percorso, oppure rendilo la nuova destinazione e annulla il percorso attuale."
+msgstr ""
+"Aggiungilo come tappa lungo il percorso, oppure rendilo la nuova "
+"destinazione e annulla il percorso attuale."
 
 #: src/navi-panels.c
 msgid "Add a stop"
@@ -516,7 +520,9 @@ msgstr "Avvisi autovelox"
 msgid ""
 "Where the law allows them: never in Switzerland, only danger zones in "
 "France, and in Germany not for the driver while driving"
-msgstr "Dove la legge li consente: mai in Svizzera, solo le zone pericolose in Francia e, in Germania, non per il conducente durante la guida"
+msgstr ""
+"Dove la legge li consente: mai in Svizzera, solo le zone pericolose in "
+"Francia e, in Germania, non per il conducente durante la guida"
 
 #: src/navi-panels.c
 msgid "The speedometer turns red above the limit"
@@ -668,6 +674,11 @@ msgid "Go"
 msgstr "Vai"
 
 #: src/navi-panels.c
+msgctxt "the place is a saved one"
+msgid "Saved"
+msgstr "Salvato"
+
+#: src/navi-panels.c
 msgid "Your Home"
 msgstr "Casa tua"
 
@@ -717,7 +728,9 @@ msgid ""
 "\n"
 "You can turn them off in Settings at any time."
 msgstr ""
-"Non sono consentiti ovunque. In Germania il conducente non può usarli durante la guida (§23 (1c) StVO); un passeggero sì. In Svizzera Navi non li mostra mai e in Francia solo le zone pericolose.\n"
+"Non sono consentiti ovunque. In Germania il conducente non può usarli "
+"durante la guida (§23 (1c) StVO); un passeggero sì. In Svizzera Navi non li "
+"mostra mai e in Francia solo le zone pericolose.\n"
 "\n"
 "Puoi disattivarli in qualsiasi momento nelle impostazioni."
 
@@ -740,23 +753,31 @@ msgstr "È ora di partire per %s"
 msgid "Tap for the routes from where you are."
 msgstr "Tocca per i percorsi da dove ti trovi."
 
-#. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"
+#. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"; the form follows the time's hour as shown
+#. * (the singular for 1:00), for words that change with it
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder at %s"
-msgstr "Promemoria alle %s"
+msgid_plural "Reminder at %s"
+msgstr[0] "Promemoria all'%s"
+msgstr[1] "Promemoria alle %s"
 
-#. TRANSLATORS: "Reminder tomorrow at 08:15"
+#. TRANSLATORS: "Reminder tomorrow at 08:15"; the form follows the time's hour, as above
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder tomorrow at %s"
-msgstr "Promemoria domani alle %s"
+msgid_plural "Reminder tomorrow at %s"
+msgstr[0] "Promemoria domani all'%s"
+msgstr[1] "Promemoria domani alle %s"
 
-#. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"
+#. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"; the form follows the time's hour, as
+#. * above
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder on %s at %s"
-msgstr "Promemoria %s alle %s"
+msgid_plural "Reminder on %s at %s"
+msgstr[0] "Promemoria %s all'%s"
+msgstr[1] "Promemoria %s alle %s"
 
 #: src/navi-voice.c
 #, c-format
@@ -789,7 +810,9 @@ msgstr "Navigazione in corso"
 
 #: src/navi-window.c
 msgid "Navi cannot reach a road there. Choose a place on a road in Europe."
-msgstr "Navi non riesce a raggiungere una strada lì. Scegli un luogo su una strada in Europa."
+msgstr ""
+"Navi non riesce a raggiungere una strada lì. Scegli un luogo su una strada "
+"in Europa."
 
 #: src/navi-window.c
 msgid "No route found there. Choose a place on a road."
@@ -797,7 +820,8 @@ msgstr "Nessun percorso trovato fin lì. Scegli un luogo su una strada."
 
 #: src/navi-window.c
 msgid "The route server cannot be reached. Check the connection."
-msgstr "Impossibile raggiungere il server dei percorsi. Controlla la connessione."
+msgstr ""
+"Impossibile raggiungere il server dei percorsi. Controlla la connessione."
 
 #: src/navi-window.c
 msgid "No GPS – showing your approximate location"
@@ -849,7 +873,9 @@ msgstr "%s non è stato scaricato"
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "%s. %s was installed, but none of the files were kept on the phone."
-msgstr "%s. %s è stato installato, ma nessuno dei file è stato conservato sul telefono."
+msgstr ""
+"%s. %s è stato installato, ma nessuno dei file è stato conservato sul "
+"telefono."
 
 #. TRANSLATORS: %s is what went wrong
 #: ../dictate/src/dictate-download-dialog.c
@@ -925,13 +951,16 @@ msgstr "Per parlare in %s, %s ha bisogno di questo sul telefono:"
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "To hear and speak %s, Agent needs these on the phone:"
-msgstr "Per capire e parlare in %s, Agent ha bisogno di questi elementi sul telefono:"
+msgstr ""
+"Per capire e parlare in %s, Agent ha bisogno di questi elementi sul telefono:"
 
 #. TRANSLATORS: %s is the language's name for itself (Deutsch)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
 msgid "To hear %s, Dictate needs these on the phone:"
-msgstr "Per riconoscere il parlato in %s, Dictate ha bisogno di questi elementi sul telefono:"
+msgstr ""
+"Per riconoscere il parlato in %s, Dictate ha bisogno di questi elementi sul "
+"telefono:"
 
 #. TRANSLATORS: under it; %s is its Debian package (vibeos-dictate-vosk)
 #: ../dictate/src/dictate-download-dialog.c
@@ -964,7 +993,9 @@ msgstr "%s non è disponibile"
 msgid ""
 "%s is heard by %s, which is not installed on this phone. Install the %s "
 "package, then choose %s again."
-msgstr "%s viene riconosciuto da %s, che non è installato su questo telefono. Installa il pacchetto %s, poi scegli di nuovo %s."
+msgstr ""
+"%s viene riconosciuto da %s, che non è installato su questo telefono. "
+"Installa il pacchetto %s, poi scegli di nuovo %s."
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "There is nothing to download for it."

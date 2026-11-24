@@ -728,7 +728,7 @@ fill_saved (NaviPanels *p)
     vibeos_card_list_append (list, plan_row (p, plan));
   }
   if (n->settings->saved->len) {
-    vibeos_card_list_add_group (list, _("Saved"));
+    vibeos_card_list_add_group (list, C_("heading over the saved places", "Saved"));
     for (guint i = 0; i < n->settings->saved->len; i++)
       vibeos_card_list_append (list, saved_row (p, n->settings->saved->pdata[i]));
   }
@@ -1242,7 +1242,8 @@ navi_panels_ask_route_change (NaviPanels *p, const NaviPlace *place)
   VibeosDialog *d;
   if (place) {
     /* Waze's two choices; a tap outside or Back keeps the drive as it is (three buttons do not fit a phone) */
-    g_autofree char *title = g_strdup_printf (_("Drive to %s?"), place->name ? place->name : _("this place"));
+    g_autofree char *title = place->name ? g_strdup_printf (_("Drive to %s?"), place->name)
+                                         : g_strdup (_("Drive to this place?"));
     d = vibeos_dialog_new (title);
     vibeos_dialog_set_message (d, _("Add it as a stop on the way, or make it the new destination and cancel the "
                                     "current route."));
@@ -2836,7 +2837,8 @@ navi_panels_show_place (NaviPanels *p, const NaviPlace *place)
     gtk_widget_add_css_class (star, "navi-starred");
   else
     gtk_widget_remove_css_class (star, "navi-starred");
-  set_text (g_object_get_data (G_OBJECT (p->place_star), "navi-label"), starred ? _("Saved") : _("Save"));
+  set_text (g_object_get_data (G_OBJECT (p->place_star), "navi-label"),
+            starred ? C_("the place is a saved one", "Saved") : _("Save"));
   int k = 0;
   for (GtkWidget *b = gtk_widget_get_next_sibling (p->place_star); b; b = gtk_widget_get_next_sibling (b), k++) {
     NaviPlace *saved = k == 0 ? p->navi->settings->home : p->navi->settings->work;

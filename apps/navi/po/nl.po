@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:41+0100\n"
+"POT-Creation-Date: 2026-11-24 14:31+0100\n"
 "PO-Revision-Date: 2026-11-24 03:41+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Dutch\n"
@@ -188,8 +188,8 @@ msgstr "Eén keer instellen en rijden"
 msgid "Planned drive"
 msgstr "Geplande rit"
 
-# android: Settings wifi_add_app_single_network_saved_summary (short)
 #: src/navi-panels.c
+msgctxt "heading over the saved places"
 msgid "Saved"
 msgstr "Opgeslagen"
 
@@ -282,8 +282,8 @@ msgid "Drive to %s?"
 msgstr "Naar %s rijden?"
 
 #: src/navi-panels.c
-msgid "this place"
-msgstr "deze plek"
+msgid "Drive to this place?"
+msgstr "Naar deze plek rijden?"
 
 #: src/navi-panels.c
 msgid ""
@@ -670,6 +670,11 @@ msgid "Go"
 msgstr "Start"
 
 #: src/navi-panels.c
+msgctxt "the place is a saved one"
+msgid "Saved"
+msgstr "Opgeslagen"
+
+#: src/navi-panels.c
 msgid "Your Home"
 msgstr "Thuis"
 
@@ -744,23 +749,31 @@ msgstr "Tijd om te vertrekken naar %s"
 msgid "Tap for the routes from where you are."
 msgstr "Tik voor de routes vanaf waar je bent."
 
-#. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"
+#. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"; the form follows the time's hour as shown
+#. * (the singular for 1:00), for words that change with it
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder at %s"
-msgstr "Herinnering om %s"
+msgid_plural "Reminder at %s"
+msgstr[0] "Herinnering om %s"
+msgstr[1] "Herinnering om %s"
 
-#. TRANSLATORS: "Reminder tomorrow at 08:15"
+#. TRANSLATORS: "Reminder tomorrow at 08:15"; the form follows the time's hour, as above
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder tomorrow at %s"
-msgstr "Herinnering morgen om %s"
+msgid_plural "Reminder tomorrow at %s"
+msgstr[0] "Herinnering morgen om %s"
+msgstr[1] "Herinnering morgen om %s"
 
-#. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"
+#. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"; the form follows the time's hour, as
+#. * above
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder on %s at %s"
-msgstr "Herinnering op %s om %s"
+msgid_plural "Reminder on %s at %s"
+msgstr[0] "Herinnering op %s om %s"
+msgstr[1] "Herinnering op %s om %s"
 
 #: src/navi-voice.c
 #, c-format

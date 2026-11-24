@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:41+0100\n"
+"POT-Creation-Date: 2026-11-24 14:31+0100\n"
 "PO-Revision-Date: 2026-11-23 04:00+0100\n"
 "Last-Translator: pulpoff\n"
 "Language-Team: German\n"
@@ -182,6 +182,7 @@ msgid "Planned drive"
 msgstr "Geplante Fahrt"
 
 #: src/navi-panels.c
+msgctxt "heading over the saved places"
 msgid "Saved"
 msgstr "Gespeichert"
 
@@ -273,8 +274,8 @@ msgid "Drive to %s?"
 msgstr "Zu %s fahren?"
 
 #: src/navi-panels.c
-msgid "this place"
-msgstr "diesem Ort"
+msgid "Drive to this place?"
+msgstr "Zu diesem Ort fahren?"
 
 #: src/navi-panels.c
 msgid ""
@@ -645,6 +646,11 @@ msgid "Go"
 msgstr "Los"
 
 #: src/navi-panels.c
+msgctxt "the place is a saved one"
+msgid "Saved"
+msgstr "Gespeichert"
+
+#: src/navi-panels.c
 msgid "Your Home"
 msgstr "Dein Zuhause"
 
@@ -717,23 +723,31 @@ msgstr "Jetzt losfahren: %s"
 msgid "Tap for the routes from where you are."
 msgstr "Tippe für die Routen von deinem Standort aus."
 
-#. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"
+#. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"; the form follows the time's hour as shown
+#. * (the singular for 1:00), for words that change with it
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder at %s"
-msgstr "Erinnerung um %s"
+msgid_plural "Reminder at %s"
+msgstr[0] "Erinnerung um %s"
+msgstr[1] "Erinnerung um %s"
 
-#. TRANSLATORS: "Reminder tomorrow at 08:15"
+#. TRANSLATORS: "Reminder tomorrow at 08:15"; the form follows the time's hour, as above
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder tomorrow at %s"
-msgstr "Erinnerung morgen um %s"
+msgid_plural "Reminder tomorrow at %s"
+msgstr[0] "Erinnerung morgen um %s"
+msgstr[1] "Erinnerung morgen um %s"
 
-#. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"
+#. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"; the form follows the time's hour, as
+#. * above
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder on %s at %s"
-msgstr "Erinnerung am %s um %s"
+msgid_plural "Reminder on %s at %s"
+msgstr[0] "Erinnerung am %s um %s"
+msgstr[1] "Erinnerung am %s um %s"
 
 #: src/navi-voice.c
 #, c-format

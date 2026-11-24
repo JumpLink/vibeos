@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:41+0100\n"
+"POT-Creation-Date: 2026-11-24 14:31+0100\n"
 "PO-Revision-Date: 2026-11-24 03:41+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Spanish\n"
@@ -188,10 +188,10 @@ msgstr "Configúralo una vez y listo"
 msgid "Planned drive"
 msgstr "Viaje planificado"
 
-# android: Settings wifi_add_app_single_network_saved_summary (short)
 #: src/navi-panels.c
+msgctxt "heading over the saved places"
 msgid "Saved"
-msgstr "Guardado"
+msgstr "Guardados"
 
 # android: Framework recent_tasks_title (short)
 #: src/navi-panels.c
@@ -280,8 +280,8 @@ msgid "Drive to %s?"
 msgstr "¿Ir a %s?"
 
 #: src/navi-panels.c
-msgid "this place"
-msgstr "este lugar"
+msgid "Drive to this place?"
+msgstr "¿Ir a este lugar?"
 
 #: src/navi-panels.c
 msgid ""
@@ -667,6 +667,11 @@ msgid "Go"
 msgstr "Ir"
 
 #: src/navi-panels.c
+msgctxt "the place is a saved one"
+msgid "Saved"
+msgstr "Guardado"
+
+#: src/navi-panels.c
 msgid "Your Home"
 msgstr "Tu casa"
 
@@ -741,23 +746,31 @@ msgstr "Es hora de salir hacia %s"
 msgid "Tap for the routes from where you are."
 msgstr "Toca para ver las rutas desde donde estás."
 
-#. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"
+#. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"; the form follows the time's hour as shown
+#. * (the singular for 1:00), for words that change with it
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder at %s"
-msgstr "Recordatorio a las %s"
+msgid_plural "Reminder at %s"
+msgstr[0] "Recordatorio a la %s"
+msgstr[1] "Recordatorio a las %s"
 
-#. TRANSLATORS: "Reminder tomorrow at 08:15"
+#. TRANSLATORS: "Reminder tomorrow at 08:15"; the form follows the time's hour, as above
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder tomorrow at %s"
-msgstr "Recordatorio mañana a las %s"
+msgid_plural "Reminder tomorrow at %s"
+msgstr[0] "Recordatorio mañana a la %s"
+msgstr[1] "Recordatorio mañana a las %s"
 
-#. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"
+#. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"; the form follows the time's hour, as
+#. * above
 #: src/navi-plan.c
 #, c-format
 msgid "Reminder on %s at %s"
-msgstr "Recordatorio el %s a las %s"
+msgid_plural "Reminder on %s at %s"
+msgstr[0] "Recordatorio el %s a la %s"
+msgstr[1] "Recordatorio el %s a las %s"
 
 #: src/navi-voice.c
 #, c-format
