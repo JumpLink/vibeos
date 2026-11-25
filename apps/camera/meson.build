@@ -45,3 +45,7 @@ subdir('po')
 # the QR classifier, without GTK's display
 test('qr-classify', executable('test-qr', 'tests/test-qr.c', 'src/cam-qr-sheet.c',
                                include_directories: 'src', dependencies: deps))
+
+# the encoder is read from the cache and never probed at start
+test('encoder-no-probe', executable('test-encoder', 'tests/test-encoder.c', 'src/cam-encoder.c',
+                                    include_directories: 'src', dependencies: deps))

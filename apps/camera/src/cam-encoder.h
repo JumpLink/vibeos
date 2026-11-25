@@ -27,6 +27,9 @@ const CamEncoder *cam_encoder_get   (void);
 /* measures in the background if there is no answer yet; `done` runs on the main loop when there is one */
 void              cam_encoder_probe (GCallback done, gpointer data);
 
+/* how many times a probe has been started: the tests check that opening the app starts none */
+guint             cam_encoder_probes_started (void);
+
 /* the encoder chain for a bin: "<encoder with its properties> ! h264parse", for `bitrate` bits/s */
 char             *cam_encoder_launch (const char *element, int bitrate);
 /* the raw format it wants: NV12, or I420 for OpenH264 */

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-camera\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 01:23+0100\n"
+"POT-Creation-Date: 2026-11-25 13:29+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Russian\n"
@@ -427,6 +427,11 @@ msgstr "Ошибка при настройке сессии. Приложени�
 #: src/cam-window.c
 msgid "No camera supports video recording."
 msgstr "Ни одна камера не поддерживает видеозапись."
+
+#. the measure takes seconds the first time; without a word the press looks ignored
+#: src/cam-window.c
+msgid "Preparing video…"
+msgstr "Подготовка видео…"
 
 #: src/cam-window.c
 msgid ""

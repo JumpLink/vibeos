@@ -213,6 +213,14 @@ probe_next (void)
   probe_finish ();
 }
 
+static guint probes_started;
+
+guint
+cam_encoder_probes_started (void)
+{
+  return probes_started;
+}
+
 void
 cam_encoder_probe (GCallback done, gpointer data)
 {
@@ -234,7 +242,10 @@ cam_encoder_probe (GCallback done, gpointer data)
       g_ptr_array_add (probe->waiters, data);
     }
   if (!probe->child && !probe->timeout && probe->next == 0)
-    probe_next ();
+    {
+      probes_started++;
+      probe_next ();
+    }
 }
 
 /* ---- the probe, child side ------------------------------------------------------------------------------------- */
