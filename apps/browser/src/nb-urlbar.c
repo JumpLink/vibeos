@@ -186,6 +186,26 @@ suggestion_row (NbTab *t, NbSuggestion *s, const char *query)
   return row;
 }
 
+/* The host the text would go to (the web address typed, or the search engine's), looked up in DNS while the user
+ * types, so the navigation does not wait for it. Not in an incognito tab: a host typed and not visited stays unasked. */
+static void
+prefetch_host (NbTab *t, const char *text)
+{
+  static char *last;
+  if (t->incognito || !text || !*text)
+    return;
+  g_autofree char *url = nb_smart_url (text);
+  g_autoptr (GUri) uri = url ? g_uri_parse (url, G_URI_FLAGS_NONE, NULL) : NULL;
+  const char *host = uri ? g_uri_get_host (uri) : NULL;
+  const char *scheme = uri ? g_uri_get_scheme (uri) : NULL;
+  if (!host || !*host || !scheme || (g_ascii_strcasecmp (scheme, "https") && g_ascii_strcasecmp (scheme, "http")) ||
+      !g_strcmp0 (host, last))
+    return;
+  g_free (last);
+  last = g_strdup (host);
+  webkit_network_session_prefetch_dns (nb_session_for (FALSE), host);
+}
+
 static void
 on_suggestions (GPtrArray *items, gpointer data)
 {
@@ -200,6 +220,11 @@ on_suggestions (GPtrArray *items, gpointer data)
   for (guint i = 0; i < items->len; i++)
     gtk_box_append (GTK_BOX (t->dropdown_rows), suggestion_row (t, items->pdata[i], query));
   gtk_widget_set_visible (t->dropdown, t->editing && items->len > 0);
+  /* the top suggestion is the likeliest tap */
+  if (items->len > 0) {
+    NbSuggestion *top = items->pdata[0];
+    prefetch_host (t, top->url ? top->url : top->title);
+  }
 }
 
 static void
@@ -218,6 +243,7 @@ on_entry_changed (GtkEditable *e, NbTab *t)
     hide_dropdown (t);
     return;
   }
+  prefetch_host (t, stripped);
   t->suggest_cancel = g_cancellable_new ();
   nb_suggest_fetch (nb->store, nb_store_get_string (nb->store, "suggestionProvider", "GOOGLE"), text,
                     t->suggest_cancel, on_suggestions, t);

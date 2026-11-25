@@ -5,6 +5,7 @@
 #include <libsoup/soup.h>
 #include <math.h>
 #include <string.h>
+#include <unistd.h>
 #include <vibeos.h>
 
 /* Ad blocking: EasyList in WebKit's content-blocker format, compiled once into WebKit's filter store (the network
@@ -13,7 +14,6 @@
 #define FILTER_URL "https://easylist-downloads.adblockplus.org/easylist_min_content_blocker.json"
 #define FILTER_ID "easylist"
 #define FILTER_MAX_AGE (7 * 24 * 3600)
-#define MEMORY_LIMIT_MB 768
 #define SHORTCUT_PREFIX NB_APP_ID ".shortcut-"
 
 /* a phone's scrollbar: a thin rounded thumb over the page, no track and no arrow buttons */
@@ -162,14 +162,33 @@ nb_session_for (gboolean incognito)
   return nb->incog_session;
 }
 
+/* A web process's memory: a quarter of the phone's RAM (1 GB on 4 GB, 1.5 GB on 6), at most 3 GB. Under half of it
+ * nothing is given back; past half WebKit lets go of what it can spare, past 65 % of everything it holds (decoded
+ * images, tiles, the JIT's code), and at the limit the page's process is ended and the page loads again.
+ * WebKit's own fractions on Linux are 33 % and 50 % with no end: with the old 768 MB limit a heavy page past 384 MB
+ * (a long feed on a 2560 px tablet) had its images and tiles thrown away every 30 s while it was scrolled, and
+ * drawn again, and a runaway page grew on, as nothing ended it. These are WebKit's iOS fractions. */
+static void
+setup_memory (void)
+{
+  guint64 ram = (guint64) sysconf (_SC_PHYS_PAGES) * (guint64) sysconf (_SC_PAGESIZE);
+  guint limit_mb = ram > 0 ? (guint) MIN (ram / 4 / (1024 * 1024), 3072) : 1024;
+  limit_mb = MAX (limit_mb, 768);
+  WebKitMemoryPressureSettings *m = webkit_memory_pressure_settings_new ();
+  webkit_memory_pressure_settings_set_memory_limit (m, limit_mb);
+  /* in this order: each must stay below the next (the defaults are 0.33 and 0.5) */
+  webkit_memory_pressure_settings_set_strict_threshold (m, 0.65);
+  webkit_memory_pressure_settings_set_conservative_threshold (m, 0.5);
+  webkit_memory_pressure_settings_set_kill_threshold (m, 1.0);
+  webkit_network_session_set_memory_pressure_settings (m);
+  webkit_memory_pressure_settings_free (m);
+  g_debug ("web process memory: %u MB (RAM %" G_GUINT64_FORMAT " MB)", limit_mb, ram / (1024 * 1024));
+}
+
 static void
 setup_engine (void)
 {
-  /* a heavy page grows its web process without end: past 768 MB WebKit kills and reloads it */
-  WebKitMemoryPressureSettings *m = webkit_memory_pressure_settings_new ();
-  webkit_memory_pressure_settings_set_memory_limit (m, MEMORY_LIMIT_MB);
-  webkit_network_session_set_memory_pressure_settings (m);
-  webkit_memory_pressure_settings_free (m);
+  setup_memory ();
 
   g_autofree char *web = g_build_filename (nb->data_dir, "web", NULL);
   g_autofree char *cookies = g_build_filename (nb->data_dir, "cookies.sqlite", NULL);
