@@ -725,7 +725,7 @@ nabu)
 	install -D -m 755 "$T/nabu/wait-for-shell" "$P/usr/libexec/vibeos-device/wait-for-shell"
 	POSTINST_EXTRA="$POSTINST_EXTRA qbootctl.service"
 	identity nabu "Xiaomi Pad 5" Xiaomi "Xiaomi Pad 5"
-	video h264		# iris; HEVC stopped the firmware (sys error, 7.3.6-nabu, 2026-11-25), VP9 decodes in software (60-nabu-gst-vp9.conf ranks the V4L2 decoder down)
+	video h264		# iris; HEVC stopped the firmware (sys error, 7.3.6-nabu, 2026-11-25), VP9 decodes in software (60-nabu-gst-iris.conf ranks the V4L2 VP9 and HEVC decoders down)
 	DEPS="hexagonrpcd, rmtfs, qrtr-tools, tqftpserv, qbootctl"
 	(cd "$ST/debs" && sha256sum -c --quiet ../debs.sha256) || { echo "$ST/debs: not the stage's packages" >&2; exit 1; }
 	cp "$ST"/debs/*.deb "$W/debs/"
