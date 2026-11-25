@@ -8,6 +8,7 @@
  * sounds to pick from are the ones those apps list: sounds/android/ringtones and sounds/android/alarms in the
  * system data dirs. */
 #include "ns-caps.h"
+#include "ns-motor.h"
 #include "ns-pages.h"
 #include "ns-sound.h"
 #include "ns-ui.h"
@@ -446,29 +447,70 @@ louder_changed (GSettings *snd, const char *key, GtkWidget *media)
   gtk_range_set_range (GTK_RANGE (media), 0, g_settings_get_boolean (snd, key) ? 150 : 100);
 }
 
-/* A vibration motor: an input device that plays force feedback (an effect type in its "ff" capabilities), which is
- * what feedbackd's udev rules tag as a vibra and drive. A device without one (a tablet with the driver's node but
- * no motor gets none in its device tree) has no Vibration intensity. Read once: a motor does not come and go. */
+/* The motor, as ns-motor.c reads it: an input device that plays force feedback (which feedbackd's udev rules tag as a
+ * vibra and drive), a vibrator LED, or a device feedbackd tagged. A device without one (a tablet with the driver's
+ * node but no motor gets none in its device tree) has no Vibration intensity, and has the keyboard and volume
+ * sounds on until the user says otherwise. Read once: a motor does not come and go. */
 static gboolean
 has_vibrator (void)
 {
-  static int known = -1;
-  if (known >= 0)
-    return known;
-  known = FALSE;
-  g_autoptr (GDir) d = g_dir_open ("/sys/class/input", 0, NULL);
-  for (const char *n; d && (n = g_dir_read_name (d)) && !known;) {
-    if (!g_str_has_prefix (n, "event"))
-      continue;
-    g_autofree char *path = g_build_filename ("/sys/class/input", n, "device", "capabilities", "ff", NULL);
-    g_autofree char *ff = NULL;
-    if (!g_file_get_contents (path, &ff, NULL, NULL))
-      continue;
-    /* hexadecimal words: anything but zeros and spaces is an effect it plays */
-    for (const char *c = ff; *c && !known; c++)
-      known = g_ascii_isxdigit (*c) && *c != '0';
-  }
-  return known;
+  return ns_motor_present ();
+}
+
+/* A switch for a vibeos.Shell sound that has no value of its own until the user sets it: unset, it shows what the
+ * shell plays (on with no motor, off with one: extension/sounds.js enabled()); a touch of it stores the choice. */
+typedef struct {
+  GSettings *s;
+  const char *key;
+  GtkWidget *sw;
+} ShellSwitch;
+
+static gboolean
+shell_switch_value (GSettings *s, const char *key)
+{
+  g_autoptr (GVariant) user = g_settings_get_user_value (s, key);
+  return user ? g_variant_get_boolean (user) : !has_vibrator ();
+}
+
+static void
+shell_switch_show (GSettings *s, const char *key, ShellSwitch *w)
+{
+  gboolean on = shell_switch_value (w->s, w->key);
+  if (ns_switch_get_active (w->sw) != on)
+    ns_switch_quiet (w->sw, on);
+}
+
+static void
+shell_switch_toggled (GtkWidget *sw, GParamSpec *ps, ShellSwitch *w)
+{
+  if (ns_switch_syncing (sw))
+    return;
+  gboolean on = ns_switch_get_active (sw);
+  if (on != shell_switch_value (w->s, w->key))
+    g_settings_set_boolean (w->s, w->key, on);
+}
+
+static void
+shell_switch_free (ShellSwitch *w)
+{
+  g_signal_handlers_disconnect_by_data (w->s, w);
+  g_free (w);
+}
+
+static GtkWidget *
+shell_switch_row (GtkWidget *group, const char *title, GSettings *s, const char *key)
+{
+  GtkWidget *row = ns_row_switch (group, title, NULL, NULL, NULL);
+  ShellSwitch *w = g_new0 (ShellSwitch, 1);
+  w->s = s;
+  w->key = key;
+  w->sw = ns_row_get_switch (row);
+  shell_switch_show (s, key, w);
+  g_signal_connect (w->sw, "notify::active", G_CALLBACK (shell_switch_toggled), w);
+  g_autofree char *sig = g_strconcat ("changed::", key, NULL);
+  g_signal_connect (s, sig, G_CALLBACK (shell_switch_show), w);
+  g_object_set_data_full (G_OBJECT (row), "ns-own", w, (GDestroyNotify) shell_switch_free);
+  return row;
 }
 
 /* Not on this page, and why:
@@ -554,11 +596,23 @@ ns_page_sound (GtkWidget *row, gpointer data)
       tone_row (g, _("Default alarm sound"), clock, "default-alarm-ringtone", "sounds/android/alarms", "Hassium", NULL);
   }
 
-  /* the Phone's key tones: a phone's only system sound VibeOS has a switch for */
-  if (ns_has_key (phone, "dtmf-tone-when-dialing")) {
+  /* "Other sounds and vibrations" of Android's Sound settings: the dial pad's tones (a phone's, so with a modem
+   * only), then the touch sounds (the keyboard's), then the volume's own, which the shell plays too */
+  GSettings *shell = ns_page_settings (page, "vibeos.Shell");
+  gboolean dial = ns_has_key (phone, "dtmf-tone-when-dialing");
+  gboolean keys = ns_has_key (shell, "keyboard-sounds");
+  gboolean steps = ns_has_key (shell, "volume-change-sound");
+  if (dial || keys || steps) {
     g = ns_group (c, _("System sounds"));
-    ns_row_switch (g, _("Dial pad tones"), NULL, phone, "dtmf-tone-when-dialing");
-    ns_caps_bind_visible (g, NS_CAP_MODEM);
+    if (dial)
+      ns_caps_bind_visible (ns_row_switch (g, _("Dial pad tones"), NULL, phone, "dtmf-tone-when-dialing"), NS_CAP_MODEM);
+    if (keys)
+      shell_switch_row (g, _("Keyboard sounds"), shell, "keyboard-sounds");
+    if (steps)
+      shell_switch_row (g, _("Volume change sound"), shell, "volume-change-sound");
+    /* the dial pad's tones alone: the card goes with them on a device with no modem */
+    if (dial && !keys && !steps)
+      ns_caps_bind_visible (g, NS_CAP_MODEM);
   }
 
   if (ns_has_key (snd, "allow-volume-above-100-percent")) {

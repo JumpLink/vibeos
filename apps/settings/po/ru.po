@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 18:05+0100\n"
+"POT-Creation-Date: 2026-11-25 04:50+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Russian\n"
@@ -3806,6 +3806,14 @@ msgstr "Системные звуки"
 #: src/ns-sound.c
 msgid "Dial pad tones"
 msgstr "Звук при наборе номера"
+
+#: src/ns-sound.c
+msgid "Keyboard sounds"
+msgstr "Звуки клавиатуры"
+
+#: src/ns-sound.c
+msgid "Volume change sound"
+msgstr "Звук изменения громкости"
 
 #: src/ns-sound.c
 msgid "Louder than 100%"

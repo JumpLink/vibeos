@@ -37,17 +37,21 @@ resources = gnome.compile_resources('ns-resources', 'src/vibeos-settings.gresour
 gio = dependency('gio-2.0')
 monitors = static_library('monitors', 'src/ns-monitors.c', dependencies: [gio, cc.find_library('m', required: false)])
 
+# whether there is a vibration motor (what the keyboard and volume sounds default to): the app's and the tests'
+motor = static_library('motor', 'src/ns-motor.c', dependencies: gio)
+
 executable('vibeos-settings',
   'src/main.c', 'src/ns-ui.c', 'src/ns-pages.c', 'src/ns-parallax.c', 'src/ns-net.c', 'src/ns-bt.c',
   'src/ns-sound.c', 'src/ns-apps.c', 'src/ns-shell.c', 'src/ns-pattern.c', 'src/ns-privacy.c', 'src/ns-system.c',
   'src/ns-displays.c', 'src/ns-caps.c', 'src/ns-charge.c', 'src/ns-accounts.c', 'src/ns-accounts-net.c',
   'src/ns-perms.c', 'src/ns-buttons.c',
   resources,
-  link_with: monitors,
+  link_with: [monitors, motor],
   dependencies: deps,
   install: true)
 test('monitors', executable('test-monitors', 'tests/test-monitors.c', link_with: monitors, dependencies: gio,
                             c_args: '-DTEST_DATA="@0@"'.format(meson.current_source_dir() / 'tests')))
+test('motor', executable('test-motor', 'tests/test-motor.c', link_with: motor, dependencies: gio))
 i18n.merge_file(input: 'data/vibeos.Settings.desktop.in', output: 'vibeos.Settings.desktop', type: 'desktop',
                 po_dir: 'po', install: true, install_dir: get_option('datadir') / 'applications')
 install_data('data/vibeos.Settings.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')
