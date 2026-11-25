@@ -57,6 +57,16 @@ const SETTLE_MS = 400;
 
 export const STATE_TYPE = '(ua((ssss)a(siiddada{sv})a{sv})a(iiduba(ssss)a{sv})a{sv})';
 
+// what a turn decided, one line each (the journal, as "vibeos: rotation: ..."), for a panel or a window that ends up
+// the wrong way round
+function turnName(t) {
+    if (t === FOLLOW)
+        return 'follow';
+    if (t === null || t === undefined)
+        return 'none';
+    return typeof t === 'number' ? `t${t}` : t;
+}
+
 const LOCK_KEY = 'orientation-lock';
 // the user's orientation lock while the panel is held with it: 'true' or 'false'
 const SAVED_LOCK = GLib.build_filenamev([GLib.get_user_state_dir(), 'vibeos', 'orientation-lock']);
@@ -153,6 +163,7 @@ export class Rotation {
         this._waits = new Map();        // whenUpright's: id -> its timeout
         this._nextWait = 0;
         this._canInhibit = canInhibitTracking();    // else the orientation lock holds the panel
+        this._lastNote = null;
         // a shell that died holding the orientation lock: the user's own setting back first
         const saved = lockHolders.size ? null : readSavedLock();
         if (saved !== null) {
@@ -331,6 +342,22 @@ export class Rotation {
         this._converge();
     }
 
+    // a decision in the journal; the same line twice in a row only once (a restack syncs again with nothing changed)
+    _note(text) {
+        if (text === this._lastNote)
+            return;
+        this._lastNote = text;
+        console.log(`vibeos: rotation: ${text}`);
+    }
+
+    // the screen as the shell lays it out now, and the sensor's way
+    _where() {
+        const monitors = Main.layoutManager.monitors;
+        const screen = monitors.length === 1 ? `${monitors[0].width}x${monitors[0].height}`
+            : `${monitors.length} monitors`;
+        return `screen ${screen}, sensor ${turnName(this._sensorTransform())}`;
+    }
+
     // one turn at a time, towards whatever is wanted when it ends
     async _converge() {
         if (this._busy) {
@@ -345,7 +372,11 @@ export class Rotation {
                 if (wanted === FOLLOW) {
                     // held sideways for an app: upright first, as the phone lying flat has no way of its own; a
                     // tablet turns the way it is held (mutter turns the panel on the sensor's next change only)
-                    if (this._forced && this._held)
+                    const back = this._forced && this._held;
+                    this._note(`converge: wanted follow, ${back ? `held for an app: back to ${
+                        turnName(TABLET ? this._sensorTransform() : NORMAL)} first` : 'nothing held for an app'
+                    }; ${this._where()}`);
+                    if (back)
                         await this._turnTo(TABLET ? this._sensorTransform() : NORMAL);
                     if (this._again)
                         continue;
@@ -353,7 +384,10 @@ export class Rotation {
                     this._letGo();
                 } else {
                     this._forced = wanted !== NORMAL;
-                    if (wanted !== NORMAL || !this.upright)
+                    const turn = wanted !== NORMAL || !this.upright;
+                    this._note(`converge: wanted ${turnName(wanted)}, ${turn ? 'turning' : 'upright already'}; ${
+                        this._where()}`);
+                    if (turn)
                         await this._turnTo(wanted);
                 }
             } while (this._again && !this._destroyed);
@@ -375,6 +409,7 @@ export class Rotation {
     _letGo() {
         if (!this._held)
             return;
+        this._note(`letGo: the panel back to mutter's tracking; ${this._where()}`);
         this._held = false;
         // mutter claims the sensor again and turns the panel on the next change of its reading only
         this._inhibit(false);
@@ -438,18 +473,29 @@ export class Rotation {
 
     // @target: a transform, null for none, or a tablet's PORTRAIT or LANDSCAPE_ANY
     async _turnTo(target) {
-        if (target === null)
+        if (target === null) {
+            this._note('turnTo: no target (the sensor has no way: lying flat)');
             return;
+        }
         const [serial, monitors, logical] = (await displayConfig('GetCurrentState', null, STATE_TYPE))
             .recursiveUnpack();
-        if (logical.length !== 1 || logical[0][3] === target || !this._held)
+        if (logical.length !== 1 || logical[0][3] === target || !this._held) {
+            this._note(`turnTo: target ${turnName(target)}, no turn: ${logical.length !== 1
+                ? `${logical.length} logical monitors` : !this._held ? 'let go meanwhile'
+                    : `at t${logical[0][3]} already`}`);
             return;
+        }
         const [, , scale, current, , specs] = logical[0];
         const connector = specs[0][0];
         const mode = monitors.find(([spec]) => spec[0] === connector)?.[1].find(m => m[6]['is-current']);
-        if (!mode)
+        if (!mode) {
+            this._note(`turnTo: target ${turnName(target)}, current t${current}, no turn: ${connector} has no ` +
+                'current mode');
             return;
+        }
         const transform = typeof target === 'number' ? target : this._resolve(target, mode, current);
+        this._note(`turnTo: target ${turnName(target)}, current t${current}, mode ${mode[1]}x${mode[2]}: ${
+            transform === current ? 'stays' : `to t${transform}`}; sensor ${turnName(this._sensorTransform())}`);
         if (transform === current)
             return;
         await displayConfig('ApplyMonitorsConfig', new GLib.Variant('(uua(iiduba(ssa{sv}))a{sv})',
