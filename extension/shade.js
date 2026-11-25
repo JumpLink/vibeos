@@ -6,7 +6,9 @@
 // first two rows of tiles and the notification panel, whose top (stackY) comes down from the status bar and is also
 // the edge the quick settings are cut at, so the tiles are uncovered as it passes them. The header and the
 // notifications fade in at the end. The second pull takes the panel down off the screen as it fades.
-// A tablet's: an opaque scrim comes down as a sheet, the quick settings and the panel with it (_applyTablet).
+// A tablet's: a scrim comes down as a sheet, the quick settings and the panel with it (_applyTablet). Either has the
+// blur or, where the device's GPU does not hold the frame rate with it (shadelook.js measures that), an opaque scrim and
+// no blur or zoom; the look changes only while the shade is shut.
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
@@ -23,6 +25,7 @@ import {Color, rgba, SHADE_PANEL, TabletShade} from './palette.js';
 import {clipAbove, QSPanel} from './qs.js';
 import {wholeFrames} from './redraws.js';
 import {shadeLayout} from './shadelayout.js';
+import {ShadeLook} from './shadelook.js';
 import {BAR_HEIGHT} from './statusbar.js';
 import {geometry, HEIGHT, px, SCALE, SCREEN_H} from './units.js';
 
@@ -82,6 +85,8 @@ export const Shade = GObject.registerClass({
             height: monitor.height,
         });
         this._statusBar = statusBar;
+        this._look = new ShadeLook();
+        this._blurLook = this._look.blur;       // the look in use: taken from the measurement while the shade is shut
 
         // behind: the blurred screen, then the shade panel tint (α 0.723 · f); drawn in whole frames while it shows
         // (redraws.js)
@@ -304,7 +309,9 @@ export const Shade = GObject.registerClass({
     _endDrag(cancelled) {
         if (this._scrolling) {
             this._scrolling = false;
-            if (!cancelled)
+            if (cancelled)
+                this._stack.cancelScroll();
+            else
                 this._stack.flingScroll(this._velocity.velocityY);
             return;
         }
@@ -557,10 +564,26 @@ export const Shade = GObject.registerClass({
     }
 
     _apply() {
+        this._chooseLook();
         if (this._layout.phone)
             this._applyPhone();
         else
             this._applyTablet();
+    }
+
+    // The measurement is told whether the shade animates with the blur showing; the look in use follows the verdict
+    // only while the shade is shut and nothing pulls or animates it
+    _chooseLook() {
+        const idle = this._f === 0 && !this._tracking && !this._anim;
+        this._look.update({
+            animating: this._blurLook && this._f > 0 && !this._tracking && !!(this._anim || this._blurAnim),
+            opened: this._f === 1 && !this._anim,
+            closed: idle,
+        });
+        if (idle && this._blurLook !== this._look.blur) {
+            this._blurLook = this._look.blur;
+            this._fitLayout();
+        }
     }
 
     // A phone's: the panel's top comes down from the status bar's bottom to the layout's, then the second pull takes it
@@ -637,6 +660,8 @@ export const Shade = GObject.registerClass({
 
     _animateBlur(blur, velocity) {
         this._isBlurred = blur;
+        if (!this._blurLook)
+            return;
         this._blurSpring.target = blur ? BLUR_MAX : 0;
         this._blurSpring.velocity = velocity;
         if (this._blurAnim)
@@ -662,7 +687,7 @@ export const Shade = GObject.registerClass({
         let radius = expansionRadius * BLUR_INTERACTION + animationRadius * (1 - BLUR_INTERACTION);
         radius = Math.max(radius, blurOfRatio(notificationScrimAlpha(this._q) * f));
         radius *= 1 - this._mirror;
-        const blur = f > 0 ? Math.trunc(radius) : 0;
+        const blur = f > 0 && this._blurLook ? Math.trunc(radius) : 0;
 
         this._blur.enabled = blur > 0;
         wholeFrames(this, blur > 0);
@@ -694,6 +719,7 @@ export const Shade = GObject.registerClass({
     _applyTablet() {
         const f = this._f, q = this._q, m = this._mirror, layout = this._layout;
         this.visible = f > 0 || this._tracking;
+        this._updateDepth(f);
         const content = FAST_OUT_SLOW_IN(clamp((f - TABLET_FADE_FROM) / (TABLET_FADE_TO - TABLET_FADE_FROM)));
         const slide = (f - 1) * H + this._over;
 
@@ -704,7 +730,7 @@ export const Shade = GObject.registerClass({
         const edge = Math.max(f * this.height + px(this._over), px(header.height));
         this.set_clip(0, 0, this.width, Math.min(edge, this.height));
         const scrim = notificationScrimAlpha(f);
-        this._tint.opacity = Math.round(255 * (1 - m));
+        this._tint.opacity = Math.round(255 * (1 - m) * (this._blurLook ? f : 1));
         this._qs.layoutFor({q, contentAlpha: content, mirror: m, slide});
         // the header draws the status bar's clock and icons at their places while the shade shows, the bar's own
         // hidden under them; the rest of the bar fades as the scrim comes
@@ -722,6 +748,7 @@ export const Shade = GObject.registerClass({
         clipAbove(this._scrim, px(header.height));
         this._stack.layoutFor({stackY: top, ratio: lerp(STACK_START_FRACTION, 1, f), alpha,
             endShift: panel.roundBottom ? slide : 0, clipTop: header.height});
+        this._applyBlur();
         this.emit('expansion-changed');
     }
 
@@ -744,15 +771,16 @@ export const Shade = GObject.registerClass({
             this._q = 0;
         const {panel} = layout;
         const r = px(panel.radius).toFixed(2);
+        // over the blurred screen: the dim; without the blur, an opaque layer. The notification panel is half opaque
+        // over either
+        this._tint.style = this._blurLook
+            ? `background-color: ${rgba(SHADE_PANEL[0].map(Math.round), SHADE_PANEL[1])};`
+            : `background-color: ${rgba(TabletShade.scrim)};`;
         if (layout.phone) {
-            // translucent over the blurred screen: the dim, and a half opaque panel
-            this._tint.style = `background-color: ${rgba(SHADE_PANEL[0].map(Math.round), SHADE_PANEL[1])};`;
             this._scrim.style = `background-color: ${rgba(Color.notificationScrim, 0.5)}; ` +
                 `border-radius: ${r}px ${r}px 0 0;`;
         } else {
-            // the panel as long as its notifications (stackPanelChanged), every corner round, translucent as a
-            // phone's
-            this._tint.style = `background-color: ${rgba(TabletShade.scrim)};`;
+            // the panel as long as its notifications (stackPanelChanged), every corner round
             this._scrim.style = `background-color: ${rgba(Color.notificationScrim, 0.5)}; border-radius: ${r}px;`;
             this._qs.remove_clip();
         }
@@ -761,7 +789,8 @@ export const Shade = GObject.registerClass({
         this._scrim.set_size(px(panel.width), px(panel.height + (panel.roundBottom ? 0 : H)));
         this._qs.setLayout(layout);
         this._syncBarLine();
-        this._stack.setFrame(layout.rows);
+        // the cards are translucent over the blur, opaque without it
+        this._stack.setFrame({...layout.rows, translucent: this._blurLook});
         this._queueApply();
     }
 
@@ -781,6 +810,7 @@ export const Shade = GObject.registerClass({
     _onDestroy() {
         geometry.disconnectObject(this);
         wholeFrames(this, false);
+        this._look.destroy();
         this._stopAnimation();
         this._blurAnim?.stop();
         this._mirrorAnim?.stop();

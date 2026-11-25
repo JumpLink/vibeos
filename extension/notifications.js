@@ -17,9 +17,10 @@ import {appCircle, sourceApp} from './appicon.js';
 import {VectorIcon} from './icons.js';
 import {_, pgettext} from './l10n.js';
 import {animate, animateSpring, Animator, bezier, clamp, FAST_OUT_LINEAR_IN, FAST_OUT_SLOW_IN, flingDismissing,
-    lerp, splineFling, Spring, VelocityTracker} from './motion.js';
+    lerp, Spring, VelocityTracker} from './motion.js';
 import {magnetic} from './magnetic.js';
 import {RoundRect} from './roundrect.js';
+import {SpongyList, stretchUnmap} from './spongy.js';
 import {Color, cogl, font, rgba, SurfaceEffect, TabletShade} from './palette.js';
 import {openSettings} from './settings.js';
 import {symbolicIcon} from './statusbar.js';
@@ -34,7 +35,6 @@ const TOP_PADDING = 48;                 // between the scrim top and the first r
 const DISMISS_X = 1032;                 // a dismissed row leaves to ±(W − side padding)
 const BOTTOM_INSET = 48;                // the stack scrolls to end above the navigation handle
 const EMPTY_ROW = 64;                   // a tablet's short panel for "No notifications": this, the inset above and below
-const MAX_FLING_VELOCITY = 24000;       // px/s
 
 // --- a row (the 2025 templates); y relative to the row's top
 export const MIN_H = 216;               // a collapsed row
@@ -995,6 +995,8 @@ class NotificationStack extends St.Widget {
         this._stackY = 0;
         this._ratio = 1;
         this._scroll = 0;
+        this._list = new SpongyList();  // the scroll's physics: the stretch at the ends, the fling, the spring back
+        this._stretch = {top: 0, bottom: 0};
         this._clearing = false;
         this._frame = null;             // the notification panel (setFrame); the screen less its margins before
         this._rowColors = {};           // ... and its cards' colours
@@ -1116,45 +1118,79 @@ class NotificationStack extends St.Widget {
         const {clipX, clipW} = this._bounds;
         if (x !== null && clipX !== null && (x < clipX || x > clipX + clipW))
             return false;
+        // a stretch still showing is caught by the touch
+        if (this._list.stretched)
+            return true;
         return up ? this._scroll < this._maxScroll : this._scroll > 0;
     }
 
+    // The shade hands a drag over once it is past the touch slop: from here the stack follows the finger, stretches at
+    // an end it is dragged past, and on release flings with the finger's speed or springs back (spongy.js)
     beginScroll() {
-        this._scrollAnim?.stop();
-        this._scrollAnim = null;
-        this._scrollStart = this._scroll;
+        this.stopScroll();
+        this._syncRange();
+        this._list.begin(0, this._scroll, this._now());
     }
 
+    // the finger @dy px from where it went down (down positive)
     dragScroll(dy) {
-        this._setScroll(this._scrollStart - dy);
+        this._syncRange();
+        this._list.move(dy, this._now());
+        this._showList();
     }
 
-    // a spline fling with the finger's velocity; it stops at the ends
+    // the finger let go at @velocity px/s (down positive)
     flingScroll(velocity) {
-        const {distance, duration, position} = splineFling(-clamp(velocity, -MAX_FLING_VELOCITY, MAX_FLING_VELOCITY));
-        const from = this._scroll, max = this._maxScroll;
-        if (duration <= 0)
-            return;
-        this._scrollAnim = new Animator(this, (dt, elapsed) => {
-            const t = Math.min(elapsed * 1000 / duration, 1);
-            this._setScroll(from + distance * position(t));
-            return t < 1 && this._scroll > 0 && this._scroll < max;
-        }, () => {
-            this._scrollAnim = null;
-        });
+        this._syncRange();
+        this._list.end(velocity, this._now());
+        this._showList();
+    }
+
+    // the touch was taken away: a stretch goes back
+    cancelScroll() {
+        this._list.cancel(this._now());
+        this._showList();
     }
 
     stopScroll() {
         this._scrollAnim?.stop();
         this._scrollAnim = null;
+        this._list.fling = null;
+        this._list.top.finish();
+        this._list.bottom.finish();
+        this._list.down_ = false;
+        this._stretch = {top: 0, bottom: 0};
     }
 
-    _setScroll(scroll) {
-        scroll = clamp(scroll, 0, this._maxScroll);
-        if (scroll === this._scroll)
-            return;
-        this._scroll = scroll;
+    _now() {
+        return GLib.get_monotonic_time() / 1000;
+    }
+
+    // the stack as it is laid out now: how far it scrolls, and the height of the panel it scrolls in
+    _syncRange() {
+        const bounds = this._bounds;
+        this._list.setRange(Math.max(bounds.end - this._stackY, 1), this._maxScroll);
+    }
+
+    // the list's frame to the stack: where it scrolled to and how stretched it is, and the frames to come
+    _showList() {
+        this._syncRange();
+        const {top, bottom, animating} = this._list.frame(this._now());
+        this._scroll = this._list.offset;
+        this._stretch = {top, bottom};
         this._place();
+        if (animating && !this._scrollAnim) {
+            this._scrollAnim = new Animator(this, () => {
+                this._syncRange();
+                const f = this._list.frame(this._now());
+                this._scroll = this._list.offset;
+                this._stretch = {top: f.top, bottom: f.bottom};
+                this._place();
+                return f.animating;
+            }, () => {
+                this._scrollAnim = null;
+            });
+        }
     }
 
     // --- the notifications
@@ -1390,10 +1426,28 @@ class NotificationStack extends St.Widget {
             this.remove_clip();
         }
         const top = this._stackY + bounds.top - this._scroll;
+        // a stretch (spongy.js): what is in the panel is drawn stretched from the edge it is pulled at, the panel
+        // itself stays
+        const amount = this._stretch.top || this._stretch.bottom;
+        const dim = Math.max(bounds.end - this._stackY, 1);
         for (const [actor, state] of this._layout) {
             const x = actor instanceof Row ? bounds.left : bounds.left - SIDE;
-            actor.set_position(px(x), px(top + this._ratio * state.offset));
-            actor.setVisibleHeight(state.h * this._ratio);
+            const h = state.h * this._ratio;
+            let y = top + this._ratio * state.offset, k = 1;
+            if (amount !== 0) {
+                const clampPos = p => Math.min(Math.max(p, -dim), 2 * dim);
+                const u0 = stretchUnmap(clampPos(y - this._stackY), amount, dim);
+                const u1 = stretchUnmap(clampPos(y - this._stackY + h), amount, dim);
+                if (h > 0)
+                    k = (u1 - u0) / h;
+                y = this._stackY + u0;
+            }
+            actor.set_position(px(x), px(y));
+            if (actor.scale_y !== k) {
+                actor.set_pivot_point(0, 0);
+                actor.set_scale(1, k);
+            }
+            actor.setVisibleHeight(h);
             actor.opacity = Math.round(255 * state.alpha);
         }
         // "No notifications", centred in the space under the QQS, or in a tablet's short panel
@@ -1493,6 +1547,7 @@ class NotificationStack extends St.Widget {
             for (const row of this._rows.values())
                 row.resetSwipe();
             this.stopScroll();
+            this._list.offset = 0;
             this._scroll = 0;
             this._relayout(false);
         }

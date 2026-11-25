@@ -137,7 +137,7 @@ export function splineFling(velocity, density = 3) {
     const friction = 0.015 * physicalCoeff;             // the scroll friction
     const v = Math.abs(velocity);
     if (v === 0)
-        return {distance: 0, duration: 0, position: () => 1};
+        return {distance: 0, duration: 0, position: () => 1, speed: () => 0};
     const l = Math.log(INFLEXION * v / friction);
     const distance = Math.sign(velocity) * friction * Math.exp(DECELERATION_RATE / (DECELERATION_RATE - 1) * l);
     const duration = 1000 * Math.exp(l / (DECELERATION_RATE - 1));
@@ -149,7 +149,14 @@ export function splineFling(velocity, density = 3) {
         const d0 = SPLINE_POSITION[i], d1 = SPLINE_POSITION[i + 1];
         return d0 + (t - t0) * (d1 - d0) * SPLINE_SAMPLES;
     };
-    return {distance, duration, position};
+    // the speed at t (0..1), px/s: the curve's slope
+    const speed = t => {
+        if (t >= 1)
+            return 0;
+        const i = Math.floor(SPLINE_SAMPLES * t);
+        return (SPLINE_POSITION[i + 1] - SPLINE_POSITION[i]) * SPLINE_SAMPLES * distance / duration * 1000;
+    };
+    return {distance, duration, position, speed};
 }
 
 // A damped spring: F = -k x - 2 zeta sqrt(k) v, mass 1. Steps exactly (closed form) over any dt.
