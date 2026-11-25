@@ -1,0 +1,237 @@
+Description: sensors that are found and opened while D-Bus calls come in
+ iio-sensor-proxy takes its bus name, then finds and opens its sensors. The
+ SSC drivers (a Qualcomm sensor core, through libssc) wait for the sensor
+ core by running the main loop, so D-Bus calls come in while the sensors are
+ found and opened:
+ .
+  - a claim of a sensor that was found but not open yet started polling on a
+    device that was not there;
+  - a claim made before the sensor was found never started it once it was;
+  - the calls waiting for a sensor's start went into arrays not made yet;
+  - a client that read HasAccelerometer (mutter) or HasCompass before the
+    sensor was there never learned of it: the change went only to the clients
+    that had claimed a sensor, and such a client claims only once it is true.
+ .
+ The arrays are now made with the clients' tables, before any call can come
+ in. A claim of a sensor being opened waits for it, a sensor claimed while it
+ was found or opened starts once it is open, and a sensor's Has property goes
+ to every client on the bus whenever it changes (found, opened, gone). The
+ readings still go only to the clients that claimed. A sensor removed, or the
+ daemon stopped, while a sensor was still being opened no longer closes a
+ device that was never opened.
+ .
+ tests/integration-test.py: a light sensor that comes and goes is announced
+ to a client that claimed nothing.
+Author: pulpoff <pashkovsky@gmail.com>
+Forwarded: no
+Last-Update: 2026-11-25
+---
+diff --git a/src/iio-sensor-proxy.c b/src/iio-sensor-proxy.c
+index 9c7e8cd..6700e3a 100644
+--- a/src/iio-sensor-proxy.c
++++ b/src/iio-sensor-proxy.c
+@@ -114,6 +114,8 @@ static void sensor_changes (GUdevClient *client,
+ 			    gchar       *action,
+ 			    GUdevDevice *device,
+ 			    SensorData  *data);
++static void maybe_notify_sensor_startup_finished (SensorData *data,
++						  DriverType  type);
+ 
+ static gboolean
+ driver_type_exists (SensorData *data,
+@@ -373,6 +375,45 @@ send_dbus_event (SensorData     *data,
+ 	g_hash_table_destroy (ht);
+ }
+ 
++/* The sensor's Has property, to every client on the bus. send_dbus_event goes only to the clients that claimed a
++ * sensor, and a client that has claimed nothing yet (mutter before it claims the accelerometer, an app before it
++ * claims the compass) reads HasAccelerometer or HasCompass once and then follows PropertiesChanged: a sensor found
++ * after that read, or opened only after it, would never reach it. The readings still go only to the claimants. */
++static void
++send_has_sensor_broadcast (SensorData *data,
++			   DriverType  driver_type)
++{
++	GVariantBuilder props_builder;
++	const char *name;
++	gboolean compass = (driver_type == DRIVER_TYPE_COMPASS);
++
++	if (driver_type == DRIVER_TYPE_ACCEL)
++		name = "HasAccelerometer";
++	else if (driver_type == DRIVER_TYPE_LIGHT)
++		name = "HasAmbientLight";
++	else if (driver_type == DRIVER_TYPE_PROXIMITY)
++		name = "HasProximity";
++	else if (driver_type == DRIVER_TYPE_COMPASS)
++		name = "HasCompass";
++	else
++		g_assert_not_reached ();
++
++	g_variant_builder_init (&props_builder, G_VARIANT_TYPE ("a{sv}"));
++	g_variant_builder_add (&props_builder, "{sv}", name,
++			       g_variant_new_boolean (driver_type_exists (data, driver_type)));
++
++	g_dbus_connection_emit_signal (data->connection,
++				       NULL,
++				       compass ? SENSOR_PROXY_COMPASS_DBUS_PATH : SENSOR_PROXY_DBUS_PATH,
++				       "org.freedesktop.DBus.Properties",
++				       "PropertiesChanged",
++				       g_variant_new ("(s@a{sv}@as)",
++						      compass ? SENSOR_PROXY_COMPASS_IFACE_NAME : SENSOR_PROXY_IFACE_NAME,
++						      g_variant_builder_end (&props_builder),
++						      g_variant_new_strv (NULL, 0)),
++				       NULL);
++}
++
+ static void
+ send_driver_changed_dbus_event (SensorData   *data,
+ 				DriverType    driver_type)
+@@ -387,6 +428,8 @@ send_driver_changed_dbus_event (SensorData   *data,
+ 		send_dbus_event (data, PROP_HAS_COMPASS);
+ 	else
+ 		g_assert_not_reached ();
++
++	send_has_sensor_broadcast (data, driver_type);
+ }
+ 
+ static gboolean
+@@ -424,6 +467,7 @@ client_release (SensorData            *data,
+ 	g_hash_table_remove (ht, sender);
+ 
+ 	if (driver_type_exists (data, driver_type) &&
++	    DEVICE_FOR_TYPE(driver_type) != NULL &&
+ 	    g_hash_table_size (ht) == 0) {
+ 		SensorDevice *sensor_device = DEVICE_FOR_TYPE(driver_type);
+ 		driver_set_polling (sensor_device, FALSE);
+@@ -522,7 +566,15 @@ handle_generic_method_call (SensorData            *data,
+ 							   NULL);
+ 		g_hash_table_insert (ht, g_strdup (sender), GUINT_TO_POINTER (watch_id));
+ 
+-		if (driver_type_exists (data, driver_type)) {
++		if (driver_type_exists (data, driver_type) &&
++		    DEVICE_FOR_TYPE(driver_type) == NULL) {
++			/* Found, and still being opened: the SSC drivers wait for the sensor core (libssc's
++			 * _sync calls) by running the main loop, which takes this call meanwhile.
++			 * name_acquired_handler() starts the sensor once it is open, and the call returns
++			 * with its first reading. */
++			g_ptr_array_add (data->sensor_startup_dbus_invocations_delayed[driver_type],
++					 invocation);
++		} else if (driver_type_exists (data, driver_type)) {
+ 			SensorDevice *sensor_device = DEVICE_FOR_TYPE(driver_type);
+ 
+ 			/* No other clients for this sensor? Start it */
+@@ -742,8 +794,12 @@ bus_acquired_handler (GDBusConnection *connection,
+ 	/* Initialize DBus clients hash table before DBus is fully exposed */
+ 	data->client = g_udev_client_new (subsystems);
+ 
+-	for (guint i = 0; i < NUM_SENSOR_TYPES; i++)
++	/* the calls waiting for a sensor's start too: find_sensors() and driver_open() of the SSC drivers take
++	 * calls while they wait for the sensor core */
++	for (guint i = 0; i < NUM_SENSOR_TYPES; i++) {
+ 		data->clients[i] = create_clients_hash_table ();
++		data->sensor_startup_dbus_invocations_delayed[i] = g_ptr_array_new ();
++	}
+ 
+ 	data->connection = g_object_ref (connection);
+ }
+@@ -765,8 +821,6 @@ name_acquired_handler (GDBusConnection *connection,
+ 	for (i = 0; i < NUM_SENSOR_TYPES; i++) {
+ 		SensorDevice *sensor_device;
+ 
+-		data->sensor_startup_dbus_invocations_delayed[i] = g_ptr_array_new ();
+-
+ 		if (!driver_type_exists (data, i))
+ 			continue;
+ 
+@@ -775,10 +829,24 @@ name_acquired_handler (GDBusConnection *connection,
+ 		if (!sensor_device) {
+ 			DRIVER_FOR_TYPE(i) = NULL;
+ 			g_clear_object (&UDEV_DEVICE_FOR_TYPE(i));
++			/* the claims made while it was opened return, as for a sensor there is not */
++			maybe_notify_sensor_startup_finished (data, i);
++			send_has_sensor_broadcast (data, i);
+ 			continue;
+ 		}
+ 
+ 		DEVICE_FOR_TYPE(i) = sensor_device;
++
++		if (g_hash_table_size (data->clients[i]) > 0) {
++			/* claimed while it was found or opened: started now, as a hotplugged sensor
++			 * that is claimed already, and announced with its first reading */
++			data->sensor_startup_dbus_event_delayed[i] = TRUE;
++			driver_set_polling (sensor_device, TRUE);
++		} else {
++			/* a claim whose client let go before the sensor was open returns now */
++			maybe_notify_sensor_startup_finished (data, i);
++			send_has_sensor_broadcast (data, i);
++		}
+ 	}
+ 
+ 	if (!any_sensors_left (data))
+@@ -1006,7 +1074,7 @@ free_sensor_data (SensorData *data)
+ 	}
+ 
+ 	for (i = 0; i < NUM_SENSOR_TYPES; i++) {
+-		if (driver_type_exists (data, i))
++		if (driver_type_exists (data, i) && DEVICE_FOR_TYPE(i) != NULL)
+ 			driver_close (DEVICE_FOR_TYPE(i));
+ 		g_clear_object (&UDEV_DEVICE_FOR_TYPE(i));
+ 		g_clear_pointer (&data->clients[i], g_hash_table_unref);
+@@ -1045,7 +1113,8 @@ sensor_changes (GUdevClient *client,
+ 					 g_udev_device_get_sysfs_path (dev));
+ 
+ 				g_clear_object (&UDEV_DEVICE_FOR_TYPE(i));
+-				driver_close (DEVICE_FOR_TYPE(i));
++				if (DEVICE_FOR_TYPE(i) != NULL)
++					driver_close (DEVICE_FOR_TYPE(i));
+ 				DEVICE_FOR_TYPE(i) = NULL;
+ 				DRIVER_FOR_TYPE(i) = NULL;
+ 
+diff --git a/tests/integration-test.py b/tests/integration-test.py
+index 23bf623..aa2deab 100755
+--- a/tests/integration-test.py
++++ b/tests/integration-test.py
+@@ -433,6 +433,44 @@ class Tests(dbusmock.DBusTestCase):
+ 
+         self.stop_daemon()
+ 
++    def test_hotplug_has_to_unclaimed_client(self):
++        '''a sensor that comes or goes is announced to a client that claimed nothing'''
++        # the fake compass keeps the daemon running; the light sensor comes and goes
++        self.testbed.add_device('input', 'fake-compass', None,
++            [],
++            ['NAME', '"Power Button"']
++        )
++        env = os.environ.copy()
++        env['FAKE_COMPASS'] = '1'
++        self.start_daemon(env)
++        self.assertEqual(self.get_dbus_property('HasAmbientLight'), False)
++
++        # this client follows PropertiesChanged, as mutter does before it claims the accelerometer
++        has_light = []
++        def on_properties_changed(connection, sender, path, iface, signal, params):
++            changed = params.unpack()[1]
++            if 'HasAmbientLight' in changed:
++                has_light.append(changed['HasAmbientLight'])
++        sub = self.dbus.signal_subscribe(SP, 'org.freedesktop.DBus.Properties', 'PropertiesChanged',
++                                         SP_PATH, None, Gio.DBusSignalFlags.NONE, on_properties_changed)
++
++        iio = self.testbed.add_device('iio', 'iio-als', None,
++            ['integration_time', '1',
++             'in_illuminance_input', '10',
++             'in_illuminance_scale', '1.0'],
++            ['NAME', '"IIO Light Sensor"',
++             'IIO_SENSOR_PROXY_TYPE', 'iio-poll-als']
++        )
++        self.assertEventually(lambda: has_light == [True])
++        self.assertEqual(self.get_dbus_property('HasAmbientLight'), True)
++
++        self.testbed.uevent(iio, 'remove')
++        self.assertEventually(lambda: has_light == [True, False])
++        self.assertEqual(self.get_dbus_property('HasAmbientLight'), False)
++
++        self.dbus.signal_unsubscribe(sub)
++        self.stop_daemon()
++
+     def test_iio_poll_proximity(self):
+         '''iio poll proximity'''
+         prox = self.testbed.add_device('iio', 'iio-proximity', None,
