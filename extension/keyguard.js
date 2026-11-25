@@ -34,7 +34,7 @@ import {chargingText} from './state.js';
 import {notificationIcon, SystemIcons, systemEnd} from './statusbar.js';
 import {AndroidText} from './text.js';
 import {wholeFrames} from './redraws.js';
-import {restPicture} from './restpicture.js';
+import {lockWallpaper} from './restpicture.js';
 import {DENSITY, geometry, HEIGHT, landscape, px, screenPixels, SCALE, SCREEN_SCALE, SCREEN_W, TABLET, WIDTH} from
     './units.js';
 
@@ -436,11 +436,12 @@ export class Keyguard extends Signals.EventEmitter {
         this.actor.connect('event', (a, event) => this._onEvent(event));
     }
 
-    // The wallpaper loads off the main loop (loadCover()); the one before stays until it is in. wallpaperLoaded
-    // resolves once it is on, or once it failed and the CSS background took its place. It is the home's at rest, as the
-    // launcher makes it for this shape of the screen (restpicture.js), and until that is made the picture itself
-    // (_loadWallpaper()). Each shape of the screen keeps the launcher's while the picture stays: a turned tablet has
-    // its other one at once. @changed: another picture, every one made again.
+    // The wallpaper loads off the main loop (loadCover()); the one before stays until it is in. It is the home's at
+    // rest, as the launcher makes it for this shape of the screen, and until that is made the picture itself
+    // (restpicture.js lockWallpaper()). wallpaperLoaded resolves once the first of them is on, or once it failed and
+    // the CSS background took its place, and after 2 s at the latest (FIRST_PICTURE_MS): never later for the
+    // launcher. Each shape of the screen keeps the launcher's while the picture stays: a turned tablet has its other
+    // one at once. @changed: another picture, every one made again.
     _syncWallpaper(changed = false) {
         const [w, h] = panelPixels();
         const shape = `${w}x${h}`;
@@ -467,70 +468,25 @@ export class Keyguard extends Signals.EventEmitter {
         }
         const cancellable = new Gio.Cancellable();
         this._wallpaperLoad = cancellable;
-        let loaded;
-        this.wallpaperLoaded = new Promise(resolve => (loaded = resolve));
-        this._loadWallpaper(uri, w, h, cancellable, loaded).catch(e => {
-            if (!cancellable.is_cancelled())
+        const {first, done} = lockWallpaper({
+            launcher: LAUNCHER[0], path: Gio.File.new_for_uri(uri).get_path(), uri, w, h, density: DENSITY,
+            turned: TABLET, cancellable,
+            load: picture => loadCover(picture, w, h, cancellable),
+            show: (content, rest) => {
+                if (rest)
+                    this._covers.set(shape, content);
+                this._setWallpaper(content, null);
+            },
+            fail: e => {
                 logError(e, `vibeos: the lock screen's wallpaper ${uri}`);
-        }).finally(() => {
-            loaded();
+                this._setWallpaper(null, `background-image: url("${uri}"); background-size: cover;`);
+            },
+        });
+        this.wallpaperLoaded = first;
+        done.finally(() => {
             if (this._wallpaperLoad === cancellable)
                 this._wallpaperLoad = null;
         });
-    }
-
-    // The launcher's picture of the wallpaper at rest on this w x h screen when it is made already, else the picture
-    // itself covering the screen until it is, and then the launcher's. @loaded: called once the first of them is on
-    // (or failed, and the CSS background took its place). Only the launcher's is kept for the shape (_covers).
-    async _loadWallpaper(uri, w, h, cancellable, loaded) {
-        const path = Gio.File.new_for_uri(uri).get_path();
-        const rest = path ? await restPicture(LAUNCHER[0], path, w, h, DENSITY, cancellable) : null;
-        if (cancellable.is_cancelled())
-            return;
-        const restCover = async () => {
-            try {
-                const content = await loadCover(rest.uri, w, h, cancellable);
-                if (cancellable.is_cancelled())
-                    return false;
-                this._covers.set(`${w}x${h}`, content);
-                this._setWallpaper(content, null);
-                loaded();
-                return true;
-            } catch (e) {
-                if (!cancellable.is_cancelled())
-                    logError(e, `vibeos: the lock screen's picture of ${uri}`);
-                return false;
-            }
-        };
-        if (rest?.made === true && await restCover()) {
-            await this._makeTurned(path, w, h, cancellable);
-            return;
-        }
-        if (cancellable.is_cancelled())
-            return;
-        try {
-            const content = await loadCover(uri, w, h, cancellable);
-            if (cancellable.is_cancelled())
-                return;
-            this._setWallpaper(content, null);
-        } catch (e) {
-            if (cancellable.is_cancelled())
-                return;
-            logError(e, `vibeos: the lock screen's wallpaper ${uri}`);
-            this._setWallpaper(null, `background-image: url("${uri}"); background-size: cover;`);
-        }
-        loaded();
-        if (rest && rest.made !== true && await rest.made && !cancellable.is_cancelled() && await restCover())
-            await this._makeTurned(path, w, h, cancellable);
-    }
-
-    // a tablet's other shape made too (turned), so that turning it shows the launcher's picture at once
-    async _makeTurned(path, w, h, cancellable) {
-        if (!TABLET || w === h || cancellable.is_cancelled())
-            return;
-        const rest = await restPicture(LAUNCHER[0], path, h, w, DENSITY, cancellable);
-        if (rest.made !== true)
-            await rest.made;
     }
 
     // @content: the St.ImageContent loadCover() made, or null for @style, CSS (black, or the picture as St loads it)
