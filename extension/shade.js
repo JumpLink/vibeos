@@ -309,7 +309,9 @@ export const Shade = GObject.registerClass({
     _endDrag(cancelled) {
         if (this._scrolling) {
             this._scrolling = false;
-            if (!cancelled)
+            if (cancelled)
+                this._stack.cancelScroll();
+            else
                 this._stack.flingScroll(this._velocity.velocityY);
             return;
         }
