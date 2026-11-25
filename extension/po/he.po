@@ -1,0 +1,506 @@
+# Hebrew translations of vibeos-shell.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-shell\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Hebrew\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
+
+# android: SystemUI controls_pin_instructions (several translations, short)
+#: bouncer.js
+msgid "Enter PIN"
+msgstr "יש להזין קוד אימות"
+
+# android: Keyguard kg_wrong_pin_try_again
+#: bouncer.js
+msgid "Wrong PIN. Try again."
+msgstr "קוד אימות שגוי. יש לנסות שוב."
+
+#: bouncer.js
+msgid "Too many attempts with incorrect PIN"
+msgstr "הקלדת קוד אימות שגוי יותר מדי פעמים"
+
+# android: Keyguard kg_prompt_reason_restart_pin
+#: bouncer.js
+msgid "PIN is required after device restarts"
+msgstr "נדרש קוד אימות אחרי שהמכשיר מופעל מחדש"
+
+# android: Keyguard keyguard_enter_pattern (short)
+#: bouncer.js
+msgid "Draw pattern"
+msgstr "צריך לצייר את קו פתיחת הנעילה"
+
+# android: Keyguard kg_wrong_pattern_try_again
+#: bouncer.js
+msgid "Wrong pattern. Try again."
+msgstr "קו ביטול נעילה שגוי. יש לנסות שוב."
+
+# android: Keyguard kg_primary_auth_locked_out_pattern
+#: bouncer.js
+msgid "Too many attempts with incorrect pattern"
+msgstr "ציירת קו פתיחת נעילה שגוי יותר מדי פעמים"
+
+# android: Keyguard kg_prompt_reason_restart_pattern
+#: bouncer.js
+msgid "Pattern is required after device restarts"
+msgstr "נדרש קו ביטול נעילה אחרי שהמכשיר מופעל מחדש"
+
+# android: Keyguard kg_too_many_failed_attempts_countdown
+#: bouncer.js
+#, javascript-format
+msgid "Try again in %d second."
+msgid_plural "Try again in %d seconds."
+msgstr[0] "אפשר לנסות שוב בעוד שנייה אחת."
+msgstr[1] "אפשר לנסות שוב בעוד %d שניות."
+msgstr[2] "אפשר לנסות שוב בעוד %d שניות."
+
+# android: Framework emergency_calls_only
+#. the mobile network, then (the owner's addition) the Wi-Fi network, joined with " | " as two SIMs' names
+#. are
+#: keyguard.js
+msgid "Emergency calls only"
+msgstr "שיחות חירום בלבד"
+
+#: keyguard.js qs.js
+msgid "No SIM"
+msgstr "אין כרטיס SIM"
+
+# android: Keyguard keyguard_charged (short)
+#: keyguard.js
+msgid "Charged"
+msgstr "הסוללה טעונה"
+
+#. PAM could not run: no attempt counted
+#: keyguard.js
+msgid "Could not check"
+msgstr "לא ניתן היה לבדוק"
+
+#: keyguard.js
+msgid "Try again"
+msgstr "יש לנסות שוב"
+
+#. TRANSLATORS: an app that failed to start; %s is its name
+#: launch.js
+#, javascript-format
+msgid "%s can't open"
+msgstr "לא ניתן לפתוח את %s"
+
+#: launch.js
+msgid "It's turned off on this phone"
+msgstr "האפליקציה מושבתת בטלפון הזה"
+
+# android: Framework now_string_shortest (short)
+#. TRANSLATORS: how long ago a notification came, shortest: under a minute
+#: notifications.js
+msgid "now"
+msgstr "עכשיו"
+
+# android: Framework duration_minutes_shortest
+#. TRANSLATORS: how long ago a notification came, shortest: %d minutes
+#: notifications.js
+#, javascript-format
+msgid "%dm"
+msgstr "%d דק‘"
+
+# android: Framework duration_hours_shortest
+#. TRANSLATORS: how long ago a notification came, shortest: %d hours
+#: notifications.js
+#, javascript-format
+msgid "%dh"
+msgstr "%d שע‘"
+
+# android: Framework duration_days_shortest
+#. TRANSLATORS: how long ago a notification came, shortest: %d days
+#: notifications.js
+#, javascript-format
+msgid "%dd"
+msgstr "%d י‘"
+
+# android: Framework duration_years_shortest
+#. TRANSLATORS: how long ago a notification came, shortest: %d years
+#: notifications.js
+#, javascript-format
+msgid "%dy"
+msgstr "%d שנים"
+
+# android: Framework expand_button_content_description_collapsed (several translations, short)
+#: notifications.js
+msgid "Expand"
+msgstr "הרחבה"
+
+# android: SystemUI privacy_dialog_collapse_action (several translations, short)
+#: notifications.js
+msgid "Collapse"
+msgstr "כיווץ"
+
+# android: SystemUI notification_section_header_gentle (several translations, short)
+#. TRANSLATORS: the heading of the low-priority notifications in the shade
+#: notifications.js
+msgid "Silent"
+msgstr "מצב שקט"
+
+# android: SystemUI notification_history_button_description
+#: notifications.js
+msgid "Notification history"
+msgstr "היסטוריית ההתראות"
+
+# android: SystemUI clear_all_notifications_text (several translations, short)
+#: notifications.js
+msgctxt "notifications"
+msgid "Clear all"
+msgstr "מחיקת כל ההתראות"
+
+# android: SystemUI notification_settings_button_description
+#: notifications.js
+msgid "Notification settings"
+msgstr "הגדרות של התראות"
+
+# android: SystemUI empty_shade_text
+#: notifications.js
+msgid "No notifications"
+msgstr "אין התראות"
+
+#. TRANSLATORS: an app records sound for the first time and asks for the microphone; %s is the app's name
+#: pairdialog.js
+#, javascript-format
+msgid "Allow %s to use the microphone?"
+msgstr "לאשר לאפליקציה %s להשתמש במיקרופון?"
+
+#. TRANSLATORS: a Bluetooth device asks to connect to one of the phone's services; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Allow %s to connect?"
+msgstr "לאשר למכשיר %s להתחבר?"
+
+#. TRANSLATORS: a Bluetooth device asks to pair; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Pair with %s?"
+msgstr "לבצע התאמה עם %s?"
+
+# android: Settings bluetooth_pin_values_hint
+#: pairdialog.js
+msgid "Usually 0000 or 1234"
+msgstr "בדרך כלל 0000 או 1234"
+
+# android: SystemUI controls_pin_use_alphanumeric (several translations)
+#: pairdialog.js
+msgid "PIN contains letters or symbols"
+msgstr "קוד האימות מכיל אותיות או סמלים"
+
+#: pairdialog.js
+msgid "You may also need to type this PIN on the other device."
+msgstr "ייתכן שיהיה צורך להקליד את קוד הגישה הזה גם במכשיר השני."
+
+# android: SystemUI usb_device_dialog_cancel_button (several translations, short)
+#. authorize: a device pairing without a code
+#: pairdialog.js
+msgid "Cancel"
+msgstr "ביטול"
+
+# android: SettingsLib bluetooth_pairing_accept (short)
+#: pairdialog.js
+msgid "Pair"
+msgstr "התאמה"
+
+#. TRANSLATORS: the passkey (six digits) to type here, as the other device shows it
+#: pairdialog.js
+msgid "Type the passkey shown on the other device."
+msgstr "יש להקליד את מפתח הגישה שמוצג במכשיר השני."
+
+#: pairdialog.js
+msgid "Bluetooth pairing code"
+msgstr "קוד התאמה של Bluetooth"
+
+#. TRANSLATORS: over the code shown here, for a keyboard (the other device) to type
+#: pairdialog.js
+msgid "Type this code on the other device, then press Return or Enter."
+msgstr "יש להקליד את הקוד הזה במכשיר השני וללחוץ על Return או Enter."
+
+# android: SystemUI log_access_confirmation_deny (several translations, short)
+#: pairdialog.js
+msgid "Don't allow"
+msgstr "אין אישור"
+
+#: pairdialog.js
+msgid "Allow"
+msgstr "אישור"
+
+#. TRANSLATORS: the lock screen's line while a Bluetooth device waits to connect; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Unlock to let %s connect"
+msgstr "יש לבטל את הנעילה כדי לאפשר למכשיר %s להתחבר"
+
+#. TRANSLATORS: the lock screen's line while a Bluetooth device waits to pair; %s is its name
+#: pairdialog.js
+#, javascript-format
+msgid "Unlock to pair with %s"
+msgstr "יש לבטל את הנעילה כדי לבצע התאמה עם %s"
+
+# android: SettingsLib bluetooth_pairing_error_message (adapted)
+#. TRANSLATORS: a notification's title when a pairing timed out; %s is the device's name
+#: pairdialog.js
+#, javascript-format
+msgid "Couldn't pair with %s"
+msgstr "לא ניתן לבצע התאמה עם %s"
+
+# android: SystemUI quick_settings_bluetooth_label
+#: pairdialog.js qs.js
+msgid "Bluetooth"
+msgstr "Bluetooth"
+
+#. TRANSLATORS: a Bluetooth device's question waits behind this notification while the phone is locked
+#: pairdialog.js
+msgid "Unlock the phone to answer."
+msgstr "יש לבטל את נעילת הטלפון כדי להשיב."
+
+#. TRANSLATORS: under "Couldn't pair with …": a tap starts the pairing again
+#: pairdialog.js
+msgid "Tap to try again."
+msgstr "יש להקיש כדי לנסות שוב."
+
+# android: Framework global_action_lockdown (short)
+#: powermenu.js
+msgid "Lockdown"
+msgstr "נעילה"
+
+# android: Framework power_off (short)
+#: powermenu.js
+msgid "Power off"
+msgstr "כיבוי"
+
+# android: Framework global_action_restart (short)
+#: powermenu.js
+msgid "Restart"
+msgstr "הפעלה מחדש"
+
+# android: SystemUI quick_settings_wifi_label
+#: qs.js
+msgid "Wi-Fi"
+msgstr "Wi-Fi"
+
+# android: SystemUI quick_settings_flashlight_label
+#: qs.js
+msgid "Flashlight"
+msgstr "פנס"
+
+# android: SystemUI quick_settings_dnd_label
+#: qs.js
+msgid "Do Not Disturb"
+msgstr "נא לא להפריע"
+
+# android: SystemUI quick_settings_modes_label
+#. a phone's is Android's Modes tile, Do Not Disturb its one mode
+#: qs.js
+msgid "Modes"
+msgstr "מצבים"
+
+# android: SystemUI status_bar_airplane
+#: qs.js
+msgid "Airplane mode"
+msgstr "מצב טיסה"
+
+# android: SystemUI quick_settings_cellular_detail_title (several translations, short)
+#: qs.js
+msgid "Mobile data"
+msgstr "חבילת גלישה"
+
+# android: SystemUI zen_mode_on (several translations, short)
+#: qs.js
+msgctxt "mobile data"
+msgid "On"
+msgstr "מצב פעיל"
+
+# android: SystemUI cell_data_off (several translations, short)
+#: qs.js
+msgctxt "mobile data"
+msgid "Off"
+msgstr "כבוי"
+
+# android: SystemUI quick_settings_rotation_unlocked_label
+#: qs.js
+msgid "Auto-rotate"
+msgstr "סיבוב אוטומטי"
+
+# android: SystemUI quick_settings_location_label
+#: qs.js
+msgid "Location"
+msgstr "מיקום"
+
+# android: SystemUI quick_settings_ui_mode_night_label
+#: qs.js
+msgid "Dark theme"
+msgstr "עיצוב כהה"
+
+# android: SystemUI quick_settings_dark_mode_secondary_label_battery_saver
+#: qs.js
+msgid "Battery Saver"
+msgstr "חיסכון בסוללה"
+
+# android: SystemUI quick_settings_night_display_label
+#: qs.js
+msgid "Night Light"
+msgstr "תאורת לילה"
+
+# android: Settings auto_brightness_title (short)
+#: qs.js
+msgid "Adaptive brightness"
+msgstr "בהירות אוטומטית"
+
+# android: SystemUI screen_record_mute (several translations, short)
+#: qs.js
+msgctxt "media volume"
+msgid "Mute"
+msgstr "השתקה"
+
+# android: SystemUI hearing_devices_settings_button (several translations, short)
+#: qs.js
+msgid "Settings"
+msgstr "הגדרות"
+
+# android: SystemUI accessibility_quick_settings_power_menu (several translations, short)
+#: qs.js
+msgid "Power menu"
+msgstr "תפריט הפעלה"
+
+#. TRANSLATORS: an amount of memory; %s is the number of gigabytes ("1.5")
+#: recents.js
+#, javascript-format
+msgid "%s GB"
+msgstr "%s GB"
+
+#. TRANSLATORS: an amount of memory; %s is the number of megabytes ("512")
+#: recents.js
+#, javascript-format
+msgid "%s MB"
+msgstr "%s MB"
+
+# android: Settings running_processes_header_used_prefix (short)
+#: recents.js
+msgctxt "memory"
+msgid "Used"
+msgstr "בשימוש"
+
+# android: Settings cache_header_label (short)
+#: recents.js
+msgctxt "memory"
+msgid "Cache"
+msgstr "מטמון"
+
+# android: Settings running_processes_header_free_prefix (short)
+#: recents.js
+msgctxt "memory"
+msgid "Free"
+msgstr "פנוי"
+
+#: recents.js
+msgctxt "recent apps"
+msgid "Clear all"
+msgstr "ניקוי הכול"
+
+# android: SystemUI global_action_screenshot
+#: recents.js
+msgid "Screenshot"
+msgstr "צילום מסך"
+
+# android: Launcher3 recents_empty_message
+#: recents.js
+msgid "No recent items"
+msgstr "אין פריטים אחרונים"
+
+# android: SystemUI app_info (several translations, short)
+#. the app's page in Settings, over the home screen (where back from it leads on Android)
+#. (info_24px: the newer App info icon, which the phone has)
+#: recents.js
+msgid "App info"
+msgstr "פרטי האפליקציה"
+
+# android: Launcher3 recent_task_option_remove_task (several translations, short)
+#. TRANSLATORS: in a recent app's menu: removes it from the recent apps
+#: recents.js
+msgctxt "recent apps"
+msgid "Clear"
+msgstr "ניקוי"
+
+# android: Keyguard keyguard_plugged_in_charging_slowly
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Charging slowly"
+msgstr "%s • בטעינה איטית"
+
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Fast charging"
+msgstr "%s • בטעינה מהירה"
+
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Super fast charging"
+msgstr "%s • בטעינה מהירה במיוחד"
+
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Wireless charging"
+msgstr "%s • בטעינה אלחוטית"
+
+#. TRANSLATORS: the lock screen's charging line, for a charger that is plugged in but holds the battery
+#. where it is (too warm, or a charge limit); %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Not charging"
+msgstr "%s • הטעינה מושהית"
+
+# android: Keyguard keyguard_plugged_in_dock
+#. TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%")
+#: state.js
+#, javascript-format
+msgid "%s • Charging"
+msgstr "%s • בטעינה"
+
+#. TRANSLATORS: a current the battery charges at; %s is the number of amperes ("1.5")
+#: state.js
+#, javascript-format
+msgid "%s A"
+msgstr "%s A"
+
+# android: SystemUI stream_ring
+#: volume.js
+msgctxt "ringer mode"
+msgid "Ring"
+msgstr "צלצול"
+
+# android: SystemUI screen_record_mute (several translations, short)
+#: volume.js
+msgctxt "ringer mode"
+msgid "Mute"
+msgstr "השתקה"
+
+# android: SystemUI volume_ringer_status_vibrate
+#: volume.js
+msgctxt "ringer mode"
+msgid "Vibrate"
+msgstr "רטט"
+
+# android: Framework volume_music (short)
+#: volume.js
+msgid "Media volume"
+msgstr "עוצמת קול של מדיה"
+
+# android: SystemUI accessibility_volume_settings
+#: volume.js
+msgid "Sound settings"
+msgstr "הגדרות צליל"

@@ -65,10 +65,14 @@ LOCALES = [
     ('fr', 'azerty', 'Français', 'Français'),
     ('it', 'qwerty', 'Italiano', 'Italiano'),
     ('es', 'spanish', 'Español', 'Español'),
+    ('pl', 'qwerty', 'Polski', 'Polski'),
     ('ru', 'east_slavic', 'Русский', 'Русский'),
     ('uk', 'east_slavic', 'Українська', 'Українська'),
     ('iw', 'hebrew', 'עברית', 'עברית'),
 ]
+# VibeOS's texts over LatinIME's, per locale: Ukrainian has no ъ, which LatinIME gives ь's long-press as Russian's
+# does; there the apostrophe, which does the hard sign's work in Ukrainian (об'єкт for Russian объект)
+TEXT_OVERRIDES = {'uk': {'morekeys_cyrillic_soft_sign': "'"}}
 FORMS = ['phone', 'phone-land', 'tablet', 'tablet-land']
 ELEMENTS = [('alphabet', 'alphabet'), ('alphabet-shifted', 'alphabetManualShifted'),
             ('alphabet-locked', 'alphabetShiftLocked'), ('symbols', 'symbols'),
@@ -181,6 +185,8 @@ class Tree:
         i = self.names.get(name)
         if i is None:
             raise LookupError(f'no text {name}')
+        if name in TEXT_OVERRIDES.get(locale, {}):
+            return TEXT_OVERRIDES[locale][name]
         tab = self.table(locale)
         v = tab[i] if i < len(tab) else None
         return self.tables['TEXTS_DEFAULT'][i] if v is None else v

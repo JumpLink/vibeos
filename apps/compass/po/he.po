@@ -1,0 +1,101 @@
+# Hebrew translations of vibeos-compass.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-compass\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Hebrew\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
+
+#: data/vibeos.Compass.desktop.in main.c
+msgid "Compass"
+msgstr "מצפן"
+
+#: data/vibeos.Compass.desktop.in
+msgid "Which way you are facing"
+msgstr "לאיזה כיוון פונים"
+
+#. GClueAccuracyLevel: exact (the dial prints tenths of a second)
+#. the dial's radius on an upright phone, which the ticks and pointer are drawn for
+#. TRANSLATORS: the compass points, as the dial and the heading ("245°SW") show them
+#: main.c
+msgctxt "direction"
+msgid "N"
+msgstr "צ"
+
+#: main.c
+msgctxt "direction"
+msgid "NE"
+msgstr "צמ"
+
+#: main.c
+msgctxt "direction"
+msgid "E"
+msgstr "מז"
+
+#: main.c
+msgctxt "direction"
+msgid "SE"
+msgstr "דמ"
+
+#: main.c
+msgctxt "direction"
+msgid "S"
+msgstr "ד"
+
+#: main.c
+msgctxt "direction"
+msgid "SW"
+msgstr "דמע"
+
+#: main.c
+msgctxt "direction"
+msgid "W"
+msgstr "מע"
+
+#: main.c
+msgctxt "direction"
+msgid "NW"
+msgstr "צמע"
+
+#: main.c
+msgid "The sensor service is not running, so the compass cannot be read."
+msgstr "שירות החיישנים לא פועל, ולכן אי אפשר לקרוא את המצפן."
+
+#: main.c
+msgid "The compass cannot be read right now."
+msgstr "אי אפשר לקרוא את המצפן כרגע."
+
+#: main.c
+msgid "Hold the device flat, away from metal. Move it in a figure 8 to calibrate."
+msgstr "יש להחזיק את המכשיר במצב שטוח, רחוק ממתכת, ולהזיז אותו בתנועה של הספרה 8 כדי לכייל."
+
+#: main.c
+msgid "This device has no compass."
+msgstr "אין מצפן במכשיר הזה."
+
+#: main.c
+msgid "Location unavailable"
+msgstr "המיקום לא זמין"
+
+# android: Framework permgrouplab_location (short)
+#: main.c
+msgid "Location"
+msgstr "מיקום"
+
+#: main.c
+msgid "Locating…"
+msgstr "מתבצע איתור…"
+
+# android: Framework action_menu_overflow_description (several translations, short)
+#: main.c
+msgid "More options"
+msgstr "אפשרויות נוספות"

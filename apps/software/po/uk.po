@@ -1,0 +1,1245 @@
+# Ukrainian translations of vibeos-software.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-software\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Ukrainian\n"
+"Language: uk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: data/vibeos.Software.desktop.in src/sw-account-pages.c src/sw-window.c
+msgid "Software"
+msgstr "Центр додатків"
+
+#: data/vibeos.Software.desktop.in
+msgid "Find, install and update apps and games"
+msgstr "Знаходьте, установлюйте й оновлюйте додатки та ігри"
+
+#: data/vibeos.Software.desktop.in
+msgid "Store;Apps;Games;Install;Update;Uninstall;Review;"
+msgstr "магазин;додатки;програми;ігри;установити;оновити;видалити;відгук;Store;Apps;Games;Install;Update;Uninstall;Review;"
+
+#: src/sw-account-pages.c
+msgid "You are signed in"
+msgstr "Ви ввійшли"
+
+#: src/sw-account-pages.c
+msgid "Enter your email address."
+msgstr "Введіть електронну адресу."
+
+# android: SystemUI biometric_dialog_enter_password (adapted, other app)
+#: src/sw-account-pages.c
+msgid "Enter your password."
+msgstr "Введіть пароль."
+
+# android: Settings private_space_retry_signin_title (short)
+#: src/sw-account-pages.c src/sw-app-page.c src/sw-mine.c
+msgid "Sign in"
+msgstr "Увійти"
+
+#: src/sw-account-pages.c
+msgid "Sign in to rate and review apps, and to see your apps on all your devices."
+msgstr "Увійдіть, щоб оцінювати додатки й писати відгуки, а також бачити свої додатки на всіх пристроях."
+
+# android: Settings preview_pager_email_title (several translations, short)
+#: src/sw-account-pages.c
+msgid "Email"
+msgstr "Електронна пошта"
+
+# android: Settings unlock_set_unlock_password_title (short)
+#: src/sw-account-pages.c
+msgid "Password"
+msgstr "Пароль"
+
+# android: Settings lockpassword_forgot_password
+#: src/sw-account-pages.c
+msgid "Forgot your password?"
+msgstr "Забули пароль?"
+
+#: src/sw-account-pages.c
+msgid "No account yet?"
+msgstr "Ще немає облікового запису?"
+
+#: src/sw-account-pages.c
+msgid "Create an account"
+msgstr "Створити обліковий запис"
+
+#: src/sw-account-pages.c
+msgid "Enter a name. It shows on your reviews."
+msgstr "Введіть ім’я. Воно показуватиметься у ваших відгуках."
+
+#: src/sw-account-pages.c
+msgid "With an account you can rate and review apps, and see your apps on all your devices. The store emails you a code to confirm the address."
+msgstr "З обліковим записом ви можете оцінювати додатки, писати відгуки й бачити свої додатки на всіх пристроях. Магазин надішле вам електронною поштою код для підтвердження адреси."
+
+#: src/sw-account-pages.c
+msgid "Name"
+msgstr "Ім’я"
+
+#: src/sw-account-pages.c
+msgid "Shown on your reviews"
+msgstr "Показується у ваших відгуках"
+
+#: src/sw-account-pages.c
+msgid "At least 8 characters"
+msgstr "Щонайменше 8 символів"
+
+#: src/sw-account-pages.c
+msgid "Create the account"
+msgstr "Створити обліковий запис"
+
+#: src/sw-account-pages.c
+msgid "Send a new code"
+msgstr "Надіслати новий код"
+
+#. TRANSLATORS: %d is the seconds left until a new code can be asked for, "s" the abbreviation of seconds
+#: src/sw-account-pages.c
+#, c-format
+msgid "Send a new code in %d s"
+msgstr "Надіслати новий код через %d с"
+
+#. TRANSLATORS: %s is the store's message (a whole sentence), %d how many more codes may be tried
+#: src/sw-account-pages.c
+#, c-format
+msgid "%s %d try left."
+msgid_plural "%s %d tries left."
+msgstr[0] "%s Залишилася %d спроба."
+msgstr[1] "%s Залишилося %d спроби."
+msgstr[2] "%s Залишилося %d спроб."
+
+#. TRANSLATORS: %d is the code's length in digits, %s the email address
+#: src/sw-account-pages.c
+#, c-format
+msgid "The store sent a %d-digit code to %s. Enter it here to confirm the address. It works for 15 minutes."
+msgstr "Магазин надіслав код (цифр: %d) на адресу %s. Введіть його тут, щоб підтвердити адресу. Код дійсний 15 хвилин."
+
+#. TRANSLATORS: %d is the code's length in digits, %s the email address
+#: src/sw-account-pages.c
+#, c-format
+msgid "Confirm your address to rate and review apps: enter the %d-digit code the store emailed to %s, or ask for a new one."
+msgstr "Щоб оцінювати додатки й писати відгуки, підтвердьте адресу: введіть код (цифр: %d), який магазин надіслав на %s, або запитайте новий."
+
+#: src/sw-account-pages.c
+msgid "A new code is on its way"
+msgstr "Новий код уже надіслано"
+
+#: src/sw-account-pages.c
+msgid "Your address is confirmed"
+msgstr "Вашу адресу підтверджено"
+
+#: src/sw-account-pages.c
+msgid "Confirm your email"
+msgstr "Підтвердьте електронну адресу"
+
+# android: Settings security_settings_remoteauth_enroll_enrolling_agree (short)
+#: src/sw-account-pages.c
+msgid "Confirm"
+msgstr "Підтвердити"
+
+# android: Aperture location_permission_dialog_later (other app, short)
+#: src/sw-account-pages.c
+msgid "Later"
+msgstr "Пізніше"
+
+#: src/sw-account-pages.c
+msgid "Your password is changed, and you are signed in"
+msgstr "Пароль змінено, і ви ввійшли"
+
+#: src/sw-account-pages.c
+msgid "Enter the address you signed up with. If it has an account, the store emails a code to it to set a new password."
+msgstr "Введіть адресу, з якою ви реєструвалися. Якщо для неї є обліковий запис, магазин надішле на неї код для встановлення нового пароля."
+
+#: src/sw-account-pages.c
+msgid "Send the code"
+msgstr "Надіслати код"
+
+#. TRANSLATORS: %s is the email address (partly hidden), %d the code's length in digits
+#: src/sw-account-pages.c
+#, c-format
+msgid "If %s has an account, a %d-digit code is on its way to it. Enter it here."
+msgstr "Якщо для %s є обліковий запис, на цю адресу надіслано код (цифр: %d). Введіть його тут."
+
+# android: Settings next_label (short)
+#: src/sw-account-pages.c
+msgid "Next"
+msgstr "Далі"
+
+#: src/sw-account-pages.c
+msgid "Choose a new password. Every device signed in to the account is signed out, and this one signed in."
+msgstr "Виберіть новий пароль. На всіх пристроях буде виконано вихід з облікового запису, а на цьому – вхід."
+
+#: src/sw-account-pages.c
+msgid "New password"
+msgstr "Новий пароль"
+
+#: src/sw-account-pages.c
+msgid "Set the password"
+msgstr "Установити пароль"
+
+#: src/sw-account-pages.c
+msgid "On Wi-Fi only"
+msgstr "Лише через Wi-Fi"
+
+#: src/sw-account-pages.c
+msgid "Not on a network that counts the data (a phone's mobile data)"
+msgstr "Не в мережі з обліком трафіку (мобільний трафік телефона)"
+
+#: src/sw-account-pages.c
+msgid "On any network"
+msgstr "У будь-якій мережі"
+
+#. TRANSLATORS: Mine is the tab of the apps on the device, "Check for updates" its button
+#: src/sw-account-pages.c
+msgid "Only when I ask"
+msgstr "Лише на мій запит"
+
+#: src/sw-account-pages.c
+msgid "Mine's Check for updates"
+msgstr "Кнопка «Перевірити оновлення» на вкладці «Мої»"
+
+#. TRANSLATORS: the theme: light or dark as the system's
+#: src/sw-account-pages.c
+msgid "As the system"
+msgstr "Як у системі"
+
+# android: Etar preferences_light_theme (other app, short)
+#: src/sw-account-pages.c
+msgid "Light"
+msgstr "Світла"
+
+# android: Etar preferences_dark_theme (other app, short)
+#: src/sw-account-pages.c
+msgid "Dark"
+msgstr "Темна"
+
+#: src/sw-account-pages.c
+msgid "Software's settings are not installed."
+msgstr "Налаштування Центру додатків не встановлено."
+
+#: src/sw-account-pages.c
+msgid "Look for updates"
+msgstr "Шукати оновлення"
+
+#: src/sw-account-pages.c
+msgid "Software looks for updates when it starts and when apps change. It does not install them by itself: update from Mine."
+msgstr "Центр додатків шукає оновлення під час запуску й коли змінюються додатки. Сам він їх не встановлює: оновлюйте на вкладці «Мої»."
+
+# android: Etar preferences_theme (other app, short)
+#: src/sw-account-pages.c
+msgid "Theme"
+msgstr "Тема"
+
+#: src/sw-account-pages.c
+msgid "VibeOS apps only"
+msgstr "Лише додатки VibeOS"
+
+#: src/sw-account-pages.c
+msgid "None of Debian's in the store's lists"
+msgstr "Без додатків Debian у списках магазину"
+
+#: src/sw-account-pages.c
+msgid "About Software"
+msgstr "Про Центр додатків"
+
+# android: PackageInstaller external_sources_settings
+#: src/sw-account-pages.c
+msgid "Settings"
+msgstr "Налаштування"
+
+#: src/sw-account-pages.c
+msgid "The catalog"
+msgstr "Каталог"
+
+#: src/sw-account-pages.c
+msgid "The apps, their descriptions and pictures come from the store at vibeos.top, which takes them from Debian's and VibeOS's software sources and the apps' own AppStream data."
+msgstr "Додатки, їхні описи й зображення надходять із магазину на vibeos.top, який бере їх із джерел програмного забезпечення Debian і VibeOS та з даних AppStream самих додатків."
+
+#. TRANSLATORS: keep the links' markup as it is
+#: src/sw-account-pages.c
+msgid "The category icons are Font Awesome Free 7.0.0 by Fonticons, Inc. (solid style, unchanged), under the <a href=\"https://creativecommons.org/licenses/by/4.0/\">Creative Commons Attribution 4.0</a> licence. <a href=\"https://fontawesome.com\">fontawesome.com</a>"
+msgstr "Значки категорій – Font Awesome Free 7.0.0 від Fonticons, Inc. (стиль solid, без змін) за ліцензією <a href=\"https://creativecommons.org/licenses/by/4.0/\">Creative Commons Attribution 4.0</a>. <a href=\"https://fontawesome.com\">fontawesome.com</a>"
+
+#: src/sw-account-pages.c
+msgid "You are signed out"
+msgstr "Ви вийшли"
+
+#: src/sw-account-pages.c
+msgid "Sign out?"
+msgstr "Вийти?"
+
+#: src/sw-account-pages.c
+msgid "Your reviews and your apps stay. Sign in again to write reviews."
+msgstr "Ваші відгуки й додатки залишаться. Щоб писати відгуки, увійдіть знову."
+
+# android: PackageInstaller cancel
+#: src/sw-account-pages.c src/sw-app-page.c src/sw-reviews.c
+msgid "Cancel"
+msgstr "Скасувати"
+
+# android: LatinIME account_select_sign_out (other app, short)
+#: src/sw-account-pages.c
+msgid "Sign out"
+msgstr "Вийти"
+
+#: src/sw-account-pages.c
+msgid "Signed in"
+msgstr "Ви ввійшли"
+
+#: src/sw-account-pages.c
+msgid "Confirm your email address"
+msgstr "Підтвердьте електронну адресу"
+
+#: src/sw-account-pages.c
+msgid "Needed to rate and review apps"
+msgstr "Потрібно, щоб оцінювати додатки й писати відгуки"
+
+#: src/sw-account-pages.c
+msgid "My reviews"
+msgstr "Мої відгуки"
+
+#: src/sw-account-pages.c
+msgid "Delete the account"
+msgstr "Видалити обліковий запис"
+
+#: src/sw-account-pages.c src/sw-mine.c
+msgid "Account and settings"
+msgstr "Обліковий запис і налаштування"
+
+#: src/sw-account-pages.c
+msgid "Your account is deleted"
+msgstr "Ваш обліковий запис видалено"
+
+#: src/sw-account-pages.c
+msgid "Enter your password to delete the account."
+msgstr "Щоб видалити обліковий запис, введіть пароль."
+
+#: src/sw-account-pages.c
+msgid "The store deletes the account, its devices, the list of apps it had and its helpful votes. It cannot be undone. Your apps stay installed."
+msgstr "Магазин видалить обліковий запис, його пристрої, список його додатків і позначки «Корисно». Цю дію не можна скасувати. Ваші додатки залишаться встановленими."
+
+#: src/sw-account-pages.c
+msgid "Delete my reviews too"
+msgstr "Також видалити мої відгуки"
+
+#: src/sw-account-pages.c
+msgid "Otherwise they stay, under \"Deleted account\", and nobody can change them"
+msgstr "Інакше вони залишаться з підписом «Видалений обліковий запис», і ніхто не зможе їх змінити"
+
+#: src/sw-account-pages.c
+msgid "A moderator hid this review: only you see it."
+msgstr "Модератор приховав цей відгук: його бачите лише ви."
+
+#: src/sw-account-pages.c
+msgid "You have not reviewed any apps yet. An app's page has its stars to tap."
+msgstr "Ви ще не залишили жодного відгуку. Оцінити додаток можна зірками на його сторінці."
+
+# android: Settings request_manage_credentials_more (short)
+#: src/sw-account-pages.c
+msgid "Show more"
+msgstr "Показати більше"
+
+#: src/sw-account.c
+msgid "Software could not keep your sign-in in the keyring. You will need to sign in again next time."
+msgstr "Центру додатків не вдалося зберегти дані для входу у зв’язці ключів. Наступного разу доведеться ввійти знову."
+
+#. TRANSLATORS: the keyring entry's name, as a password manager shows it; %s is the store's address
+#: src/sw-account.c
+#, c-format
+msgid "VibeOS Software: the store account on %s"
+msgstr "Центр додатків VibeOS: обліковий запис магазину на %s"
+
+#: src/sw-account.c
+msgid "You were signed out of the store. Sign in again to review apps."
+msgstr "Ви вийшли з магазину. Щоб писати відгуки, увійдіть знову."
+
+#. TRANSLATORS: %u is the HTTP status code
+#: src/sw-api.c
+#, c-format
+msgid "The store is not working right now (error %u). Try again later."
+msgstr "Магазин зараз не працює (помилка %u). Повторіть спробу пізніше."
+
+#. TRANSLATORS: %u is the HTTP status code
+#: src/sw-api.c
+#, c-format
+msgid "The store answered with error %u."
+msgstr "Магазин повернув помилку %u."
+
+#: src/sw-api.c
+msgid "The store's answer could not be read. Try again later."
+msgstr "Не вдалося прочитати відповідь магазину. Повторіть спробу пізніше."
+
+#: src/sw-api.c
+#, c-format
+msgid "%s Try again in %d minute."
+msgid_plural "%s Try again in %d minutes."
+msgstr[0] "%s Повторіть спробу через %d хвилину."
+msgstr[1] "%s Повторіть спробу через %d хвилини."
+msgstr[2] "%s Повторіть спробу через %d хвилин."
+
+#: src/sw-api.c
+#, c-format
+msgid "%s Try again in %d second."
+msgid_plural "%s Try again in %d seconds."
+msgstr[0] "%s Повторіть спробу через %d секунду."
+msgstr[1] "%s Повторіть спробу через %d секунди."
+msgstr[2] "%s Повторіть спробу через %d секунд."
+
+# android: Settings wifi_dpp_failure_not_compatible (adapted)
+#: src/sw-api.c
+msgid "Something went wrong."
+msgstr "Сталася помилка."
+
+#: src/sw-api.c
+msgid "Software cannot reach the store. Check the internet connection and try again."
+msgstr "Центр додатків не може зв’язатися з магазином. Перевірте з’єднання з Інтернетом і повторіть спробу."
+
+#: src/sw-api.c
+msgid "The store's address is not valid."
+msgstr "Адреса магазину недійсна."
+
+#: src/sw-app-page.c
+msgid "This app has no window of its own to open."
+msgstr "Цей додаток не має власного вікна, яке можна відкрити."
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-app-page.c
+#, c-format
+msgid "Uninstall %s?"
+msgstr "Видалити %s?"
+
+#: src/sw-app-page.c
+msgid "The app goes. What it keeps in your home folder stays."
+msgstr "Додаток буде видалено. Те, що він зберігає у вашій домашній папці, залишиться."
+
+# android: Settings uninstall_text (several translations, short)
+#: src/sw-app-page.c
+msgid "Uninstall"
+msgstr "Видалити"
+
+# android: PackageInstaller install
+#: src/sw-app-page.c src/sw-widgets.c
+msgid "Install"
+msgstr "Установити"
+
+# android: PackageInstaller update
+#: src/sw-app-page.c src/sw-widgets.c
+msgid "Update"
+msgstr "Оновити"
+
+# android: PackageInstaller launch
+#: src/sw-app-page.c src/sw-widgets.c src/sw-window.c
+msgid "Open"
+msgstr "Відкрити"
+
+# android: Settings installed (short)
+#: src/sw-app-page.c
+msgid "Installed"
+msgstr "Установлено"
+
+#. TRANSLATORS: %s is the new version's number, then the size of its download
+#: src/sw-app-page.c
+#, c-format
+msgid "Version %s is out · %s"
+msgstr "Вийшла версія %s · %s"
+
+#: src/sw-app-page.c
+#, c-format
+msgid "Version %s is out"
+msgstr "Вийшла версія %s"
+
+#. TRANSLATORS: under the number of the app's installs
+#: src/sw-app-page.c
+msgid "installs"
+msgstr "установлень"
+
+#. TRANSLATORS: under the size of the app's download
+#: src/sw-app-page.c
+msgid "download"
+msgstr "завантаження"
+
+#. TRANSLATORS: under the app's age rating ("12+")
+#: src/sw-app-page.c
+msgid "age rating"
+msgstr "вікове обмеження"
+
+#: src/sw-app-page.c
+#, c-format
+msgid "Screenshot %u of %u"
+msgstr "Знімок екрана %u з %u"
+
+#: src/sw-app-page.c
+msgid "About this app"
+msgstr "Про цей додаток"
+
+# android: Settings page_agnostic_notification_action (short)
+#: src/sw-app-page.c
+msgid "Read more"
+msgstr "Докладніше"
+
+#: src/sw-app-page.c
+msgid "What's new"
+msgstr "Що нового"
+
+#. TRANSLATORS: the version's number, then the date it came out
+#: src/sw-app-page.c
+#, c-format
+msgid "Version %s · %s"
+msgstr "Версія %s · %s"
+
+# android: Settings vpn_version_info
+#: src/sw-app-page.c src/sw-mine.c src/sw-reviews.c
+#, c-format
+msgid "Version %s"
+msgstr "Версія %s"
+
+#: src/sw-app-page.c
+msgid "The developer did not say what changed."
+msgstr "Розробник не повідомив, що змінилося."
+
+# android: Settings permissions_label (short)
+#: src/sw-app-page.c
+msgid "Permissions"
+msgstr "Дозволи"
+
+#: src/sw-app-page.c
+msgid "What the app says it uses. VibeOS's own apps are part of the system: they do not run in a sandbox."
+msgstr "Що, за словами додатка, він використовує. Власні додатки VibeOS – частина системи: вони не працюють в ізольованому середовищі."
+
+#: src/sw-app-page.c
+msgid "What the app asks for. VibeOS enforces these permissions: the app runs in a sandbox, and you allow or deny each one in Settings. Taking one away stops the app."
+msgstr "Що запитує додаток. VibeOS забезпечує дотримання цих дозволів: додаток працює в ізольованому середовищі, а ви дозволяєте або забороняєте кожен дозвіл у Налаштуваннях. Якщо відкликати дозвіл, додаток буде зупинено."
+
+#: src/sw-app-page.c
+msgid "The app declares no permissions."
+msgstr "Додаток не оголошує дозволів."
+
+#: src/sw-app-page.c
+msgid "The app declares no permissions. Until you change them in Settings, it may use the network, and you are asked before it gets your location or the camera, or runs in the background."
+msgstr "Додаток не оголошує дозволів. Доки ви не зміните їх у Налаштуваннях, він може користуватися мережею, а перед доступом до місцезнаходження чи камери або роботою у фоновому режимі вам надійде запит."
+
+#: src/sw-app-page.c
+msgid "Permissions in Settings"
+msgstr "Дозволи в Налаштуваннях"
+
+#: src/sw-app-page.c
+msgid "Allow or deny each one for this app"
+msgstr "Дозвольте або заборонте кожен для цього додатка"
+
+#: src/sw-app-page.c
+msgid "Confirm your email address to rate and review apps."
+msgstr "Щоб оцінювати додатки й писати відгуки, підтвердьте електронну адресу."
+
+#: src/sw-app-page.c
+msgid "Install the app to rate it: the store takes reviews from people who have had it on one of their devices."
+msgstr "Щоб оцінити додаток, установіть його: магазин приймає відгуки від тих, у кого він був на якомусь із пристроїв."
+
+#: src/sw-app-page.c
+msgid "The store does not take a review of this app from your account."
+msgstr "Магазин не приймає відгуки на цей додаток від вашого облікового запису."
+
+#: src/sw-app-page.c
+msgid "Sign in to rate and review apps."
+msgstr "Увійдіть, щоб оцінювати додатки й писати відгуки."
+
+#: src/sw-app-page.c src/sw-reviews.c
+msgid "Your review"
+msgstr "Ваш відгук"
+
+#: src/sw-app-page.c
+msgid "A moderator hid your review: only you see it."
+msgstr "Модератор приховав ваш відгук: його бачите лише ви."
+
+#: src/sw-app-page.c
+msgid "Confirm the address"
+msgstr "Підтвердити адресу"
+
+#: src/sw-app-page.c src/sw-reviews.c
+msgid "Rate the app"
+msgstr "Оцініть додаток"
+
+#: src/sw-app-page.c
+msgid "Write a review"
+msgstr "Написати відгук"
+
+#: src/sw-app-page.c
+msgid "Ratings and reviews"
+msgstr "Оцінки й відгуки"
+
+#: src/sw-app-page.c
+msgid "All reviews"
+msgstr "Усі відгуки"
+
+#: src/sw-app-page.c
+msgid "Similar apps"
+msgstr "Схожі додатки"
+
+#: src/sw-app-page.c
+msgid "Information"
+msgstr "Інформація"
+
+#: src/sw-app-page.c
+msgid "Developer"
+msgstr "Розробник"
+
+# android: Settings vpn_version (short)
+#: src/sw-app-page.c
+msgid "Version"
+msgstr "Версія"
+
+#: src/sw-app-page.c
+msgid "Installed version"
+msgstr "Установлена версія"
+
+#: src/sw-app-page.c
+msgid "Released"
+msgstr "Дата випуску"
+
+#: src/sw-app-page.c
+msgid "Download size"
+msgstr "Розмір завантаження"
+
+#: src/sw-app-page.c
+msgid "Size when installed"
+msgstr "Розмір після встановлення"
+
+#: src/sw-app-page.c
+msgid "Category"
+msgstr "Категорія"
+
+#: src/sw-app-page.c
+msgid "Licence"
+msgstr "Ліцензія"
+
+#: src/sw-app-page.c
+msgid "Comes from"
+msgstr "Джерело"
+
+#: src/sw-app-page.c
+msgid "The VibeOS software sources"
+msgstr "Джерела програмного забезпечення VibeOS"
+
+#: src/sw-app-page.c
+msgid "Debian's software sources"
+msgstr "Джерела програмного забезпечення Debian"
+
+#: src/sw-app-page.c
+msgid "Fits a phone"
+msgstr "Підходить для телефона"
+
+# android: Settings wifi_hidden_entries[1] (short)
+#: src/sw-app-page.c
+msgid "Yes"
+msgstr "Так"
+
+#. TRANSLATORS: whether the app fits a phone: not known to fit one
+#: src/sw-app-page.c
+msgid "Not known to"
+msgstr "Невідомо"
+
+#: src/sw-app-page.c
+msgid "Package"
+msgstr "Пакет"
+
+#: src/sw-app-page.c
+msgid "Homepage"
+msgstr "Домашня сторінка"
+
+#: src/sw-app-page.c
+msgid "This app is not in the store any more."
+msgstr "Цього додатка більше немає в магазині."
+
+# android: Settings security_settings_face_enroll_introduction_more (several translations, short)
+#: src/sw-app-page.c src/sw-reviews.c
+msgid "More"
+msgstr "Більше"
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-check.c
+#, c-format
+msgid "%s can be updated"
+msgstr "Можна оновити %s"
+
+#. TRANSLATORS: %s is the new version's number
+#: src/sw-check.c
+#, c-format
+msgid "Version %s is ready to install."
+msgstr "Версія %s готова до встановлення."
+
+#: src/sw-check.c
+msgid "A new version is ready to install."
+msgstr "Нова версія готова до встановлення."
+
+#: src/sw-check.c
+#, c-format
+msgid "%u app can be updated"
+msgid_plural "%u apps can be updated"
+msgstr[0] "Можна оновити %u додаток"
+msgstr[1] "Можна оновити %u додатки"
+msgstr[2] "Можна оновити %u додатків"
+
+# android: Settings zen_mode_calls_summary_two (several translations)
+#. TRANSLATORS: two apps' names
+#: src/sw-check.c
+#, c-format
+msgid "%s and %s"
+msgstr "%s і %s"
+
+#. TRANSLATORS: three apps' names
+#: src/sw-check.c
+#, c-format
+msgid "%s, %s and %s"
+msgstr "%s, %s і %s"
+
+#. TRANSLATORS: three apps' names, then how many more apps can be updated
+#: src/sw-check.c
+#, c-format
+msgid "%s, %s, %s and %u more"
+msgid_plural "%s, %s, %s and %u more"
+msgstr[0] "%s, %s, %s і ще %u"
+msgstr[1] "%s, %s, %s і ще %u"
+msgstr[2] "%s, %s, %s і ще %u"
+
+# android: Settings previous_connected_see_all (several translations, short)
+#: src/sw-featured.c
+msgid "See all"
+msgstr "Показати всі"
+
+#: src/sw-featured.c
+#, c-format
+msgid "%u category"
+msgid_plural "%u categories"
+msgstr[0] "%u категорія"
+msgstr[1] "%u категорії"
+msgstr[2] "%u категорій"
+
+# android: Dialer helpline_categories (other app, short)
+#: src/sw-featured.c
+msgid "Categories"
+msgstr "Категорії"
+
+#: src/sw-featured.c
+msgid "Nothing here yet. Come back later."
+msgstr "Тут поки нічого немає. Поверніться пізніше."
+
+# android: Settings retry (short)
+#: src/sw-featured.c src/sw-list.c src/sw-mine.c src/sw-widgets.c
+msgid "Retry"
+msgstr "Повторити"
+
+#: src/sw-featured.c src/sw-search.c
+msgid "Search apps and games"
+msgstr "Пошук додатків та ігор"
+
+# android: Launcher3 all_apps_search_bar_hint (other app, short)
+#: src/sw-featured.c src/sw-search.c
+msgid "Search apps"
+msgstr "Пошук додатків"
+
+#: src/sw-featured.c src/sw-search.c
+msgid "Search games"
+msgstr "Пошук ігор"
+
+#: src/sw-featured.c
+msgid "Recommended"
+msgstr "Рекомендовані"
+
+#: src/sw-featured.c
+msgid "Popular"
+msgstr "Популярні"
+
+#: src/sw-installer.c
+msgid "Stopping…"
+msgstr "Зупинення…"
+
+#: src/sw-installer.c
+msgid "Queued"
+msgstr "У черзі"
+
+#: src/sw-installer.c
+msgid "Starting…"
+msgstr "Запуск…"
+
+#: src/sw-installer.c
+#, c-format
+msgid "Downloading %d%%"
+msgstr "Завантаження: %d%%"
+
+#: src/sw-installer.c
+msgid "Downloading…"
+msgstr "Завантаження…"
+
+#: src/sw-installer.c
+#, c-format
+msgid "Installing %d%%"
+msgstr "Установлення: %d%%"
+
+#: src/sw-installer.c
+msgid "Installing…"
+msgstr "Установлення…"
+
+# android: PackageInstaller uninstalling
+#: src/sw-installer.c
+msgid "Uninstalling…"
+msgstr "Видалення…"
+
+#: src/sw-installer.c
+msgid "Waiting for your password"
+msgstr "Очікування пароля"
+
+#: src/sw-installer.c
+msgid "Waiting for another install to finish"
+msgstr "Очікування завершення іншого встановлення"
+
+#: src/sw-installer.c
+msgid "Waiting for your answer"
+msgstr "Очікування вашої відповіді"
+
+#: src/sw-installer.c
+msgid "Refreshing the software sources…"
+msgstr "Оновлення джерел програмного забезпечення…"
+
+# android: Framework lockscreen_glogin_checking_password (short)
+#: src/sw-installer.c
+msgid "Checking…"
+msgstr "Перевірка…"
+
+#: src/sw-installer.c
+msgid "Finishing…"
+msgstr "Завершення…"
+
+#: src/sw-installer.c
+msgid "App Installer is not installed. Software installs and uninstalls apps through it."
+msgstr "Установник додатків не встановлено. Центр додатків установлює й видаляє додатки через нього."
+
+#. TRANSLATORS: %s is the error's own message
+#: src/sw-installer.c
+#, c-format
+msgid "App Installer could not start: %s"
+msgstr "Не вдалося запустити Установник додатків: %s"
+
+#: src/sw-installer.c
+msgid "Software cannot reach the session bus to ask App Installer."
+msgstr "Центр додатків не може зв’язатися із сеансовою шиною, щоб звернутися до Установника додатків."
+
+#: src/sw-installer.c
+msgid "App Installer stopped before it was done. Try again."
+msgstr "Установник додатків зупинився, не завершивши роботу. Повторіть спробу."
+
+#: src/sw-installer.c
+msgid "No session bus."
+msgstr "Немає сеансової шини."
+
+#: src/sw-json.c
+msgid "No ratings yet"
+msgstr "Ще немає оцінок"
+
+#. an int for gettext's sake (the format of a translated string cannot name gint64's)
+#: src/sw-json.c
+#, c-format
+msgid "%d rating"
+msgid_plural "%d ratings"
+msgstr[0] "%d оцінка"
+msgstr[1] "%d оцінки"
+msgstr[2] "%d оцінок"
+
+#: src/sw-list.c
+msgid "No apps here yet."
+msgstr "Тут поки немає додатків."
+
+# android: Settings running_processes_header_apps_prefix (short)
+#: src/sw-list.c src/sw-window.c
+msgid "Apps"
+msgstr "Додатки"
+
+# android: Settings enterprise_privacy_number_packages
+#: src/sw-list.c
+#, c-format
+msgid "%d app"
+msgid_plural "%d apps"
+msgstr[0] "%d додаток"
+msgstr[1] "%d додатки"
+msgstr[2] "%d додатків"
+
+#: src/sw-list.c
+msgid "Game categories"
+msgstr "Категорії ігор"
+
+#: src/sw-list.c
+msgid "App categories"
+msgstr "Категорії додатків"
+
+# android: Framework in_progress (adapted, short)
+#: src/sw-mine.c
+msgid "In progress"
+msgstr "Триває"
+
+#. TRANSLATORS: %s is how far the job has got ("Downloading 42%")
+#: src/sw-mine.c
+#, c-format
+msgid "Uninstalling · %s"
+msgstr "Видалення · %s"
+
+#: src/sw-mine.c
+#, c-format
+msgid "Updating · %s"
+msgstr "Оновлення · %s"
+
+#: src/sw-mine.c
+#, c-format
+msgid "Installing · %s"
+msgstr "Установлення · %s"
+
+# android: Settings safety_center_system_and_updates_summary (short)
+#: src/sw-mine.c
+msgid "Updates"
+msgstr "Оновлення"
+
+#: src/sw-mine.c
+msgid "Update all"
+msgstr "Оновити всі"
+
+#: src/sw-mine.c
+msgid "Your apps are up to date."
+msgstr "Ваші додатки оновлено."
+
+#: src/sw-mine.c
+msgid "Check again"
+msgstr "Перевірити ще раз"
+
+#: src/sw-mine.c
+msgid "Software has not looked for updates yet."
+msgstr "Центр додатків ще не шукав оновлень."
+
+#: src/sw-mine.c
+msgid "Check for updates"
+msgstr "Перевірити оновлення"
+
+#: src/sw-mine.c src/sw-window.c
+msgid "Mine"
+msgstr "Мої"
+
+# android: Settings filter_apps_all (short)
+#: src/sw-mine.c
+msgid "All apps"
+msgstr "Усі додатки"
+
+#: src/sw-mine.c
+msgid "On this device and on your others"
+msgstr "На цьому та інших ваших пристроях"
+
+#: src/sw-mine.c
+msgid "None of the apps on this device are in the store."
+msgstr "Жодного з додатків на цьому пристрої немає в магазині."
+
+#: src/sw-mine.c
+msgid "Nothing is installed."
+msgstr "Нічого не встановлено."
+
+#: src/sw-mine.c
+msgid "On another of your devices"
+msgstr "На іншому вашому пристрої"
+
+#. TRANSLATORS: %s is a date
+#: src/sw-mine.c
+#, c-format
+msgid "Last installed %s"
+msgstr "Востаннє встановлено %s"
+
+#: src/sw-mine.c
+msgid "Every app your account had is on this device."
+msgstr "Усі додатки вашого облікового запису є на цьому пристрої."
+
+#: src/sw-mine.c
+msgid "Sign in to see the apps your account had on your other devices, or before."
+msgstr "Увійдіть, щоб побачити додатки свого облікового запису на інших пристроях або встановлені раніше."
+
+#: src/sw-mine.c
+msgid "On this device"
+msgstr "На цьому пристрої"
+
+#: src/sw-mine.c
+msgid "Not on this device"
+msgstr "Немає на цьому пристрої"
+
+#: src/sw-reviews.c
+#, c-format
+msgid "Helpful · %d"
+msgstr "Корисно · %d"
+
+#: src/sw-reviews.c
+msgid "Helpful"
+msgstr "Корисно"
+
+#: src/sw-reviews.c
+msgid "Sign in to mark reviews as helpful."
+msgstr "Увійдіть, щоб позначати відгуки як корисні."
+
+# android: Settings edit (several translations, short)
+#: src/sw-reviews.c
+msgid "Edit"
+msgstr "Редагувати"
+
+#: src/sw-reviews.c
+msgid "Report"
+msgstr "Поскаржитися"
+
+#: src/sw-reviews.c
+msgid "Someone"
+msgstr "Користувач"
+
+#: src/sw-reviews.c
+#, c-format
+msgid "%s · edited"
+msgstr "%s · змінено"
+
+#: src/sw-reviews.c
+msgid "Most helpful"
+msgstr "Найкорисніші"
+
+#: src/sw-reviews.c
+msgid "Newest"
+msgstr "Найновіші"
+
+#. TRANSLATORS: reviews sorted by their stars, the most first
+#: src/sw-reviews.c
+msgid "Highest"
+msgstr "Найвищі оцінки"
+
+#. TRANSLATORS: reviews sorted by their stars, the fewest first
+#: src/sw-reviews.c
+msgid "Lowest"
+msgstr "Найнижчі оцінки"
+
+#: src/sw-reviews.c
+msgid "No reviews yet."
+msgstr "Ще немає відгуків."
+
+#: src/sw-reviews.c
+msgid "Reviews"
+msgstr "Відгуки"
+
+#: src/sw-reviews.c
+msgid "Your review is changed"
+msgstr "Ваш відгук змінено"
+
+#: src/sw-reviews.c
+msgid "Thank you for your review"
+msgstr "Дякуємо за відгук"
+
+#: src/sw-reviews.c
+msgid "Your review is deleted"
+msgstr "Ваш відгук видалено"
+
+#: src/sw-reviews.c
+msgid "Delete your review?"
+msgstr "Видалити ваш відгук?"
+
+#: src/sw-reviews.c
+msgid "Your stars and text go, and the app's rating no longer counts them."
+msgstr "Ваші зірки й текст буде видалено, і рейтинг додатка більше не враховуватиме їх."
+
+# android: Settings security_settings_fingerprint_enroll_dialog_delete (several translations, short)
+#: src/sw-reviews.c
+msgid "Delete"
+msgstr "Видалити"
+
+#: src/sw-reviews.c
+#, c-format
+msgid "Rate %s"
+msgstr "Оцініть %s"
+
+#: src/sw-reviews.c src/sw-widgets.c
+msgid "Your rating"
+msgstr "Ваша оцінка"
+
+#: src/sw-reviews.c
+msgid "Your review (if you want to say more)"
+msgstr "Ваш відгук (якщо хочете сказати більше)"
+
+#: src/sw-reviews.c
+msgid "Your review shows with your account's name. Be kind, and say what you think of the app."
+msgstr "Ваш відгук показуватиметься з іменем вашого облікового запису. Будьте ввічливі й розкажіть, що ви думаєте про додаток."
+
+# android: Settings save (short)
+#: src/sw-reviews.c
+msgid "Save"
+msgstr "Зберегти"
+
+# android: Framework whichSendToApplicationLabel (several translations, short)
+#: src/sw-reviews.c
+msgid "Send"
+msgstr "Надіслати"
+
+#: src/sw-reviews.c
+msgid "Delete my review"
+msgstr "Видалити мій відгук"
+
+#: src/sw-reviews.c
+msgid "Spam or an advert"
+msgstr "Спам або реклама"
+
+#: src/sw-reviews.c
+msgid "Offensive"
+msgstr "Образливий вміст"
+
+#: src/sw-reviews.c
+msgid "Not about this app"
+msgstr "Не про цей додаток"
+
+#: src/sw-reviews.c
+msgid "Fake or misleading"
+msgstr "Неправдивий або оманливий"
+
+#: src/sw-reviews.c
+msgid "Something else"
+msgstr "Інше"
+
+#: src/sw-reviews.c
+msgid "Thank you. The store team will look at the review."
+msgstr "Дякуємо. Команда магазину перегляне відгук."
+
+#: src/sw-reviews.c
+msgid "Sign in to report reviews."
+msgstr "Увійдіть, щоб скаржитися на відгуки."
+
+#: src/sw-reviews.c
+msgid "Report the review"
+msgstr "Поскаржитися на відгук"
+
+#: src/sw-reviews.c
+msgid "What is wrong with it?"
+msgstr "Що з ним не так?"
+
+#: src/sw-reviews.c
+msgid "More about it (if you want)"
+msgstr "Докладніше (за бажанням)"
+
+#: src/sw-reviews.c
+msgid "Send the report"
+msgstr "Надіслати скаргу"
+
+#. TRANSLATORS: %s is the search as the store corrected it; keep the markup
+#: src/sw-search.c
+#, c-format
+msgid "Showing results for <b>%s</b>"
+msgstr "Результати для <b>%s</b>"
+
+# android: Settings locale_search_menu (several translations, short)
+#: src/sw-search.c
+msgid "Search"
+msgstr "Пошук"
+
+#. TRANSLATORS: %s is what was searched for; quote it as the language does
+#: src/sw-search.c
+#, c-format
+msgid "Nothing in the store matches “%s”. Try other words."
+msgstr "У магазині немає нічого, що відповідає запиту «%s». Спробуйте інші слова."
+
+#: src/sw-search.c
+msgid "Put it in the search field"
+msgstr "Вставити в поле пошуку"
+
+#: src/sw-search.c
+msgid "Recent searches"
+msgstr "Нещодавні запити"
+
+# android: Settings proxy_clear_text (short)
+#: src/sw-search.c
+msgid "Clear"
+msgstr "Очистити"
+
+# android: Settings wizard_back (short)
+#: src/sw-viewer.c
+msgid "Back"
+msgstr "Назад"
+
+# android: PackageInstaller close
+#: src/sw-viewer.c
+msgid "Close"
+msgstr "Закрити"
+
+# android: SystemUI notification_channel_screenshot (other app, short)
+#: src/sw-viewer.c
+msgid "Screenshots"
+msgstr "Знімки екрана"
+
+#: src/sw-widgets.c
+msgid "No connection"
+msgstr "Немає з’єднання"
+
+# android: Settings wifi_dpp_failure_not_compatible
+#: src/sw-widgets.c
+msgid "Something went wrong"
+msgstr "Сталася помилка"
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-widgets.c
+#, c-format
+msgid "%s has no window of its own to open."
+msgstr "%s не має власного вікна, яке можна відкрити."
+
+#: src/sw-widgets.c
+msgid "Hide the password"
+msgstr "Сховати пароль"
+
+#: src/sw-widgets.c
+msgid "Show the password"
+msgstr "Показати пароль"
+
+#: src/sw-widgets.c
+msgid "The code"
+msgstr "Код"
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-window.c
+#, c-format
+msgid "%s is uninstalled"
+msgstr "%s видалено"
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-window.c
+#, c-format
+msgid "%s is updated"
+msgstr "%s оновлено"
+
+#: src/sw-window.c
+#, c-format
+msgid "%s is installed"
+msgstr "%s установлено"
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-window.c
+#, c-format
+msgid "%s was not uninstalled"
+msgstr "%s не видалено"
+
+#: src/sw-window.c
+#, c-format
+msgid "%s was not installed"
+msgstr "%s не встановлено"
+
+#: src/sw-window.c
+msgid "The app could not be uninstalled."
+msgstr "Не вдалося видалити додаток."
+
+#: src/sw-window.c
+msgid "The app could not be installed."
+msgstr "Не вдалося встановити додаток."
+
+#: src/sw-window.c
+msgid "Featured"
+msgstr "Головна"
+
+# android: Settings storage_games (short)
+#: src/sw-window.c
+msgid "Games"
+msgstr "Ігри"

@@ -147,6 +147,28 @@ test_plural_russian (void)
     g_assert_cmpstr (dictate_l10n_n ("ru", "%u phrase", "%u phrases", cases[i].n), ==, cases[i].form);
 }
 
+/* Polish: 1; 2-4, 22-24... but not 12-14; the rest. Ukrainian: Russian's. Hebrew: 1; 2; the rest */
+static void
+test_plural_polish_ukrainian_hebrew (void)
+{
+  const Pair forms[] = { PAIR ("%u phrase\0%u phrases", "one\0few\0many") };
+  const struct { const char *language; gulong n; const char *form; } cases[] = {
+    { "pl", 0, "many" }, { "pl", 1, "one" }, { "pl", 2, "few" }, { "pl", 4, "few" }, { "pl", 5, "many" },
+    { "pl", 12, "many" }, { "pl", 14, "many" }, { "pl", 21, "many" }, { "pl", 22, "few" }, { "pl", 25, "many" },
+    { "pl", 101, "many" }, { "pl", 102, "few" }, { "pl", 112, "many" },
+    { "uk", 0, "many" }, { "uk", 1, "one" }, { "uk", 2, "few" }, { "uk", 11, "many" }, { "uk", 21, "one" },
+    { "uk", 22, "few" }, { "uk", 111, "many" },
+    { "he", 0, "many" }, { "he", 1, "one" }, { "he", 2, "few" }, { "he", 3, "many" }, { "he", 10, "many" },
+    { "he", 20, "many" }, { "he", 102, "many" },
+  };
+
+  write_catalogue ("pl", forms, G_N_ELEMENTS (forms), FALSE);
+  write_catalogue ("uk", forms, G_N_ELEMENTS (forms), FALSE);
+  write_catalogue ("he", forms, G_N_ELEMENTS (forms), FALSE);
+  for (guint i = 0; i < G_N_ELEMENTS (cases); i++)
+    g_assert_cmpstr (dictate_l10n_n (cases[i].language, "%u phrase", "%u phrases", cases[i].n), ==, cases[i].form);
+}
+
 static void
 test_other_byte_order (void)
 {
@@ -182,6 +204,7 @@ main (int argc, char **argv)
   g_test_add_func ("/l10n/plural", test_plural_n_ne_1);
   g_test_add_func ("/l10n/plural-french", test_plural_french);
   g_test_add_func ("/l10n/plural-russian", test_plural_russian);
+  g_test_add_func ("/l10n/plural-polish-ukrainian-hebrew", test_plural_polish_ukrainian_hebrew);
   g_test_add_func ("/l10n/other-byte-order", test_other_byte_order);
   g_test_add_func ("/l10n/broken-file", test_broken_file);
   return g_test_run ();

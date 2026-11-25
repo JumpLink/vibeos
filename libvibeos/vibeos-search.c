@@ -37,9 +37,12 @@ G_DEFINE_FINAL_TYPE (VibeosSearchBar, vibeos_search_bar, GTK_TYPE_WIDGET)
 enum { BAR_ACTIVATED, N_BAR_SIGNALS };
 static guint bar_signals[N_BAR_SIGNALS];
 
+/* x from the start: the left, or in a right-to-left language the right of the parent (parent wide) */
 static void
-put (GtkWidget *child, double x, double y, int width, int height)
+put (GtkWidget *child, int parent, double x, double y, int width, int height)
 {
+  if (gtk_widget_get_direction (child) == GTK_TEXT_DIR_RTL)
+    x = parent - x - width;
   gtk_widget_allocate (child, width, height, -1, gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x, y)));
 }
 
@@ -80,16 +83,16 @@ vibeos_search_bar_size_allocate (GtkWidget *widget, int width, int height, int b
   double end = pill.origin.x + pill.size.width;
   int w, h;
 
-  put (self->target, pill.origin.x, 0, (int) pill.size.width, self->height);
+  put (self->target, width, pill.origin.x, 0, (int) pill.size.width, self->height);
   if (self->end)
     {
       natural (self->end, -1, &w, &h);
       end -= END_PAD + w;
-      put (self->end, end, (self->height - h) / 2.0, w, h);
+      put (self->end, width, end, (self->height - h) / 2.0, w, h);
     }
   w = MAX ((int) (end - pill.origin.x - self->text_x - 8), 0);
   gtk_widget_measure (self->hint, GTK_ORIENTATION_VERTICAL, w, &h, &h, NULL, NULL);
-  put (self->hint, pill.origin.x + self->text_x, (self->height - h) / 2.0, w, h);
+  put (self->hint, width, pill.origin.x + self->text_x, (self->height - h) / 2.0, w, h);
 }
 
 static void
@@ -100,6 +103,7 @@ vibeos_search_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   GskRoundedRect round;
   GdkRGBA fill = self->has_fill ? self->fill : vibeos_color (VIBEOS_SURFACE_CONTAINER_HIGH);
   GdkRGBA icon = vibeos_color (VIBEOS_ON_SURFACE_VARIANT);
+  double icon_x;
 
   gsk_rounded_rect_init_from_rect (&round, &pill, self->height / 2.0);
   gtk_snapshot_push_rounded_clip (snapshot, &round);
@@ -114,8 +118,10 @@ vibeos_search_bar_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
       gtk_snapshot_append_border (snapshot, &round, (float[4]) { 1, 1, 1, 1 },
                                   (GdkRGBA[4]) { line, line, line, line });
     }
-  vibeos_snapshot_icon (snapshot, widget, "system-search-symbolic", pill.origin.x + self->icon_x,
-                        (self->height - ICON) / 2.0, ICON, &icon);
+  icon_x = pill.origin.x + self->icon_x;
+  if (gtk_widget_get_direction (widget) == GTK_TEXT_DIR_RTL)
+    icon_x = gtk_widget_get_width (widget) - icon_x - ICON;
+  vibeos_snapshot_icon (snapshot, widget, "system-search-symbolic", icon_x, (self->height - ICON) / 2.0, ICON, &icon);
   gtk_widget_snapshot_child (widget, self->hint, snapshot);
   if (self->end)
     gtk_widget_snapshot_child (widget, self->end, snapshot);
@@ -252,15 +258,15 @@ vibeos_search_view_size_allocate (GtkWidget *widget, int width, int height, int 
   VibeosSearchView *self = VIBEOS_SEARCH_VIEW (widget);
   int w, h, entry_w;
 
-  put (self->back, VIEW_BACK_X, (VIEW_BAR_H - BUTTON) / 2.0, BUTTON, BUTTON);
-  put (self->clear, width - VIEW_BACK_X - BUTTON, (VIEW_BAR_H - BUTTON) / 2.0, BUTTON, BUTTON);
+  put (self->back, width, VIEW_BACK_X, (VIEW_BAR_H - BUTTON) / 2.0, BUTTON, BUTTON);
+  put (self->clear, width, width - VIEW_BACK_X - BUTTON, (VIEW_BAR_H - BUTTON) / 2.0, BUTTON, BUTTON);
   if (self->end)
-    put (self->end, width - VIEW_BACK_X - BUTTON, (VIEW_BAR_H - BUTTON) / 2.0, BUTTON, BUTTON);
+    put (self->end, width, width - VIEW_BACK_X - BUTTON, (VIEW_BAR_H - BUTTON) / 2.0, BUTTON, BUTTON);
   entry_w = MAX (width - VIEW_TEXT_X - VIEW_BACK_X - BUTTON, 1);
   natural (self->entry, entry_w, &w, &h);
-  put (self->entry, VIEW_TEXT_X, (VIEW_BAR_H - h) / 2.0, entry_w, h);
+  put (self->entry, width, VIEW_TEXT_X, (VIEW_BAR_H - h) / 2.0, entry_w, h);
   if (self->content)
-    put (self->content, 0, VIEW_BAR_H + 1, width, MAX (height - VIEW_BAR_H - 1, 0));
+    put (self->content, width, 0, VIEW_BAR_H + 1, width, MAX (height - VIEW_BAR_H - 1, 0));
 }
 
 static void

@@ -13,7 +13,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from component import Component  # noqa: E402
 from pofile import PLURAL_FORMS, PoFile  # noqa: E402
 
-LANGUAGE_NAMES = {'de': 'German', 'es': 'Spanish', 'fr': 'French', 'it': 'Italian', 'nl': 'Dutch', 'ru': 'Russian'}
+LANGUAGE_NAMES = {'de': 'German', 'es': 'Spanish', 'fr': 'French', 'it': 'Italian', 'nl': 'Dutch', 'ru': 'Russian',
+                  'pl': 'Polish', 'he': 'Hebrew', 'uk': 'Ukrainian'}
 
 
 def without_date(text):
@@ -35,6 +36,8 @@ def update(srcdir):
                 f.set_header_field('Last-Translator', 'VibeOS translators')
                 f.set_header_field('Language-Team', LANGUAGE_NAMES.get(lang, lang))
                 f.set_header_field('Plural-Forms', PLURAL_FORMS[lang])
+                # (msginit takes the template's: ASCII where the sources have no other character)
+                f.set_header_field('Content-Type', 'text/plain; charset=UTF-8')
                 f.header.comments = [
                     f'{LANGUAGE_NAMES.get(lang, lang)} translations of {c.domain}.',
                     'Translations marked "android:" come from the Android Open Source Project and LineageOS,',

@@ -1,0 +1,687 @@
+# Hebrew translations of vibeos-browser.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-browser\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Hebrew\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
+
+# android: Jelly app_name
+#: data/vibeos.Browser.desktop.in src/nb-menu.c src/nb-switcher.c src/nb-tab.c
+msgid "Browser"
+msgstr "דפדפן"
+
+#: data/vibeos.Browser.desktop.in
+msgid "Web Browser"
+msgstr "דפדפן אינטרנט"
+
+#: data/vibeos.Browser.desktop.in
+msgid "Browse the web"
+msgstr "גלישה באינטרנט"
+
+# android: Jelly shortcut_new_incognito_tab
+#: data/vibeos.Browser.desktop.in src/nb-switcher.c
+msgid "New incognito tab"
+msgstr "כרטיסיית גלישה בסתר חדשה"
+
+#: src/main.c
+msgid "Open an incognito tab"
+msgstr "פתיחת כרטיסיית גלישה בסתר"
+
+#: src/main.c
+msgid "Open a home-screen shortcut"
+msgstr "פתיחת קיצור דרך ממסך הבית"
+
+#: src/main.c
+msgid "ID"
+msgstr "מזהה"
+
+#: src/main.c
+msgid "URL…"
+msgstr "כתובת URL…"
+
+#: src/nb-app.c
+msgid "Download complete"
+msgstr "ההורדה הושלמה"
+
+#. TRANSLATORS: keep the link's markup as it is
+#: src/nb-menu.c
+msgid "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, under the GNU LGPL 2.1 and BSD licences."
+msgstr "דפי האינטרנט מוצגים באמצעות <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, במסגרת הרישיונות GNU LGPL 2.1 ו-BSD."
+
+# android: Jelly menu_desktop_mode
+#: src/nb-menu.c
+msgid "Desktop site"
+msgstr "אתר בגרסת מחשב"
+
+# android: Jelly menu_go_back (several translations, short)
+#: src/nb-menu.c
+msgid "Go back"
+msgstr "חזרה"
+
+#: src/nb-menu.c
+msgid "Go forward"
+msgstr "קדימה"
+
+# android: Jelly menu_refresh
+#: src/nb-menu.c
+msgid "Refresh page"
+msgstr "ריענון עמוד"
+
+# android: Jelly menu_fav_add
+#: src/nb-menu.c
+msgid "Add to favorites"
+msgstr "הוספה למועדפים"
+
+# android: Jelly menu_share (several translations, short)
+#: src/nb-menu.c
+msgid "Share"
+msgstr "שיתוף"
+
+# android: Jelly menu_new_tab
+#: src/nb-menu.c src/nb-switcher.c
+msgid "New tab"
+msgstr "כרטיסייה חדשה"
+
+# android: Jelly menu_incognito
+#: src/nb-menu.c src/nb-switcher.c
+msgid "Incognito tab"
+msgstr "כרטיסיית גלישה בסתר"
+
+# android: Jelly menu_favorites
+#: src/nb-menu.c src/nb-pages.c
+msgid "Favorites"
+msgstr "מועדפים"
+
+# android: Jelly menu_history
+#. the names as the list shows them, translated there (nb_list_dialog_present): History and None are words
+#: src/nb-menu.c src/nb-pages.c src/nb-suggest.c
+msgid "History"
+msgstr "היסטוריה"
+
+# android: Jelly menu_downloads
+#: src/nb-menu.c src/nb-pages.c
+msgid "Downloads"
+msgstr "הורדות"
+
+# android: Jelly menu_shortcut
+#: src/nb-menu.c
+msgid "Add shortcut"
+msgstr "הוספת קיצור דרך"
+
+#: src/nb-menu.c
+msgid "Find in page"
+msgstr "חיפוש בדף"
+
+# android: Jelly menu_print
+#: src/nb-menu.c
+msgid "Print"
+msgstr "הדפסה"
+
+# android: Jelly menu_desktop_shortcuts
+#: src/nb-menu.c src/nb-pages.c
+msgid "Desktop shortcuts"
+msgstr "קיצורי דרך בשולחן העבודה"
+
+# android: Jelly menu_settings (several translations, short)
+#. the pinned toolbar: the up arrow, and the collapsed title
+#: src/nb-menu.c src/nb-settings.c
+msgid "Settings"
+msgstr "הגדרות"
+
+#: src/nb-menu.c
+msgid "About"
+msgstr "מידע על האפליקציה"
+
+#: src/nb-menu.c
+msgid "Open in new tab"
+msgstr "פתיחה בכרטיסייה חדשה"
+
+#: src/nb-menu.c src/nb-tab.c
+msgid "Download"
+msgstr "הורדה"
+
+#: src/nb-menu.c
+msgid "Link copied"
+msgstr "הקישור הועתק"
+
+#: src/nb-menu.c
+msgid "Copy link"
+msgstr "העתקת הקישור"
+
+#: src/nb-menu.c
+msgid "Send to"
+msgstr "שליחה אל"
+
+#: src/nb-menu.c
+msgid "Shortcut not added"
+msgstr "קיצור הדרך לא נוסף"
+
+#: src/nb-menu.c
+msgid "Touch & hold the shortcut to move it around the home screen"
+msgstr "כדי להזיז את קיצור הדרך במסך הבית, צריך לגעת בו ולהחזיק אותו"
+
+# android: Framework cancel (several translations, short)
+#: src/nb-menu.c src/nb-pages.c src/nb-settings.c src/nb-tab.c src/nb-widgets.c
+msgid "Cancel"
+msgstr "ביטול"
+
+# android: Launcher3 add_to_home_screen (other app)
+#: src/nb-menu.c
+msgid "Add to home screen"
+msgstr "הוספה למסך הבית"
+
+# android: Jelly history_snackbar_item_deleted
+#: src/nb-pages.c
+msgid "Entry deleted"
+msgstr "הרשומה נמחקה"
+
+# android: Jelly history_snackbar_item_deleted_message (several translations, short)
+#: src/nb-pages.c
+msgid "Undo"
+msgstr "ביטול"
+
+#. "Clear history" over a spinner and "Clearing history…", not cancelable, gone 200 ms after
+#: src/nb-pages.c
+msgid "Clear history"
+msgstr "ניקוי ההיסטוריה"
+
+#: src/nb-pages.c
+msgid "Clearing history…"
+msgstr "ההיסטוריה נמחקת…"
+
+#: src/nb-pages.c
+msgid "You're going to delete all the history, this action cannot be undone. Do you want to proceed?"
+msgstr "כל ההיסטוריה תימחק, ואי אפשר לבטל את הפעולה הזו. להמשיך?"
+
+# android: Settings proxy_clear_text (other app, several translations, short)
+#: src/nb-pages.c
+msgid "Clear"
+msgstr "ניקוי"
+
+#: src/nb-pages.c
+msgid "There's nothing here, browse on the internet to see your history here"
+msgstr "אין כאן שום דבר. ההיסטוריה תופיע כאן אחרי גלישה באינטרנט"
+
+#: src/nb-pages.c
+msgid "Insert a valid URL"
+msgstr "יש להקליד כתובת תקינה"
+
+#: src/nb-pages.c
+msgid "Edit favorite"
+msgstr "עריכת המועדף"
+
+# android: Jelly favorite_edit_title (several translations, short)
+#: src/nb-pages.c
+msgid "Title"
+msgstr "כותרת"
+
+# android: Jelly favorite_edit_url (several translations, short)
+#: src/nb-pages.c
+msgid "URL"
+msgstr "כתובת אינטרנט"
+
+# android: Jelly favorite_edit_delete (several translations, short)
+#: src/nb-pages.c
+msgid "Delete"
+msgstr "מחיקה"
+
+# android: Jelly favorite_edit_positive (several translations, short)
+#: src/nb-pages.c
+msgid "Edit"
+msgstr "עריכה"
+
+# android: Jelly favorite_empty
+#: src/nb-pages.c
+msgid "There's nothing here, add a favorite link to see it here"
+msgstr "אין כאן שום דבר, יש להוסיף קישור למועדפים כדי לראות אותו כאן"
+
+#: src/nb-pages.c
+msgid "Download failed"
+msgstr "ההורדה נכשלה"
+
+#: src/nb-pages.c
+#, c-format
+msgid "Downloading… %d%%"
+msgstr "מתבצעת הורדה… %d%%"
+
+# android: Framework mime_type_generic (short)
+#: src/nb-pages.c
+msgid "File"
+msgstr "קובץ"
+
+#. TRANSLATORS: a download's day, its size and the file's type
+#: src/nb-pages.c
+#, c-format
+msgid "%s, %s, %s"
+msgstr "%s, %s, %s"
+
+# android: DocumentsUI empty (other app, short)
+#: src/nb-pages.c
+msgid "No items"
+msgstr "אין פריטים"
+
+# android: Jelly background_shortcuts_save_action (several translations, short)
+#: src/nb-pages.c
+msgid "Save"
+msgstr "שמירה"
+
+# android: Jelly pref_search_engine
+#: src/nb-settings.c
+msgid "Search engine"
+msgstr "מנוע חיפוש"
+
+# android: Jelly pref_suggestions_provider
+#: src/nb-settings.c
+msgid "Suggestions provider"
+msgstr "ספק הצעות"
+
+# android: Jelly pref_start_page_autoload_disabled (several translations, short)
+#: src/nb-settings.c
+msgid "Disabled"
+msgstr "מושבת"
+
+#: src/nb-settings.c
+msgid "Select home page"
+msgstr "הגדרת דף הבית"
+
+#: src/nb-settings.c
+msgid "Write the home page URL"
+msgstr "יש להקליד את הכתובת של דף הבית"
+
+#: src/nb-settings.c
+msgid "Enabled"
+msgstr "מופעל"
+
+# android: Jelly pref_start_page
+#: src/nb-settings.c
+msgid "Home page"
+msgstr "דף הבית"
+
+# android: Framework reset (several translations, short)
+#: src/nb-settings.c
+msgid "Reset"
+msgstr "איפוס"
+
+# android: Framework httpErrorOk (short)
+#: src/nb-settings.c
+msgid "OK"
+msgstr "אישור"
+
+#: src/nb-settings.c
+msgid "Cleared all the cookies"
+msgstr "כל קובצי ה-Cookie נמחקו"
+
+# android: Jelly pref_reach_mode_title
+#: src/nb-settings.c
+msgid "Reach mode"
+msgstr "מצב יד אחת"
+
+# android: Jelly pref_reach_mode_summary
+#: src/nb-settings.c
+msgid "Relocate interface elements for easier one-hand usage"
+msgstr "מאפשר שימוש קל יותר ביד אחת"
+
+# android: Jelly pref_fullscreen_shortcuts_title
+#: src/nb-settings.c
+msgid "Fullscreen shortcuts"
+msgstr "קיצורי דרך במסך מלא"
+
+# android: Jelly pref_fullscreen_shortcuts_summary
+#: src/nb-settings.c
+msgid "Force shortcuts to open in fullscreen mode"
+msgstr "קיצורי דרך ייפתחו במסך מלא"
+
+# android: Jelly pref_privacy_security
+#: src/nb-settings.c
+msgid "Privacy & security"
+msgstr "פרטיות ואבטחה"
+
+# android: Jelly pref_dynamic_popup_title
+#: src/nb-settings.c
+msgid "Dynamic popups"
+msgstr "חלונות קופצים דינאמיים"
+
+# android: Jelly pref_dynamic_popup_summary
+#: src/nb-settings.c
+msgid "Allow JavaScript to open popups without user interaction"
+msgstr "לאפשר ל־JavaScript לפתוח חלונות קופצים ללא התערבות מצד המשתמש"
+
+#: src/nb-settings.c
+msgid "Enable JavaScript"
+msgstr "הפעלת JavaScript"
+
+# android: Jelly pref_location_title
+#: src/nb-settings.c
+msgid "Location"
+msgstr "מיקום"
+
+#: src/nb-settings.c
+msgid "Allow websites to request access to your location"
+msgstr "מתן אפשרות לאתרים לבקש גישה למיקום"
+
+#: src/nb-settings.c
+msgid "Do Not Track"
+msgstr "ללא מעקב"
+
+#: src/nb-settings.c
+msgid "Send a Do Not Track request to websites you visit"
+msgstr "שליחת בקשת \"ללא מעקב\" לאתרים שמבקרים בהם"
+
+# android: Jelly pref_cookie_title
+#: src/nb-settings.c
+msgid "Cookies"
+msgstr "קובצי Cookie"
+
+#: src/nb-settings.c
+msgid "Allow websites to save and load cookies"
+msgstr "מתן אפשרות לאתרים לשמור ולקרוא קובצי Cookie"
+
+#: src/nb-settings.c
+msgid "Clear cookies"
+msgstr "מחיקת קובצי ה-Cookie"
+
+# android: Framework ringtone_silent (several translations, short)
+#: src/nb-suggest.c
+msgid "None"
+msgstr "ללא"
+
+#: src/nb-switcher.c
+#, c-format
+msgid "Close %s"
+msgstr "סגירת %s"
+
+#. TRANSLATORS: a screen reader's name for the tab card of the tab that was shown; %s is the tab's title
+#: src/nb-switcher.c
+#, c-format
+msgid "%s, current tab"
+msgstr "%s, הכרטיסייה הנוכחית"
+
+#: src/nb-switcher.c
+#, c-format
+msgid "%u tab"
+msgid_plural "%u tabs"
+msgstr[0] "כרטיסייה אחת"
+msgstr[1] "שתי כרטיסיות"
+msgstr[2] "%u כרטיסיות"
+
+#: src/nb-switcher.c
+msgid "Tabs"
+msgstr "כרטיסיות"
+
+#: src/nb-switcher.c
+msgid "No open tabs"
+msgstr "אין כרטיסיות פתוחות"
+
+# android: Jelly favorite_added
+#: src/nb-tab.c
+msgid "Added to favorites"
+msgstr "נוסף למועדפים"
+
+# android: Jelly location_dialog_title
+#. a site asks for the location
+#: src/nb-tab.c
+msgid "Provide location?"
+msgstr "לספק מיקום?"
+
+# android: Jelly location_dialog_message
+#. TRANSLATORS: %s is the site (its origin, "https://example.org")
+#: src/nb-tab.c
+#, c-format
+msgid "%s wants to use your geolocation."
+msgstr "%s רוצה להשתמש בנתוני מיקומך."
+
+# android: Jelly location_dialog_cancel
+#: src/nb-tab.c
+msgid "Deny for now"
+msgstr "דחייה לעת עתה"
+
+#: src/nb-tab.c
+msgid "Block"
+msgstr "חסימה"
+
+#: src/nb-tab.c
+msgid "Allow"
+msgstr "אישור"
+
+# android: Jelly protected_media_dialog_message
+#: src/nb-tab.c
+msgid "Allow protected media?"
+msgstr "לאפשר מדיה מוגנת?"
+
+#: src/nb-tab.c
+msgid "Deny"
+msgstr "דחייה"
+
+#: src/nb-tab.c
+msgid "Grant"
+msgstr "מתן הרשאה"
+
+#. TRANSLATORS: %s is the site (its origin, "https://example.org")
+#: src/nb-tab.c
+#, c-format
+msgid "%s wants to use your camera and microphone."
+msgstr "האתר %s מבקש להשתמש במצלמה ובמיקרופון."
+
+#: src/nb-tab.c
+#, c-format
+msgid "%s wants to use your camera."
+msgstr "האתר %s מבקש להשתמש במצלמה."
+
+#: src/nb-tab.c
+#, c-format
+msgid "%s wants to use your microphone."
+msgstr "האתר %s מבקש להשתמש במיקרופון."
+
+# android: Jelly auth_dialog_title
+#: src/nb-tab.c
+msgid "Authentication Required"
+msgstr "דרושה הזדהות"
+
+# android: Jelly auth_dialog_detail
+#. TRANSLATORS: %s is the page's address
+#: src/nb-tab.c
+#, c-format
+msgid "%s requires a username and password."
+msgstr "%s דורש שם משתמש וסיסמה."
+
+# android: Jelly auth_dialog_username
+#: src/nb-tab.c
+msgid "User Name:"
+msgstr "שם משתמש:"
+
+# android: Jelly auth_dialog_password
+#: src/nb-tab.c
+msgid "Password:"
+msgstr "סיסמה:"
+
+#: src/nb-tab.c
+msgid "Log in"
+msgstr "כניסה"
+
+# android: Jelly download_message (quotes added)
+#. TRANSLATORS: %s is the file's name
+#: src/nb-tab.c
+#, c-format
+msgid "Do you want to download %s?"
+msgstr "האם להוריד את \"%s\"?"
+
+#: src/nb-tab.c
+msgid "Download file"
+msgstr "הורדת קובץ"
+
+# android: Framework review_notification_settings_dismiss (several translations, short)
+#: src/nb-tab.c
+msgid "Dismiss"
+msgstr "סגירה"
+
+# android: Jelly ssl_cert_dialog_title
+#: src/nb-tab.c
+msgid "SSL Certificate Details"
+msgstr "פרטי אישור SSL"
+
+# android: Jelly ssl_cert_dialog_trusted
+#: src/nb-tab.c
+msgid "Connection is secure"
+msgstr "החיבור מאובטח"
+
+# android: Jelly ssl_error_expired
+#: src/nb-tab.c
+msgid "This certificate has expired."
+msgstr "פג תוקפה של תעודה זו."
+
+# android: Jelly ssl_error_not_yet_valid
+#: src/nb-tab.c
+msgid "This certificate isn't valid yet."
+msgstr "התעודה עדיין אינה בתוקף."
+
+# android: Jelly ssl_error_mismatch
+#: src/nb-tab.c
+msgid "The name of the site doesn't match the name on the certificate."
+msgstr "שם האתר שונה מהשם בתעודה."
+
+# android: Jelly ssl_error_untrusted
+#: src/nb-tab.c
+msgid "This certificate isn't from a trusted authority."
+msgstr "תעודה זו אינה מונפקת על ידי רשות מהימנה."
+
+# android: Jelly ssl_error_invalid
+#: src/nb-tab.c
+msgid "This certificate is invalid."
+msgstr "תעודה זו אינה חוקית."
+
+#: src/nb-tab.c
+msgid "Trust"
+msgstr "מתן אמון"
+
+#: src/nb-tab.c
+msgid "Domain"
+msgstr "דומיין"
+
+# android: Jelly ssl_cert_dialog_issued_to
+#: src/nb-tab.c
+msgid "Issued to"
+msgstr "הונפק ל:"
+
+# android: Jelly ssl_cert_dialog_issued_by
+#: src/nb-tab.c
+msgid "Issued by"
+msgstr "הונפק על ידי"
+
+#: src/nb-tab.c
+msgid "Common Name (CN)"
+msgstr "שם נפוץ (CN)"
+
+#: src/nb-tab.c
+msgid "Organization (O)"
+msgstr "ארגון (O)"
+
+#: src/nb-tab.c
+msgid "Organizational Unit (OU)"
+msgstr "יחידה ארגונית (OU)"
+
+# android: Jelly ssl_cert_dialog_validity
+#: src/nb-tab.c
+msgid "Validity Period"
+msgstr "משך תוקף:"
+
+# android: Jelly ssl_cert_dialog_issued_on
+#: src/nb-tab.c
+msgid "Issued On"
+msgstr "הונפק ב:"
+
+# android: Jelly ssl_cert_dialog_expires_on
+#: src/nb-tab.c
+msgid "Expires On"
+msgstr "תאריך תפוגה:"
+
+#: src/nb-tab.c
+msgid "This page used too much memory"
+msgstr "הדף הזה השתמש ביותר מדי זיכרון"
+
+#: src/nb-tab.c
+msgid "This page stopped working"
+msgstr "הדף הזה הפסיק לפעול"
+
+#: src/nb-tab.c
+msgid "Reload it to try again."
+msgstr "אפשר לטעון אותו מחדש כדי לנסות שוב."
+
+#: src/nb-tab.c
+msgid "Reload"
+msgstr "טעינה מחדש"
+
+#: src/nb-tab.c
+msgid "No app can handle this link"
+msgstr "אין אפליקציה שיכולה לפתוח את הקישור הזה"
+
+#: src/nb-tab.c
+msgid "Playing full screen"
+msgstr "הפעלה במסך מלא"
+
+# android: Framework input_method_nav_back_button_desc (several translations, short)
+#. the shell's back gesture clicks the showing button named "Back"
+#: src/nb-tab.c src/nb-widgets.c
+msgid "Back"
+msgstr "חזרה"
+
+#: src/nb-urlbar.c
+#, c-format
+msgid "Switch tabs, %u open tab"
+msgid_plural "Switch tabs, %u open tabs"
+msgstr[0] "מעבר בין כרטיסיות, כרטיסייה פתוחה אחת"
+msgstr[1] "מעבר בין כרטיסיות, שתי כרטיסיות פתוחות"
+msgstr[2] "מעבר בין כרטיסיות, %u כרטיסיות פתוחות"
+
+# android: Jelly url_bar_auto_complete_hint
+#: src/nb-urlbar.c
+msgid "Search or type URL"
+msgstr "חיפוש או הקלדת כתובת אתר"
+
+# android: Jelly url_bar_more
+#: src/nb-urlbar.c
+msgid "More"
+msgstr "עוד"
+
+# android: Jelly url_bar_search_cancel
+#: src/nb-urlbar.c
+msgid "Cancel search"
+msgstr "ביטול חיפוש"
+
+# android: Jelly search_bar_hint (several translations, short)
+#: src/nb-urlbar.c
+msgid "Search"
+msgstr "חיפוש"
+
+# android: Jelly url_bar_search_clear (several translations, short)
+#: src/nb-urlbar.c
+msgid "Clear search"
+msgstr "ניקוי חיפוש"
+
+# android: Jelly url_bar_search_previous
+#: src/nb-urlbar.c
+msgid "Previous"
+msgstr "הקודם"
+
+# android: Jelly url_bar_search_next
+#: src/nb-urlbar.c
+msgid "Next"
+msgstr "הבא"
+
+#. TRANSLATORS: a screen reader's name for a radio mark and a check mark
+#: src/nb-widgets.c
+msgid "radio"
+msgstr "לחצן בחירה"
+
+#: src/nb-widgets.c
+msgid "check"
+msgstr "תיבת סימון"

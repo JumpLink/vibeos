@@ -1,0 +1,465 @@
+# Hebrew translations of vibeos-camera.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-camera\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Hebrew\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
+
+# android: Aperture app_name
+#: data/vibeos.Camera.desktop.in src/cam-settings.c src/cam-window.c
+msgid "Camera"
+msgstr "מצלמה"
+
+#: data/vibeos.Camera.desktop.in
+msgid "Take photos and videos, scan barcodes"
+msgstr "צילום תמונות וסרטונים, סריקת ברקודים"
+
+#: data/vibeos.Camera.desktop.in
+msgid "Camera;Photo;Video;Picture;Selfie;QR;Barcode;"
+msgstr "מצלמה;תמונה;צילום;סרטון;וידאו;סלפי;ברקוד;QR;Camera;Photo;Video;Picture;Selfie;Barcode;"
+
+# android: Aperture cancel_button_description (several translations, short)
+#: src/cam-dialogs.c
+msgid "Cancel"
+msgstr "ביטול"
+
+# android: Aperture location_permission_dialog_title
+#: src/cam-dialogs.c
+msgid "Add photo and video locations"
+msgstr "הוספת מיקום לתמונות ולווידאו"
+
+# android: Aperture location_permission_dialog_description
+#: src/cam-dialogs.c
+msgid "Map your memories by including location metadata with each capture."
+msgstr "יצירת מפת זיכרונות באמצעות הכללת נתוני מיקום בכל צילום."
+
+# android: Aperture location_permission_dialog_later
+#: src/cam-dialogs.c
+msgid "Later"
+msgstr "אחר כך"
+
+# android: Aperture location_permission_dialog_turn_on (several translations, short)
+#: src/cam-dialogs.c
+msgid "Turn on"
+msgstr "הפעלה"
+
+# android: Aperture camera_mode_photo (adapted)
+#. the mode names, in capitals
+#: src/cam-mode-selector.c
+msgctxt "mode"
+msgid "PHOTO"
+msgstr "תמונה"
+
+# android: Aperture camera_mode_video (adapted, several translations, short)
+#: src/cam-mode-selector.c
+msgctxt "mode"
+msgid "VIDEO"
+msgstr "סרטון"
+
+# android: Aperture camera_mode_qr (adapted)
+#: src/cam-mode-selector.c
+msgctxt "mode"
+msgid "SCAN"
+msgstr "סריקה"
+
+# android: Aperture qr_uri_title
+#: src/cam-qr-sheet.c
+msgid "Open URL"
+msgstr "פתיחת קישור"
+
+# android: Aperture qr_address_title (several translations, short)
+#: src/cam-qr-sheet.c
+msgid "Add contact"
+msgstr "הוספת איש קשר"
+
+# android: Aperture qr_calendar_title
+#: src/cam-qr-sheet.c
+msgid "Add event to calendar"
+msgstr "הוספת אירוע ליומן"
+
+# android: Aperture qr_email_title (quotes added)
+#: src/cam-qr-sheet.c
+msgid "Send a new email"
+msgstr "שליחת דוא\"ל חדש"
+
+# android: Aperture qr_geo_title
+#: src/cam-qr-sheet.c
+msgid "Open this location"
+msgstr "פתיחת מיקום זה"
+
+# android: Aperture qr_tel_title
+#: src/cam-qr-sheet.c
+msgid "Call phone number"
+msgstr "התקשרות למספר טלפון"
+
+# android: Aperture qr_sms_title
+#: src/cam-qr-sheet.c
+msgid "Send a new SMS"
+msgstr "שליחת SMS חדש"
+
+# android: Aperture qr_isbn_title
+#: src/cam-qr-sheet.c
+msgid "Lookup this ISBN"
+msgstr "חיפוש ה-ISBN הזה"
+
+# android: Aperture qr_product_title
+#: src/cam-qr-sheet.c
+msgid "Lookup product"
+msgstr "חיפוש מוצר"
+
+# android: Aperture qr_vin_title
+#: src/cam-qr-sheet.c
+msgid "Lookup VIN"
+msgstr "חיפוש VIN"
+
+# android: Aperture qr_text (several translations, short)
+#: src/cam-qr-sheet.c
+msgid "Text"
+msgstr "טקסט"
+
+#: src/cam-qr-sheet.c src/cam-window.c
+msgid "No app available to handle this action"
+msgstr "אין אפליקציה זמינה לטיפול בפעולה הזו"
+
+# android: Aperture qr_copy_description
+#: src/cam-qr-sheet.c
+msgid "Copy to clipboard"
+msgstr "העתקה ללוח"
+
+#: src/cam-settings.c
+msgid "The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, under the GNU LGPL 2.1 or later."
+msgstr "המצלמות מופעלות באמצעות <a href=\"https://libcamera.org/\">libcamera</a>, במסגרת רישיון GNU LGPL 2.1 ואילך."
+
+# android: Aperture title_activity_settings (several translations, short)
+#: src/cam-settings.c
+msgid "Settings"
+msgstr "הגדרות"
+
+# android: Aperture edge_mode_off (several translations, short)
+#: src/cam-settings.c
+msgctxt "mirror"
+msgid "Off"
+msgstr "כבוי"
+
+# android: Framework zen_mode_implicit_activated (several translations, short)
+#: src/cam-settings.c
+msgctxt "mirror"
+msgid "On"
+msgstr "מצב פעיל"
+
+# android: Aperture video_mirror_mode_on_ffc_only
+#: src/cam-settings.c
+msgid "Front facing camera only"
+msgstr "מצלמה קדמית בלבד"
+
+# android: Aperture shutter_button_description
+#: src/cam-settings.c src/cam-widgets.c src/cam-window.c
+msgid "Shutter"
+msgstr "צמצם"
+
+# android: Aperture gesture_action_focus
+#: src/cam-settings.c
+msgid "Focus"
+msgstr "פוקוס"
+
+# android: Aperture gesture_action_mic_mute
+#: src/cam-settings.c
+msgid "Microphone mute"
+msgstr "השתקת מיקרופון"
+
+# android: Aperture gesture_action_zoom
+#: src/cam-settings.c
+msgid "Zoom"
+msgstr "זום"
+
+# android: Framework system_locale_title (several translations, short)
+#. the keys keep their usual job: the volume
+#: src/cam-settings.c
+msgid "System default"
+msgstr "ברירת המחדל של המערכת"
+
+# android: Aperture gesture_action_nothing (several translations, short)
+#: src/cam-settings.c
+msgid "Nothing"
+msgstr "כלום"
+
+# android: Framework action_bar_up_description (several translations, short)
+#: src/cam-settings.c
+msgid "Navigate up"
+msgstr "ניווט למעלה"
+
+# android: Framework input_method_nav_back_button_desc (several translations, short)
+#. the shell's back gesture presses a "Back" button at the window's top over the accessibility bus
+#: src/cam-settings.c
+msgid "Back"
+msgstr "חזרה"
+
+# android: Aperture general_header (several translations, short)
+#: src/cam-settings.c
+msgid "General"
+msgstr "כללי"
+
+# android: Aperture bright_screen_title
+#: src/cam-settings.c
+msgid "Bright screen"
+msgstr "בהירות מסך"
+
+# android: Aperture bright_screen_summary
+#: src/cam-settings.c
+msgid "Locks brightness to 100%"
+msgstr "נעילה על 100% בהירות"
+
+# android: Aperture save_location_title
+#: src/cam-settings.c
+msgid "Save location data"
+msgstr "שמירת נתוני מיקום"
+
+# android: Aperture save_location_summary
+#: src/cam-settings.c
+msgid "Include GPS location in metadata"
+msgstr "הוספת מיקום GPS למטא דטא"
+
+# android: Aperture shutter_sound_title
+#: src/cam-settings.c
+msgid "Shutter sound"
+msgstr "צליל צמצם"
+
+# android: Aperture shutter_sound_summary
+#: src/cam-settings.c
+msgid "Play a sound on capture"
+msgstr "השמעת צליל בעת הלכידה"
+
+# android: Aperture leveler_title
+#: src/cam-settings.c
+msgid "Leveler"
+msgstr "מיישר"
+
+# android: Aperture leveler_summary
+#: src/cam-settings.c
+msgid "Indicator that shows device orientation"
+msgstr "מחוון המציג את כיוון המכשיר"
+
+# android: Aperture gestures_title (several translations, short)
+#: src/cam-settings.c
+msgid "Gestures"
+msgstr "מחוות"
+
+# android: Aperture photos_header
+#: src/cam-settings.c
+msgid "Photos"
+msgstr "תמונות"
+
+# android: Aperture photo_ffc_mirror_title
+#: src/cam-settings.c
+msgid "Mirror front camera"
+msgstr "היפוך תמונת מצלמה קדמית"
+
+# android: Aperture photo_ffc_mirror_summary
+#: src/cam-settings.c
+msgid "Save front camera photos as they appear in the preview"
+msgstr "שמירת תמונות מהמצלמה הקדמית כפי שהן מופיעות בתצוגה המקדימה"
+
+#: src/cam-settings.c
+msgctxt "settings"
+msgid "Video"
+msgstr "וידאו"
+
+# android: Aperture video_mirror_mode_title
+#: src/cam-settings.c
+msgid "Enable video mirroring"
+msgstr "הפעלת שיקוף וידאו"
+
+#. last, About: the camera has no ⋮ (its top corners are the flash's and the flip's), so it is here
+#: src/cam-settings.c
+msgid "About"
+msgstr "מידע על האפליקציה"
+
+#: src/cam-settings.c
+msgid "About Camera"
+msgstr "מידע על המצלמה"
+
+#: src/cam-settings.c
+msgid "Volume buttons"
+msgstr "לחצני עוצמת הקול"
+
+#: src/cam-settings.c
+msgid "Volume buttons action"
+msgstr "הפעולה של לחצני עוצמת הקול"
+
+#: src/cam-settings.c
+msgid "Invert volume buttons"
+msgstr "היפוך לחצני עוצמת הקול"
+
+#: src/cam-settings.c
+msgid "Invert volume up and down behavior"
+msgstr "היפוך הפעולה של לחצני הגברת והנמכת עוצמת הקול"
+
+# android: Aperture flip_camera_button_description
+#: src/cam-widgets.c src/cam-window.c
+msgid "Flip camera"
+msgstr "החלפת מצלמה"
+
+# android: Aperture video_recording_state_button_description
+#: src/cam-widgets.c src/cam-window.c
+msgid "Pause/resume video recording"
+msgstr "עצירה/המשך הקלטת וידאו"
+
+# android: Aperture gallery_button_description
+#: src/cam-widgets.c src/cam-window.c
+msgid "Gallery"
+msgstr "גלריה"
+
+#: src/cam-window.c
+msgid "Camera access is off. Turn it on in Settings, Security and privacy."
+msgstr "הגישה למצלמה מושבתת. אפשר להפעיל אותה בהגדרות, בקטע \"אבטחה ופרטיות\"."
+
+# android: Aperture force_torch_help
+#: src/cam-window.c
+msgid "On photo mode, you can long press the flash button to switch into torch mode."
+msgstr "במצב תמונה, ניתן ללחוץ לחיצה ארוכה על לחצן המבזק כדי לעבור למצב פנס."
+
+# android: Framework httpErrorOk (short)
+#: src/cam-window.c
+msgid "OK"
+msgstr "אישור"
+
+# android: Aperture grid_off
+#: src/cam-window.c
+msgid "GRID OFF"
+msgstr "כיבוי רשת"
+
+# android: Aperture grid_on_3
+#: src/cam-window.c
+msgid "GRID 3x3"
+msgstr "רשת 3x3"
+
+# android: Aperture grid_on_4
+#: src/cam-window.c
+msgid "GRID 4x4"
+msgstr "רשת 4x4"
+
+# android: Aperture grid_on_goldenratio
+#: src/cam-window.c
+msgid "GRID φ"
+msgstr "רשת φ"
+
+# android: Aperture timer_3
+#: src/cam-window.c
+msgid "TIMER 3s"
+msgstr "טיימר 3 שניות"
+
+# android: Aperture timer_10
+#: src/cam-window.c
+msgid "TIMER 10s"
+msgstr "טיימר 10 שניות"
+
+# android: Aperture timer_off
+#: src/cam-window.c
+msgid "TIMER OFF"
+msgstr "טיימר כבוי"
+
+#. the camera's own rate: there is no other to choose, so AUTO and disabled, as a single option is shown
+#: src/cam-window.c
+msgid "AUTO FPS"
+msgstr "FPS אוטומטי"
+
+# android: Aperture mic_on
+#: src/cam-window.c
+msgid "MIC ON"
+msgstr "מיקרופון פעיל"
+
+# android: Aperture mic_off
+#: src/cam-window.c
+msgid "MIC OFF"
+msgstr "מיקרופון כבוי"
+
+# android: Aperture settings
+#: src/cam-window.c
+msgid "SETTINGS"
+msgstr "הגדרות"
+
+# android: Aperture error_stream_config
+#: src/cam-window.c
+msgid "There was an error while preparing the stream. Please report this to the developers."
+msgstr "אירעה שגיאה בעת הכנת התזרים. נא לדווח על כך למפתחים."
+
+#: src/cam-window.c
+msgid "This camera is already in use, try closing the app using it."
+msgstr "המצלמה הזו כבר בשימוש. כדאי לנסות לסגור את האפליקציה שמשתמשת בה."
+
+#: src/cam-window.c
+msgid "Error while setting up the session. The app will try to recover."
+msgstr "אירעה שגיאה בהגדרת ההפעלה. האפליקציה תנסה להתאושש."
+
+# android: Aperture camcorder_unsupported_toast
+#: src/cam-window.c
+msgid "No camera supports video recording."
+msgstr "אין מצלמה שתומכת בהקלטת וידאו"
+
+#. the measure takes seconds the first time; without a word the press looks ignored
+#: src/cam-window.c
+msgid "Preparing video…"
+msgstr "הסרטון בהכנה…"
+
+# android: Aperture thermal_status_moderate
+#: src/cam-window.c
+msgid "Moderate thermal throttling, make sure the device isn't under direct sunlight."
+msgstr "האטה תרמית מתונה. יש לוודא שהמכשיר אינו חשוף לאור שמש ישירה."
+
+# android: Aperture thermal_status_severe
+#: src/cam-window.c
+msgid "Severe thermal throttling, it is recommended to let the device cool down a bit."
+msgstr "האטה תרמית חמורה. מומלץ לאפשר למכשיר להתקרר מעט."
+
+#: src/cam-window.c
+msgid "Critical thermal throttling, the app might be closed soon."
+msgstr "האטה תרמית קריטית. ייתכן שהאפליקציה תיסגר בקרוב."
+
+#: src/cam-window.c
+msgid "Emergency thermal throttling, the app will close now."
+msgstr "האטת חירום תרמית. האפליקציה תיסגר עכשיו."
+
+# android: Aperture thermal_status_shutdown
+#: src/cam-window.c
+msgid "Shutdown thermal throttling, the device will power off."
+msgstr "כיבוי עקב האטה תרמית קריטית. המכשיר יכבה."
+
+# android: Aperture save_location_toast
+#: src/cam-window.c
+msgid "Location permissions not granted by the user."
+msgstr "הרשאות מיקום לא ניתנו על ידי המשתמש"
+
+# android: Aperture pro_button_description
+#: src/cam-window.c
+msgid "Pro settings"
+msgstr "הגדרות למתקדמים"
+
+# android: Aperture flash_button_description
+#: src/cam-window.c
+msgid "Flash mode"
+msgstr "מצב מבזק"
+
+#. TRANSLATORS: over the empty viewfinder while the camera is being found and opened
+#: src/cam-window.c
+msgid "Starting camera…"
+msgstr "המצלמה מופעלת…"
+
+#. TRANSLATORS: over the empty viewfinder: the device has no camera, or none answered; a tap looks again
+#: src/cam-window.c
+msgid "No camera found"
+msgstr "לא נמצאה מצלמה"
+
+#. TRANSLATORS: over the empty viewfinder: the camera system did not start in time; a tap tries again
+#: src/cam-window.c
+msgid "The camera is not responding"
+msgstr "המצלמה לא מגיבה"

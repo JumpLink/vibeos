@@ -27,12 +27,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from component import Component  # noqa: E402
 from pofile import PoFile  # noqa: E402
 
-LANGS = ['de', 'es', 'fr', 'it', 'nl', 'ru']
+LANGS = ['de', 'es', 'fr', 'it', 'nl', 'ru', 'pl', 'he', 'uk']
+# the resource directories' names where Android's differ from gettext's: Hebrew is values-iw (values-he in some apps)
+ANDROID_DIRS = {'he': ('iw', 'he')}
 # Android's plural quantities, in the order of each language's gettext plural forms (pofile.PLURAL_FORMS)
 PLURAL_QUANTITIES = {'de': ['one', 'other'], 'es': ['one', 'other'], 'fr': ['one', 'other'], 'it': ['one', 'other'],
-                     'nl': ['one', 'other'], 'ru': ['one', 'few', 'many']}
+                     'nl': ['one', 'other'], 'ru': ['one', 'few', 'many'],
+                     'pl': ['one', 'few', 'many'], 'he': ['one', 'two', 'other'], 'uk': ['one', 'few', 'many']}
 # plural forms that stand for n = 1 alone: their translation may leave the number out
-SINGLE_ONE = {'de', 'es', 'it', 'nl'}
+SINGLE_ONE = {'de', 'es', 'it', 'nl', 'pl', 'he'}
 DEFAULT = ['Framework', 'Settings', 'SettingsLib', 'SystemUI', 'Keyguard', 'Launcher3', 'DocumentsUI', 'Contacts',
            'Dialer', 'Messaging', 'DeskClock', 'Etar', 'Aperture', 'Jelly', 'ExactCalculator', 'PackageInstaller',
            'LatinIME']
@@ -54,7 +57,7 @@ PREFER = {
     'libvibeos-1': ['Framework', 'Settings', 'SettingsLib', 'SystemUI'],
 }
 QUOTES = {'de': ('„', '“'), 'es': ('«', '»'), 'fr': ('« ', ' »'), 'it': ('«', '»'), 'nl': ('“', '”'),
-          'ru': ('«', '»')}
+          'ru': ('«', '»'), 'pl': ('„', '”'), 'he': ('"', '"'), 'uk': ('«', '»')}
 XLIFF = '{urn:oasis:names:tc:xliff:document:1.2}g'
 # Android strings whose English is ours but not their sense: paper sizes ("Legal", "Letter"), Contacts' "About" (the
 # contact), the accessibility services' "About %s", a network's speed ("Okay"), the keyboard's spoken emoji names
@@ -131,6 +134,15 @@ def parse(path):
 ICU_FORM = re.compile(r'\s*(=\d+|zero|one|two|few|many|other)\s*\{')
 
 
+def parse_first(paths):
+    """parse() of the first of @paths that has strings (Hebrew: values-iw, else values-he)"""
+    for path in paths:
+        got = parse(path)
+        if got[0] or got[1]:
+            return got
+    return {}, {}
+
+
 def icu_plural(text):
     """the forms of a string in ICU's plural syntax, which newer Android strings use ("{count, plural, =1 {# day}
     other {# days}}"): {quantity: text}, the number '#' made %d; None for any other string, and for one whose forms
@@ -195,7 +207,8 @@ class Android:
 
     def _add(self, source, resdir, fn):
         en_s, en_p = parse(os.path.join(resdir, 'values', fn))
-        tr = {lang: parse(os.path.join(resdir, f'values-{lang}', fn)) for lang in LANGS}
+        tr = {lang: parse_first([os.path.join(resdir, f'values-{d}', fn) for d in ANDROID_DIRS.get(lang, (lang,))])
+              for lang in LANGS}
         cities = fn == 'cities.xml'
         for name, text in en_s.items():
             ts = {lang: tr[lang][0][name] for lang in LANGS if tr[lang][0].get(name)}

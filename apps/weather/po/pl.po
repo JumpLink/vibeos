@@ -1,0 +1,278 @@
+# Polish translations of vibeos-weather.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-weather\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Polish\n"
+"Language: pl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 "
+"|| n%100>=20) ? 1 : 2);\n"
+
+#: data/vibeos.Weather.desktop.in src/main.c
+msgid "Weather"
+msgstr "Pogoda"
+
+#: data/vibeos.Weather.desktop.in
+msgid "The weather where you are"
+msgstr "Pogoda tam, gdzie jesteś"
+
+#: data/vibeos.Weather.desktop.in
+msgid "forecast;temperature;rain;"
+msgstr "pogoda;prognoza;temperatura;deszcz;opady;weather;forecast;temperature;rain;"
+
+#. TRANSLATORS: the sky, as the page names it under the temperature
+#: src/main.c
+msgctxt "sky"
+msgid "Clear"
+msgstr "Bezchmurnie"
+
+#: src/main.c
+msgid "Mostly clear"
+msgstr "Przeważnie bezchmurnie"
+
+#: src/main.c
+msgid "Partly cloudy"
+msgstr "Częściowe zachmurzenie"
+
+#: src/main.c
+msgid "Cloudy"
+msgstr "Pochmurno"
+
+#: src/main.c
+msgid "Fog"
+msgstr "Mgła"
+
+#: src/main.c
+msgid "Drizzle"
+msgstr "Mżawka"
+
+#: src/main.c
+msgid "Freezing drizzle"
+msgstr "Marznąca mżawka"
+
+#: src/main.c
+msgid "Rain"
+msgstr "Deszcz"
+
+#: src/main.c
+msgid "Heavy rain"
+msgstr "Ulewny deszcz"
+
+#: src/main.c
+msgid "Freezing rain"
+msgstr "Marznący deszcz"
+
+#: src/main.c
+msgid "Snow"
+msgstr "Śnieg"
+
+#: src/main.c
+msgid "Snow grains"
+msgstr "Śnieg ziarnisty"
+
+#: src/main.c
+msgid "Showers"
+msgstr "Przelotne opady"
+
+#: src/main.c
+msgid "Heavy showers"
+msgstr "Silne przelotne opady"
+
+#: src/main.c
+msgid "Snow showers"
+msgstr "Przelotne opady śniegu"
+
+#: src/main.c
+msgid "Thunderstorm"
+msgstr "Burza"
+
+#: src/main.c
+msgid "Sunrise"
+msgstr "Wschód słońca"
+
+#: src/main.c
+msgid "Sunset"
+msgstr "Zachód słońca"
+
+# android: Settings ram_states[2] (several translations, short)
+#. TRANSLATORS: the UV index's levels
+#: src/main.c
+msgctxt "uv"
+msgid "Low"
+msgstr "Niski"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Moderate"
+msgstr "Umiarkowany"
+
+# android: Settings contrast_high (several translations, short)
+#: src/main.c
+msgctxt "uv"
+msgid "High"
+msgstr "Wysoki"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Very high"
+msgstr "Bardzo wysoki"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Extreme"
+msgstr "Ekstremalny"
+
+#. TRANSLATORS: today's highest and lowest temperatures, then what it feels like now
+#: src/main.c
+#, c-format
+msgid ""
+"↑%s / ↓%s\n"
+"Feels like %s"
+msgstr ""
+"↑%s / ↓%s\n"
+"Odczuwalna %s"
+
+#. TRANSLATORS: today's sky ("Partly cloudy"), then its highest and lowest temperatures ("12°")
+#: src/main.c
+#, c-format
+msgid "%s. High %s, low %s."
+msgstr "%s. Maks. %s, min. %s."
+
+#: src/main.c
+msgid "Today's temperature"
+msgstr "Dzisiejsza temperatura"
+
+#: src/main.c
+msgid "About the same as yesterday"
+msgstr "Mniej więcej jak wczoraj"
+
+#: src/main.c
+msgid "Temperatures a little lower than yesterday"
+msgstr "Trochę chłodniej niż wczoraj"
+
+#: src/main.c
+msgid "Much colder than yesterday"
+msgstr "Dużo zimniej niż wczoraj"
+
+#: src/main.c
+msgid "Temperatures a little higher than yesterday"
+msgstr "Trochę cieplej niż wczoraj"
+
+#: src/main.c
+msgid "Much warmer than yesterday"
+msgstr "Dużo cieplej niż wczoraj"
+
+# android: DocumentsUI search_last_modified_2_days (short)
+#: src/main.c
+msgid "Yesterday"
+msgstr "Wczoraj"
+
+# android: DocumentsUI search_last_modified_1_day (short)
+#: src/main.c
+msgid "Today"
+msgstr "Dzisiaj"
+
+#. TRANSLATORS: under the sunrise's time; %s is the sunset's
+#: src/main.c
+#, c-format
+msgid "Sunset %s"
+msgstr "Zachód: %s"
+
+#: src/main.c
+msgid "UV index"
+msgstr "Indeks UV"
+
+#: src/main.c
+msgid "Humidity"
+msgstr "Wilgotność"
+
+#: src/main.c
+msgid "Wind"
+msgstr "Wiatr"
+
+#: src/main.c
+msgid "Pressure"
+msgstr "Ciśnienie"
+
+#: src/main.c
+msgid "No forecast: Open-Meteo did not answer. Tap reload to try again."
+msgstr "Brak prognozy: Open-Meteo nie odpowiada. Kliknij „Odśwież”, aby spróbować ponownie."
+
+#: src/main.c
+msgid "No location. Turn on Location in Settings, then tap reload, or set a city in the ⋮ menu."
+msgstr "Brak lokalizacji. Włącz lokalizację w Ustawieniach i kliknij „Odśwież” albo wybierz miasto w menu ⋮."
+
+#: src/main.c
+#, c-format
+msgid "Getting the weather for %s…"
+msgstr "Pobieram pogodę: %s…"
+
+#. TRANSLATORS: under "Use my location"; %s is the city chosen now
+#: src/main.c
+#, c-format
+msgid "Instead of %s"
+msgstr "Zamiast: %s"
+
+#: src/main.c
+msgid "Use my location"
+msgstr "Użyj mojej lokalizacji"
+
+#: src/main.c
+msgid "No answer. Check the connection, then type again."
+msgstr "Brak odpowiedzi. Sprawdź połączenie i wpisz ponownie."
+
+#: src/main.c
+msgid "No cities found"
+msgstr "Nie znaleziono miast"
+
+#: src/main.c
+msgid "Set City"
+msgstr "Wybierz miasto"
+
+#: src/main.c
+msgid "City name"
+msgstr "Nazwa miasta"
+
+# android: Settings proxy_clear_text (several translations, short)
+#: src/main.c
+msgid "Clear"
+msgstr "Wyczyść"
+
+#: src/main.c
+msgid ""
+"Weather forecasts by <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, under <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n"
+"\n"
+"Set City finds cities with Open-Meteo's geocoding, on data from <a href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0."
+msgstr ""
+"Prognozy pogody: <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, na licencji <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n"
+"\n"
+"Funkcja „Wybierz miasto” wyszukuje miasta za pomocą geokodowania Open-Meteo na danych z <a href=\"https://www.geonames.org/\">GeoNames</a>, na licencji CC BY 4.0."
+
+#: src/main.c
+msgid "The place's name, where the phone is, from OpenStreetMap's <a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a>. Data © <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the <a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)."
+msgstr "Nazwa miejsca, w którym jest telefon, pochodzi z usługi <a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a> OpenStreetMap. Dane © <a href=\"https://www.openstreetmap.org/copyright\">współtwórcy OpenStreetMap</a>, na licencji <a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)."
+
+#: src/main.c
+msgid "About"
+msgstr "Informacje"
+
+#: src/main.c
+msgid "Reload"
+msgstr "Odśwież"
+
+# android: Framework action_menu_overflow_description (short)
+#: src/main.c
+msgid "More options"
+msgstr "Więcej opcji"
+
+#: src/main.c
+msgid "Finding where you are…"
+msgstr "Ustalam Twoją lokalizację…"

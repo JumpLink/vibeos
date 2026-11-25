@@ -1,0 +1,115 @@
+English	Hebrew	Note
+Settings	הגדרות	app and screen name
+Notifications	התראות
+Notification	התראה
+Do Not Disturb	נא לא להפריע
+Wi-Fi	Wi-Fi	Latin letters, never transliterated
+Bluetooth	Bluetooth	Latin letters, never transliterated
+Airplane mode	מצב טיסה
+Lock screen	מסך הנעילה	"מסך נעילה" in a title without the article, as Settings has it
+Screen lock	נעילת מסך	the PIN/password/pattern lock itself
+Home screen	מסך הבית
+Wallpaper	טפט
+Alarm	שעון מעורר	the Clock tab and an alarm; plural שעונים מעוררים; the sound: צליל ההתראה
+Timer	טיימר
+Stopwatch	שעון עצר
+Reminder	תזכורת
+Event	אירוע	the calendar's and the contact's event
+Calendar	יומן	the app; an account's calendars: לוחות שנה
+Contact	איש קשר	plural אנשי קשר (also the app)
+Conversation	שיחה	as Android's Messages says it (a thread of messages)
+Message	הודעה
+Call (noun)	שיחה	as Android's Phone says it
+Call (verb, button)	התקשרות	the noun form, as Android's newer Phone; never the imperative התקשר
+Download	הורדה	the list: הורדות
+Install	התקנה	in a sentence: להתקין
+Uninstall	הסרת התקנה	the short button: הסרה
+Update (verb)	עדכון	in a sentence: לעדכן
+Update (noun)	עדכון	plural עדכונים
+Share	שיתוף
+Delete	מחיקה	the thing is gone
+Remove	הסרה	taken out of a list, the thing itself stays
+Clear	ניקוי	"Clear all" notifications: ניקוי הכול; recents: ניקוי הכול
+Cancel	ביטול	the button; in a sentence: לבטל
+OK	אישור
+Done	סיום
+Save	שמירה
+Back	חזרה
+Close	סגירה
+Search	חיפוש	the field, a label and the button
+Edit	עריכה
+Add	הוספה
+Open	פתיחה
+Rename	שינוי שם
+Copy	העתקה
+Retry	ניסיון נוסף	"Try again" in a sentence: יש לנסות שוב
+Next	הבא
+Continue	המשך
+Allow	אישור	in a permission dialog Android says "כן, זה בסדר"
+Deny	דחייה	in a permission dialog "Don't allow": אין אישור
+Turn on	הפעלה
+Turn off	השבתה	a power button: כיבוי
+On	מצב פעיל	a switch's state; agrees nowhere (no gender)
+Off	כבוי	a switch's state; a feature: מושבת
+Menu	תפריט
+More options	אפשרויות נוספות	Android's name for the ⋮ menu
+About	מידע על האפליקציה	the app's About sheet; "About %s" = "מידע על %s"
+Credits	קרדיטים
+Legal	מידע משפטי
+Website	אתר
+Report an Issue	דיווח על בעיה
+App	אפליקציה	plural אפליקציות, never "יישום"
+Storage	אחסון
+Battery	סוללה
+Display	תצוגה
+Sound	צליל
+Location	מיקום
+Privacy	פרטיות
+Security	אבטחה
+Accessibility	נגישות
+Mobile data	חבילת גלישה	as Android's Hebrew says it
+Ringtone	רינגטון
+Vibrate	רטט
+Password	סיסמה
+PIN	קוד אימות	the screen lock's PIN; a Bluetooth pairing PIN: קוד גישה
+Pattern	קו ביטול נעילה
+Fingerprint	טביעת אצבע
+Dark theme	עיצוב כהה
+Folder	תיקייה
+File	קובץ
+Tab (browser)	כרטיסייה
+Bookmark	סימנייה
+History	היסטוריה
+Favorites	מועדפים
+Undo	ביטול	the snackbar's button, as Android
+Device	מכשיר
+Phone	טלפון
+Tablet	טאבלט
+Keyboard	מקלדת
+Language	שפה
+Date & time	תאריך ושעה
+Time zone	אזור זמן
+Wi-Fi hotspot	נקודת Wi-Fi לשיתוף אינטרנט	short: נקודת אינטרנט (Hotspot)
+Apps list / app drawer	רשימת האפליקציות
+Online accounts	חשבונות אונליין
+Software (the app)	תוכנות	the app store's name; in running text in quotes: "תוכנות"
+App Installer (the app)	מתקין האפליקציות
+Hardware keyboard	מקלדת פיזית
+On-screen keyboard	מקלדת וירטואלית	as Android's Settings
+Keyboard layout	פריסת מקלדת
+Pair (Bluetooth)	התאמה	"Pair with %s?" = "לבצע התאמה עם %s?"; "Unpair" = "ביטול ההתאמה"
+Account	חשבון
+Brightness	בהירות
+Volume	עוצמת קול
+Screenshot	צילום מסך
+Flashlight	פנס
+Restart	הפעלה מחדש
+Power off	כיבוי
+Silent	מצב שקט
+Night Light	תאורת לילה
+Battery Saver	חיסכון בסוללה
+Auto-rotate	סיבוב אוטומטי
+Address the user	—	no gendered "you": actions as nouns (הפעלה, מחיקה), instructions with "יש ל…" or "אפשר ל…", questions in the infinitive ("למחוק את הקובץ?")
+Navi	Navi	app name, not translated
+Dictate (the app)	הכתבה	in running text in quotes: "הכתבה"
+Email	אימייל	as Android Settings (not דוא״ל); "Email guests" = "שליחת אימייל לאורחים"

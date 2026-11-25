@@ -198,9 +198,12 @@ vibeos_list_row_measure (GtkWidget *widget, GtkOrientation orientation, int for_
 
 /* ---- layout ---------------------------------------------------------------------------------------------------- */
 
+/* x from the start: the left, or in a right-to-left language the right of the row (row wide) */
 static void
-put (GtkWidget *child, double x, double y, int width, int height)
+put (GtkWidget *child, int row, double x, double y, int width, int height)
 {
+  if (gtk_widget_get_direction (child) == GTK_TEXT_DIR_RTL)
+    x = row - x - width;
   gtk_widget_allocate (child, width, height, -1, gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x, y)));
 }
 
@@ -216,25 +219,25 @@ vibeos_list_row_size_allocate (GtkWidget *widget, int width, int height, int bas
   /* the height asked for is the exact one rounded up: that is drawn exact; a parent that gives more gets it filled */
   h = self->exact_h = height - h < 1 ? h : height;
 
-  put (self->target, 0, 0, self->end_kind == END_SPLIT ? (int) divider_x (self, width) : width, (int) ceil (h));
+  put (self->target, width, 0, 0, self->end_kind == END_SPLIT ? (int) divider_x (self, width) : width, (int) ceil (h));
 
   if (self->start_kind == START_ICON)
-    put (self->start, ICON_X, (h - ICON) / 2, ICON, ICON);
+    put (self->start, width, ICON_X, (h - ICON) / 2, ICON, ICON);
   else if (self->start)
-    put (self->start, CIRCLE_X, (h - CIRCLE) / 2, CIRCLE, CIRCLE);
+    put (self->start, width, CIRCLE_X, (h - CIRCLE) / 2, CIRCLE, CIRCLE);
   if (self->initials)
-    put (self->initials, CIRCLE_X, (h - CIRCLE) / 2, CIRCLE, CIRCLE);
+    put (self->initials, width, CIRCLE_X, (h - CIRCLE) / 2, CIRCLE, CIRCLE);
 
   /* the lines centred in the row (on one of two lines and more, that is under the padding) */
   y = (h - title_h - summary_h) / 2;
-  put (self->title, x, y, w, MAX ((int) ceil (title_h), natural_height (self->title, w)));
+  put (self->title, width, x, y, w, MAX ((int) ceil (title_h), natural_height (self->title, w)));
   if (gtk_widget_get_visible (self->summary))
-    put (self->summary, x, y + title_h, w, MAX ((int) ceil (summary_h), natural_height (self->summary, w)));
+    put (self->summary, width, x, y + title_h, w, MAX ((int) ceil (summary_h), natural_height (self->summary, w)));
 
   switch (self->end_kind)
     {
     case END_SPLIT:
-      put (self->chevron, divider_x (self, width) - ICON, (h - ICON) / 2, ICON, ICON);
+      put (self->chevron, width, divider_x (self, width) - ICON, (h - ICON) / 2, ICON, ICON);
       G_GNUC_FALLTHROUGH;
     case END_SWITCH:
     case END_VALUE:
@@ -245,11 +248,11 @@ vibeos_list_row_size_allocate (GtkWidget *widget, int width, int height, int bas
         if (!gtk_widget_get_visible (self->end))
           break;
         end_h = natural_height (self->end, end_w);
-        put (self->end, width - END_PAD - end_w, (h - end_h) / 2, end_w, end_h);
+        put (self->end, width, width - END_PAD - end_w, (h - end_h) / 2, end_w, end_h);
         break;
       }
     case END_ICON:
-      put (self->end, width - END_PAD - ICON, (h - ICON) / 2, ICON, ICON);
+      put (self->end, width, width - END_PAD - ICON, (h - ICON) / 2, ICON, ICON);
       break;
     case END_NONE:
     default:
@@ -338,7 +341,9 @@ vibeos_list_row_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 
       gtk_widget_snapshot_child (widget, self->chevron, snapshot);
       gtk_snapshot_append_color (snapshot, &line,
-                                 &GRAPHENE_RECT_INIT (divider_x (self, (int) w), (h - DIVIDER_H) / 2, 1, DIVIDER_H));
+                                 &GRAPHENE_RECT_INIT (gtk_widget_get_direction (widget) == GTK_TEXT_DIR_RTL
+                                                       ? w - divider_x (self, (int) w) - 1 : divider_x (self, (int) w),
+                                                       (h - DIVIDER_H) / 2, 1, DIVIDER_H));
     }
   if (self->end)
     gtk_widget_snapshot_child (widget, self->end, snapshot);

@@ -59,7 +59,7 @@ const PREVIEW_DISMISS_MS = 53;
 const PREVIEW_DISMISS_SCALE = 0.94;
 
 // an input source's XKB layout -> the keyboard's language
-const LOCALES = {us: 'en_US', gb: 'en_GB', de: 'de', fr: 'fr', it: 'it', es: 'es', ru: 'ru', ua: 'uk', il: 'iw'};
+const LOCALES = {us: 'en_US', gb: 'en_GB', de: 'de', fr: 'fr', it: 'it', es: 'es', pl: 'pl', ru: 'ru', ua: 'uk', il: 'iw'};
 const RTL = new Set(['iw']);
 
 const DIR = GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]);

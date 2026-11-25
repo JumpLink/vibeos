@@ -11,6 +11,12 @@ PLURAL_FORMS = {
     'it': 'nplurals=2; plural=(n != 1);',
     'nl': 'nplurals=2; plural=(n != 1);',
     'ru': 'nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);',
+    # Polish: 1; 2-4, 22-24, 32-34... (not 12-14); 0, 5-21, 25-31...
+    'pl': 'nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);',
+    # Hebrew, as CLDR has it: 1; 2 (the dual: יומיים, שעתיים); the rest
+    'he': 'nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);',
+    # Ukrainian, as Russian
+    'uk': 'nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);',
 }
 
 

@@ -1,0 +1,1041 @@
+# Ukrainian translations of vibeos-navi.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-navi\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Ukrainian\n"
+"Language: uk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: data/vibeos.Navi.desktop.in
+msgid "Navi"
+msgstr "Navi"
+
+#: data/vibeos.Navi.desktop.in
+msgid "Turn-by-turn directions for driving"
+msgstr "Покрокова навігація для водіїв"
+
+#: data/vibeos.Navi.desktop.in
+msgid "map;navigation;route;directions;drive;"
+msgstr "карта;навігація;навігатор;маршрут;дорога;map;navigation;route;directions;drive;"
+
+#: src/navi-alerts.c
+msgid "Red light camera"
+msgstr "Камера на світлофорі"
+
+#: src/navi-alerts.c
+msgid "Section control"
+msgstr "Контроль середньої швидкості"
+
+#: src/navi-alerts.c
+msgid "Speed camera"
+msgstr "Камера контролю швидкості"
+
+#: src/navi-alerts.c
+msgid "Danger zone"
+msgstr "Небезпечна зона"
+
+#: src/navi-geo.c
+#, c-format
+msgid "%ld min"
+msgstr "%ld хв"
+
+#: src/navi-geo.c
+#, c-format
+msgid "%ld h"
+msgstr "%ld год"
+
+#. TRANSLATORS: hours and minutes, "1 h 37 min"
+#: src/navi-geo.c
+#, c-format
+msgid "%ld h %ld min"
+msgstr "%ld год %ld хв"
+
+# android: Framework input_method_nav_back_button_desc (short)
+#: src/navi-main.c
+msgid "Back"
+msgstr "Назад"
+
+#: src/navi-main.c
+msgid "Destination"
+msgstr "Пункт призначення"
+
+# android: Framework accessibility_system_action_menu_label (short)
+#: src/navi-main.c src/navi-panels.c
+msgid "Menu"
+msgstr "Меню"
+
+#: src/navi-main.c
+msgid "Drive"
+msgstr "Поїздка"
+
+# android: Framework search_go (several translations, short)
+#: src/navi-main.c src/navi-panels.c
+msgid "Search"
+msgstr "Пошук"
+
+#: src/navi-panels.c
+msgid "Gas station"
+msgstr "АЗС"
+
+#: src/navi-panels.c
+msgid "EV charging"
+msgstr "Зарядні станції"
+
+#: src/navi-panels.c
+msgid "Parking"
+msgstr "Парковка"
+
+#: src/navi-panels.c
+msgid "Restaurant"
+msgstr "Ресторан"
+
+#: src/navi-panels.c
+msgid "Fast food"
+msgstr "Фастфуд"
+
+#: src/navi-panels.c
+msgid "Café"
+msgstr "Кафе"
+
+#: src/navi-panels.c
+msgid "Supermarket"
+msgstr "Супермаркет"
+
+#: src/navi-panels.c
+msgid "Pharmacy"
+msgstr "Аптека"
+
+#: src/navi-panels.c
+msgid "Hospital"
+msgstr "Лікарня"
+
+#: src/navi-panels.c
+msgid "ATM"
+msgstr "Банкомат"
+
+#: src/navi-panels.c
+msgid "Bank"
+msgstr "Банк"
+
+#: src/navi-panels.c
+msgid "Hotel"
+msgstr "Готель"
+
+#: src/navi-panels.c
+msgid "Toilets"
+msgstr "Туалети"
+
+#: src/navi-panels.c
+msgid "Search for your home address"
+msgstr "Знайдіть свою домашню адресу"
+
+#: src/navi-panels.c
+msgid "Search for your work address"
+msgstr "Знайдіть свою робочу адресу"
+
+# android: Settings bluetooth_rename_button (short)
+#: src/navi-panels.c
+msgid "Rename"
+msgstr "Перейменувати"
+
+# android: Framework cancel (short)
+#: src/navi-panels.c ../dictate/src/dictate-download-dialog.c
+msgid "Cancel"
+msgstr "Скасувати"
+
+# android: Framework autofill_save_yes (short)
+#: src/navi-panels.c
+msgid "Save"
+msgstr "Зберегти"
+
+# android: Framework kg_reordering_delete_drop_target_text (several translations, short)
+#: src/navi-panels.c
+msgid "Remove"
+msgstr "Вилучити"
+
+# android: Settings external_display_more_options_title (several translations, short)
+#: src/navi-panels.c
+msgid "More options"
+msgstr "Інші опції"
+
+#: src/navi-panels.c
+msgid "Cancel reminder"
+msgstr "Скасувати нагадування"
+
+#: src/navi-panels.c
+msgid "Home"
+msgstr "Дім"
+
+#: src/navi-panels.c
+msgid "Work"
+msgstr "Робота"
+
+#: src/navi-panels.c
+msgid "Set once and go"
+msgstr "Укажіть один раз – і в дорогу"
+
+#: src/navi-panels.c
+msgid "Planned drive"
+msgstr "Запланована поїздка"
+
+#: src/navi-panels.c
+msgctxt "heading over the saved places"
+msgid "Saved"
+msgstr "Збережені"
+
+#: src/navi-panels.c
+msgid "Recent"
+msgstr "Нещодавні"
+
+#: src/navi-panels.c
+msgid "Search is unavailable right now"
+msgstr "Пошук зараз недоступний"
+
+#: src/navi-panels.c
+msgid "No results"
+msgstr "Нічого не знайдено"
+
+#: src/navi-panels.c
+msgid "Search is unavailable right now. These are from the map, nearby."
+msgstr "Пошук зараз недоступний. Ось місця поблизу з карти."
+
+#: src/navi-panels.c
+msgid "None along the route"
+msgstr "На маршруті нічого немає"
+
+#: src/navi-panels.c
+msgid "Along the route"
+msgstr "Уздовж маршруту"
+
+#: src/navi-panels.c
+#, c-format
+msgid "%s ahead · %s"
+msgstr "Через %s · %s"
+
+#: src/navi-panels.c
+#, c-format
+msgid "%s ahead"
+msgstr "Через %s"
+
+#: src/navi-panels.c
+msgid "On the route"
+msgstr "На маршруті"
+
+#: src/navi-panels.c
+#, c-format
+msgid "+%d min"
+msgstr "+%d хв"
+
+#: src/navi-panels.c
+msgid "Getting ready…"
+msgstr "Підготовка…"
+
+#: src/navi-panels.c
+msgid "Say where to go"
+msgstr "Скажіть, куди їхати"
+
+#: src/navi-panels.c
+msgid "Search by voice"
+msgstr "Голосовий пошук"
+
+#: src/navi-panels.c
+msgid "Where to?"
+msgstr "Куди їдемо?"
+
+#: src/navi-panels.c
+msgid "Gas"
+msgstr "Пальне"
+
+#: src/navi-panels.c
+msgid "Charging"
+msgstr "Зарядка"
+
+#: src/navi-panels.c
+msgid "Food"
+msgstr "Їжа"
+
+#: src/navi-panels.c
+msgid "Coffee"
+msgstr "Кава"
+
+#: src/navi-panels.c
+msgid "Groceries"
+msgstr "Продукти"
+
+#. Waze's two choices; a tap outside or Back keeps the drive as it is (three buttons do not fit a phone)
+#: src/navi-panels.c
+#, c-format
+msgid "Drive to %s?"
+msgstr "Їхати сюди: %s?"
+
+#: src/navi-panels.c
+msgid "Drive to this place?"
+msgstr "Їхати сюди?"
+
+#: src/navi-panels.c
+msgid "Add it as a stop on the way, or make it the new destination and cancel the current route."
+msgstr "Додайте це місце як зупинку на шляху або зробіть його новим пунктом призначення й скасуйте поточний маршрут."
+
+#: src/navi-panels.c
+msgid "Add a stop"
+msgstr "Додати зупинку"
+
+#: src/navi-panels.c
+msgid "New destination"
+msgstr "Новий пункт призначення"
+
+#: src/navi-panels.c
+msgid "Cancel the current route?"
+msgstr "Скасувати поточний маршрут?"
+
+#: src/navi-panels.c
+msgid "Keep driving"
+msgstr "Продовжити рух"
+
+#: src/navi-panels.c
+msgid "Keep route"
+msgstr "Залишити маршрут"
+
+#: src/navi-panels.c
+msgid "Cancel route"
+msgstr "Скасувати маршрут"
+
+# android: Settings vpn_always_on_summary_active (short)
+#: src/navi-panels.c
+msgid "Always on"
+msgstr "Завжди ввімкнено"
+
+# android: Framework wifi_calling_off_summary (several translations, short)
+#: src/navi-panels.c
+msgid "Off"
+msgstr "Вимкнено"
+
+#: src/navi-panels.c
+msgid "As the system"
+msgstr "Як у системі"
+
+#: src/navi-panels.c
+msgid "Only at night"
+msgstr "Лише вночі"
+
+#: src/navi-panels.c
+msgid "3D"
+msgstr "3D"
+
+#: src/navi-panels.c
+msgid "2D"
+msgstr "2D"
+
+#: src/navi-panels.c
+msgid "Auto"
+msgstr "Авто"
+
+#: src/navi-panels.c
+msgid "Alerts only"
+msgstr "Лише попередження"
+
+# android: Framework accessibility_shortcut_menu_item_status_on (several translations, short)
+#: src/navi-panels.c
+msgid "On"
+msgstr "Увімкнено"
+
+#: src/navi-panels.c
+msgid "Motorcycle"
+msgstr "Мотоцикл"
+
+# android: Settings zen_mode_icon_options_descriptions[28] (short)
+#: src/navi-panels.c
+msgid "Car"
+msgstr "Автомобіль"
+
+#: src/navi-panels.c
+msgid "Kilometers"
+msgstr "Кілометри"
+
+#: src/navi-panels.c
+msgid "Miles"
+msgstr "Милі"
+
+#: src/navi-panels.c
+msgid "At the limit"
+msgstr "На рівні обмеження"
+
+#: src/navi-panels.c
+msgid "5 mph over"
+msgstr "На 5 миль/год більше"
+
+#: src/navi-panels.c
+msgid "10 km/h over"
+msgstr "На 10 км/год більше"
+
+#: src/navi-panels.c
+#, no-c-format
+msgid "10 % over"
+msgstr "На 10 % більше"
+
+#: src/navi-panels.c
+msgid "3 mph over"
+msgstr "На 3 милі/год більше"
+
+#: src/navi-panels.c
+msgid "5 km/h over"
+msgstr "На 5 км/год більше"
+
+#: src/navi-panels.c
+msgid "Tilted, always"
+msgstr "Завжди з нахилом"
+
+#: src/navi-panels.c
+msgid "Flat, always"
+msgstr "Завжди пласка"
+
+#: src/navi-panels.c
+msgid "Flat while browsing, 3D while driving"
+msgstr "Пласка під час перегляду, 3D під час руху"
+
+#: src/navi-panels.c
+msgid "Miles in the UK and the US, else kilometers"
+msgstr "Милі у Великій Британії та США, в інших країнах – кілометри"
+
+#: src/navi-panels.c
+msgid "Not set: tap to search for it"
+msgstr "Не задано: натисніть, щоб знайти"
+
+# android: Settings dark_ui_title (adapted, short)
+#: src/navi-panels.c
+msgid "Dark mode"
+msgstr "Темний режим"
+
+#: src/navi-panels.c
+msgid "Map view"
+msgstr "Вигляд карти"
+
+#: src/navi-panels.c
+msgid "Speeding warning"
+msgstr "Попередження про перевищення швидкості"
+
+#: src/navi-panels.c
+msgid "Vehicle type"
+msgstr "Тип транспорту"
+
+#: src/navi-panels.c
+msgid "Units"
+msgstr "Одиниці"
+
+#: src/navi-panels.c
+msgid "Spoken directions"
+msgstr "Голосові підказки"
+
+#: src/navi-panels.c
+msgid "Voice language"
+msgstr "Мова голосу"
+
+#: src/navi-panels.c
+msgid "Forget Home?"
+msgstr "Забути домашню адресу?"
+
+#: src/navi-panels.c
+msgid "Forget Work?"
+msgstr "Забути робочу адресу?"
+
+# android: Settings forget (several translations, short)
+#: src/navi-panels.c
+msgid "Forget"
+msgstr "Забути"
+
+# android: Framework global_action_settings (short)
+#: src/navi-panels.c
+msgid "Settings"
+msgstr "Налаштування"
+
+#: src/navi-panels.c
+msgid "Map display"
+msgstr "Показ карти"
+
+#: src/navi-panels.c
+msgid "Auto: flat while browsing, 3D while driving"
+msgstr "Авто: пласка під час перегляду, 3D під час руху"
+
+#: src/navi-panels.c
+msgid "Keep map north up"
+msgstr "Північ завжди вгорі"
+
+#: src/navi-panels.c
+msgid "Auto zoom"
+msgstr "Автомасштаб"
+
+#: src/navi-panels.c
+msgid "Zoom out as the car goes faster"
+msgstr "Зменшувати масштаб, коли автомобіль їде швидше"
+
+#. Waze's Navigation: the next route, and a new one on the way, follow them
+#: src/navi-panels.c
+msgid "Navigation"
+msgstr "Навігація"
+
+#: src/navi-panels.c
+msgid "Avoid toll roads"
+msgstr "Уникати платних доріг"
+
+#: src/navi-panels.c
+msgid "Avoid highways"
+msgstr "Уникати автомагістралей"
+
+#: src/navi-panels.c
+msgid "Avoid ferries"
+msgstr "Уникати поромів"
+
+#: src/navi-panels.c
+msgid "Voice and sound"
+msgstr "Голос і звук"
+
+#: src/navi-panels.c
+msgid "Alerts"
+msgstr "Попередження"
+
+#: src/navi-panels.c
+msgid "Speed camera alerts"
+msgstr "Попередження про камери"
+
+#: src/navi-panels.c
+msgid "Where the law allows them: never in Switzerland, only danger zones in France, and in Germany not for the driver while driving"
+msgstr "Там, де це дозволено законом: ніколи у Швейцарії, у Франції – лише небезпечні зони, а в Німеччині – не для водія під час руху"
+
+#: src/navi-panels.c
+msgid "The speedometer turns red above the limit"
+msgstr "Спідометр стає червоним, якщо перевищено обмеження"
+
+#: src/navi-panels.c
+msgid "Saved places"
+msgstr "Збережені місця"
+
+#: src/navi-panels.c
+msgid "Stop navigation and exit?"
+msgstr "Зупинити навігацію й вийти?"
+
+# android: Settings private_space_exit_label (short)
+#: src/navi-panels.c
+msgid "Exit"
+msgstr "Вийти"
+
+#: src/navi-panels.c
+msgid "Sound off"
+msgstr "Звук вимкнено"
+
+#: src/navi-panels.c
+msgid "Sound on"
+msgstr "Звук увімкнено"
+
+#: src/navi-panels.c
+msgid "Saved as Home"
+msgstr "Збережено як домашню адресу"
+
+#: src/navi-panels.c
+msgid "Saved as Work"
+msgstr "Збережено як робочу адресу"
+
+# android: Framework aerr_close (short)
+#: src/navi-panels.c
+msgid "Close"
+msgstr "Закрити"
+
+#: src/navi-panels.c
+msgid "Set as Home"
+msgstr "Зробити домашньою адресою"
+
+#: src/navi-panels.c
+msgid "Set as Work"
+msgstr "Зробити робочою адресою"
+
+#: src/navi-panels.c
+msgid "View routes"
+msgstr "Маршрути"
+
+#: src/navi-panels.c
+msgid "Reminders cannot be set here"
+msgstr "Тут не можна встановити нагадування"
+
+#: src/navi-panels.c
+msgid "Your location"
+msgstr "Ваше місцезнаходження"
+
+# android: Settings retry (short)
+#. after a failure: ask again
+#: src/navi-panels.c ../dictate/src/dictate-download-dialog.c
+msgid "Retry"
+msgstr "Повторити"
+
+#: src/navi-panels.c
+msgid "Leave later"
+msgstr "Виїхати пізніше"
+
+#: src/navi-panels.c
+msgid "Go now"
+msgstr "Їхати зараз"
+
+#: src/navi-panels.c
+#, c-format
+msgid "Via %s"
+msgstr "Через %s"
+
+#: src/navi-panels.c
+msgid "Best route"
+msgstr "Найкращий маршрут"
+
+#: src/navi-panels.c
+msgid "Toll road"
+msgstr "Платна дорога"
+
+#: src/navi-panels.c
+msgid "Ferry"
+msgstr "Пором"
+
+# android: SystemUI accessibility_recent (short)
+#: src/navi-panels.c
+msgid "Overview"
+msgstr "Огляд"
+
+#: src/navi-panels.c
+msgid "Re-center"
+msgstr "Центрувати"
+
+# android: Framework lockscreen_transport_stop_description (several translations, short)
+#: src/navi-panels.c
+msgid "Stop"
+msgstr "Зупинити"
+
+# android: Framework fp_power_button_bp_negative_button (short)
+#: src/navi-panels.c
+msgid "Continue"
+msgstr "Продовжити"
+
+#: src/navi-panels.c
+msgid "You have arrived"
+msgstr "Ви прибули"
+
+# android: Framework sim_done_button (several translations, short)
+#: src/navi-panels.c
+msgid "Done"
+msgstr "Готово"
+
+#: src/navi-panels.c
+msgid "Your destination is on the right"
+msgstr "Пункт призначення праворуч"
+
+#: src/navi-panels.c
+msgid "Your destination is on the left"
+msgstr "Пункт призначення ліворуч"
+
+#: src/navi-panels.c
+msgid "Lanes"
+msgstr "Смуги"
+
+#: src/navi-panels.c
+msgid "and then"
+msgstr "а потім"
+
+#: src/navi-panels.c
+msgid "North up"
+msgstr "Північ угорі"
+
+#: src/navi-panels.c
+msgid "Drive here"
+msgstr "Їхати сюди"
+
+#: src/navi-panels.c
+msgid "Go"
+msgstr "Їхати"
+
+# android: Settings wifi_add_app_single_network_saved_summary (short)
+#: src/navi-panels.c
+msgctxt "the place is a saved one"
+msgid "Saved"
+msgstr "Збережено"
+
+#: src/navi-panels.c
+msgid "Your Home"
+msgstr "Ваш дім"
+
+#: src/navi-panels.c
+msgid "Your Work"
+msgstr "Ваша робота"
+
+#: src/navi-panels.c
+msgid "Finding the best routes…"
+msgstr "Пошук найкращих маршрутів…"
+
+#: src/navi-panels.c
+msgid "The map's centre"
+msgstr "Центр карти"
+
+#: src/navi-panels.c
+msgid "Finding a new route…"
+msgstr "Пошук нового маршруту…"
+
+#: src/navi-panels.c
+msgid "No route from here yet. Trying again…"
+msgstr "Звідси поки немає маршруту. Нова спроба…"
+
+#: src/navi-panels.c
+msgid "Your destination"
+msgstr "Ваш пункт призначення"
+
+#: src/navi-panels.c
+#, c-format
+msgid "Speed limit %d mph"
+msgstr "Обмеження швидкості: %d миль/год"
+
+#: src/navi-panels.c
+#, c-format
+msgid "Speed limit %d km/h"
+msgstr "Обмеження швидкості: %d км/год"
+
+#: src/navi-panels.c
+msgid "No speed limit"
+msgstr "Без обмеження швидкості"
+
+#: src/navi-panels.c
+msgid ""
+"Not allowed everywhere. In Germany the driver may not use them while driving (§23 (1c) StVO); a passenger may. In Switzerland Navi never shows them, and in France only danger zones.\n"
+"\n"
+"You can turn them off in Settings at any time."
+msgstr ""
+"Дозволено не всюди. У Німеччині водієві не можна користуватися ними під час руху (§23 (1c) StVO), а пасажирові можна. У Швейцарії Navi ніколи їх не показує, а у Франції – лише небезпечні зони.\n"
+"\n"
+"Ви будь-коли можете вимкнути їх у Налаштуваннях."
+
+# android: Framework fp_power_button_enrollment_button_text (short)
+#: src/navi-panels.c
+msgid "Turn off"
+msgstr "Вимкнути"
+
+# android: Framework httpErrorOk (several translations, short)
+#: src/navi-panels.c ../dictate/src/dictate-download-dialog.c
+msgid "OK"
+msgstr "OK"
+
+#: src/navi-plan.c
+#, c-format
+msgid "Time to leave for %s"
+msgstr "Час вирушати: %s"
+
+#: src/navi-plan.c
+msgid "Tap for the routes from where you are."
+msgstr "Натисніть, щоб побачити маршрути звідси."
+
+#. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"; the form follows the time's hour as shown
+#. * (the singular for 1:00), for words that change with it
+#: src/navi-plan.c
+#, c-format
+msgid "Reminder at %s"
+msgid_plural "Reminder at %s"
+msgstr[0] "Нагадування на %s"
+msgstr[1] "Нагадування на %s"
+msgstr[2] "Нагадування на %s"
+
+#. TRANSLATORS: "Reminder tomorrow at 08:15"; the form follows the time's hour, as above
+#: src/navi-plan.c
+#, c-format
+msgid "Reminder tomorrow at %s"
+msgid_plural "Reminder tomorrow at %s"
+msgstr[0] "Нагадування завтра на %s"
+msgstr[1] "Нагадування завтра на %s"
+msgstr[2] "Нагадування завтра на %s"
+
+#. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"; the form follows the time's hour, as
+#. * above
+#: src/navi-plan.c
+#, c-format
+msgid "Reminder on %s at %s"
+msgid_plural "Reminder on %s at %s"
+msgstr[0] "Нагадування: %s, %s"
+msgstr[1] "Нагадування: %s, %s"
+msgstr[2] "Нагадування: %s, %s"
+
+#. TRANSLATORS: Navi's voice in Russian; tiny-voca is its name
+#: src/navi-voice.c
+msgid "tiny-voca voice, on this device"
+msgstr "Голос tiny-voca на цьому пристрої"
+
+#: src/navi-voice.c
+#, c-format
+msgid "Piper voice %s, on this device"
+msgstr "Голос Piper %s на цьому пристрої"
+
+#: src/navi-voice.c
+msgid "Piper voice, on this device"
+msgstr "Голос Piper на цьому пристрої"
+
+#: src/navi-voice.c
+msgid "eSpeak NG voices, on this device"
+msgstr "Голоси eSpeak NG на цьому пристрої"
+
+#: src/navi-voice.c
+msgid "No voice on this phone"
+msgstr "На цьому телефоні немає голосу"
+
+#: src/navi-window.c
+msgid "The map cannot be loaded. Check the connection."
+msgstr "Не вдається завантажити карту. Перевірте з’єднання."
+
+#: src/navi-window.c
+msgid "Best"
+msgstr "Найкращий"
+
+#: src/navi-window.c
+msgid "Navigating"
+msgstr "Навігація"
+
+#: src/navi-window.c
+msgid "Navi cannot reach a road there. Choose a place on a road in Europe."
+msgstr "Navi не може знайти дорогу туди. Виберіть місце на дорозі в Європі."
+
+#: src/navi-window.c
+msgid "No route found there. Choose a place on a road."
+msgstr "Маршрут туди не знайдено. Виберіть місце на дорозі."
+
+#: src/navi-window.c
+msgid "The route server cannot be reached. Check the connection."
+msgstr "Не вдається зв’язатися із сервером маршрутів. Перевірте з’єднання."
+
+#: src/navi-window.c
+msgid "No GPS – showing your approximate location"
+msgstr "Немає GPS – показано приблизне місцезнаходження"
+
+#: src/navi-window.c
+msgid "Dropped pin"
+msgstr "Позначене місце"
+
+#: src/navi-window.c
+msgid "Place"
+msgstr "Місце"
+
+#. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Needs %s, which is not installed"
+msgstr "Потрібен %s, який не встановлено"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Not available on this phone"
+msgstr "Недоступно на цьому телефоні"
+
+#. TRANSLATORS: under a language in the list; the first %s is a speech recogniser (Vosk), the second a size
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s and %s to download"
+msgstr "%s і завантаження %s"
+
+#. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s to install"
+msgstr "Потрібно встановити %s"
+
+#. TRANSLATORS: under a language in the list; %s is a size: 90.4 MB
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s to download"
+msgstr "Завантаження: %s"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s was not downloaded"
+msgstr "Мову %s не завантажено"
+
+#. TRANSLATORS: the first %s is what went wrong, the second a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s. %s was installed, but none of the files were kept on the phone."
+msgstr "%s. %s установлено, але жоден із файлів не збережено на телефоні."
+
+#. TRANSLATORS: %s is what went wrong
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s. Nothing of it was kept on the phone."
+msgstr "%s. На телефоні нічого не збережено."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: a quarter done."
+msgstr "Завантаження мови %s: готово чверть."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: half done."
+msgstr "Завантаження мови %s: готово половину."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: three quarters done."
+msgstr "Завантаження мови %s: готово три чверті."
+
+# android: SystemUI screen_record_video_preview_elapsed_time_a11y_template
+#. TRANSLATORS: the progress, two sizes: 12.3 MB of 90.4 MB
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s of %s"
+msgstr "%s з %s"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Unpacking and installing…"
+msgstr "Розпакування й установлення…"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Installing…"
+msgstr "Установлення…"
+
+# android: Framework serviceClassVoice (short)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Voice"
+msgstr "Голос"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Speech recognition"
+msgstr "Розпізнавання мовлення"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "The files came, but the language is still not ready"
+msgstr "Файли отримано, але мова ще не готова"
+
+#. TRANSLATORS: in the progress dialog; %s is a speech recogniser (Vosk)
+#. TRANSLATORS: what is installed, in the download dialog; %s is a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s speech recogniser"
+msgstr "Розпізнавач мовлення %s"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s"
+msgstr "Завантаження мови %s"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "The package was installed, but the language is still not ready"
+msgstr "Пакет установлено, але мова ще не готова"
+
+#. TRANSLATORS: the sum of the sizes in the download dialog; %s is a size: 90.4 MB
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s in all"
+msgstr "Усього %s"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Download %s?"
+msgstr "Завантажити мову %s?"
+
+#. TRANSLATORS: under the title "Download Deutsch?"; %s is an app's name (Navi)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "To speak this language, %s needs this on the phone:"
+msgstr "Щоб говорити цією мовою, додатку %s потрібно на телефоні:"
+
+#. TRANSLATORS: under the title "Download Deutsch?"
+#: ../dictate/src/dictate-download-dialog.c
+msgid "To hear and speak this language, Vibe needs these on the phone:"
+msgstr "Щоб чути цю мову й говорити нею, Vibe потрібно на телефоні:"
+
+#. TRANSLATORS: under the title "Download Deutsch?"
+#: ../dictate/src/dictate-download-dialog.c
+msgid "To hear this language, Dictate needs these on the phone:"
+msgstr "Щоб розпізнавати цю мову, Диктуванню потрібно на телефоні:"
+
+#. TRANSLATORS: under it; %s is its Debian package (vibeos-dictate-vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "the %s package from the VibeOS archive"
+msgstr "пакет %s з архіву VibeOS"
+
+#. TRANSLATORS: under what is downloaded: what it is, its licence and where it comes from
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s · %s · from %s"
+msgstr "%s · %s · джерело: %s"
+
+# android: Messaging action_download (short)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Download"
+msgstr "Завантажити"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Français)
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s is not available"
+msgstr "Мова %s недоступна"
+
+#. TRANSLATORS: the first %s is the language's name for itself, the second a speech recogniser (Vosk), the
+#. * third its Debian package (vibeos-dictate-vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s is heard by %s, which is not installed on this phone. Install the %s package, then choose %s again."
+msgstr "Мову %s розпізнає %s, який не встановлено на цьому телефоні. Установіть пакет %s, а потім знову виберіть %s."
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "There is nothing to download for it."
+msgstr "Для неї нічого завантажувати."
+
+#. TRANSLATORS: %s is what went wrong, from the network or the file system
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "The download failed: %s"
+msgstr "Не вдалося завантажити: %s"
+
+#. TRANSLATORS: %s is what went wrong
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "The files could not be put in place: %s"
+msgstr "Не вдалося розмістити файли: %s"
+
+#. TRANSLATORS: %s is a file's name
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "%s did not come whole"
+msgstr "Файл %s отримано не повністю"
+
+#. TRANSLATORS: %s is a file's name
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "%s is not the file it should be: its checksum does not match"
+msgstr "Файл %s не той, що має бути: контрольна сума не збігається"
+
+#. TRANSLATORS: %s is a file's name
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "%s is larger than it should be"
+msgstr "Файл %s більший, ніж має бути"
+
+#. TRANSLATORS: %s is a file's name, %u and the last %s the server's answer (404, Not Found)
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "The server did not give %s: %u %s"
+msgstr "Сервер не надав файл %s: %u %s"
+
+#. TRANSLATORS: %s is a file's name
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "%s is not the size it should be: it has changed on the server"
+msgstr "Файл %s має не той розмір: його змінено на сервері"
+
+#. TRANSLATORS: the %s are sizes: 90.4 MB
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "There is not enough space on the phone: %s are needed, %s are free"
+msgstr "На телефоні недостатньо місця: потрібно %s, вільно %s"
