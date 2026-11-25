@@ -317,6 +317,50 @@ License: OFL-1.1
 Comment:
  Roboto 3.011 (variable), renamed "VibeOS Roboto".
 
+Files: patches/mutter/*.patch
+       patches/gnome-shell/*.patch
+       patches/modemmanager/*/*.patch
+       patches/libcamera/*/debian.diff
+       patches/iio-sensor-proxy/*/debian.diff
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: GPL-2+
+Comment:
+ Changes to mutter, GNOME Shell, ModemManager, and to Debian's packaging of
+ libcamera and iio-sensor-proxy: under the licence of what they change.
+
+Files: patches/libcamera/*/*.patch
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: LGPL-2.1+ and BSD-2-clause
+Comment:
+ Changes to libcamera: LGPL-2.1-or-later, as libcamera, except the changes to
+ src/libcamera/shaders/bayer_1x_packed.frag, which is BSD-2-Clause.
+
+Files: patches/webkit2gtk/*/*.patch
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: BSD-2-clause
+Comment:
+ Changes to WebKitGTK files that are under this licence.
+
+Files: patches/webkit2gtk/*/debian.diff
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: LGPL-2+
+Comment:
+ A change to Debian's packaging of WebKitGTK, under its licence.
+
+Files: patches/iio-sensor-proxy/*/*.patch
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: GPL-3 and GPL-2+
+Comment:
+ Changes to iio-sensor-proxy (GPL-3); the test that
+ vibeos-sensors-found-while-calls-come-in.patch adds is in
+ tests/integration-test.py, which is GPL-2+.
+
+Files: patches/hexagonrpc/*/*.patch
+Copyright: 2026 Fady <me@fadyackad.dev>
+License: GPL-3+
+Comment:
+ hexagonrpc's upstream pull request #27, unchanged.
+
 License: Expat
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -459,3 +503,68 @@ License: CC0-1.0
  Creative Commons Zero 1.0 Universal: the work is dedicated to the public
  domain, and may be used for any purpose without conditions. The full legal
  code is at https://creativecommons.org/publicdomain/zero/1.0/legalcode.
+
+License: GPL-2+
+ This program is free software; you can redistribute it and/or modify it
+ under the terms of the GNU General Public License as published by the Free
+ Software Foundation; either version 2 of the License, or (at your option)
+ any later version.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 2 can be found in "/usr/share/common-licenses/GPL-2".
+
+License: GPL-3
+ This program is free software; you can redistribute it and/or modify it
+ under the terms of the GNU General Public License version 3 as published by
+ the Free Software Foundation.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 3 can be found in "/usr/share/common-licenses/GPL-3".
+
+License: GPL-3+
+ This program is free software: you can redistribute it and/or modify it
+ under the terms of the GNU General Public License as published by the Free
+ Software Foundation, either version 3 of the License, or (at your option)
+ any later version.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 3 can be found in "/usr/share/common-licenses/GPL-3".
+
+License: LGPL-2+
+ This library is free software; you can redistribute it and/or modify it
+ under the terms of the GNU Library General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or (at your
+ option) any later version.
+ .
+ On Debian systems, the complete text of the GNU Library General Public
+ License version 2 can be found in "/usr/share/common-licenses/LGPL-2".
+
+License: LGPL-2.1+
+ This library is free software; you can redistribute it and/or modify it
+ under the terms of the GNU Lesser General Public License as published by the
+ Free Software Foundation; either version 2.1 of the License, or (at your
+ option) any later version.
+ .
+ On Debian systems, the complete text of the GNU Lesser General Public
+ License version 2.1 can be found in "/usr/share/common-licenses/LGPL-2.1".
+
+License: BSD-2-clause
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+ 1. Redistributions of source code must retain the above copyright notice,
+    this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright notice,
+    this list of conditions and the following disclaimer in the documentation
+    and/or other materials provided with the distribution.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ POSSIBILITY OF SUCH DAMAGE.
