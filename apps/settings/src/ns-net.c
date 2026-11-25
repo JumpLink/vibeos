@@ -2,6 +2,7 @@
  * background (ns_net_init); a page opened before it is ready fills itself when it is. The lists are rebuilt a
  * moment after NetworkManager says something changed, so a burst of signals is one rebuild. */
 #include "ns-caps.h"
+#include "ns-mobile-modes.h"
 #include "ns-net.h"
 #include "ns-pages.h"
 #include "ns-ui.h"
@@ -1117,8 +1118,20 @@ ns_page_hotspot (GtkWidget *row, gpointer data)
 /* ---- SIMs: the mobile network ---- */
 
 typedef struct {
-  GtkWidget *data, *apns, *info;
+  GtkWidget        *data, *apns, *info, *modes, *mode_note;
+  GDBusConnection  *bus;
+  char             *modem_path;
+  NsMobileModes    *mode_list;
 } Mobile;
+
+static void
+mobile_free (Mobile *m)
+{
+  g_clear_pointer (&m->mode_list, ns_mobile_modes_free);
+  g_clear_object (&m->bus);
+  g_free (m->modem_path);
+  g_free (m);
+}
 
 static NMDevice *
 modem (void)
@@ -1182,6 +1195,60 @@ generation (guint32 tech)
   return tech & (1u << 15) ? "5G" : tech & (1u << 14) ? "4G" : tech & 0x3e0 ? "3G" : tech & 0x1e ? "2G" : NULL;
 }
 
+typedef struct {
+  GDBusConnection *bus;
+  char            *path;
+  GtkWidget       *row;
+  guint            index, previous;
+} ModeSet;
+
+static void
+mode_set_free (ModeSet *set)
+{
+  g_clear_object (&set->bus);
+  g_free (set->path);
+  g_clear_object (&set->row);
+  g_free (set);
+}
+
+static void
+mode_set (GObject *src, GAsyncResult *res, gpointer data)
+{
+  ModeSet *set = data;
+  g_autoptr (GError) err = NULL;
+  g_autoptr (GVariant) reply = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, &err);
+  if (reply) {
+    g_object_set_data (G_OBJECT (set->row), "ns-mode-index", GUINT_TO_POINTER (set->index));
+    ns_row_set_subtitle (set->row, NULL);
+  } else {
+    ns_row_pick_select (set->row, set->previous);
+    row_error (set->row, _("Could not set network mode"), err);
+  }
+  gtk_widget_set_sensitive (set->row, TRUE);
+  mode_set_free (set);
+}
+
+static void
+mode_picked (GtkWidget *row, guint index, gpointer data)
+{
+  Mobile *m = data;
+  if (!m->bus || !m->modem_path || !m->mode_list || index >= m->mode_list->len)
+    return;
+  NsMobileMode *mode = g_ptr_array_index (m->mode_list, index);
+  g_autoptr (GVariant) value = ns_mobile_mode_value (mode);
+  ModeSet *set = g_new0 (ModeSet, 1);
+  set->bus = g_object_ref (m->bus);
+  set->path = g_strdup (m->modem_path);
+  set->row = g_object_ref (row);
+  set->index = index;
+  set->previous = GPOINTER_TO_UINT (g_object_get_data (G_OBJECT (row), "ns-mode-index"));
+  ns_row_set_subtitle (row, _("Applying…"));
+  gtk_widget_set_sensitive (row, FALSE);
+  g_dbus_connection_call (set->bus, "org.freedesktop.ModemManager1", set->path,
+                          "org.freedesktop.ModemManager1.Modem", "SetCurrentModes", value,
+                          G_VARIANT_TYPE ("()"), G_DBUS_CALL_FLAGS_NONE, 20000, NULL, mode_set, set);
+}
+
 /* ModemManager's own answer: operator, signal, number */
 static void
 modems_got (GObject *src, GAsyncResult *res, gpointer page)
@@ -1206,6 +1273,35 @@ modems_got (GObject *src, GAsyncResult *res, gpointer page)
       if (!mm)
         continue;
       any = TRUE;
+
+      g_clear_object (&m->bus);
+      m->bus = g_object_ref (G_DBUS_CONNECTION (src));
+      g_free (m->modem_path);
+      m->modem_path = g_strdup (path);
+      ns_group_clear (m->modes);
+      g_clear_pointer (&m->mode_list, ns_mobile_modes_free);
+      g_autoptr (GVariant) supported = g_variant_lookup_value (mm, "SupportedModes",
+                                                               G_VARIANT_TYPE (NS_MOBILE_MODES_TYPE));
+      g_autoptr (GVariant) current = g_variant_lookup_value (mm, "CurrentModes", G_VARIANT_TYPE ("(uu)"));
+      if (supported && current) {
+        g_autoptr (GError) err = NULL;
+        m->mode_list = ns_mobile_modes_new (supported, current, &err);
+        if (err)
+          g_warning ("ModemManager network modes: %s", err->message);
+      }
+      if (m->mode_list && m->mode_list->len > 1) {
+        g_auto (GStrv) labels = ns_mobile_modes_labels (m->mode_list);
+        guint selected = ns_mobile_modes_current (m->mode_list, current);
+        GtkWidget *row = ns_row_pick_names (m->modes, _("Network mode"), (const char * const *) labels, selected,
+                                            mode_picked, m);
+        g_object_set_data (G_OBJECT (row), "ns-mode-index", GUINT_TO_POINTER (selected));
+        ns_group_set_visible (m->modes, TRUE);
+        gtk_widget_set_visible (m->mode_note, TRUE);
+      } else {
+        ns_group_set_visible (m->modes, FALSE);
+        gtk_widget_set_visible (m->mode_note, FALSE);
+      }
+
       const char *op = NULL, *sim = NULL, *imei = NULL, *model = NULL;
       guint32 tech = 0, q = 0;
       gboolean recent;
@@ -1265,7 +1361,7 @@ ns_page_mobile (GtkWidget *row, gpointer data)
   GtkWidget *c;
   NsPage *page = ns_page_new (_("SIMs"), &c);
   Mobile *m = g_new0 (Mobile, 1);
-  g_object_set_data_full (G_OBJECT (page), "mobile", m, g_free);
+  g_object_set_data_full (G_OBJECT (page), "mobile", m, (GDestroyNotify) mobile_free);
   ns_later_init (page, mobile_fill);
 
   GtkWidget *g = ns_group (c, NULL);
@@ -1279,6 +1375,10 @@ ns_page_mobile (GtkWidget *row, gpointer data)
   }
   m->apns = ns_group (c, _("Access point names"));
   ns_group_set_visible (m->apns, FALSE);
+  m->modes = ns_group (c, NULL);
+  ns_group_set_visible (m->modes, FALSE);
+  m->mode_note = ns_note (c, _("The selected modes also apply to mobile data."));
+  gtk_widget_set_visible (m->mode_note, FALSE);
   m->info = ns_group (c, _("SIM and network"));
   ns_group_set_visible (m->info, FALSE);
 
