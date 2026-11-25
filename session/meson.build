@@ -59,6 +59,14 @@ install_data('gdm/vibeos.json', install_dir: datadir / 'gnome-shell' / 'modes')
 install_data('gdm/vibeos.session', install_dir: datadir / 'gnome-session' / 'sessions')
 install_data('gdm/vibeos.session.conf', install_dir: systemd_user / 'gnome-session@vibeos.target.d')
 install_data('gdm/vibeos.desktop', install_dir: datadir / 'wayland-sessions')
+# the Trapu logo as the user's picture while they have chosen none (see vibeos-default-face): the picture, and the
+# oneshot every VibeOS session starts (gdm/vibeos-default-face.conf) before its shell
+install_data('faces/trapu.png', install_dir: datadir / 'pixmaps' / 'faces')
+install_data('vibeos-default-face', install_dir: libexecdir, install_mode: 'rwxr-xr-x')
+configure_file(input: 'vibeos-default-face.service', output: 'vibeos-default-face.service', command: local_paths,
+               capture: true, install_dir: systemd_user)
+install_data('gdm/vibeos-default-face.conf', install_dir: systemd_user / 'gnome-session@vibeos.target.d')
+test('default-face', find_program('tests/default-face.sh'), args: [meson.current_source_dir()])
 # GNOME's own screen lock off: the keyguard is the lock screen (see the file)
 install_data('90_vibeos.gschema.override', install_dir: datadir / 'glib-2.0' / 'schemas')
 # the session's default apps: App Installer for .deb files, Files for folders (see the file)

@@ -1,0 +1,24 @@
+#!/bin/sh
+# The user's picture while they have chosen none: the Trapu logo. AccountsService gives ~/.face as the picture
+# (IconFile) of a user who has not chosen one; a picture chosen in Settings is AccountsService's own copy in
+# /var/lib/AccountsService/icons, and ~/.face is then not looked at. useradd put Debian's default there, the Debian
+# swirl (desktop-base's /etc/skel/.face). That copy, or no ~/.face at all, becomes a link to the Trapu picture; any
+# other ~/.face is the user's own and stays as it is. Run as the user at the start of each VibeOS session
+# (vibeos-default-face.service), before the shell and the apps read it.
+# (VIBEOS_FACE and VIBEOS_SKEL_FACE are for tests/default-face.sh)
+set -u
+TRAPU=${VIBEOS_FACE:-/usr/share/pixmaps/faces/trapu.png}
+SKEL=${VIBEOS_SKEL_FACE:-/etc/skel/.face}
+# desktop-base's /etc/skel/.face (13.0.4 to 14.0.0~pre3: the Debian swirl on red), the copy useradd made
+DEBIAN=eb20ea99085c371ed0f0260545fede93dd56c29ddebfa76b068210e5b4694ab3
+f=${HOME:?}/.face
+[ -s "$TRAPU" ] || exit 0
+if [ -L "$f" ]; then
+	exit 0					# a link: to the Trapu picture already, or the user's
+elif [ -e "$f" ]; then
+	# a copy of the skeleton's (Debian's, or a later desktop-base's) is replaced; any other file is the user's
+	[ -f "$f" ] || exit 0
+	[ "$(sha256sum < "$f" | cut -c1-64)" = $DEBIAN ] || { [ -f "$SKEL" ] && cmp -s "$f" "$SKEL"; } || exit 0
+fi
+ln -s "$TRAPU" "$f.trapu-$$" && mv -f -T "$f.trapu-$$" "$f" || rm -f "$f.trapu-$$"
+exit 0
