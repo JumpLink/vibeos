@@ -2,6 +2,8 @@
  * volume, feedbackd for the vibration. */
 #include "alarm-klaxon.h"
 
+#include "gst-start.h"
+
 #include <gst/gst.h>
 #include <math.h>
 #include <pulse/glib-mainloop.h>
@@ -36,6 +38,8 @@ struct _AlarmKlaxon {
 
   GstElement *player;
   char *uri;
+  char *pending_uri;            /* to play once GStreamer is up */
+  guint gst_wait_id;
   gboolean fell_back;           /* playing the fallback sound, after the chosen one failed */
   gint64 crescendo_start, crescendo_end;  /* monotonic µs; 0: no crescendo */
   guint crescendo_id;
@@ -211,8 +215,6 @@ make_player (AlarmKlaxon *self)
   GstElement *player, *sink;
   g_autoptr(GstBus) bus = NULL;
 
-  /* GStreamer from the first alarm on: the service waits most of its life, in less memory without it */
-  gst_init (NULL, NULL);
   player = gst_element_factory_make ("playbin", "klaxon");
   sink = gst_element_factory_make ("pulsesink", NULL);
   bus = gst_element_get_bus (player);
@@ -240,7 +242,7 @@ play (AlarmKlaxon *self, const char *uri)
 
   if (!self->player)
     self->player = make_player (self);
-  gst_element_set_state (self->player, GST_STATE_NULL);
+  gst_start_set_state (self->player, GST_STATE_NULL, NULL, NULL);
   g_free (self->uri);
   self->uri = g_strdup (uri);
   g_object_set (self->player, "uri", uri, NULL);
@@ -255,7 +257,33 @@ play (AlarmKlaxon *self, const char *uri)
     }
   else
     set_player_volume (self, 1.0);
-  gst_element_set_state (self->player, GST_STATE_PLAYING);
+  gst_start_set_state (self->player, GST_STATE_PLAYING, NULL, NULL);
+}
+
+static void
+on_gst_ready (gboolean ready, gpointer data)
+{
+  AlarmKlaxon *self = data;
+  g_autofree char *uri = g_steal_pointer (&self->pending_uri);
+
+  self->gst_wait_id = 0;
+  if (ready && uri)
+    play (self, uri);
+}
+
+/* the sound at once if GStreamer is up, else as soon as it is: the ring and its screen do not wait for it */
+static void
+play_when_ready (AlarmKlaxon *self, const char *uri)
+{
+  if (gst_start_is_ready ())
+    {
+      play (self, uri);
+      return;
+    }
+  g_free (self->pending_uri);
+  self->pending_uri = g_strdup (uri);
+  if (!self->gst_wait_id)
+    self->gst_wait_id = gst_start_wait (on_gst_ready, self);
 }
 
 /* --- the vibration */
@@ -291,7 +319,11 @@ static void
 silence (AlarmKlaxon *self)
 {
   if (self->player)
-    gst_element_set_state (self->player, GST_STATE_NULL);
+    gst_start_set_state (self->player, GST_STATE_NULL, NULL, NULL);
+  g_clear_pointer (&self->pending_uri, g_free);
+  if (self->gst_wait_id)
+    gst_start_cancel (self->gst_wait_id);
+  self->gst_wait_id = 0;
   g_clear_handle_id (&self->crescendo_id, g_source_remove);
   g_clear_handle_id (&self->vibrate_id, g_source_remove);
 }
@@ -371,7 +403,7 @@ alarm_klaxon_start (AlarmKlaxon *self, const char *ringtone, gboolean vibrate)
         {
           connect_sound_server (self);
           sync_volume (self);
-          play (self, uri);
+          play_when_ready (self, uri);
         }
       else
         g_warning ("klaxon: no sound installed");
@@ -401,6 +433,8 @@ alarm_klaxon_new (GSettings *settings, AlarmKlaxonKind kind)
   self->settings = g_object_ref (settings);
   self->kind = kind;
   self->pa_loop = pa_glib_mainloop_new (NULL);
+  /* GStreamer starts with the service, so that it is up by the first alarm; the sink and the player are loaded with it */
+  gst_start_begin ((const char * const[]) { "playbin", "pulsesink", NULL });
   klaxons = g_slist_prepend (klaxons, self);
   return self;
 }

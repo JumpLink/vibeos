@@ -30,7 +30,7 @@ models = static_library('models', 'src/alarm-model.c', 'src/alarm-engine.c', 'sr
 
 # the service: alarms, timers and the stopwatch, with the app closed
 executable('vibeos-clock-alarms', 'src/clock-service.c', 'src/alarm-service.c', 'src/timer-service.c',
-           'src/stopwatch-service.c', 'src/alarm-klaxon.c', 'src/alarm-notifications.c', 'src/clock-notifier.c',
+           'src/stopwatch-service.c', 'src/alarm-klaxon.c', 'src/gst-start.c', 'src/alarm-notifications.c', 'src/clock-notifier.c',
            'src/phone.c', locale_src, link_with: models, install: true, c_args: gettext_args,
            include_directories: locale_inc,
            dependencies: [gio, m, icu, dependency('gstreamer-1.0'), dependency('libpulse-mainloop-glib')])
@@ -79,3 +79,8 @@ foreach name : ['alarm-model', 'alarm-engine', 'timer-model']
                         include_directories: locale_inc, dependencies: [gio, icu]), env: test_env)
 endforeach
 test('cities', executable('test-cities', 'tests/test-cities.c', link_with: cities, dependencies: gio), env: test_env)
+
+# the service with a GStreamer whose start never finishes (a plugin scanner that sleeps for good): an alarm rings in
+# the minute after the next, so the test takes up to two
+test('service-gst-hang', find_program('python3'), timeout: 240, env: test_env,
+     args: [files('tests/test-service-gst-hang.py'), meson.current_build_dir(), meson.current_source_dir()])

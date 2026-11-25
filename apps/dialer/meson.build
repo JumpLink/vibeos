@@ -22,7 +22,7 @@ call_audio_ucm = static_library('call-audio-ucm', 'src/call-audio-ucm.c', depend
 
 # the service: the calls with the app closed, ringing, the call log, the notifications
 executable('vibeos-dialer-calls', 'src/calls-service.c', 'src/calls.c', 'src/modem.c', 'src/ringer.c',
-           'src/call-notifications.c', 'src/notifier.c', 'src/phone.c', 'src/call-recorder.c',
+           'src/call-notifications.c', 'src/notifier.c', 'src/phone.c', 'src/call-recorder.c', 'src/gst-start.c',
            link_with: [common, call_audio_ucm], install: true,
            dependencies: [gio, ebook, m, dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'),
                           dependency('libpulse-mainloop-glib')])
@@ -90,3 +90,6 @@ test('call-audio-ucm', executable('test-call-audio-ucm', 'tests/test-call-audio-
 # registry made first takes up to a minute under arm64 emulation
 test('calls-flow', find_program('python3'), timeout: 180, env: test_env,
      args: [files('tests/test-calls.py'), meson.current_build_dir(), meson.current_source_dir()])
+# the same with a GStreamer whose start never finishes (a plugin scanner that sleeps for good)
+test('calls-gst-hang', find_program('python3'), timeout: 180, env: test_env,
+     args: [files('tests/test-calls-gst-hang.py'), meson.current_build_dir(), meson.current_source_dir()])
