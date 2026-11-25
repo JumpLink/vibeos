@@ -58,6 +58,7 @@ S5E_TABK=				# the tablet's recovery backup, linux-k11-uc.img, its kernel Image-
 S5E_MODULES=				# its kernel build's modules_install tree (lib/modules)
 S5E_KIT_TOOLS=				# extents, keepmisc and dmlinear (static aarch64 helpers)
 S5E_UBOOT=				# its dual-boot U-Boot, u-boot-nodtb.bin as s5e/build-uboot.sh builds it (s5e/uboot.env)
+S5E_IIO=				# iio-sensor-proxy_3.9-1+vibeos1_arm64.deb (VibeOS's build, in place of the stage's +gts4lv3)
 S20_DIR=				# Galaxy S20 FE: its kit (build/, kit/rootfs, kit/modem, quietboot/rootfs)
 S20_SLEEP=				# its sleep helper sources
 S20_KBUILD=				# its release kernel's build directory (O=: Image, modules, kernel.release), built with

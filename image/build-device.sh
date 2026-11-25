@@ -427,6 +427,15 @@ s5e)
 	DEPS="hexagonrpcd, rmtfs, qrtr-tools, tqftpserv"
 	[ -n "${TEST_OUT:-}" ] || cp $O/work/downloads/s5e/*.deb "$W/debs/"
 	cp "$ST"/debs/*.deb "$W/debs/"
+	# iio-sensor-proxy: VibeOS's 3.9-1+vibeos1 (S5E_IIO, checked by its sha256) in place of the stage's
+	# 3.9-1+gts4lv3, whose early claim and light smoothing it has; vibeos-device-setup leaves it unheld, so the
+	# VibeOS archive updates it. It runs on this package's libssc.so.2, as +gts4lv3 did.
+	[ -f "$W/debs/iio-sensor-proxy_3.9-1+gts4lv3_arm64.deb" ] || { echo "$ST/debs: no iio-sensor-proxy 3.9-1+gts4lv3" >&2; exit 1; }
+	[ "$(sha256sum < "${S5E_IIO:?set S5E_IIO}" | cut -c1-16)" = 32314796a904b8ce ] ||
+		{ echo "$S5E_IIO: not iio-sensor-proxy 3.9-1+vibeos1 (32314796)" >&2; exit 1; }
+	rm "$W/debs/iio-sensor-proxy_3.9-1+gts4lv3_arm64.deb"
+	cp "$S5E_IIO" "$W/debs/iio-sensor-proxy_3.9-1+vibeos1_arm64.deb"
+	log "debs: iio-sensor-proxy 3.9-1+vibeos1 <- $S5E_IIO, in place of the stage's 3.9-1+gts4lv3"
 	# boot: the recovery partition as the tablet has it since 11-19 (U-Boot dual + LineageOS recovery in its
 	# first 34 MiB, from the 11-19 backup), with linux-k11-uc.img (kernel + initramfs + DT) at 34 MiB; the
 	# installer writes the extent list at its end. The kit's extents and keepmisc tools.
