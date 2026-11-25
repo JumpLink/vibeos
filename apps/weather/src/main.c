@@ -9,12 +9,14 @@
  *
  * Where: the city chosen in Set City, if there is one (kept in vibeos.Weather's city; Open-Meteo's geocoding finds
  * the cities as their name is typed); otherwise the first city in GNOME Weather, if it has one; otherwise where the
- * phone is, from GeoClue at city accuracy, named by OpenStreetMap's Nominatim. "Use my location" in Set City goes back
- * from a chosen city to the last two. The place shown is kept in ~/.cache/vibeos-launcher/weather.json (lat, lon,
- * place), so the page opens on the last place at once and moves when the phone has, and the home screen's widget can
- * show the same place.
- * What: one Open-Meteo forecast (no key) with yesterday in it (past_days=1), fetched in curl and kept in
- * ~/.cache/vibeos-launcher/forecast.json; the page shows that at once and asks again when it is 15 minutes old. */
+ * phone is, from GeoClue, named by OpenStreetMap's Nominatim. The phone's position is rounded to 0.1° (wx-place.h)
+ * the moment GeoClue gives it, before it is named, kept or sent. "Use my location" in Set City goes back from a chosen
+ * city to the last two. The place shown is kept in ~/.cache/vibeos-launcher/weather.json (lat, lon, place), so the
+ * page opens on the last place at once and moves when the phone has, and the home screen's widget can show the same
+ * place.
+ * What: one Open-Meteo forecast (no key) with yesterday in it (past_days=1), for the place rounded to 0.1°, fetched in
+ * curl and kept in ~/.cache/vibeos-launcher/forecast.json; the page shows that at once and asks again when it is 15
+ * minutes old. */
 #include <glib/gi18n.h>
 #include <json-glib/json-glib.h>
 #include <locale.h>
@@ -24,6 +26,7 @@
 #include <vibeos.h>
 
 #include "wx-menu.h"
+#include "wx-place.h"
 
 #define STALE_S (15 * 60)
 #define UA "vibeos-weather/1.0 (VibeOS)"
@@ -818,15 +821,7 @@ fetched (GObject *src, GAsyncResult *res, gpointer data)
 static void
 fetch (Page *p)
 {
-  char lat[G_ASCII_DTOSTR_BUF_SIZE], lon[G_ASCII_DTOSTR_BUF_SIZE];
-  g_ascii_formatd (lat, sizeof lat, "%.4f", p->lat);
-  g_ascii_formatd (lon, sizeof lon, "%.4f", p->lon);
-  g_autofree char *url = g_strdup_printf (
-    "https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&timezone=auto&past_days=1&forecast_days=8"
-    "&current=temperature_2m,apparent_temperature,weather_code,is_day,relative_humidity_2m,wind_speed_10m,pressure_msl"
-    "&hourly=temperature_2m,weather_code,precipitation_probability,is_day"
-    "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,"
-    "uv_index_max", lat, lon);
+  g_autofree char *url = wx_forecast_url (p->lat, p->lon);      /* at 0.1° */
   const char *argv[] = { "curl", "-sf", "--max-time", "20", "-A", UA, url, NULL };
   GSubprocess *sp = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_SILENCE, NULL);
   if (!sp)
@@ -871,12 +866,16 @@ load_place (Page *p)
   return p->have_place = p->lat || p->lon;
 }
 
-/* ---- where: GNOME Weather's first city, or GeoClue (city accuracy) named by Nominatim ---- */
+/* ---- where: GNOME Weather's first city, or GeoClue (rounded to 0.1° at once) named by Nominatim ---- */
 
 #define GEO_BUS     "org.freedesktop.GeoClue2"
 #define GEO_MANAGER "/org/freedesktop/GeoClue2/Manager"
-#define GEO_CITY    4            /* GClueAccuracyLevel: city */
-#define GEO_WAIT_S  30
+/* GClueAccuracyLevel exact. VibeOS's GeoClue has only the phone's own GNSS (no Wi-Fi, cell or IP lookups), and GeoClue
+ * never starts a source more accurate than the level asked for, so city accuracy would get no position at all; the
+ * page asks for exact and rounds the fix itself (on_location) before anything uses it */
+#define GEO_EXACT   8
+/* a GNSS fix: seconds when it was on lately, under a minute with fresh orbit data, minutes from cold */
+#define GEO_WAIT_S  120
 
 static void
 save_place (Page *p)
@@ -972,12 +971,8 @@ user_language (void)
 static void
 name_place (Page *p, double lat, double lon)
 {
-  char la[G_ASCII_DTOSTR_BUF_SIZE], lo[G_ASCII_DTOSTR_BUF_SIZE];
-  g_ascii_formatd (la, sizeof la, "%.4f", lat);
-  g_ascii_formatd (lo, sizeof lo, "%.4f", lon);
   g_autofree char *lang = user_language ();
-  g_autofree char *url = g_strdup_printf ("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14"
-                                          "&lat=%s&lon=%s&accept-language=%s", la, lo, lang);
+  g_autofree char *url = wx_reverse_url (lat, lon, lang);      /* at 0.1°, the city's name */
   const char *argv[] = { "curl", "-sf", "--max-time", "15", "-A", UA, url, NULL };
   GSubprocess *sp = g_subprocess_newv (argv, G_SUBPROCESS_FLAGS_STDOUT_PIPE | G_SUBPROCESS_FLAGS_STDERR_SILENCE, NULL);
   if (!sp) {
@@ -1042,6 +1037,9 @@ on_location (GDBusConnection *bus, const char *sender, const char *path, const c
     geo_failed (p, "location", NULL);
     return;
   }
+  /* rounded here, before it is named, kept or sent: the fix itself goes no further */
+  lat = wx_round_deg (lat);
+  lon = wx_round_deg (lon);
   geo_stop (p);                   /* one fix is enough for a forecast */
   name_place (p, lat, lon);
 }
@@ -1093,7 +1091,7 @@ on_geo_client (GObject *src, GAsyncResult *res, gpointer data)
     return;
   }
   if (!geo_set (p, "DesktopId", g_variant_new_string ("vibeos.Weather"), &error) ||
-      !geo_set (p, "RequestedAccuracyLevel", g_variant_new_uint32 (GEO_CITY), &error)) {
+      !geo_set (p, "RequestedAccuracyLevel", g_variant_new_uint32 (GEO_EXACT), &error)) {
     geo_failed (p, "client setup", error);
     return;
   }

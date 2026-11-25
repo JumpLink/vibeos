@@ -12,7 +12,11 @@ deps = [dependency('gtk4', version: '>= 4.14'), dependency('json-glib-1.0'), dep
         meson.get_compiler('c').find_library('m')]
 resources = gnome.compile_resources('wx-resources', 'src/vibeos-weather.gresource.xml', source_dir: 'src')
 
-executable('vibeos-weather', 'src/main.c', 'src/wx-menu.c', resources, dependencies: deps, install: true)
+executable('vibeos-weather', 'src/main.c', 'src/wx-menu.c', 'src/wx-place.c', resources, dependencies: deps,
+           install: true)
+# the phone's position is rounded to 0.1° before use, and the requests carry only that
+test('place', executable('test-place', 'tests/test-place.c', 'src/wx-place.c',
+                         dependencies: [dependency('glib-2.0'), meson.get_compiler('c').find_library('m')]))
 i18n.merge_file(input: 'data/vibeos.Weather.desktop.in', output: 'vibeos.Weather.desktop', type: 'desktop', po_dir: 'po',
                 install: true, install_dir: get_option('datadir') / 'applications')
 # started by its D-Bus name, with the session's activation environment (a language changed in Settings)
