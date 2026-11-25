@@ -18,6 +18,10 @@ vibeos (1:0.1.5) unstable; urgency=medium
     Sound and vibration › System sounds has Keyboard sounds and Volume
     change sound, on by default where there is no motor. Both stay silent
     during a call, in Vibrate and Mute, and while the sound is muted.
+  * A tablet's cover locks it and puts the screen to sleep when it
+    closes, as the power key does, and wakes it to the lock screen when
+    it opens, as Android has it (the Xiaomi Pad 5's and the Galaxy Tab
+    S5e's). A closed cover no longer asks for a suspend.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
