@@ -84,6 +84,12 @@ vibeos (1:0.1.4.3) unstable; urgency=medium
     in Settings, Vibe and "Open with": hidden as GNOME hides an entry,
     made again whenever a package changes the installed apps. They stay
     installed, and Files (Nautilus) still opens folders when asked.
+  * Video Player: slide up or down over the picture's right half for the
+    volume and over its left half for the brightness, as other players
+    do, with a bar showing the level. The volume is the system's, as the
+    volume keys set it; the brightness is the shade slider's, and under
+    automatic brightness it moves its offset.
+  * Settings: the parallax wallpapers' previews are squares.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 00:48:14 +0100
 
