@@ -1,0 +1,109 @@
+English	Ukrainian	Note
+Settings	Налаштування	app and screen name
+Notifications	Сповіщення
+Notification	Сповіщення
+Do Not Disturb	Не турбувати	in a sentence: режим «Не турбувати»
+Wi-Fi	Wi-Fi
+Bluetooth	Bluetooth
+Airplane mode	Режим польоту
+Lock screen	Заблокований екран	Android's name for the screen and its settings
+Screen lock	Блокування екрана	the PIN/password/pattern lock itself
+Home screen	Головний екран
+Wallpaper	Фоновий малюнок	"Wallpaper & style" is "Оформлення й стиль", as Android
+Alarm	Будильник	the Clock's alarm; its sound is "сигнал будильника"
+Timer	Таймер
+Stopwatch	Секундомір
+Reminder	Нагадування
+Event	Подія	as Etar says it, and the Contacts event field
+Calendar	Календар
+Contact	Контакт
+Conversation	Чат	as Android's Messages says it today (not "ланцюжок повідомлень")
+Message	Повідомлення
+Call (noun)	Виклик	as Android's Phone says it in call states ("Виклик завершено"); "дзвінок" where Android has it: Пропущений дзвінок, Відеодзвінок
+Call (verb, button)	Зателефонувати	"Набрати" for dialling a number
+Download	Завантажити	noun: завантаження; the list: Завантаження
+Install	Установити	as Android (not "Встановити"); noun: установлення
+Uninstall	Видалити
+Update (verb)	Оновити
+Update (noun)	Оновлення
+Share	Поділитися
+Delete	Видалити	the thing is gone
+Remove	Вилучити	taken out of a list, the thing itself stays; "Видалити" when it is gone
+Clear	Очистити
+Cancel	Скасувати
+OK	OK	Latin letters, as Android
+Done	Готово
+Save	Зберегти
+Back	Назад
+Close	Закрити
+Search	Пошук	the field or a label; a button that runs it, or a hint: Шукати
+Edit	Змінити	"Редагувати" for editing a text or a picture
+Add	Додати
+Open	Відкрити
+Rename	Перейменувати
+Copy	Копіювати
+Retry	Повторити	"Try again" in a sentence: "Повторіть спробу"
+Next	Далі
+Continue	Продовжити
+Allow	Дозволити
+Deny	Заборонити
+Turn on	Увімкнути
+Turn off	Вимкнути
+On	Увімкнено	agrees with its noun: Увімкнений, Увімкнена
+Off	Вимкнено	agrees with its noun: Вимкнений, Вимкнена
+Menu	Меню
+More options	Інші опції	Android's name for the ⋮ menu
+About	Про додаток	the app's About sheet; "About %s" = "Про додаток «%s»"
+Credits	Автори
+Legal	Правова інформація
+Website	Вебсайт	one word, as the 2019 spelling and Android's Phone write it
+Report an Issue	Повідомити про проблему
+App	Додаток	as Android since 12 (not "програма")
+Storage	Сховище	the device's storage; an app's "Storage & cache" is "Пам’ять і кеш"
+Battery	Акумулятор
+Display	Екран
+Sound	Звук
+Location	Місцезнаходження	"геодані" in "Use location" = "Використовувати геодані", as Android
+Privacy	Конфіденційність	long: may need a shorter form on a chip
+Security	Безпека
+Accessibility	Доступність	as Android's Settings today
+Mobile data	Мобільний трафік	as Android's quick settings tile
+Ringtone	Сигнал дзвінка
+Vibrate	Вібросигнал	the ringer mode; the feature: Вібрація
+Password	Пароль
+PIN	PIN-код
+Pattern	Графічний ключ	"Ключ" alone where it is short, as Android's lock screen
+Fingerprint	Відбиток пальця
+Dark theme	Темна тема
+Folder	Папка
+File	Файл
+Tab (browser)	Вкладка
+Bookmark	Закладка
+History	Історія
+Favorites	Вибране	the Browser's favorites are also "Вибране"
+Undo	Відмінити	snackbar button, as Android's Phone and Clock; "Cancel" stays "Скасувати"
+Device	Пристрій
+Phone	Телефон
+Tablet	Планшет
+Keyboard	Клавіатура
+Language	Мова
+Date & time	Дата й час
+Time zone	Часовий пояс
+Wi-Fi hotspot	Точка доступу Wi-Fi
+Apps list / app drawer	Список додатків	as the launcher's long-press menu says it
+Online accounts	Онлайн-облікові записи
+Software (the app)	Центр додатків	the app store's name
+App Installer (the app)	Установник додатків
+Hardware keyboard	Фізична клавіатура
+On-screen keyboard	Екранна клавіатура
+Keyboard layout	Розкладка
+Pair (Bluetooth)	Підключити	as Android; the act: "підключення"; "Unpair" = Забути, as Android's "Forget device"
+Account	Обліковий запис	as Android (not "акаунт")
+Apostrophe	’	Android writes the typographic apostrophe: пам’ять, з’єднання, ім’я
+Quotes	«…»
+Snooze	Відкласти	the alarm's snooze; its length: тривалість паузи
+Refresh	Оновити
+Sign in / Sign out	Увійти / Вийти
+User name	Ім’я користувача
+Power button	Кнопка живлення
+Icon	Значок

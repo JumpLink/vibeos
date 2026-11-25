@@ -1,0 +1,1114 @@
+# Ukrainian translations of vibeos-dialer.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-dialer\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Ukrainian\n"
+"Language: uk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+# android: Dialer phoneAppLabel (several translations, short)
+#: data/vibeos.Dialer.desktop.in data/vibeos.Dialer.InCall.desktop.in
+#: src/dialer-window.c src/incall-window.c
+msgid "Phone"
+msgstr "Телефон"
+
+#: data/vibeos.Dialer.desktop.in
+msgid "Make and receive calls"
+msgstr "Здійснюйте й приймайте виклики"
+
+#: data/vibeos.Dialer.desktop.in
+msgid "Phone;Call;Dial;Dialer;Telephone;"
+msgstr "телефон;виклик;дзвінок;зателефонувати;набрати;набір номера;Phone;Call;Dial;Dialer;Telephone;"
+
+# android: Dialer call_incoming_swipe_to_answer_and_release
+#: src/answer-view.c
+msgid "Swipe from icon to answer and end ongoing call"
+msgstr "Проведіть пальцем від значка, щоб відповісти на виклик, завершивши поточний"
+
+# android: Dialer call_incoming_default_label_answer_and_release_third
+#: src/answer-view.c
+msgid "Swipe up to answer and end call on hold"
+msgstr "Проведіть пальцем угору, щоб відповісти, завершивши утримуваний виклик"
+
+# android: Dialer call_incoming_default_label_answer_and_release_second
+#: src/answer-view.c
+msgid "Swipe up to answer and hold ongoing call"
+msgstr "Проведіть пальцем угору, щоб відповісти, утримуючи поточний виклик"
+
+# android: Dialer call_incoming_swipe_to_answer
+#: src/answer-view.c
+msgid "Swipe up to answer"
+msgstr "Проведіть пальцем угору, щоб відповісти"
+
+# android: Dialer contact_grid_incoming_voice_call
+#. the top row: "Call from"; the bottom row: the number's kind and the number, for a contact
+#: src/answer-view.c src/incall-view.c
+msgid "Call from"
+msgstr "Виклик від:"
+
+# android: Dialer call_incoming_swipe_to_reject
+#: src/answer-view.c
+msgid "Swipe down to reject"
+msgstr "Проведіть пальцем униз, щоб відхилити"
+
+# android: Dialer call_log_header_today
+#: src/call-dates.c
+msgid "Today"
+msgstr "Сьогодні"
+
+# android: Dialer call_log_header_yesterday
+#: src/call-dates.c
+msgid "Yesterday"
+msgstr "Учора"
+
+# android: Framework older (several translations, short)
+#: src/call-dates.c
+msgid "Older"
+msgstr "Давніше"
+
+#: src/call-dates.c
+#, c-format
+msgid "%d min. ago"
+msgid_plural "%d min. ago"
+msgstr[0] "%d хв тому"
+msgstr[1] "%d хв тому"
+msgstr[2] "%d хв тому"
+
+#: src/call-dates.c
+#, c-format
+msgid "In %d min."
+msgid_plural "In %d min."
+msgstr[0] "Через %d хв"
+msgstr[1] "Через %d хв"
+msgstr[2] "Через %d хв"
+
+#: src/call-dates.c
+#, c-format
+msgid "%d hr. ago"
+msgid_plural "%d hr. ago"
+msgstr[0] "%d год тому"
+msgstr[1] "%d год тому"
+msgstr[2] "%d год тому"
+
+#: src/call-dates.c
+#, c-format
+msgid "In %d hr."
+msgid_plural "In %d hr."
+msgstr[0] "Через %d год"
+msgstr[1] "Через %d год"
+msgstr[2] "Через %d год"
+
+# android: DeskClock alarm_tomorrow (other app, short)
+#: src/call-dates.c
+msgid "Tomorrow"
+msgstr "Завтра"
+
+# android: Framework duration_days_relative
+#: src/call-dates.c
+#, c-format
+msgid "%d day ago"
+msgid_plural "%d days ago"
+msgstr[0] "%d день тому"
+msgstr[1] "%d дні тому"
+msgstr[2] "%d днів тому"
+
+#: src/call-dates.c
+#, c-format
+msgid "In %d day"
+msgid_plural "In %d days"
+msgstr[0] "Через %d день"
+msgstr[1] "Через %d дні"
+msgstr[2] "Через %d днів"
+
+#. TRANSLATORS: a call's duration with the abbreviations: "2m 15s"
+#: src/call-dates.c
+#, c-format
+msgctxt "call duration"
+msgid "%dm %ds"
+msgstr "%d хв %d с"
+
+#. TRANSLATORS: a call's duration under a minute: "12s"
+#: src/call-dates.c
+#, c-format
+msgctxt "call duration"
+msgid "%ds"
+msgstr "%d с"
+
+# android: Dialer emergency_number (several translations, short)
+#: src/call-details.c
+msgid "Emergency number"
+msgstr "Екстрений номер"
+
+# android: Dialer call_subject_type_and_number (several translations)
+#: src/call-details.c
+#, c-format
+msgctxt "call_subject_type_and_number"
+msgid "%1$s %2$s"
+msgstr "%1$s %2$s"
+
+# android: Dialer call (several translations, short)
+#: src/call-details.c src/call-stats.c
+msgid "Call"
+msgstr "Виклик"
+
+# android: Dialer notification_incoming_call (several translations, short)
+#. the "Incoming calls" channel, high importance with a full-screen intent: it peeks, and stays while it rings
+#. quiet: the answer screen is up, so on the ongoing channel, which does not peek
+#: src/call-details.c src/call-notifications.c
+msgid "Incoming call"
+msgstr "Вхідний виклик"
+
+# android: Dialer type_answered_elsewhere
+#: src/call-details.c
+msgid "Call answered on another device"
+msgstr "Виклик прийнято на іншому пристрої"
+
+# android: Dialer type_outgoing
+#: src/call-details.c
+msgid "Outgoing call"
+msgstr "Вихідний дзвінок"
+
+# android: Dialer voicemail_settings_title
+#: src/call-details.c
+msgid "Voicemail"
+msgstr "Голосова пошта"
+
+# android: Dialer type_rejected
+#: src/call-details.c
+msgid "Declined call"
+msgstr "Відхилений дзвінок"
+
+# android: Dialer type_blocked
+#: src/call-details.c
+msgid "Blocked call"
+msgstr "Заблокований дзвінок"
+
+# android: Dialer notification_missedCallTitle (several translations, short)
+#. a missed call peeks (the "Missed calls" channel is high importance)
+#: src/call-details.c src/call-notifications.c
+msgid "Missed call"
+msgstr "Пропущений виклик"
+
+# android: Dialer toast_text_copied
+#: src/call-details.c src/call-stats.c
+msgid "Text copied"
+msgstr "Текст скопійовано"
+
+# android: Dialer call_details_copy_number
+#: src/call-details.c src/call-stats.c src/recents-page.c
+msgid "Copy number"
+msgstr "Копіювати номер"
+
+# android: Dialer call_details_edit_number (several translations)
+#: src/call-details.c src/call-stats.c src/recents-page.c
+msgid "Edit number before call"
+msgstr "Редагувати номер перед дзвінком"
+
+# android: Dialer delete (several translations, short)
+#: src/call-details.c src/recents-page.c
+msgid "Delete"
+msgstr "Видалити"
+
+# android: Dialer call_details_menu_label
+#: src/call-details.c src/recents-page.c
+msgid "Call details"
+msgstr "Деталі виклику"
+
+# android: Dialer rtt_button_back
+#. named "Back", the button the shell's back gesture clicks; "Close" is its description
+#. named "Back", the button the shell's back gesture clicks; "Navigate up" is its description
+#. named "Back", the button the shell's back gesture clicks; "Close" is its description
+#. named "Back", the button the shell's back gesture clicks; "Navigate up" is its description
+#. named "Back", the button the shell's back gesture clicks; "stop searching" is its description
+#: src/call-details.c src/call-history.c src/call-stats.c src/dialer-settings.c
+#: src/favorites-page.c src/search-bar.c
+msgid "Back"
+msgstr "Назад"
+
+# android: Dialer toolbar_close
+#: src/call-details.c src/call-stats.c
+msgid "Close"
+msgstr "Закрити"
+
+# android: Dialer call_log_all_title
+#: src/call-history.c
+msgid "All"
+msgstr "Усі"
+
+# android: Dialer call_log_missed_title
+#: src/call-history.c
+msgid "Missed"
+msgstr "Пропущені"
+
+#: src/call-history.c
+msgid "Statistics"
+msgstr "Статистика"
+
+# android: Dialer clearCallLogConfirmation_title
+#: src/call-history.c
+msgid "Clear call history?"
+msgstr "Очистити історію дзвінків?"
+
+# android: Dialer clearCallLogConfirmation
+#: src/call-history.c
+msgid "This will delete all calls from your history"
+msgstr "З історії буде видалено всі дзвінки"
+
+# android: Dialer call_incoming_custom_message_cancel
+#: src/call-history.c src/dialer-settings.c src/incall-view.c
+#: src/recents-page.c
+msgid "Cancel"
+msgstr "Скасувати"
+
+# android: Framework httpErrorOk (several translations, short)
+#: src/call-history.c src/dialer-settings.c
+msgid "OK"
+msgstr "OK"
+
+#: src/call-history.c
+msgid "Sort by call count"
+msgstr "Сортувати за кількістю викликів"
+
+#: src/call-history.c
+msgid "Sort by call duration"
+msgstr "Сортувати за тривалістю викликів"
+
+# android: Dialer call_log_delete_all
+#: src/call-history.c
+msgid "Clear call history"
+msgstr "Очистити історію дзвінків"
+
+# android: Dialer call_log_activity_title
+#: src/call-history.c
+msgid "Call History"
+msgstr "Історія викликів"
+
+# android: Framework action_bar_up_description (short)
+#: src/call-history.c src/dialer-settings.c src/favorites-page.c
+msgid "Navigate up"
+msgstr "Перейти вгору"
+
+# android: Dialer content_description_overflow (several translations, short)
+#: src/call-history.c src/dialpad.c src/search-bar.c
+msgid "More options"
+msgstr "Інші опції"
+
+# android: Dialer a11y_call_incoming_decline_description
+#. the call notification's text and actions
+#: src/call-notifications.c
+msgid "Decline"
+msgstr "Відхилити"
+
+# android: Dialer a11y_call_incoming_answer_description
+#: src/call-notifications.c
+msgid "Answer"
+msgstr "Відповісти"
+
+# android: Dialer notification_action_end_call
+#: src/call-notifications.c
+msgid "Hang up"
+msgstr "Завершити виклик"
+
+# android: Dialer notification_action_speaker_on
+#: src/call-notifications.c
+msgid "Turn speaker on"
+msgstr "Увімкнути динамік"
+
+# android: Dialer notification_action_speaker_off
+#: src/call-notifications.c
+msgid "Turn speaker off"
+msgstr "Вимкнути динамік"
+
+# android: Dialer notification_dialing
+#: src/call-notifications.c
+msgid "Dialing"
+msgstr "Набір номера"
+
+# android: Dialer notification_on_hold (several translations, short)
+#: src/call-notifications.c src/incall-view.c
+msgid "On hold"
+msgstr "Очікує"
+
+# android: Dialer notification_ongoing_call (several translations, short)
+#: src/call-notifications.c
+msgid "Ongoing call"
+msgstr "Поточний виклик"
+
+# android: Dialer notification_missedCall_call_back
+#: src/call-notifications.c
+msgid "Call back"
+msgstr "Передзвонити"
+
+#. TRANSLATORS: the home folder, the start of a folder's path ("Home/Recordings"), as Files names it
+#: src/call-recording.c
+msgctxt "folder"
+msgid "Home"
+msgstr "Домівка"
+
+#: src/calls.c
+msgid "Failed to start call recording"
+msgstr "Не вдалося почати запис виклику"
+
+#: src/calls.c
+#, c-format
+msgid "The phone is in gateway mode: calls go over SIP"
+msgstr "Телефон працює в режимі шлюзу: виклики йдуть через SIP"
+
+#: src/calls.c
+#, c-format
+msgid "Mobile network not available"
+msgstr "Мобільна мережа недоступна"
+
+#: src/calls.c
+#, c-format
+msgid "No number to call"
+msgstr "Немає номера для виклику"
+
+# android: Framework emergency_calls_only
+#: src/calls.c
+#, c-format
+msgid "Emergency calls only"
+msgstr "Лише екстрені виклики"
+
+#: src/calls.c
+#, c-format
+msgid "This phone cannot hold calls"
+msgstr "Цей телефон не може утримувати виклики"
+
+#: src/calls-client.c
+msgid "No call service"
+msgstr "Немає служби викликів"
+
+#: src/call-stats.c
+#, c-format
+msgid "%d call"
+msgid_plural "%d calls"
+msgstr[0] "%d виклик"
+msgstr[1] "%d виклики"
+msgstr[2] "%d викликів"
+
+#: src/call-stats.c
+#, c-format
+msgid "%d hr"
+msgid_plural "%d hrs"
+msgstr[0] "%d год"
+msgstr[1] "%d год"
+msgstr[2] "%d год"
+
+#: src/call-stats.c
+#, c-format
+msgid "%d min"
+msgid_plural "%d mins"
+msgstr[0] "%d хв"
+msgstr[1] "%d хв"
+msgstr[2] "%d хв"
+
+#: src/call-stats.c
+#, c-format
+msgid "%d sec"
+msgid_plural "%d secs"
+msgstr[0] "%d с"
+msgstr[1] "%d с"
+msgstr[2] "%d с"
+
+#: src/call-stats.c
+#, c-format
+msgid "Incoming: %s"
+msgstr "Вхідні: %s"
+
+#: src/call-stats.c
+#, c-format
+msgid "Outgoing: %s"
+msgstr "Вихідні: %s"
+
+#: src/call-stats.c
+#, c-format
+msgid "Missed: %s"
+msgstr "Пропущені: %s"
+
+#: src/call-stats.c
+#, c-format
+msgid "Blocked: %s"
+msgstr "Заблоковані: %s"
+
+# android: SystemUI quick_settings_flashlight_tile_level_percentage (other app)
+#: src/call-stats.c
+#, c-format
+msgid "%d%%"
+msgstr "%d%%"
+
+#. Call durations: the card stays when the number was never talked to, with nothing in it (its container goes)
+#: src/call-stats.c
+msgid "Call durations"
+msgstr "Тривалість викликів"
+
+#: src/call-stats.c
+msgid "Of total"
+msgstr "Загалом"
+
+#: src/call-stats.c
+msgid "This number"
+msgstr "Цей номер"
+
+#. Call count
+#: src/call-stats.c
+msgid "Call count"
+msgstr "Кількість викликів"
+
+#. Average call duration: just its title when nothing was talked on
+#: src/call-stats.c
+msgid "Average call duration"
+msgstr "Середня тривалість виклику"
+
+#: src/call-stats.c
+msgid "Contact statistics details"
+msgstr "Докладна статистика контакту"
+
+#: src/call-stats.c
+#, c-format
+msgid "Total: %1$s, %2$s"
+msgstr "Усього: %1$s, %2$s"
+
+# android: Dialer call_log_all_empty
+#. the empty view covers the band too; no "time range" here, so always this line
+#: src/call-stats.c src/recents-page.c
+msgid "Your call history is empty"
+msgstr "Немає історії дзвінків"
+
+# android: Dialer add_contact_not_available
+#: src/contacts-app.c
+msgid "No contacts app available"
+msgstr "Немає додатка з контактами"
+
+# android: Framework phoneTypeCar (several translations, short)
+#: src/contacts.c
+msgid "Car"
+msgstr "Авто"
+
+# android: Framework phoneTypeIsdn (short)
+#: src/contacts.c
+msgid "ISDN"
+msgstr "ISDN"
+
+# android: Framework phoneTypeAssistant (several translations, short)
+#: src/contacts.c
+msgid "Assistant"
+msgstr "Помічник"
+
+#: src/contacts.c
+msgid "Callback"
+msgstr "Зворотний виклик"
+
+#: src/contacts.c
+msgid "Company main"
+msgstr "Основний номер компанії"
+
+# android: Framework phoneTypeRadio (short)
+#: src/contacts.c
+msgid "Radio"
+msgstr "Радіо"
+
+# android: Framework phoneTypeTelex (short)
+#: src/contacts.c
+msgid "Telex"
+msgstr "Телекс"
+
+#: src/contacts.c
+msgid "TTY/TDD"
+msgstr "TTY/TDD"
+
+# android: Framework phoneTypes[3] (adapted, short)
+#: src/contacts.c
+msgid "Work fax"
+msgstr "Робочий факс"
+
+# android: Framework phoneTypes[4] (adapted, short)
+#: src/contacts.c
+msgid "Home fax"
+msgstr "Домашній факс"
+
+# android: Framework phoneTypeOtherFax (adapted, short)
+#: src/contacts.c
+msgid "Other fax"
+msgstr "Інший факс"
+
+#: src/contacts.c
+msgid "Work pager"
+msgstr "Робочий пейджер"
+
+# android: Framework phoneTypes[5] (short)
+#: src/contacts.c
+msgid "Pager"
+msgstr "Пейджер"
+
+#: src/contacts.c
+msgid "Work mobile"
+msgstr "Робочий мобільний"
+
+# android: Framework phoneTypes[1] (several translations, short)
+#: src/contacts.c
+msgid "Mobile"
+msgstr "Мобільний"
+
+#: src/contacts.c
+msgid "Work"
+msgstr "Робочий"
+
+#: src/contacts.c
+msgctxt "phone number type"
+msgid "Home"
+msgstr "Домашній"
+
+#: src/contacts.c
+msgid "Other"
+msgstr "Інший"
+
+# android: Dialer all_contacts_empty
+#. the empty view: the contacts picture, the line, "Create new contact"
+#: src/contacts-page.c
+msgid "You don't have any contacts yet"
+msgstr "Ще немає контактів"
+
+# android: Contacts header_entry_contact_list_adapter_header_title (several translations)
+#: src/contacts-page.c src/recents-page.c src/search-page.c
+msgid "Create new contact"
+msgstr "Створити новий контакт"
+
+# android: Contacts name_family (short)
+#: src/dialer-settings.c
+msgid "Last name"
+msgstr "Прізвище"
+
+# android: Contacts name_given (short)
+#: src/dialer-settings.c
+msgid "First name"
+msgstr "Ім’я"
+
+#: src/dialer-settings.c
+msgid "Last name first"
+msgstr "Спочатку прізвище"
+
+# android: Contacts display_options_view_given_name_first
+#: src/dialer-settings.c
+msgid "First name first"
+msgstr "Спочатку ім’я"
+
+#: src/dialer-settings.c
+msgid "Sort by"
+msgstr "Сортувати за"
+
+# android: Contacts display_options_view_names_as (short)
+#: src/dialer-settings.c
+msgid "Name format"
+msgstr "Формат імені"
+
+#: src/dialer-settings.c
+msgid "Display options"
+msgstr "Параметри відображення"
+
+# android: Dialer ringtone_silent (several translations, short)
+#: src/dialer-settings.c
+msgid "None"
+msgstr "Немає"
+
+# android: Dialer notification_channel_misc (several translations, short)
+#: src/dialer-settings.c
+msgid "Default"
+msgstr "За умовчанням"
+
+# android: Dialer ringtone_title (several translations, short)
+#: src/dialer-settings.c
+msgid "Phone ringtone"
+msgstr "Сигнал дзвінка телефона"
+
+#. the vibrator-gated rows: the phone has one (feedbackd)
+#: src/dialer-settings.c
+msgid "Also vibrate for calls"
+msgstr "Також вібрувати під час дзвінка"
+
+# android: Dialer dtmf_tone_enable_title
+#: src/dialer-settings.c
+msgid "Keypad tones"
+msgstr "Звуки клавіатури"
+
+#: src/dialer-settings.c
+msgid "In-call"
+msgstr "Під час виклику"
+
+#: src/dialer-settings.c
+msgid "Vibrate on answer"
+msgstr "Вібрація, коли відповідають"
+
+#: src/dialer-settings.c
+msgid "Vibrate on call waiting"
+msgstr "Вібрація під час очікування виклику"
+
+#: src/dialer-settings.c
+msgid "Vibrate on hang up"
+msgstr "Вібрація після завершення виклику"
+
+#: src/dialer-settings.c
+msgid "Vibrate every minute"
+msgstr "Вібрація щохвилини"
+
+#: src/dialer-settings.c
+msgid "Vibrates at the 45 second mark of every minute during outgoing calls"
+msgstr "Вібрує на 45-й секунді кожної хвилини під час вихідних викликів"
+
+# android: Dialer sounds_and_vibration_title
+#: src/dialer-settings.c
+msgid "Sounds and vibration"
+msgstr "Звуки та вібрація"
+
+#: src/dialer-settings.c
+msgid "This device can't record calls"
+msgstr "Цей пристрій не може записувати виклики"
+
+#: src/dialer-settings.c
+msgid "To record calls on this device, turn off Announce recording"
+msgstr "Щоб записувати виклики на цьому пристрої, вимкніть параметр «Повідомляти про запис»"
+
+#: src/dialer-settings.c
+msgid "This device can't play it to the other person"
+msgstr "Цей пристрій не може відтворити його для співрозмовника"
+
+#: src/dialer-settings.c
+msgid "Both sides hear “This call is now being recorded” when recording starts"
+msgstr "Коли починається запис, обидві сторони чують «Цей виклик записується»"
+
+#: src/dialer-settings.c
+msgid "Call recordings can't be saved in this folder"
+msgstr "У цій папці не можна зберігати записи викликів"
+
+#: src/dialer-settings.c
+msgid "Storage location"
+msgstr "Місце зберігання"
+
+#: src/dialer-settings.c
+msgid "Record every call"
+msgstr "Записувати кожен виклик"
+
+#: src/dialer-settings.c
+msgid "Announce recording"
+msgstr "Повідомляти про запис"
+
+#: src/dialer-settings.c
+msgid "Call recording"
+msgstr "Запис викликів"
+
+# android: Dialer unblock_report_number_alert_title
+#: src/dialer-settings.c src/recents-page.c
+#, c-format
+msgid "Unblock %s?"
+msgstr "Розблокувати %s?"
+
+# android: Dialer unblock_number (several translations, short)
+#: src/dialer-settings.c
+msgid "Unblock"
+msgstr "Розблокувати"
+
+#: src/dialer-settings.c
+msgid "Add a number"
+msgstr "Додати номер"
+
+# android: Contacts non_phone_caption (short)
+#: src/dialer-settings.c
+msgid "Phone number"
+msgstr "Номер телефону"
+
+# android: Dialer block_number
+#: src/dialer-settings.c
+msgid "Block"
+msgstr "Заблокувати"
+
+#: src/dialer-settings.c
+msgid "You won't receive calls or texts from blocked numbers."
+msgstr "Ви не отримуватимете викликів і SMS із заблокованих номерів."
+
+# android: Dialer manage_blocked_numbers_label
+#: src/dialer-settings.c
+msgid "Blocked numbers"
+msgstr "Заблоковані номери"
+
+# android: Dialer dialer_settings_label
+#: src/dialer-settings.c src/dialer-window.c
+msgid "Settings"
+msgstr "Налаштування"
+
+#: src/dialer-window.c src/nav-bar.c
+msgctxt "bottom_nav_count_9_plus"
+msgid "9+"
+msgstr "9+"
+
+# android: Dialer voice_search_not_available
+#. voice search: no recogniser on this phone
+#: src/dialer-window.c
+msgid "Voice search not available"
+msgstr "Голосовий пошук недоступний"
+
+# android: Dialer callHistoryIconLabel (several translations, short)
+#: src/dialer-window.c
+msgid "Call history"
+msgstr "Історія дзвінків"
+
+#: src/dialer-window.c
+msgid "About"
+msgstr "Про додаток"
+
+#: src/dialer-window.c
+msgid "key pad"
+msgstr "клавіатура"
+
+#: src/dialer-window.c
+msgid "Choose a call to see its details"
+msgstr "Виберіть виклик, щоб переглянути деталі"
+
+# android: Dialer favorites_header (several translations, short)
+#: src/dialer-window.c
+msgctxt "tab_title_speed_dial"
+msgid "Favorites"
+msgstr "Вибрані"
+
+# android: Settings navbar_recent_button (other app, several translations, short)
+#: src/dialer-window.c
+msgctxt "tab_title_call_history"
+msgid "Recents"
+msgstr "Нещодавні"
+
+# android: Dialer tab_all_contacts
+#: src/dialer-window.c
+msgctxt "tab_all_contacts"
+msgid "Contacts"
+msgstr "Контакти"
+
+#: src/dialpad.c
+msgid "Close keypad"
+msgstr "Закрити клавіатуру"
+
+# android: Dialer description_delete_button
+#: src/dialpad.c
+msgid "backspace"
+msgstr "видалення символів перед курсором"
+
+# android: Dialer add_2sec_pause
+#: src/dialpad-sheet.c
+msgid "Add 2-sec pause"
+msgstr "Додати 2-секундну паузу"
+
+# android: Dialer add_wait
+#: src/dialpad-sheet.c
+msgid "Add wait"
+msgstr "Додати паузу"
+
+# android: Dialer description_dial_button
+#: src/dialpad-sheet.c
+msgid "dial"
+msgstr "дзвонити"
+
+# android: Dialer call (several translations, short)
+#: src/favorites-page.c
+msgctxt "disambig_option_voice_call"
+msgid "Call"
+msgstr "Виклик"
+
+# android: Dialer speed_dial_disambig_dialog_title
+#: src/favorites-page.c
+msgid "Choose call type"
+msgstr "Виберіть тип виклику"
+
+# android: Dialer pre_call_select_phone_account_remember (several translations)
+#. "Remember this choice": a check box in a strip of its own
+#: src/favorites-page.c
+msgid "Remember this choice"
+msgstr "Запам’ятати цей вибір"
+
+# android: Dialer call_subject_type_and_number (several translations)
+#: src/favorites-page.c src/search-page.c
+#, c-format
+msgid "%1$s %2$s"
+msgstr "%1$s %2$s"
+
+#: src/favorites-page.c
+msgid "Voice Call"
+msgstr "Голосовий виклик"
+
+# android: Dialer notification_missedCall_message
+#: src/favorites-page.c
+msgid "Message"
+msgstr "Повідомлення"
+
+# android: Framework kg_reordering_delete_drop_target_text (several translations, short)
+#: src/favorites-page.c
+msgid "Remove"
+msgstr "Вилучити"
+
+# android: Dialer contact_menu_contact_info
+#: src/favorites-page.c
+msgid "Contact info"
+msgstr "Контактні дані"
+
+# android: Contacts contactPickerActivityTitle
+#: src/favorites-page.c
+msgid "Choose a contact"
+msgstr "Вибрати контакт"
+
+# android: Dialer favorites_header (several translations, short)
+#: src/favorites-page.c
+msgid "Favorites"
+msgstr "Вибрані"
+
+# android: Dialer speed_dial_add_button_text (several translations, short)
+#: src/favorites-page.c
+msgctxt "speed_dial_add_button_text"
+msgid "Add"
+msgstr "Додати"
+
+# android: Dialer speed_dial_no_contacts_description
+#: src/favorites-page.c
+msgid "You haven't added any favorites yet"
+msgstr "У списку поки немає вибраних контактів"
+
+#: src/favorites-page.c
+msgid "Add favorite"
+msgstr "Додати у вибране"
+
+# android: Dialer incall_connecting
+#: src/incall-view.c
+msgid "Calling…"
+msgstr "Виклик…"
+
+# android: Dialer incall_hanging_up
+#: src/incall-view.c
+msgid "Hanging up"
+msgstr "Завершення виклику"
+
+#. what ended the call: busy is named; the others end with "Call ended"
+#: src/incall-view.c
+msgid "Line busy"
+msgstr "Лінія зайнята"
+
+# android: Dialer incall_call_ended
+#: src/incall-view.c
+msgid "Call ended"
+msgstr "Виклик завершено"
+
+#: src/incall-view.c
+#, c-format
+msgid "Recording call – %s"
+msgstr "Запис виклику – %s"
+
+# android: SystemUI screenrecord_stop_description (other app, short)
+#: src/incall-view.c
+msgid "Stop recording"
+msgstr "Зупинити запис"
+
+#: src/incall-view.c
+msgid "Record call"
+msgstr "Записати виклик"
+
+#. LineageOS's legal notice, before the first recording the user starts
+#: src/incall-view.c
+msgid "Enable call recording?"
+msgstr "Увімкнути запис викликів?"
+
+#: src/incall-view.c
+msgid "Notice: You are responsible for compliance with any laws, regulations and rules that apply to the use of call recording functionality and the use or distribution of those recordings."
+msgstr "Примітка. Ви несете відповідальність за дотримання всіх законів, норм і правил, що стосуються використання функції запису викликів, а також використання чи поширення таких записів."
+
+#: src/incall-view.c
+msgid "This phone can't send keypad tones"
+msgstr "Цей телефон не може надсилати тональні сигнали"
+
+# android: Framework bg_user_sound_notification_button_mute (several translations, short)
+#. the grid's buttons, then the keypad over them, then the end-call button over that
+#: src/incall-view.c
+msgid "Mute"
+msgstr "Вимкнути звук"
+
+# android: Dialer incall_label_dialpad
+#: src/incall-view.c
+msgid "Keypad"
+msgstr "Клавіатура"
+
+# android: Dialer incall_content_description_speaker (several translations, short)
+#: src/incall-view.c
+msgid "Speaker"
+msgstr "Динамік"
+
+# android: Dialer incall_label_swap
+#: src/incall-view.c
+msgid "Swap"
+msgstr "Поміняти"
+
+#: src/incall-view.c
+msgid "Add call"
+msgstr "Додати виклик"
+
+# android: Dialer incall_label_hold
+#: src/incall-view.c
+msgid "Hold"
+msgstr "Утримувати"
+
+# android: Dialer incall_content_description_end_call
+#: src/incall-view.c
+msgid "End call"
+msgstr "Завершити виклик"
+
+#: src/incall-window.c
+msgid "A call is ringing"
+msgstr "Надходить виклик"
+
+#: src/incall-window.c
+msgid ""
+"Send the following tones?\n"
+msgstr ""
+"Надіслати такі сигнали?\n"
+
+# android: Dialer pause_prompt_no
+#: src/incall-window.c
+msgid "No"
+msgstr "Ні"
+
+# android: Dialer pause_prompt_yes
+#: src/incall-window.c
+msgid "Yes"
+msgstr "Так"
+
+#: src/modem.c
+msgid "There is no modem"
+msgstr "Немає модема"
+
+# android: Dialer private_num_non_verizon
+#: src/phone-number.c
+msgid "Private number"
+msgstr "Приватний номер"
+
+# android: Dialer new_call_log_unknown (several translations, short)
+#: src/phone-number.c
+msgid "Unknown"
+msgstr "Невідомо"
+
+# android: Dialer payphone
+#: src/phone-number.c
+msgid "Payphone"
+msgstr "Таксофон"
+
+# android: Dialer blocked_number_call_log_label (several translations, short)
+#: src/recents-page.c
+msgid "Blocked"
+msgstr "Заблоковано"
+
+# android: Dialer call_log_item_count_and_date
+#: src/recents-page.c
+#, c-format
+msgid "(%1$u) %2$s"
+msgstr "(%1$u) %2$s"
+
+# android: Dialer search_shortcut_add_to_contact
+#: src/recents-page.c src/search-page.c
+msgid "Add to a contact"
+msgstr "Додати в контакти"
+
+# android: Dialer call_log_action_send_message
+#: src/recents-page.c
+msgid "Send a message"
+msgstr "Надіслати повідомлення"
+
+# android: Dialer call_log_action_unblock_number
+#: src/recents-page.c
+msgid "Unblock number"
+msgstr "Розблокувати номер"
+
+# android: Dialer call_log_action_block_number
+#: src/recents-page.c
+msgid "Block number"
+msgstr "Заблокувати номер"
+
+#: src/recents-page.c
+#, c-format
+msgid "Call details for %s"
+msgstr "Деталі виклику: %s"
+
+#: src/recents-page.c src/search-page.c
+#, c-format
+msgid "Call %s"
+msgstr "Зателефонувати: %s"
+
+# android: Dialer block_number_failed_toast
+#: src/recents-page.c
+msgid "Problem blocking this number"
+msgstr "Не вдалося заблокувати цей номер"
+
+# android: Dialer unblock_number_failed_toast
+#: src/recents-page.c
+msgid "Problem unblocking this number"
+msgstr "Не вдалося розблокувати цей номер"
+
+# android: Dialer block_number_confirmation_title (several translations)
+#: src/recents-page.c
+#, c-format
+msgid "Block %s?"
+msgstr "Заблокувати %s?"
+
+#: src/recents-page.c
+msgid "You will no longer receive calls or texts from this number."
+msgstr "Ви більше не отримуватимете викликів і SMS із цього номера."
+
+#: src/recents-page.c
+msgid "BLOCK"
+msgstr "ЗАБЛОКУВАТИ"
+
+# android: Dialer unblock_number_ok
+#: src/recents-page.c
+msgid "UNBLOCK"
+msgstr "РОЗБЛОКУВАТИ"
+
+# android: Dialer call_log_missed_empty
+#: src/recents-page.c
+msgid "You have no missed calls."
+msgstr "Немає пропущених дзвінків."
+
+# android: Dialer call_log_all_empty_action
+#: src/recents-page.c
+msgid "Make a call"
+msgstr "Телефонувати"
+
+# android: Dialer dialer_hint_find_contact (several translations, short)
+#: src/search-bar.c
+msgid "Search contacts"
+msgstr "Пошук контактів"
+
+# android: Dialer description_start_voice_search
+#: src/search-bar.c
+msgid "Start voice search"
+msgstr "Розпочати голосовий пошук"
+
+# android: Contacts action_menu_back_from_search (short)
+#: src/search-bar.c
+msgid "stop searching"
+msgstr "припинити пошук"
+
+# android: Contacts description_clear_search (short)
+#: src/search-bar.c
+msgid "Clear search"
+msgstr "Очистити поле пошуку"
+
+# android: Dialer all_contacts
+#: src/search-page.c
+msgid "All contacts"
+msgstr "Усі контакти"
+
+# android: Dialer search_shortcut_send_sms_message
+#: src/search-page.c
+msgid "Send SMS"
+msgstr "Надіслати SMS"

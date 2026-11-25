@@ -1,0 +1,673 @@
+# Ukrainian translations of vibeos-browser.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-browser\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Ukrainian\n"
+"Language: uk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+# android: Framework keyboard_shortcut_group_applications_browser (several translations, short)
+#: data/vibeos.Browser.desktop.in src/nb-menu.c src/nb-switcher.c src/nb-tab.c
+msgid "Browser"
+msgstr "Вебпереглядач"
+
+#: data/vibeos.Browser.desktop.in
+msgid "Web Browser"
+msgstr "Вебпереглядач"
+
+#: data/vibeos.Browser.desktop.in
+msgid "Browse the web"
+msgstr "Переглядайте сайти в Інтернеті"
+
+#: data/vibeos.Browser.desktop.in src/nb-switcher.c
+msgid "New incognito tab"
+msgstr "Нова анонімна вкладка"
+
+#: src/main.c
+msgid "Open an incognito tab"
+msgstr "Відкрити анонімну вкладку"
+
+#: src/main.c
+msgid "Open a home-screen shortcut"
+msgstr "Відкрити ярлик із головного екрана"
+
+#: src/main.c
+msgid "ID"
+msgstr "ID"
+
+#: src/main.c
+msgid "URL…"
+msgstr "URL…"
+
+#: src/nb-app.c
+msgid "Download complete"
+msgstr "Завантаження завершено"
+
+#. TRANSLATORS: keep the link's markup as it is
+#: src/nb-menu.c
+msgid "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, under the GNU LGPL 2.1 and BSD licences."
+msgstr "Вебсторінки показує <a href=\"https://webkitgtk.org/\">WebKitGTK</a> за ліцензіями GNU LGPL 2.1 і BSD."
+
+#: src/nb-menu.c
+msgid "Desktop site"
+msgstr "Версія для ПК"
+
+# android: Framework satellite_manual_selection_state_popup_cancel (several translations, short)
+#: src/nb-menu.c
+msgid "Go back"
+msgstr "Назад"
+
+#: src/nb-menu.c
+msgid "Go forward"
+msgstr "Уперед"
+
+#: src/nb-menu.c
+msgid "Refresh page"
+msgstr "Оновити сторінку"
+
+#: src/nb-menu.c
+msgid "Add to favorites"
+msgstr "Додати у вибране"
+
+# android: Jelly menu_share (several translations, short)
+#: src/nb-menu.c
+msgid "Share"
+msgstr "Поділитися"
+
+# android: Jelly menu_new_tab
+#: src/nb-menu.c src/nb-switcher.c
+msgid "New tab"
+msgstr "Нова вкладка"
+
+# android: Jelly menu_incognito
+#: src/nb-menu.c src/nb-switcher.c
+msgid "Incognito tab"
+msgstr "Анонімна вкладка"
+
+#: src/nb-menu.c src/nb-pages.c
+msgid "Favorites"
+msgstr "Вибране"
+
+# android: Jelly menu_history
+#. the names as the list shows them, translated there (nb_list_dialog_present): History and None are words
+#: src/nb-menu.c src/nb-pages.c src/nb-suggest.c
+msgid "History"
+msgstr "Історія"
+
+# android: DocumentsUI downloads_label (other app, short)
+#: src/nb-menu.c src/nb-pages.c
+msgid "Downloads"
+msgstr "Завантаження"
+
+# android: Jelly menu_shortcut (several translations, short)
+#: src/nb-menu.c
+msgid "Add shortcut"
+msgstr "Додати ярлик"
+
+# android: Jelly menu_search
+#: src/nb-menu.c
+msgid "Find in page"
+msgstr "Знайти на сторінці"
+
+# android: Jelly menu_print
+#: src/nb-menu.c
+msgid "Print"
+msgstr "Друк"
+
+#: src/nb-menu.c src/nb-pages.c
+msgid "Desktop shortcuts"
+msgstr "Ярлики на головному екрані"
+
+# android: Jelly menu_settings
+#. the pinned toolbar: the up arrow, and the collapsed title
+#: src/nb-menu.c src/nb-settings.c
+msgid "Settings"
+msgstr "Налаштування"
+
+#: src/nb-menu.c
+msgid "About"
+msgstr "Про додаток"
+
+# android: Jelly menu_in_new_tab
+#: src/nb-menu.c
+msgid "Open in new tab"
+msgstr "Відкрити у новій вкладці"
+
+# android: Jelly menu_download
+#: src/nb-menu.c src/nb-tab.c
+msgid "Download"
+msgstr "Завантажити"
+
+#: src/nb-menu.c
+msgid "Link copied"
+msgstr "Посилання скопійовано"
+
+#: src/nb-menu.c
+msgid "Copy link"
+msgstr "Копіювати посилання"
+
+# android: Jelly share_title
+#: src/nb-menu.c
+msgid "Send to"
+msgstr "Надіслати до"
+
+#: src/nb-menu.c
+msgid "Shortcut not added"
+msgstr "Ярлик не додано"
+
+#: src/nb-menu.c
+msgid "Touch & hold the shortcut to move it around the home screen"
+msgstr "Натисніть і втримуйте ярлик, щоб перемістити його на головному екрані"
+
+# android: Framework cancel (short)
+#: src/nb-menu.c src/nb-pages.c src/nb-settings.c src/nb-tab.c src/nb-widgets.c
+msgid "Cancel"
+msgstr "Скасувати"
+
+# android: Launcher3 add_to_home_screen (other app)
+#: src/nb-menu.c
+msgid "Add to home screen"
+msgstr "Додати на головний екран"
+
+#: src/nb-pages.c
+msgid "Entry deleted"
+msgstr "Запис видалено"
+
+# android: Framework undo (several translations, short)
+#: src/nb-pages.c
+msgid "Undo"
+msgstr "Відмінити"
+
+# android: Jelly history_delete_title
+#. "Clear history" over a spinner and "Clearing history…", not cancelable, gone 200 ms after
+#: src/nb-pages.c
+msgid "Clear history"
+msgstr "Очистити історію"
+
+# android: Jelly history_deleting_message
+#: src/nb-pages.c
+msgid "Clearing history…"
+msgstr "Очищення історії…"
+
+# android: Jelly history_delete_message
+#: src/nb-pages.c
+msgid "You're going to delete all the history, this action cannot be undone. Do you want to proceed?"
+msgstr "Ви збираєтеся видалити всю історію. Цю дію скасувати не можна. Бажаєте продовжити?"
+
+# android: Jelly history_delete_positive
+#: src/nb-pages.c
+msgid "Clear"
+msgstr "Очистити"
+
+#: src/nb-pages.c
+msgid "There's nothing here, browse on the internet to see your history here"
+msgstr "Тут нічого немає. Відкривайте сайти, і тут з’явиться історія переглядів."
+
+#: src/nb-pages.c
+msgid "Insert a valid URL"
+msgstr "Введіть дійсну URL-адресу"
+
+#: src/nb-pages.c
+msgid "Edit favorite"
+msgstr "Змінити вибране"
+
+# android: Jelly favorite_edit_title
+#: src/nb-pages.c
+msgid "Title"
+msgstr "Назва"
+
+# android: Jelly favorite_edit_url (several translations, short)
+#: src/nb-pages.c
+msgid "URL"
+msgstr "URL"
+
+# android: Framework delete (several translations, short)
+#: src/nb-pages.c
+msgid "Delete"
+msgstr "Видалити"
+
+# android: Framework whichEditApplicationLabel (several translations, short)
+#: src/nb-pages.c
+msgid "Edit"
+msgstr "Редагувати"
+
+#: src/nb-pages.c
+msgid "There's nothing here, add a favorite link to see it here"
+msgstr "Тут нічого немає. Додайте посилання у вибране, і воно з’явиться тут."
+
+#: src/nb-pages.c
+msgid "Download failed"
+msgstr "Не вдалося завантажити"
+
+#: src/nb-pages.c
+#, c-format
+msgid "Downloading… %d%%"
+msgstr "Завантаження… %d%%"
+
+# android: Framework mime_type_generic (short)
+#: src/nb-pages.c
+msgid "File"
+msgstr "Файл"
+
+# android: Framework action_bar_home_subtitle_description_format (several translations)
+#. TRANSLATORS: a download's day, its size and the file's type
+#: src/nb-pages.c
+#, c-format
+msgid "%s, %s, %s"
+msgstr "%s, %s, %s"
+
+# android: DocumentsUI empty (other app, short)
+#: src/nb-pages.c
+msgid "No items"
+msgstr "Нічого немає"
+
+# android: Framework autofill_save_yes (short)
+#: src/nb-pages.c
+msgid "Save"
+msgstr "Зберегти"
+
+# android: Jelly pref_search_engine
+#: src/nb-settings.c
+msgid "Search engine"
+msgstr "Пошукова система"
+
+# android: Jelly pref_suggestions_provider
+#: src/nb-settings.c
+msgid "Suggestions provider"
+msgstr "Постачальник пропозицій"
+
+# android: Settings bluetooth_leaudio_mode[0] (other app, short)
+#: src/nb-settings.c
+msgid "Disabled"
+msgstr "Вимкнено"
+
+#: src/nb-settings.c
+msgid "Select home page"
+msgstr "Виберіть домашню сторінку"
+
+#: src/nb-settings.c
+msgid "Write the home page URL"
+msgstr "Введіть URL-адресу домашньої сторінки"
+
+# android: SettingsLib bt_hci_snoop_log_entries[2] (other app, short)
+#: src/nb-settings.c
+msgid "Enabled"
+msgstr "Увімкнено"
+
+# android: Jelly pref_start_page
+#: src/nb-settings.c
+msgid "Home page"
+msgstr "Домашня сторінка"
+
+# android: Jelly pref_start_page_dialog_reset
+#: src/nb-settings.c
+msgid "Reset"
+msgstr "Скинути"
+
+# android: Framework httpErrorOk (several translations, short)
+#: src/nb-settings.c
+msgid "OK"
+msgstr "OK"
+
+#: src/nb-settings.c
+msgid "Cleared all the cookies"
+msgstr "Усі файли cookie очищено"
+
+#: src/nb-settings.c
+msgid "Reach mode"
+msgstr "Режим досяжності"
+
+#: src/nb-settings.c
+msgid "Relocate interface elements for easier one-hand usage"
+msgstr "Переміщувати елементи інтерфейсу для зручного керування однією рукою"
+
+#: src/nb-settings.c
+msgid "Fullscreen shortcuts"
+msgstr "Ярлики на весь екран"
+
+#: src/nb-settings.c
+msgid "Force shortcuts to open in fullscreen mode"
+msgstr "Завжди відкривати ярлики в повноекранному режимі"
+
+#: src/nb-settings.c
+msgid "Privacy & security"
+msgstr "Конфіденційність і безпека"
+
+#: src/nb-settings.c
+msgid "Dynamic popups"
+msgstr "Динамічні спливаючі вікна"
+
+#: src/nb-settings.c
+msgid "Allow JavaScript to open popups without user interaction"
+msgstr "Дозволити JavaScript відкривати спливаючі вікна без дій користувача"
+
+# android: Jelly pref_js_summary
+#: src/nb-settings.c
+msgid "Enable JavaScript"
+msgstr "Увімкнути JavaScript"
+
+# android: Jelly pref_location_title (several translations, short)
+#: src/nb-settings.c
+msgid "Location"
+msgstr "Місцезнаходження"
+
+#: src/nb-settings.c
+msgid "Allow websites to request access to your location"
+msgstr "Дозволити сайтам запитувати доступ до місцезнаходження"
+
+# android: Jelly pref_do_not_track_title
+#: src/nb-settings.c
+msgid "Do Not Track"
+msgstr "Не відстежувати"
+
+#: src/nb-settings.c
+msgid "Send a Do Not Track request to websites you visit"
+msgstr "Надсилати запит «Не відстежувати» сайтам, які ви відвідуєте"
+
+# android: Jelly pref_cookie_title
+#: src/nb-settings.c
+msgid "Cookies"
+msgstr "Cookies"
+
+#: src/nb-settings.c
+msgid "Allow websites to save and load cookies"
+msgstr "Дозволити сайтам зберігати й завантажувати файли cookie"
+
+#: src/nb-settings.c
+msgid "Clear cookies"
+msgstr "Очистити файли cookie"
+
+# android: Framework ringtone_silent (several translations, short)
+#: src/nb-suggest.c
+msgid "None"
+msgstr "Немає"
+
+#: src/nb-switcher.c
+#, c-format
+msgid "Close %s"
+msgstr "Закрити %s"
+
+#. TRANSLATORS: a screen reader's name for the tab card of the tab that was shown; %s is the tab's title
+#: src/nb-switcher.c
+#, c-format
+msgid "%s, current tab"
+msgstr "%s, поточна вкладка"
+
+#: src/nb-switcher.c
+#, c-format
+msgid "%u tab"
+msgid_plural "%u tabs"
+msgstr[0] "%u вкладка"
+msgstr[1] "%u вкладки"
+msgstr[2] "%u вкладок"
+
+#: src/nb-switcher.c
+msgid "Tabs"
+msgstr "Вкладки"
+
+#: src/nb-switcher.c
+msgid "No open tabs"
+msgstr "Немає відкритих вкладок"
+
+#: src/nb-tab.c
+msgid "Added to favorites"
+msgstr "Додано у вибране"
+
+#. a site asks for the location
+#: src/nb-tab.c
+msgid "Provide location?"
+msgstr "Надати доступ до місцезнаходження?"
+
+#. TRANSLATORS: %s is the site (its origin, "https://example.org")
+#: src/nb-tab.c
+#, c-format
+msgid "%s wants to use your geolocation."
+msgstr "Сайт %s хоче використовувати ваше місцезнаходження."
+
+#: src/nb-tab.c
+msgid "Deny for now"
+msgstr "Поки що заборонити"
+
+# android: Dialer block_number (other app, short)
+#: src/nb-tab.c
+msgid "Block"
+msgstr "Заблокувати"
+
+# android: Framework sms_control_yes (several translations, short)
+#: src/nb-tab.c
+msgid "Allow"
+msgstr "Дозволити"
+
+#: src/nb-tab.c
+msgid "Allow protected media?"
+msgstr "Дозволити захищений вміст?"
+
+# android: Framework sms_control_no (several translations, short)
+#: src/nb-tab.c
+msgid "Deny"
+msgstr "Заборонити"
+
+#: src/nb-tab.c
+msgid "Grant"
+msgstr "Дозволити"
+
+#. TRANSLATORS: %s is the site (its origin, "https://example.org")
+#: src/nb-tab.c
+#, c-format
+msgid "%s wants to use your camera and microphone."
+msgstr "Сайт %s хоче використовувати вашу камеру й мікрофон."
+
+#: src/nb-tab.c
+#, c-format
+msgid "%s wants to use your camera."
+msgstr "Сайт %s хоче використовувати вашу камеру."
+
+#: src/nb-tab.c
+#, c-format
+msgid "%s wants to use your microphone."
+msgstr "Сайт %s хоче використовувати ваш мікрофон."
+
+#: src/nb-tab.c
+msgid "Authentication Required"
+msgstr "Потрібна автентифікація"
+
+#. TRANSLATORS: %s is the page's address
+#: src/nb-tab.c
+#, c-format
+msgid "%s requires a username and password."
+msgstr "Сайт %s вимагає ім’я користувача й пароль."
+
+#: src/nb-tab.c
+msgid "User Name:"
+msgstr "Ім’я користувача:"
+
+# android: Jelly auth_dialog_password
+#: src/nb-tab.c
+msgid "Password:"
+msgstr "Пароль:"
+
+# android: Jelly auth_dialog_login
+#: src/nb-tab.c
+msgid "Log in"
+msgstr "Увійти"
+
+# android: Jelly download_message (quotes added)
+#. TRANSLATORS: %s is the file's name
+#: src/nb-tab.c
+#, c-format
+msgid "Do you want to download %s?"
+msgstr "Завантажити файл «%s»?"
+
+# android: Jelly download_title
+#: src/nb-tab.c
+msgid "Download file"
+msgstr "Завантажити файл"
+
+# android: Framework review_notification_settings_dismiss (several translations, short)
+#: src/nb-tab.c
+msgid "Dismiss"
+msgstr "Закрити"
+
+#: src/nb-tab.c
+msgid "SSL Certificate Details"
+msgstr "Відомості про сертифікат SSL"
+
+#: src/nb-tab.c
+msgid "Connection is secure"
+msgstr "З’єднання захищене"
+
+#: src/nb-tab.c
+msgid "This certificate has expired."
+msgstr "Термін дії цього сертифіката минув."
+
+#: src/nb-tab.c
+msgid "This certificate isn't valid yet."
+msgstr "Цей сертифікат ще не дійсний."
+
+#: src/nb-tab.c
+msgid "The name of the site doesn't match the name on the certificate."
+msgstr "Назва сайту не збігається з назвою в сертифікаті."
+
+#: src/nb-tab.c
+msgid "This certificate isn't from a trusted authority."
+msgstr "Цей сертифікат видано ненадійним центром сертифікації."
+
+#: src/nb-tab.c
+msgid "This certificate is invalid."
+msgstr "Цей сертифікат недійсний."
+
+#: src/nb-tab.c
+msgid "Trust"
+msgstr "Довіра"
+
+# android: Jelly ssl_cert_dialog_domain
+#: src/nb-tab.c
+msgid "Domain"
+msgstr "Домен"
+
+# android: Jelly ssl_cert_dialog_issued_to
+#: src/nb-tab.c
+msgid "Issued to"
+msgstr "Видано для"
+
+# android: Jelly ssl_cert_dialog_issued_by
+#: src/nb-tab.c
+msgid "Issued by"
+msgstr "Ким видано"
+
+# android: Jelly ssl_cert_dialog_common_name
+#: src/nb-tab.c
+msgid "Common Name (CN)"
+msgstr "Загальна назва (CN)"
+
+# android: Jelly ssl_cert_dialog_organization
+#: src/nb-tab.c
+msgid "Organization (O)"
+msgstr "Організація (O)"
+
+#: src/nb-tab.c
+msgid "Organizational Unit (OU)"
+msgstr "Організаційний підрозділ (OU)"
+
+# android: Jelly ssl_cert_dialog_validity
+#: src/nb-tab.c
+msgid "Validity Period"
+msgstr "Термін дії"
+
+# android: Jelly ssl_cert_dialog_issued_on
+#: src/nb-tab.c
+msgid "Issued On"
+msgstr "Дата видачі"
+
+# android: Jelly ssl_cert_dialog_expires_on
+#: src/nb-tab.c
+msgid "Expires On"
+msgstr "Діє до"
+
+#: src/nb-tab.c
+msgid "This page used too much memory"
+msgstr "Ця сторінка використала забагато пам’яті"
+
+#: src/nb-tab.c
+msgid "This page stopped working"
+msgstr "Ця сторінка перестала працювати"
+
+#: src/nb-tab.c
+msgid "Reload it to try again."
+msgstr "Перезавантажте її, щоб повторити спробу."
+
+#: src/nb-tab.c
+msgid "Reload"
+msgstr "Перезавантажити"
+
+#: src/nb-tab.c
+msgid "No app can handle this link"
+msgstr "Немає додатка, який може відкрити це посилання"
+
+#: src/nb-tab.c
+msgid "Playing full screen"
+msgstr "Відтворення на весь екран"
+
+# android: Framework input_method_nav_back_button_desc (short)
+#. the shell's back gesture clicks the showing button named "Back"
+#: src/nb-tab.c src/nb-widgets.c
+msgid "Back"
+msgstr "Назад"
+
+#: src/nb-urlbar.c
+#, c-format
+msgid "Switch tabs, %u open tab"
+msgid_plural "Switch tabs, %u open tabs"
+msgstr[0] "Перемкнути вкладки, відкрито %u вкладку"
+msgstr[1] "Перемкнути вкладки, відкрито %u вкладки"
+msgstr[2] "Перемкнути вкладки, відкрито %u вкладок"
+
+#: src/nb-urlbar.c
+msgid "Search or type URL"
+msgstr "Шукайте або введіть URL-адресу"
+
+# android: Framework more_item_label (several translations, short)
+#: src/nb-urlbar.c
+msgid "More"
+msgstr "Більше"
+
+#: src/nb-urlbar.c
+msgid "Cancel search"
+msgstr "Скасувати пошук"
+
+# android: Framework search_go (several translations, short)
+#: src/nb-urlbar.c
+msgid "Search"
+msgstr "Пошук"
+
+# android: Contacts description_clear_search (other app, short)
+#: src/nb-urlbar.c
+msgid "Clear search"
+msgstr "Очистити поле пошуку"
+
+#: src/nb-urlbar.c
+msgid "Previous"
+msgstr "Попередній"
+
+#: src/nb-urlbar.c
+msgid "Next"
+msgstr "Наступний"
+
+#. TRANSLATORS: a screen reader's name for a radio mark and a check mark
+#: src/nb-widgets.c
+msgid "radio"
+msgstr "перемикач"
+
+#: src/nb-widgets.c
+msgid "check"
+msgstr "прапорець"

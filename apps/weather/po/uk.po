@@ -1,0 +1,277 @@
+# Ukrainian translations of vibeos-weather.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-weather\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Ukrainian\n"
+"Language: uk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: data/vibeos.Weather.desktop.in src/main.c
+msgid "Weather"
+msgstr "Погода"
+
+#: data/vibeos.Weather.desktop.in
+msgid "The weather where you are"
+msgstr "Погода там, де ви перебуваєте"
+
+#: data/vibeos.Weather.desktop.in
+msgid "forecast;temperature;rain;"
+msgstr "погода;прогноз;температура;дощ;forecast;temperature;rain;"
+
+#. TRANSLATORS: the sky, as the page names it under the temperature
+#: src/main.c
+msgctxt "sky"
+msgid "Clear"
+msgstr "Ясно"
+
+#: src/main.c
+msgid "Mostly clear"
+msgstr "Переважно ясно"
+
+#: src/main.c
+msgid "Partly cloudy"
+msgstr "Мінлива хмарність"
+
+#: src/main.c
+msgid "Cloudy"
+msgstr "Хмарно"
+
+#: src/main.c
+msgid "Fog"
+msgstr "Туман"
+
+#: src/main.c
+msgid "Drizzle"
+msgstr "Мряка"
+
+#: src/main.c
+msgid "Freezing drizzle"
+msgstr "Крижана мряка"
+
+#: src/main.c
+msgid "Rain"
+msgstr "Дощ"
+
+#: src/main.c
+msgid "Heavy rain"
+msgstr "Сильний дощ"
+
+#: src/main.c
+msgid "Freezing rain"
+msgstr "Крижаний дощ"
+
+#: src/main.c
+msgid "Snow"
+msgstr "Сніг"
+
+#: src/main.c
+msgid "Snow grains"
+msgstr "Снігова крупа"
+
+#: src/main.c
+msgid "Showers"
+msgstr "Злива"
+
+#: src/main.c
+msgid "Heavy showers"
+msgstr "Сильна злива"
+
+#: src/main.c
+msgid "Snow showers"
+msgstr "Снігопад"
+
+#: src/main.c
+msgid "Thunderstorm"
+msgstr "Гроза"
+
+#: src/main.c
+msgid "Sunrise"
+msgstr "Схід сонця"
+
+#: src/main.c
+msgid "Sunset"
+msgstr "Захід сонця"
+
+#. TRANSLATORS: the UV index's levels
+#: src/main.c
+msgctxt "uv"
+msgid "Low"
+msgstr "Низький"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Moderate"
+msgstr "Помірний"
+
+# android: Settings contrast_high (several translations, short)
+#: src/main.c
+msgctxt "uv"
+msgid "High"
+msgstr "Високий"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Very high"
+msgstr "Дуже високий"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Extreme"
+msgstr "Екстремальний"
+
+#. TRANSLATORS: today's highest and lowest temperatures, then what it feels like now
+#: src/main.c
+#, c-format
+msgid ""
+"↑%s / ↓%s\n"
+"Feels like %s"
+msgstr ""
+"↑%s / ↓%s\n"
+"Відчувається як %s"
+
+#. TRANSLATORS: today's sky ("Partly cloudy"), then its highest and lowest temperatures ("12°")
+#: src/main.c
+#, c-format
+msgid "%s. High %s, low %s."
+msgstr "%s. Максимум %s, мінімум %s."
+
+#: src/main.c
+msgid "Today's temperature"
+msgstr "Температура сьогодні"
+
+#: src/main.c
+msgid "About the same as yesterday"
+msgstr "Приблизно як учора"
+
+#: src/main.c
+msgid "Temperatures a little lower than yesterday"
+msgstr "Трохи холодніше, ніж учора"
+
+#: src/main.c
+msgid "Much colder than yesterday"
+msgstr "Набагато холодніше, ніж учора"
+
+#: src/main.c
+msgid "Temperatures a little higher than yesterday"
+msgstr "Трохи тепліше, ніж учора"
+
+#: src/main.c
+msgid "Much warmer than yesterday"
+msgstr "Набагато тепліше, ніж учора"
+
+# android: DocumentsUI search_last_modified_2_days (short)
+#: src/main.c
+msgid "Yesterday"
+msgstr "Учора"
+
+# android: DocumentsUI search_last_modified_1_day (short)
+#: src/main.c
+msgid "Today"
+msgstr "Сьогодні"
+
+#. TRANSLATORS: under the sunrise's time; %s is the sunset's
+#: src/main.c
+#, c-format
+msgid "Sunset %s"
+msgstr "Захід %s"
+
+#: src/main.c
+msgid "UV index"
+msgstr "УФ-індекс"
+
+#: src/main.c
+msgid "Humidity"
+msgstr "Вологість"
+
+#: src/main.c
+msgid "Wind"
+msgstr "Вітер"
+
+#: src/main.c
+msgid "Pressure"
+msgstr "Тиск"
+
+#: src/main.c
+msgid "No forecast: Open-Meteo did not answer. Tap reload to try again."
+msgstr "Немає прогнозу: Open-Meteo не відповідає. Натисніть «Оновити», щоб повторити спробу."
+
+#: src/main.c
+msgid "No location. Turn on Location in Settings, then tap reload, or set a city in the ⋮ menu."
+msgstr "Місцезнаходження невідоме. Увімкніть «Місцезнаходження» в Налаштуваннях і натисніть «Оновити» або виберіть місто в меню ⋮."
+
+#: src/main.c
+#, c-format
+msgid "Getting the weather for %s…"
+msgstr "Отримання погоди для: %s…"
+
+#. TRANSLATORS: under "Use my location"; %s is the city chosen now
+#: src/main.c
+#, c-format
+msgid "Instead of %s"
+msgstr "Замість: %s"
+
+#: src/main.c
+msgid "Use my location"
+msgstr "Моє місцезнаходження"
+
+#: src/main.c
+msgid "No answer. Check the connection, then type again."
+msgstr "Немає відповіді. Перевірте з’єднання та введіть ще раз."
+
+#: src/main.c
+msgid "No cities found"
+msgstr "Міст не знайдено"
+
+#: src/main.c
+msgid "Set City"
+msgstr "Вибрати місто"
+
+#: src/main.c
+msgid "City name"
+msgstr "Назва міста"
+
+# android: Settings proxy_clear_text (short)
+#: src/main.c
+msgid "Clear"
+msgstr "Очистити"
+
+#: src/main.c
+msgid ""
+"Weather forecasts by <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, under <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n"
+"\n"
+"Set City finds cities with Open-Meteo's geocoding, on data from <a href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0."
+msgstr ""
+"Прогнози погоди від <a href=\"https://open-meteo.com/\">Open-Meteo.com</a> за ліцензією <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n"
+"\n"
+"«Вибрати місто» шукає міста за допомогою геокодування Open-Meteo на основі даних <a href=\"https://www.geonames.org/\">GeoNames</a> за ліцензією CC BY 4.0."
+
+#: src/main.c
+msgid "The place's name, where the phone is, from OpenStreetMap's <a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a>. Data © <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the <a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)."
+msgstr "Назва місця, де перебуває телефон, – від <a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a> OpenStreetMap. Дані © <a href=\"https://www.openstreetmap.org/copyright\">учасники OpenStreetMap</a> за ліцензією <a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)."
+
+#: src/main.c
+msgid "About"
+msgstr "Про додаток"
+
+#: src/main.c
+msgid "Reload"
+msgstr "Оновити"
+
+# android: Settings external_display_more_options_title (several translations, short)
+#: src/main.c
+msgid "More options"
+msgstr "Інші опції"
+
+#: src/main.c
+msgid "Finding where you are…"
+msgstr "Визначення місцезнаходження…"

@@ -1,0 +1,77 @@
+# Ukrainian translations of vibeos-terminal.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-terminal\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Ukrainian\n"
+"Language: uk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#: data/vibeos.Terminal.desktop.in src/term-window.c
+msgid "Terminal"
+msgstr "Термінал"
+
+#: data/vibeos.Terminal.desktop.in
+msgid "A command line, made for touch"
+msgstr "Командний рядок для сенсорного екрана"
+
+#: data/vibeos.Terminal.desktop.in
+msgid "Terminal;Shell;Command;Prompt;Console;"
+msgstr "термінал;оболонка;команда;командний рядок;консоль;Terminal;Shell;Command;Prompt;Console;"
+
+# android: SystemUI keyboard_key_esc (short)
+#: src/term-keys.c
+msgctxt "extra key"
+msgid "Esc"
+msgstr "Esc"
+
+# android: SystemUI keyboard_key_tab (short)
+#: src/term-keys.c
+msgctxt "extra key"
+msgid "Tab"
+msgstr "Tab"
+
+#: src/term-keys.c
+msgctxt "extra key"
+msgid "Ctrl"
+msgstr "Ctrl"
+
+# android: Framework keyboardview_keycode_alt (short)
+#: src/term-keys.c
+msgctxt "extra key"
+msgid "Alt"
+msgstr "Alt"
+
+# android: Framework copy (short)
+#: src/term-view.c
+msgid "Copy"
+msgstr "Копіювати"
+
+# android: Framework paste (short)
+#: src/term-view.c src/term-window.c
+msgid "Paste"
+msgstr "Вставити"
+
+# android: Framework selectAll (several translations, short)
+#: src/term-view.c
+msgid "Select all"
+msgstr "Вибрати все"
+
+#. TRANSLATORS: keep the link's markup as it is
+#: src/term-window.c
+msgid "The terminal itself is <a href=\"https://gitlab.gnome.org/GNOME/vte\">VTE</a>, GNOME's terminal widget, under the GNU Lesser General Public License, version 3 or later."
+msgstr "Сам термінал – це <a href=\"https://gitlab.gnome.org/GNOME/vte\">VTE</a>, віджет термінала GNOME, за ліцензією GNU Lesser General Public License версії 3 або пізнішої."
+
+# android: DocumentsUI menu_new_window (short)
+#: src/term-window.c
+msgid "New window"
+msgstr "Нове вікно"

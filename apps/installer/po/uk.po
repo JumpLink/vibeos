@@ -1,0 +1,577 @@
+# Ukrainian translations of vibeos-installer.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-installer\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Ukrainian\n"
+"Language: uk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
+"n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+#. the dialog role: the shell's back gesture then sends Escape, which answers no
+#. ⋮: About, VibeOS's About sheet, as every VibeOS app has it
+#: data/vibeos.Installer.desktop.in src/inst-sheet.c src/inst-window.c
+msgid "App Installer"
+msgstr "Установник додатків"
+
+#: data/vibeos.Installer.desktop.in
+msgid "Install apps from package files, and uninstall them"
+msgstr "Установлюйте додатки з файлів пакетів і видаляйте їх"
+
+#: data/vibeos.Installer.desktop.in
+msgid "Install;Uninstall;Package;deb;Software;App;"
+msgstr "установити;встановити;видалити;пакет;deb;програма;додаток;Install;Uninstall;Package;Software;App;"
+
+#: src/inst-catalog.c
+msgid "A sample app for trying App Installer"
+msgstr "Зразок додатка, щоб випробувати Установник додатків"
+
+#: src/inst-catalog.c
+msgid ""
+"This package is not real: App Installer's demo shows it to try its screens.\n"
+"\n"
+"Nothing is installed or removed while the demo runs."
+msgstr ""
+"Це не справжній пакет: демонстрація Установника додатків показує його, щоб випробувати екрани.\n"
+"\n"
+"Поки триває демонстрація, нічого не встановлюється й не видаляється."
+
+#: src/inst-job.c
+#, c-format
+msgid "%s is part of VibeOS."
+msgstr "%s – частина VibeOS."
+
+#: src/inst-job.c
+#, c-format
+msgid "%s is part of the phone's shell and session."
+msgstr "%s – частина оболонки й сеансу телефона."
+
+#: src/inst-job.c
+#, c-format
+msgid "%s is essential: the system cannot work without it."
+msgstr "%s – важливий компонент: без нього система не працюватиме."
+
+#: src/inst-job.c
+#, c-format
+msgid "%s is required by the system."
+msgstr "%s потрібен системі."
+
+#: src/inst-job.c
+msgid "Cannot be uninstalled"
+msgstr "Неможливо видалити"
+
+#: src/inst-job.c
+#, c-format
+msgid "Uninstalling it would also remove %s. %s"
+msgstr "Разом із ним буде видалено й %s. %s"
+
+#: src/inst-job.c
+#, c-format
+msgid "Installing it would remove %s. %s"
+msgstr "Його встановлення видалить %s. %s"
+
+#: src/inst-job.c
+msgid "Cannot be installed"
+msgstr "Неможливо встановити"
+
+#: src/inst-job.c src/inst-view.c
+msgid "Not uninstalled"
+msgstr "Не видалено"
+
+#: src/inst-job.c src/inst-view.c
+msgid "Not installed"
+msgstr "Не встановлено"
+
+# android: SystemUI fgs_manager_app_item_stop_button_stopped_label (other app, short)
+#: src/inst-job.c
+msgid "Stopped"
+msgstr "Зупинено"
+
+#: src/inst-job.c
+msgid "Nothing was uninstalled."
+msgstr "Нічого не видалено."
+
+#: src/inst-job.c
+msgid "Nothing was installed."
+msgstr "Нічого не встановлено."
+
+#. the password dialog closed without the password: the user's no, not a failure
+#: src/inst-job.c
+msgid "The password was not given, so nothing was uninstalled."
+msgstr "Пароль не введено, тому нічого не видалено."
+
+#: src/inst-job.c
+msgid "The password was not given, so nothing was installed."
+msgstr "Пароль не введено, тому нічого не встановлено."
+
+#: src/inst-job.c
+msgid "Another app is installing or updating software right now. Try again once it has finished."
+msgstr "Зараз інший додаток установлює або оновлює програмне забезпечення. Повторіть спробу, коли він завершить."
+
+#: src/inst-job.c
+msgid "Something it needs cannot be installed: it is not in the software sources, or not in a version that fits."
+msgstr "Не вдається встановити потрібний компонент: його немає в джерелах програмного забезпечення або немає відповідної версії."
+
+#: src/inst-job.c
+msgid "Packages it needs could not be downloaded. Check the internet connection and try again."
+msgstr "Не вдалося завантажити потрібні пакети. Перевірте з’єднання з Інтернетом і повторіть спробу."
+
+#: src/inst-job.c
+msgid "The package is broken: the file is damaged, or it is not a proper package."
+msgstr "Пакет пошкоджено: файл зіпсований або це не справжній пакет."
+
+#: src/inst-job.c
+msgid "There is not enough free storage for it."
+msgstr "Для нього недостатньо вільного місця."
+
+#: src/inst-job.c
+msgid "It clashes with software that is already installed: both have the same files."
+msgstr "Він конфліктує з уже встановленим програмним забезпеченням: обидва містять ті самі файли."
+
+#: src/inst-job.c
+msgid "The package's own setup failed. It may be only partly installed."
+msgstr "Помилка налаштування самого пакета. Можливо, його встановлено лише частково."
+
+#: src/inst-job.c
+msgid "The package's own removal script failed. It may be only partly uninstalled."
+msgstr "Помилка сценарію видалення самого пакета. Можливо, його видалено лише частково."
+
+#: src/inst-job.c
+msgid "It is made for another kind of device."
+msgstr "Його створено для пристроїв іншого типу."
+
+#: src/inst-job.c
+msgid "The software sources could not be verified, so nothing was downloaded from them."
+msgstr "Не вдалося перевірити джерела програмного забезпечення, тому з них нічого не завантажено."
+
+#: src/inst-job.c
+msgid "The software sources do not have it (any more)."
+msgstr "У джерелах програмного забезпечення його немає (більше немає)."
+
+#: src/inst-job.c
+msgid "Software was installed or removed meanwhile. Try again."
+msgstr "Тим часом програмне забезпечення було встановлено або видалено. Повторіть спробу."
+
+#: src/inst-job.c
+msgid "Cannot install software"
+msgstr "Неможливо встановити програмне забезпечення"
+
+#: src/inst-job.c
+msgid "PackageKit, the system service that installs software, is missing or not running."
+msgstr "PackageKit – системна служба, що встановлює програмне забезпечення, – відсутня або не працює."
+
+#: src/inst-job.c
+msgid "Something went wrong while uninstalling."
+msgstr "Під час видалення сталася помилка."
+
+#: src/inst-job.c
+msgid "Something went wrong while installing."
+msgstr "Під час установлення сталася помилка."
+
+#: src/inst-job.c
+msgid "Waiting for your password"
+msgstr "Очікування пароля"
+
+#: src/inst-job.c
+msgid "Waiting for another install to finish"
+msgstr "Очікування завершення іншого встановлення"
+
+#: src/inst-job.c
+msgid "Downloading"
+msgstr "Завантаження"
+
+#: src/inst-job.c
+msgid "Uninstalling"
+msgstr "Видалення"
+
+#: src/inst-job.c
+msgid "Installing"
+msgstr "Установлення"
+
+#: src/inst-job.c
+msgid "Finishing"
+msgstr "Завершення"
+
+#: src/inst-job.c
+msgid "Stopping"
+msgstr "Зупинення"
+
+#: src/inst-job.c
+msgid "Getting ready"
+msgstr "Підготовка"
+
+#: src/inst-job.c
+msgid "Checking what else it takes along"
+msgstr "Перевірка, що ще буде видалено"
+
+#: src/inst-job.c
+msgid "Checking what else it needs"
+msgstr "Перевірка, що ще потрібно"
+
+#: src/inst-job.c
+msgid "Looking it up"
+msgstr "Пошук"
+
+#: src/inst-job.c
+msgid "Checking the software sources"
+msgstr "Перевірка джерел програмного забезпечення"
+
+#: src/inst-job.c
+#, c-format
+msgid "The software sources have no package called “%s”."
+msgstr "У джерелах програмного забезпечення немає пакета «%s»."
+
+# android: SystemUI controls_error_removed (other app, short)
+#: src/inst-job.c
+msgid "Not found"
+msgstr "Не знайдено"
+
+#: src/inst-job.c
+msgid "Removing it would leave other software with something it needs missing."
+msgstr "Якщо його видалити, іншому програмному забезпеченню бракуватиме потрібного компонента."
+
+#: src/inst-job.c
+#, c-format
+msgid "%s is uninstalled."
+msgstr "%s видалено."
+
+#: src/inst-job.c
+msgid "Uninstalled"
+msgstr "Видалено"
+
+#: src/inst-job.c
+#, c-format
+msgid "%s %s is installed."
+msgstr "%s %s установлено."
+
+# android: Settings installed (short)
+#: src/inst-job.c src/inst-view.c
+msgid "Installed"
+msgstr "Установлено"
+
+#: src/inst-job.c
+msgid "Cannot open the file"
+msgstr "Не вдається відкрити файл"
+
+#: src/inst-job.c
+msgid "The file could not be read."
+msgstr "Не вдалося прочитати файл."
+
+#: src/inst-job.c
+msgid "dpkg, which reads packages, is missing."
+msgstr "Немає dpkg, який читає пакети."
+
+#: src/inst-job.c
+msgid "Not a package"
+msgstr "Це не пакет"
+
+#: src/inst-job.c
+msgid "This file is not a software package that can be installed here, or it is damaged."
+msgstr "Цей файл не є пакетом, який можна тут установити, або його пошкоджено."
+
+#: src/inst-job.c
+#, c-format
+msgid "It is made for %s devices; this one is %s."
+msgstr "Його створено для пристроїв %s, а цей пристрій – %s."
+
+#: src/inst-job.c
+msgid "Made for another kind of device"
+msgstr "Створено для пристроїв іншого типу"
+
+#: src/inst-job.c
+msgid "Reading the package"
+msgstr "Читання пакета"
+
+#: src/inst-job.c
+msgid "Cannot uninstall software"
+msgstr "Неможливо видалити програмне забезпечення"
+
+#: src/inst-job.c
+msgid "dpkg, which keeps track of the installed software, is missing."
+msgstr "Немає dpkg, який відстежує встановлене програмне забезпечення."
+
+#: src/inst-job.c
+#, c-format
+msgid "“%s” is not installed."
+msgstr "«%s» не встановлено."
+
+#: src/inst-main.c
+msgid "Install the package NAME from the software sources"
+msgstr "Установити пакет НАЗВА з джерел програмного забезпечення"
+
+#: src/inst-main.c
+msgid "NAME"
+msgstr "НАЗВА"
+
+#: src/inst-main.c
+msgid "Uninstall the package NAME"
+msgstr "Видалити пакет НАЗВА"
+
+#: src/inst-main.c
+msgid "Print the version"
+msgstr "Показати версію"
+
+#: src/inst-main.c
+msgid "[FILE.deb…]"
+msgstr "[ФАЙЛ.deb…]"
+
+#: src/inst-pk.c
+msgid "A library the app needs"
+msgstr "Бібліотека, потрібна додатку"
+
+#: src/inst-pk.c
+msgid "A sample app"
+msgstr "Зразок додатка"
+
+#: src/inst-service.c
+#, c-format
+msgid "%s %s is installed already."
+msgstr "%s %s уже встановлено."
+
+#. TRANSLATORS: %s is a list of names ("libfoo, libbar"), %u how many more there are
+#: src/inst-view.c
+#, c-format
+msgid "%s and %u more"
+msgid_plural "%s and %u more"
+msgstr[0] "%s і ще %u"
+msgstr[1] "%s і ще %u"
+msgstr[2] "%s і ще %u"
+
+# android: Settings vpn_version_info
+#: src/inst-view.c
+#, c-format
+msgid "Version %s"
+msgstr "Версія %s"
+
+#: src/inst-view.c
+msgid "This file"
+msgstr "Цей файл"
+
+# android: Framework media_route_status_available (several translations, short)
+#: src/inst-view.c
+msgid "Available"
+msgstr "Доступно"
+
+#: src/inst-view.c
+msgid "newer"
+msgstr "новіша"
+
+#: src/inst-view.c
+msgid "older"
+msgstr "старіша"
+
+#: src/inst-view.c
+msgid "OLDER"
+msgstr "СТАРІША"
+
+#: src/inst-view.c
+msgid "Install this app?"
+msgstr "Установити цей додаток?"
+
+#: src/inst-view.c
+msgid "Install this package?"
+msgstr "Установити цей пакет?"
+
+#: src/inst-view.c
+#, c-format
+msgid "Replace %s %s with %s?"
+msgstr "Замінити %s %s версією %s?"
+
+#: src/inst-view.c
+msgid "This file has a newer version than the one installed."
+msgstr "У цьому файлі новіша версія, ніж установлена."
+
+#: src/inst-view.c
+msgid "The software sources have a newer version than the one installed."
+msgstr "У джерелах програмного забезпечення є новіша версія, ніж установлена."
+
+#: src/inst-view.c
+msgid "This file is an OLDER version"
+msgstr "У цьому файлі СТАРІША версія"
+
+#: src/inst-view.c
+msgid "The available version is OLDER"
+msgstr "Доступна версія СТАРІША"
+
+#: src/inst-view.c
+#, c-format
+msgid "%s %s is installed. This file has %s, which is older. Replace the installed version with the older one?"
+msgstr "Установлено %s %s. У цьому файлі версія %s, вона старіша. Замінити встановлену версію старішою?"
+
+#: src/inst-view.c
+#, c-format
+msgid "%s %s is installed. The software sources have %s, which is older. Replace the installed version with the older one?"
+msgstr "Установлено %s %s. У джерелах програмного забезпечення версія %s, вона старіша. Замінити встановлену версію старішою?"
+
+#: src/inst-view.c
+msgid "Already installed"
+msgstr "Уже встановлено"
+
+#: src/inst-view.c
+#, c-format
+msgid "%s %s is installed already. Reinstalling puts its files back as they came."
+msgstr "%s %s уже встановлено. Повторне встановлення відновить його файли в початковому вигляді."
+
+#: src/inst-view.c
+#, c-format
+msgid "%s %s is installed already. The same version cannot be installed over itself."
+msgstr "%s %s уже встановлено. Ту саму версію не можна встановити поверх неї самої."
+
+#: src/inst-view.c
+#, c-format
+msgid "Uninstall %s?"
+msgstr "Видалити %s?"
+
+#: src/inst-view.c
+msgid "Its data will be deleted."
+msgstr "Його дані буде видалено."
+
+#: src/inst-view.c
+msgid "Its program files are removed. Your own files stay."
+msgstr "Його програмні файли буде видалено. Ваші власні файли залишаться."
+
+#: src/inst-view.c
+msgid "Frees"
+msgstr "Звільнить"
+
+#. TRANSLATORS: a package file's size, then the space it takes once installed: "4 MB file · 12 MB installed"
+#: src/inst-view.c
+#, c-format
+msgid "%s file · %s installed"
+msgstr "Файл: %s · після встановлення: %s"
+
+#. TRANSLATORS: what installing downloads, then the space it takes: "4 MB download · 12 MB installed"
+#: src/inst-view.c
+#, c-format
+msgid "%s download · %s installed"
+msgstr "Завантаження: %s · після встановлення: %s"
+
+#: src/inst-view.c
+#, c-format
+msgid "%s installed"
+msgstr "Після встановлення: %s"
+
+#: src/inst-view.c
+#, c-format
+msgid "%s file"
+msgstr "Файл: %s"
+
+#: src/inst-view.c
+#, c-format
+msgid "%s download"
+msgstr "Завантаження: %s"
+
+# android: Settings accessibility_button_size_title (short)
+#: src/inst-view.c
+msgid "Size"
+msgstr "Розмір"
+
+#: src/inst-view.c
+#, c-format
+msgid "Also installs %u other package"
+msgid_plural "Also installs %u other packages"
+msgstr[0] "Також установить ще %u пакет"
+msgstr[1] "Також установить ще %u пакети"
+msgstr[2] "Також установить ще %u пакетів"
+
+#: src/inst-view.c
+#, c-format
+msgid "%s to download: %s"
+msgstr "Завантажити %s: %s"
+
+#: src/inst-view.c
+#, c-format
+msgid "Also removes %u other package"
+msgid_plural "Also removes %u other packages"
+msgstr[0] "Також видалить ще %u пакет"
+msgstr[1] "Також видалить ще %u пакети"
+msgstr[2] "Також видалить ще %u пакетів"
+
+#: src/inst-view.c
+msgid "Package"
+msgstr "Пакет"
+
+#: src/inst-view.c
+msgid "Website"
+msgstr "Вебсайт"
+
+#: src/inst-view.c
+msgid "A package can change anything on this device: it installs with full rights. Install only what you trust."
+msgstr "Пакет може змінити на цьому пристрої що завгодно: він установлюється з повними правами. Установлюйте лише те, чому довіряєте."
+
+# android: PackageInstaller cancel
+#: src/inst-view.c
+msgid "Cancel"
+msgstr "Скасувати"
+
+# android: Framework accessibility_dialog_button_uninstall (several translations, short)
+#: src/inst-view.c
+msgid "Uninstall"
+msgstr "Видалити"
+
+# android: PackageInstaller install
+#: src/inst-view.c
+msgid "Install"
+msgstr "Установити"
+
+# android: PackageInstaller launch
+#: src/inst-view.c src/inst-window.c
+msgid "Open"
+msgstr "Відкрити"
+
+# android: PackageInstaller done (several translations, short)
+#: src/inst-view.c
+msgid "Done"
+msgstr "Готово"
+
+#: src/inst-view.c
+#, c-format
+msgid "Replace with %s"
+msgstr "Замінити на %s"
+
+#: src/inst-view.c
+msgid "Reinstall"
+msgstr "Перевстановити"
+
+# android: Framework lockscreen_transport_stop_description (several translations, short)
+#: src/inst-view.c
+msgid "Stop"
+msgstr "Зупинити"
+
+# android: PackageInstaller close
+#: src/inst-view.c
+msgid "Close"
+msgstr "Закрити"
+
+# android: Settings external_display_more_options_title (several translations, short)
+#: src/inst-window.c
+msgid "More options"
+msgstr "Інші опції"
+
+#: src/inst-window.c
+msgid "Software packages (.deb)"
+msgstr "Пакети програмного забезпечення (.deb)"
+
+#: src/inst-window.c
+msgid "Choose a package"
+msgstr "Виберіть пакет"
+
+#: src/inst-window.c
+msgid "Install apps from packages"
+msgstr "Установлюйте додатки з пакетів"
+
+#: src/inst-window.c
+msgid "App Installer installs .deb package files. Tap one in Files, or choose one here: it shows what the package is and asks before anything changes."
+msgstr "Установник додатків установлює файли пакетів .deb. Натисніть такий файл у Файлах або виберіть його тут: Установник покаже, що це за пакет, і запитає, перш ніж щось змінити."
+
+#: src/inst-window.c
+msgid "Software uses it too, to install and uninstall apps from the software sources."
+msgstr "Центр додатків теж використовує його, щоб установлювати й видаляти додатки з джерел програмного забезпечення."
