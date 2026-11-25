@@ -38,6 +38,9 @@ test('hide-replaced-apps', find_program('tests/hide-replaced-apps.sh'), args: [m
 install_data('71-vibeos-dock.rules', install_dir: datadir / 'vibeos-session')
 # the phone's own storage hidden from Files and the file picker (see the file)
 install_data('90-vibeos-internal-storage.rules', install_dir: prefix / 'lib' / 'udev' / 'rules.d')
+# GeoClue: location from the phone's own GNSS only, no online lookups (see the file); a conf.d drop-in, so that an
+# upgrade of geoclue-2.0 keeps it, read before a device's own 90-*.conf
+install_data('geoclue/50-vibeos-location.conf', install_dir: get_option('sysconfdir') / 'geoclue' / 'conf.d')
 # the lock screen's PAM service (vibeos-auth)
 install_data('pam.d/vibeos', install_dir: get_option('sysconfdir') / 'pam.d')
 # vibeos-wakeup's bus name

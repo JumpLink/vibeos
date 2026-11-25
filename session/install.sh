@@ -17,6 +17,7 @@ install -D -m 755 vibeos-session-language /usr/local/libexec/vibeos-session-lang
 install -m 644 71-vibeos-dock.rules /etc/udev/rules.d/
 install -m 644 90-vibeos-internal-storage.rules /etc/udev/rules.d/
 install -m 644 pam.d/vibeos /etc/pam.d/
+install -D -m 644 geoclue/50-vibeos-location.conf /etc/geoclue/conf.d/50-vibeos-location.conf
 install -m 644 environment.d/60-spongy.conf /etc/environment.d/
 install -m 644 vibeos.Wakeup.conf /etc/dbus-1/system.d/
 install -D -m 644 logind.conf.d/vibeos-power-key.conf /etc/systemd/logind.conf.d/vibeos-power-key.conf
