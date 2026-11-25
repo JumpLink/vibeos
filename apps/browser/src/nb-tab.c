@@ -623,6 +623,36 @@ on_tls_error (WebKitWebView *v, const char *uri, GTlsCertificate *cert, GTlsCert
   return FALSE;
 }
 
+/* The page's process ended under it (a crash, or the kernel ending the biggest process when the phone ran out of
+ * memory): the tab says so, with a Reload, instead of staying blank (WebKit's own is an empty grey view). Its
+ * address stays the page's. The button navigates to it: location.reload () there only reloaded the error page's
+ * own about:blank. Ended on purpose (a closed tab): nothing. */
+static void
+on_web_process_terminated (WebKitWebView *v, WebKitWebProcessTerminationReason reason, NbTab *t)
+{
+  if (reason == WEBKIT_WEB_PROCESS_TERMINATED_BY_API)
+    return;
+  const char *uri = webkit_web_view_get_uri (v);
+  g_message ("tab: the page's process ended (%s)",
+             reason == WEBKIT_WEB_PROCESS_EXCEEDED_MEMORY_LIMIT ? "too much memory" : "crashed");
+  g_autofree char *title = g_markup_escape_text (reason == WEBKIT_WEB_PROCESS_EXCEEDED_MEMORY_LIMIT
+                                                     ? _("This page used too much memory")
+                                                     : _("This page stopped working"), -1);
+  g_autofree char *body = g_markup_escape_text (_("Reload it to try again."), -1);
+  g_autofree char *button = g_markup_escape_text (_("Reload"), -1);
+  g_autofree char *target = g_markup_escape_text (uri && *uri ? uri : "about:blank", -1);
+  g_autofree char *html = g_strdup_printf (
+    "<!doctype html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+    "<title>%s</title><style>body{font:16px system-ui,sans-serif;margin:0;display:flex;min-height:100vh;"
+    "align-items:center;justify-content:center;background:#fff;color:#1b1b1f}main{max-width:28em;padding:24px;"
+    "text-align:center}h1{font-size:22px;font-weight:600}button{font:inherit;font-weight:600;border:0;"
+    "border-radius:20px;padding:10px 24px;background:#0b57d0;color:#fff}</style></head><body><main><h1>%s</h1>"
+    "<p>%s</p><button id=\"reload\" data-uri=\"%s\" onclick=\"location.replace(this.dataset.uri)\">%s</button>"
+    "</main></body></html>",
+    title, title, body, target, button);
+  webkit_web_view_load_alternate_html (v, html, uri && *uri ? uri : "about:blank", NULL);
+}
+
 static GtkWidget *
 on_create (WebKitWebView *v, WebKitNavigationAction *action, NbTab *t)
 {
@@ -794,6 +824,7 @@ make_view (NbTab *t)
   g_signal_connect (v, "notify::is-loading", G_CALLBACK (on_progress), t);
   g_signal_connect (v, "load-changed", G_CALLBACK (on_load_changed), t);
   g_signal_connect (v, "load-failed-with-tls-errors", G_CALLBACK (on_tls_error), t);
+  g_signal_connect (v, "web-process-terminated", G_CALLBACK (on_web_process_terminated), t);
   g_signal_connect (v, "create", G_CALLBACK (on_create), t);
   g_signal_connect (v, "close", G_CALLBACK (on_close_view), t);
   g_signal_connect (v, "decide-policy", G_CALLBACK (on_decide), t);

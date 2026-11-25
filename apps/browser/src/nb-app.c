@@ -13,7 +13,6 @@
 #define FILTER_URL "https://easylist-downloads.adblockplus.org/easylist_min_content_blocker.json"
 #define FILTER_ID "easylist"
 #define FILTER_MAX_AGE (7 * 24 * 3600)
-#define MEMORY_LIMIT_MB 768
 #define SHORTCUT_PREFIX NB_APP_ID ".shortcut-"
 
 /* a phone's scrollbar: a thin rounded thumb over the page, no track and no arrow buttons */
@@ -162,14 +161,24 @@ nb_session_for (gboolean incognito)
   return nb->incog_session;
 }
 
+/* The network process's memory (webkit_network_session_set_memory_pressure_settings reaches only that one): 768 MB.
+ * The web processes keep WebKit's own settings, a base of the RAM up to 3 GB, so a page's process starts giving
+ * memory back past 1 GB and everything it can spare past 1.5 GB, and is never ended for its size. */
+#define NETWORK_MEMORY_LIMIT_MB 768
+
+static void
+setup_memory (void)
+{
+  WebKitMemoryPressureSettings *m = webkit_memory_pressure_settings_new ();
+  webkit_memory_pressure_settings_set_memory_limit (m, NETWORK_MEMORY_LIMIT_MB);
+  webkit_network_session_set_memory_pressure_settings (m);
+  webkit_memory_pressure_settings_free (m);
+}
+
 static void
 setup_engine (void)
 {
-  /* a heavy page grows its web process without end: past 768 MB WebKit kills and reloads it */
-  WebKitMemoryPressureSettings *m = webkit_memory_pressure_settings_new ();
-  webkit_memory_pressure_settings_set_memory_limit (m, MEMORY_LIMIT_MB);
-  webkit_network_session_set_memory_pressure_settings (m);
-  webkit_memory_pressure_settings_free (m);
+  setup_memory ();
 
   g_autofree char *web = g_build_filename (nb->data_dir, "web", NULL);
   g_autofree char *cookies = g_build_filename (nb->data_dir, "cookies.sqlite", NULL);
