@@ -19,7 +19,7 @@ OUT=${1:?usage: build-debs.sh OUTDIR}
 MAINTAINER="pulpoff <pashkovsky@gmail.com>"
 
 MOONSHINE_VERSION=0.1.6
-MOONSHINE_DEBVERSION=0.1.6-1
+MOONSHINE_DEBVERSION=0.1.6-2
 MOONSHINE_RELEASE=https://github.com/moonshine-ai/moonshine/releases/download/v$MOONSHINE_VERSION
 MOONSHINE_RAW=https://raw.githubusercontent.com/moonshine-ai/moonshine/v$MOONSHINE_VERSION
 MOONSHINE_SHA256=1e0a88f27c428cab43590ce1635fe122406ef9e70236b58d077daf4b95cf162c
@@ -70,7 +70,7 @@ ORT_NOTICES_URL=https://raw.githubusercontent.com/microsoft/onnxruntime/v1.23.2/
 ORT_NOTICES_SHA256=e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc
 
 VOSK_VERSION=0.3.45
-VOSK_DEBVERSION=0.3.45-1
+VOSK_DEBVERSION=0.3.45-2
 VOSK_URL=https://github.com/alphacep/vosk-api/releases/download/v$VOSK_VERSION/vosk-linux-aarch64-$VOSK_VERSION.zip
 VOSK_SHA256=45e95d37755deb07568e79497d7feba8c03aee5a9e071df29961aa023fd94541
 # libvosk.so's parts' licences, at the commits its build (vosk-api travis/Dockerfile.dockcross) takes them from
@@ -82,7 +82,7 @@ dd0c6c9378a98b6a0e96b559b285c8506434fe2691eeeef151e8a8c1c492778e openfst-COPYING
 190b5a9c8d9723fe958ad33916bd7346d96fab3c5ea90832bb02d854f620fcff OpenBLAS-LICENSE https://raw.githubusercontent.com/OpenMathLib/OpenBLAS/v0.3.20/LICENSE
 "
 # language, model, its zip's sum (alphacephei.com/vosk/models lists them as Apache-2.0)
-VOSK_MODEL_DEBVERSION=0.22-1
+VOSK_MODEL_DEBVERSION=0.22-2
 VOSK_MODELS="
 fr vosk-model-small-fr-0.22 cabf6180e177eb9b3a9a9d43a437bd5e549f3a7d09525e5d69a3fed787be12ad
 it vosk-model-small-it-0.22 9ec65e75861d1c6c2e457cccd932705340dcdf233f5b239f00733b4de0bf3267
