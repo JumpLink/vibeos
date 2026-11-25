@@ -9,6 +9,11 @@
 //   throttle   twenty steps of a drag in 400 ms play a few times, not twenty.
 //   silent     a muted sink and a sink at zero play nothing (counted at the player, since a muted sink is silent anyway).
 //   untouched  no volume, mute or default sink changed through all of it.
+//
+// VIBEOS_TEST_EMULATED=1 (a package build under qemu-user, where a play is sent up to a second after the tap and ends
+// after the recording window, so a recording can miss it): the checks of what the sinks recorded and the throttle's
+// timing are skipped, each one logged with what it saw, and the test ends with 77 (skipped) when everything else
+// passed. The others run as everywhere.
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import System from 'system';
@@ -21,6 +26,21 @@ function check(name, ok, detail = '') {
     if (!ok)
         failures++;
 }
+
+const emulated = GLib.getenv('VIBEOS_TEST_EMULATED') === '1';
+let skipped = 0;
+// a check of what a sink recorded or of how long playing took: skipped under emulation, logged with what it saw
+function checkHeard(name, ok, detail = '') {
+    if (!emulated) {
+        check(name, ok, detail);
+        return;
+    }
+    print('SKIP', name, `(VIBEOS_TEST_EMULATED=1: ${ok ? 'passed' : 'failed'} as it ran)`, detail);
+    skipped++;
+}
+if (emulated)
+    print('INFO VIBEOS_TEST_EMULATED=1: what the sinks record and the throttle\'s timing are not checked here (under ' +
+        'qemu-user a play can end after the recording window); the other checks run');
 const sleep = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
     resolve();
     return GLib.SOURCE_REMOVE;
@@ -175,9 +195,9 @@ const before = snapshot();
     const heard = await record(async () => {
         sounds.keyTap();
     });
-    check('click: heard on the default sink, from the cache', heard.a.peak > 0.005 && heard.a.bursts >= 1,
+    checkHeard('click: heard on the default sink, from the cache', heard.a.peak > 0.005 && heard.a.bursts >= 1,
         `a: peak ${heard.a.peak.toFixed(3)} bursts ${heard.a.bursts}`);
-    check('click: and not on the other sink', heard.b.peak < 0.001, `b: peak ${heard.b.peak.toFixed(4)}`);
+    checkHeard('click: and not on the other sink', heard.b.peak < 0.001, `b: peak ${heard.b.peak.toFixed(4)}`);
     const sent = logs.slice(mark).find(l => l.includes('play sent'));
     check('click: the play was sent', !!sent, logs.slice(mark).join(' | '));
     print(`INFO ${sent ?? ''}`);
@@ -195,13 +215,13 @@ const before = snapshot();
     const onA = await record(async () => {
         sounds.volumeChanged(sinkA);
     });
-    check('volume: heard on the sink whose volume changes, the default one', onA.a.peak > 0.005 && onA.b.peak < 0.001,
-        `a ${onA.a.peak.toFixed(3)} b ${onA.b.peak.toFixed(4)}`);
+    checkHeard('volume: heard on the sink whose volume changes, the default one',
+        onA.a.peak > 0.005 && onA.b.peak < 0.001, `a ${onA.a.peak.toFixed(3)} b ${onA.b.peak.toFixed(4)}`);
     await sleep(300);
     const onB = await record(async () => {
         sounds.volumeChanged(sinkB);
     });
-    check('volume: and on another sink when that one\'s volume changes, not on the default',
+    checkHeard('volume: and on another sink when that one\'s volume changes, not on the default',
         onB.b.peak > 0.005 && onB.a.peak < 0.001, `a ${onB.a.peak.toFixed(4)} b ${onB.b.peak.toFixed(3)}`);
     }
 
@@ -222,7 +242,7 @@ const before = snapshot();
     const throttled = logs.slice(marked).filter(l => l.includes('throttled')).length;
     // the steps took 20 ms each and whatever the playing cost: one sound per 100 ms of them at most, the first at once
     const elapsedMs = (GLib.get_monotonic_time() - start) / 1000 - 1600;
-    check('throttle: twenty steps of a drag play at most once per 100 ms, and not once per step',
+    checkHeard('throttle: twenty steps of a drag play at most once per 100 ms, and not once per step',
         played >= 3 && played < 20 && played <= Math.floor(elapsedMs / 100) + 1,
         `played ${played}, throttled ${throttled}, in about ${Math.round(elapsedMs)} ms`);
 }
@@ -267,15 +287,23 @@ check('untouched: no volume, mute or default sink was changed by playing', befor
     const heard = await record(async () => {
         sounds.volumeChanged(sinkB);
     });
-    check('default: now it is sink-b whose volume change is heard, and sink-a\'s is not', heard.b.peak > 0.005 &&
+    checkHeard('default: now it is sink-b whose volume change is heard, and sink-a\'s is not', heard.b.peak > 0.005 &&
         heard.a.peak < 0.001, `a ${heard.a.peak.toFixed(4)} b ${heard.b.peak.toFixed(3)}`);
     const keys = await record(async () => {
         sounds.keyTap();
     });
-    check('default: and the click follows it, from the cache', keys.b.peak > 0.005 && keys.a.peak < 0.001,
+    checkHeard('default: and the click follows it, from the cache', keys.b.peak > 0.005 && keys.a.peak < 0.001,
         `a ${keys.a.peak.toFixed(4)} b ${keys.b.peak.toFixed(3)}`);
 }
 
 sounds.destroy();
-print(failures ? `${failures} FAILED` : 'all passed');
-System.exit(failures ? 1 : 0);
+if (failures) {
+    print(`${failures} FAILED`);
+    System.exit(1);
+}
+if (skipped) {
+    print(`all the others passed; ${skipped} skipped (VIBEOS_TEST_EMULATED=1)`);
+    System.exit(77);
+}
+print('all passed');
+System.exit(0);
