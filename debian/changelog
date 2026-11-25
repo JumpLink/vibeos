@@ -54,6 +54,8 @@ vibeos (1:0.1.5) unstable; urgency=medium
   * On a tablet, the home screen fits the screen again after a game that
     holds the screen sideways is left (it could stay drawn for portrait on
     a landscape screen).
+  * The upgrade path from gnome-phone is gone: its transitional packages
+    and the settings migration are no longer built.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
