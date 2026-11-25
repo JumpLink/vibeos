@@ -5,7 +5,8 @@ fingers: a home screen with pages, a dock and an app drawer, gesture navigation,
 notification shade with quick settings, a lock screen with a PIN pad, an always-on display, and its own set of apps
 written in GTK 4. Underneath it is plain Debian and GNOME — the same GNOME Shell, mutter, GLib, GTK, systemd,
 NetworkManager, ModemManager, PipeWire and evolution-data-server as on a desktop — so every GNOME app runs on it,
-and every VibeOS app runs on any Mobian or Debian device with the stock services.
+and every VibeOS app runs on any Mobian or Debian device with the stock services. It speaks English, German, Spanish,
+French, Italian, Dutch and Russian: the shell, the launcher and every app.
 
 <p align="center">
   <img src="docs/screenshots/home.png" width="19%" alt="Home screen">
@@ -99,7 +100,9 @@ shell; the device images do.
 | `vibeos-session` | The "VibeOS" session (GDM, or a systemd unit with no display manager) |
 | `vibeos-daemons` | The PIN check, alarm wake-ups, the touch GPU boost, and `vibeos-migrate-ids`, which carries a user's settings over from gnome-phone |
 | `vibeos-launcher` | The home screen |
-| `vibeos-dialer`, `vibeos-messaging`, `vibeos-contacts`, `vibeos-browser`, `vibeos-camera`, `vibeos-files`, `vibeos-clock`, `vibeos-calendar`, `vibeos-calculator`, `vibeos-weather`, `vibeos-compass`, `vibeos-dictate`, `vibeos-software`, `vibeos-installer`, `vibeos-settings`, `vibeos-terminal` | The apps |
+| `vibeos-dialer`, `vibeos-messaging`, `vibeos-contacts`, `vibeos-browser`, `vibeos-camera`, `vibeos-files`, `vibeos-clock`, `vibeos-calendar`, `vibeos-calculator`, `vibeos-weather`, `vibeos-compass`, `vibeos-dictate`, `vibeos-software`, `vibeos-installer`, `vibeos-settings`, `vibeos-terminal`, `vibeos-video` | The apps |
+| `vibeos-navi` | Navi, car navigation with MapLibre Native inside; built on its own by `apps/navi/pkg/build-deb.sh` |
+| `vibeos-sandbox` | The sandbox the apps installed from Software run in, with Android's permissions: they ask for the camera, the microphone and the location |
 | `vibeos-iconpack-vibeos` | The VibeOS icons, the default: large Material Symbols glyphs on squircles in each app's colour |
 | `vibeos-iconpack-gnome-free` | gnome-free (called Round before): white glyphs on gradient discs |
 | `vibeos-parallax-solar-system` | The default wallpaper: a tilt-parallax solar system from NASA's public-domain images |
@@ -136,7 +139,21 @@ display and at scale 2.5. All five patches do nothing on a desktop.
 
 ## Install
 
-Download the `.deb` files from the [latest release](https://github.com/pulpoff/vibeos/releases/latest) into an
+The simplest way is the signed apt archive at vibeos.top, which also brings every later release:
+
+```sh
+sudo curl -fsSLo /usr/share/keyrings/vibeos-archive-keyring.gpg \
+  https://vibeos.top/apt/vibeos-archive-keyring.gpg
+sudo curl -fsSLo /etc/apt/sources.list.d/vibeos.sources \
+  https://vibeos.top/apt/vibeos.sources
+sudo apt update
+sudo apt install vibeos vibeos-navi
+```
+
+The key's fingerprint is `0802 5010 73FA FEAC CFF5 B808 FF24 1881 81F7 82CB`. The archive's `main` has the VibeOS
+packages; the patched mutter is in its own component, `mutter`, for those who add it.
+
+Or download the `.deb` files from the [latest release](https://github.com/pulpoff/vibeos/releases/latest) into an
 empty folder, check them against `SHA256SUMS`, then:
 
 ```sh
