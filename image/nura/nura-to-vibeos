@@ -56,7 +56,8 @@ DEBIAN_FOR = {
 }
 # pmOS userspace a Debian system has no package for (Alpine binaries cannot be carried)
 NO_DEBIAN = {
-    'q6voiced': 'call audio routing (q6voice): not in Debian (Mobian has q6voiced)',
+    'q6voiced': 'call audio routing (q6voice): not in Debian (Mobian has q6voiced); the payload starts the call '
+                'audio itself (vibeos-q6voiced)',
     'msm-modem-uim-selection': 'SIM slot selection for the msm modem: not in Debian',
     'bootmac': 'Wi-Fi/Bluetooth MAC addresses from the boot serial: not in Debian (Mobian has bootmac); '
                'Bluetooth may come up without an address',
@@ -741,6 +742,20 @@ def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset
             pl.not_carried[:] = [x for x in pl.not_carried if x[0] != r2]
         if pl.add(src, rel, pkg) and re.search(r'^\s*WantedBy\s*=', text, re.M):
             enable.append(('--user ' if '/user/' in rel else '') + os.path.basename(rel))
+    # q6voiced is not in Debian: without what it does, a call connects and stays silent both ways
+    if 'q6voiced' in nura.pkgs:
+        need = [d for d in ('python3-gi', 'libasound2t64') if system is None or d not in system.ver]
+        if need:
+            pl.not_carried.append(('vibeos-q6voiced (needs %s: not in the system image, or not known here)'
+                                   % ', '.join(need), 'q6voiced'))
+        else:
+            for name, dst, mode in (('vibeos-q6voiced', 'usr/libexec/vibeos-q6voiced', 0o755),
+                                    ('vibeos-q6voiced.service', 'usr/lib/systemd/system/vibeos-q6voiced.service', 0o644)):
+                os.makedirs(os.path.dirname(os.path.join(P, dst)), exist_ok=True)
+                shutil.copyfile(os.path.join(HERE, 'data', 'q6voice', name), os.path.join(P, dst))
+                os.chmod(os.path.join(P, dst), mode)
+                pl.carried.append((dst, 'q6voiced (replaced by vibeos-q6voiced)'))
+            enable.append('vibeos-q6voiced.service')
     nura.enable_units = enable
     # no pmOS config naming the DSP files' directory (a generic image's hexagonrpcd finds it itself; Debian's
     # wrapper passes -R, by default a droid-juicer path): this phone's directory under /usr/share/qcom

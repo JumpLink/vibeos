@@ -1,0 +1,12 @@
+[Unit]
+Description=Start the q6voice call audio stream during calls
+After=ModemManager.service sound.target
+# BindsTo with WantedBy: stopped and started again with ModemManager (PartOf would only stop it)
+BindsTo=ModemManager.service
+
+[Service]
+ExecStart=/usr/libexec/vibeos-q6voiced
+Restart=on-failure
+
+[Install]
+WantedBy=ModemManager.service
