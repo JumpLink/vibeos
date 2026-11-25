@@ -5,6 +5,7 @@ usr/sbin/vibeos-dock
 usr/libexec/vibeos-session-language
 usr/libexec/vibeos-logind-user-refresh
 usr/libexec/vibeos-hide-replaced-apps
+etc/profile.d/vibeos-data-dirs.sh
 usr/lib/systemd/system/vibeos-logind-user-refresh.service
 usr/share/vibeos-session/71-vibeos-dock.rules
 usr/lib/udev/rules.d/90-vibeos-internal-storage.rules

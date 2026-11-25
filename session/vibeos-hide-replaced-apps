@@ -1,9 +1,12 @@
 #!/bin/sh
 # GNOME's apps that a VibeOS app replaces, hidden from every app list while both are installed: Files and GNOME's
 # Files (Nautilus), Terminal and Console, Software and GNOME Software... Hidden as GNOME itself hides an entry: a copy
-# of GNOME's own .desktop file with NoDisplay=true, in /usr/share/gnome/applications, which a GNOME session searches
-# before /usr/share/applications (XDG_DATA_DIRS). GNOME's app stays installed: it still opens the files it is the
-# default for, and other apps can still start it.
+# of GNOME's own .desktop file with NoDisplay=true, in /usr/share/vibeos/applications, which the session searches
+# before /usr/share/applications: /etc/profile.d/vibeos-data-dirs.sh puts /usr/share/vibeos first in XDG_DATA_DIRS
+# (gnome-session starts through a login shell). Not in /usr/share/gnome/applications, GNOME's own such directory:
+# Debian's gnome-menus-blacklist, run whenever a package changes /usr/share/applications, deletes every file there
+# that it did not make. GNOME's app stays installed: it still opens the files it is the default for, and other apps
+# can still start it.
 #
 # The copies are made again from GNOME's files whenever a package changes /usr/share/applications (vibeos-session's
 # dpkg trigger), so an upgrade of Nautilus brings its new file into the copy, and a copy goes when GNOME's app or
@@ -15,10 +18,12 @@
 #
 # vibeos-hide-replaced-apps          the copies made again
 # vibeos-hide-replaced-apps --clear  the copies removed (vibeos-session removed)
-# VIBEOS_APPS_DIR, VIBEOS_HIDDEN_DIR: the two directories, for a test
+# VIBEOS_APPS_DIR, VIBEOS_HIDDEN_DIR, VIBEOS_OLD_HIDDEN_DIR: the directories, for a test
 set -eu
 APPS=${VIBEOS_APPS_DIR:-/usr/share/applications}
-HIDDEN=${VIBEOS_HIDDEN_DIR:-/usr/share/gnome/applications}
+HIDDEN=${VIBEOS_HIDDEN_DIR:-/usr/share/vibeos/applications}
+# where earlier builds put the copies (GNOME's directory, which gnome-menus-blacklist empties): what is left there goes
+OLD=${VIBEOS_OLD_HIDDEN_DIR:-/usr/share/gnome/applications}
 MARK="# Hidden by vibeos-session (vibeos-hide-replaced-apps), made from $APPS/"
 
 # GNOME's app, and the VibeOS app that replaces it (the launcher's list)
@@ -50,6 +55,11 @@ hide() {
 
 clear=false
 [ "${1:-}" = --clear ] && clear=true
+for f in "$OLD"/*.desktop "$OLD"/mimeinfo.cache; do
+	case $(head -n 1 "$f" 2> /dev/null) in
+	"$MARK$(basename "$f")" | "# Written by vibeos-session (vibeos-hide-replaced-apps): "*) rm -f "$f" ;;
+	esac
+done
 echo "$PAIRS" | while read -r gnome vibeos; do
 	copy=$HIDDEN/$gnome
 	if ! $clear && [ -f "$APPS/$gnome" ] && [ -f "$APPS/$vibeos" ]; then
@@ -104,3 +114,5 @@ if [ -n "$list" ]; then
 elif ours_cache; then
 	rm -f "$CACHE"
 fi
+# removed: the directory too, when nothing else is in it
+! $clear || rmdir "$HIDDEN" 2> /dev/null || true
