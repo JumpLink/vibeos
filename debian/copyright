@@ -362,7 +362,6 @@ Comment:
  hexagonrpc's upstream pull request #27, unchanged.
 
 Files: patches/u-boot-*/*.patch
-       patches/u-boot-s20/shim/*
 Copyright: 2026 pulpoff <pashkovsky@gmail.com>
 License: GPL-2+ and GPL-2 and (GPL-2 or BSD-3-clause) and (GPL-2 or BSD-2-clause)
 Comment:
@@ -371,7 +370,12 @@ Comment:
  Makefile and exynos990-r8s-u-boot.dtsi, exynos9820-tmu.dtsi, the 32x64
  console font); GPL-2.0 OR BSD-3-Clause (the Exynos 9820 devicetree files);
  GPL-2.0-only OR BSD-2-Clause (the Exynos 9820 clock dt-bindings header).
- The S20 FE's shim is GPL-2.0-or-later.
+
+Files: patches/u-boot-s20/shim/*
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: GPL-2+
+Comment:
+ The S20 FE's shim in front of U-Boot and the script that builds it.
 
 Files: patches/u-boot-s5e/0004-video-the-Debian-swirl-as-the-logo.patch
        patches/u-boot-poco/0003-video-the-Debian-swirl-as-the-logo.patch

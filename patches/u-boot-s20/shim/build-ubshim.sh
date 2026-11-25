@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
 # build-ubshim.sh u-boot.bin out.bin  (SHIM_CFLAGS: extra -D for the assembler)
 set -eu
 W=$(mktemp -d)

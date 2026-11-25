@@ -64,5 +64,5 @@ time (a `date` in `PATH` answering `date -d @1795532197` for the `+FORMAT` call,
 
 U-Boot is GPL-2.0-or-later as a whole; each patch is under the licence of the files it changes, as their SPDX lines
 say: `exynos-mobile.c`, the board Makefile and `exynos990-r8s-u-boot.dtsi` GPL-2.0, the rest GPL-2.0-or-later. The
-shim is GPL-2.0-or-later. Credits: the U-Boot project;
+shim is GPL-2.0-or-later (its SPDX lines, which change no byte of `ubshim.bin`). Credits: the U-Boot project;
 chiffathefox, whose Exynos 9820/990 U-Boot port this is built on. The patches and the shim are by pulpoff.

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * r8s-ubshim: what S-Boot jumps to in BOOT's kernel slot, in front of U-Boot.
  * Before any U-Boot code runs:
