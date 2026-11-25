@@ -62,4 +62,20 @@ assert '[Manager]' in a and 'RuntimeWatchdogSec=30s' in a and 'RebootWatchdogSec
 assert '[Service]' in b and 'TimeoutStopSec=15s' in b, b
 print('watchdog column %s, both drop-ins written' % got)
 EOF
+
+echo "the modem wake hook (fajita only):"
+python3 -I - $T/nura/nura-to-vibeos $W > $W/out 2>&1 <<'EOF' && ok "$(cat $W/out)" || bad "$(cat $W/out)"
+import importlib.machinery, importlib.util, os, sys
+spec = importlib.util.spec_from_loader('n', importlib.machinery.SourceFileLoader('n', sys.argv[1]))
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+got = {d: m.device_row(d)['modemwake'] for d in ('oneplus-fajita', 'oneplus-enchilada', 'xiaomi-surya')}
+assert got == {'oneplus-fajita': True, 'oneplus-enchilada': False, 'xiaomi-surya': False}, got
+P = os.path.join(sys.argv[2], 'pkg')
+m.modem_wake_hook(P)
+h = os.path.join(P, 'usr/lib/systemd/system-sleep/50-modem-wake-settle')
+assert os.access(h, os.X_OK), h
+b = open(h).read()
+assert 'glink-edge.IPCRTR' in b and 'echo enabled' in b and 'phy80211' in b, 'hook body'
+print('modemwake column %s, hook written and executable' % got)
+EOF
 [ $FAILS = 0 ] && echo "all ok" || { echo "$FAILS failed"; exit 1; }
