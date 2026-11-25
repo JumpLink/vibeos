@@ -16,6 +16,7 @@ import {BroadbandModem} from 'resource:///org/gnome/shell/misc/modemManager.js';
 import {getRfkillManager} from 'resource:///org/gnome/shell/ui/status/rfkill.js';
 
 import {Brightness} from './brightness.js';
+import {ChargeMeter} from './chargepower.js';
 import {_, formatNumber, formatPercent} from './l10n.js';
 import {PrivacySwitches} from './privacy.js';
 import {setUserOrientationLock, userOrientationLock} from './rotation.js';
@@ -58,43 +59,18 @@ const UP_CHARGING = 1;
 const UP_FULLY_CHARGED = 4;
 const UP_PENDING_CHARGE = 5;
 
-// How fast it charges, from the power the charger is allowed to give: the negotiated voltage (a PD contract's 9 V)
-// times the input limit the charger chip was set to (max current x max voltage of the plugged supply), with Samsung's
-// names on top. Slowly below 7.5 W (a computer's USB port is 2.5 W), fast from
-// 12 W, super fast from 20 W. The S10e itself takes 15 W at most (stock's cap, the max77705 driver's PD_MAX_MW), so a
-// 27 W charger shows "Fast charging" there, as on One UI.
-//
-// Only the power supply class's own attributes, as any phone's drivers fill them in, and they differ: the S10e's
-// charger chip gives input_current_limit, the Poco's (pm8150b) its limit as current_max and a voltage_now of 73 V.
-// So a voltage outside what USB delivers is no voltage; a USB-C port's current_max (a supply whose usb_type lists C
-// or PD) is what the port offers, used only when no charger chip says what it takes; and a computer's data port
-// (BC1.2 SDP) charges slowly unless a PD contract was made, whatever current its USB-C pins advertise (the Poco said
-// "Super fast charging" on a PC's port, 2026-11-16).
-//
-// A charging pad is a supply of its own, of the kernel's type Wireless (POWER_SUPPLY_TYPE_WIRELESS): no speed is
-// worked out for it, it is "Wireless charging", as on One UI. A cable plugged in on the pad wins, as the charger chip
-// takes its cable input first. UPower knows no Wireless type, and counts such a supply as line power by its online
-// attribute, so the phone is plugged in (not OnBattery) on the pad.
-const POWER_SUPPLY = '/sys/class/power_supply';
-const CHARGE_SLOW_W = 7.5;
-const CHARGE_FAST_W = 12;
-const CHARGE_SUPER_FAST_W = 20;
-const USB_MIN_UV = 4e6;
-const USB_MAX_UV = 25e6;  // PD's 20 V and PPS above it
+// What the label says comes from what flows into the battery (chargepower.js). A charging pad is a supply of its own,
+// of the kernel's type Wireless: no speed is worked out for it, it is "Wireless charging", as on One UI. UPower knows
+// no Wireless type, and counts such a supply as line power by its online attribute, so the phone is plugged in (not
+// OnBattery) on the pad.
 // a plug-in brings a burst of uevents while the PD contract is made (500 mA first, the 9 V limit ~1 s later)
 const CHARGE_SETTLE_MS = 400;
 
-function readSysfs(path) {
-    try {
-        return new TextDecoder().decode(GLib.file_get_contents(path)[1]).trim();
-    } catch (e) {
-        return null;
-    }
-}
-
 // what the lock screen and the AOD say while the battery charges: the percentage, then AOSP's "Charging slowly" and
-// "Charging", One UI's "Fast charging", "Super fast charging" and "Wireless charging", as one sentence a language can
-// order its own way; then, while the battery takes some, how much (the owner asked, 11-08)
+// "Charging", One UI's "Fast charging", "Super fast charging" and "Wireless charging", and AOSP's "Not charging" (the
+// battery's STATUS says the charger holds it: too warm, or a charge limit), as one sentence a language can order its
+// own way; then, while the battery takes some, how much (the owner asked, 11-08). A full battery is "Charged", which
+// the callers say in its place.
 export function chargingText(level, speed, amps = null) {
     const format = {
         /* TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%") */
@@ -105,81 +81,13 @@ export function chargingText(level, speed, amps = null) {
         superfast: _('%s • Super fast charging'),
         /* TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%") */
         wireless: _('%s • Wireless charging'),
+        /* TRANSLATORS: the lock screen's charging line, for a charger that is plugged in but holds the battery
+           where it is (too warm, or a charge limit); %s is the battery's level ("75%") */
+        idle: _('%s • Not charging'),
     }[speed] ?? /* TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%") */ _('%s • Charging');
     const text = format.replace('%s', formatPercent(level));
     /* TRANSLATORS: a current the battery charges at; %s is the number of amperes ("1.5") */
     return amps >= 0.05 ? `${text} • ${_('%s A').replace('%s', formatNumber(amps, 1))}` : text;
-}
-
-// the current into the battery in A: its fuel gauge's current_now, positive while it charges (the S10e's max170xx),
-// or null. Not the charger's input limit, which is only a cap.
-function readChargeCurrent() {
-    let dir;
-    try {
-        dir = GLib.Dir.open(POWER_SUPPLY, 0);
-    } catch (e) {
-        return null;
-    }
-    let amps = null;
-    for (let name; amps === null && (name = dir.read_name()) !== null;) {
-        if (readSysfs(`${POWER_SUPPLY}/${name}/type`) !== 'Battery')
-            continue;
-        const ua = parseInt(readSysfs(`${POWER_SUPPLY}/${name}/current_now`) ?? '');
-        if (!isNaN(ua))
-            amps = ua / 1e6;
-    }
-    dir.close();
-    return amps;
-}
-
-// 'slow', 'normal', 'fast', 'superfast', 'wireless' (on a pad, no cable in), or null when nothing is plugged in (or
-// the supply says too little to tell). @root: the power supply class, or a test's tree in its place
-export function readChargeSpeed(root = POWER_SUPPLY) {
-    let volts = 0, limit = 0, chip = 0, offer = 0, plugged = false, pad = false, computerPort = false, pd = false;
-    let dir;
-    try {
-        dir = GLib.Dir.open(root, 0);
-    } catch (e) {
-        return null;
-    }
-    for (let name; (name = dir.read_name()) !== null;) {
-        const at = attr => readSysfs(`${root}/${name}/${attr}`);
-        const type = at('type');
-        if (type === 'Battery' || at('online') !== '1')
-            continue;
-        if (type === 'Wireless') {
-            pad = true;
-            continue;
-        }
-        plugged = true;
-        // usb_type lists what the supply can tell, the one it found in brackets: "Unknown [SDP] DCP CDP"
-        const types = at('usb_type') ?? '';
-        const found = types.match(/\[([^\]]+)\]/)?.[1] ?? '';
-        const port = /(^|\s)\[?(C|PD)\]?(\s|$)/.test(types);
-        computerPort ||= found === 'SDP';
-        pd ||= found.startsWith('PD');
-        const uv = parseInt(at('voltage_now') ?? at('voltage_max') ?? '0') || 0;
-        if (uv >= USB_MIN_UV && uv <= USB_MAX_UV)
-            volts = Math.max(volts, uv);
-        limit = Math.max(limit, parseInt(at('input_current_limit') ?? '0') || 0);
-        const max = parseInt(at('current_max') ?? '0') || 0;
-        if (port)
-            offer = Math.max(offer, max);
-        else
-            chip = Math.max(chip, max);
-    }
-    dir.close();
-    if (!plugged)
-        return pad ? 'wireless' : null;
-    if (computerPort && !pd)
-        return 'slow';
-    // the charger chip's limit is what the phone draws; a port's current_max is only what it offers
-    const amps = (limit || chip || offer) / 1e6;
-    if (!amps)
-        return null;
-    const watts = (volts ? volts / 1e6 : 5) * amps;
-    return watts >= CHARGE_SUPER_FAST_W ? 'superfast' : watts >= CHARGE_FAST_W ? 'fast'
-        : watts >= CHARGE_SLOW_W ? 'normal' : 'slow';
 }
 
 // the icon's 5 Wi-Fi levels (0-4) from NetworkManager's 0..100 strength
@@ -494,9 +402,9 @@ export const SystemState = GObject.registerClass({
     // --- UPower, power-profiles-daemon
 
     _initBattery() {
-        // UPower says nothing when only the charger's limit changes (a PD contract after the plug-in): the kernel's
-        // power_supply uevents do
-        this._chargeSpeed = readChargeSpeed();
+        // UPower says nothing when only the charger's contract changes: the kernel's power_supply uevents do. The meter
+        // reads the supplies again for them, and every few seconds while a charger is in (never while none is)
+        this._charge = new ChargeMeter({onChange: () => this._syncBattery()});
         this._chargeSpeedId = 0;
         this._udev = new GUdev.Client({subsystems: ['power_supply']});
         this._udev.connectObject('uevent', () => {
@@ -504,12 +412,7 @@ export const SystemState = GObject.registerClass({
                 return;
             this._chargeSpeedId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, CHARGE_SETTLE_MS, () => {
                 this._chargeSpeedId = 0;
-                const speed = readChargeSpeed();
-                // a new contract or limit: the speed, and while plugged in the battery's current, read again
-                if (speed !== this._chargeSpeed || this.battery.plugged) {
-                    this._chargeSpeed = speed;
-                    this._syncBattery();
-                }
+                this._charge.refresh();
                 return GLib.SOURCE_REMOVE;
             });
         }, this);
@@ -572,13 +475,13 @@ export const SystemState = GObject.registerClass({
         const onBattery = this._upowerDaemon?.get_cached_property('OnBattery')?.unpack();
         const plugged = onBattery !== undefined ? !onBattery
             : [UP_CHARGING, UP_FULLY_CHARGED, UP_PENDING_CHARGE].includes(prop('State') ?? 0);
+        this._charge.setPlugged(plugged);
         this.battery = {
             present: !!prop('IsPresent'),
             level: Math.round(prop('Percentage') ?? 0),
             plugged,
-            speed: plugged ? this._chargeSpeed : null,
-            // read at UPower's every refresh of the battery
-            amps: plugged ? readChargeCurrent() : null,
+            speed: plugged ? this._charge.reading.speed : null,
+            amps: plugged ? this._charge.reading.amps : null,
             icon: prop('IconName') || 'battery-missing-symbolic',
         };
         this._changed();
@@ -783,6 +686,7 @@ export const SystemState = GObject.registerClass({
             global.compositor.get_laters().remove(this._changedId);
         if (this._chargeSpeedId)
             GLib.source_remove(this._chargeSpeedId);
+        this._charge.destroy();
         this._udev?.disconnectObject(this);
         this._udev = null;
         Main.brightnessManager.globalScale?.disconnectObject(this);
