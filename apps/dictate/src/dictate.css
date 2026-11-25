@@ -661,6 +661,17 @@ progressbar.dictate-stage-progress > trough > progress {
   }
 }
 
+/* what is missing (no microphone, no network), under the bar of Vibe's and over the document of Dictate's */
+.dictate-notice {
+  margin: 4dp 16dp 8dp;
+  padding: 8dp 16dp;
+  border-radius: 16dp;
+  font-size: 14sp;
+  font-weight: 500;
+  color: @vibeos_on_surface;
+  background-color: @vibeos_surface_container_high;
+}
+
 /* F3 over an exchange: the call stays under the bar */
 .dictate-call-banner {
   margin: 0 16dp 8dp;

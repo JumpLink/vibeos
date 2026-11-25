@@ -7,6 +7,7 @@ src/dictate-debuglog-page.c
 src/dictate-download-dialog.c
 src/dictate-download.c
 src/dictate-engine.c
+src/dictate-env.c
 src/dictate-enroll.c
 src/dictate-mic.c
 src/dictate-onboarding.c

@@ -29,6 +29,9 @@ DictateTalk     *dictate_talk_new       (void);
 gboolean         dictate_talk_available (DictateTalk *self, const char *language, char **reason);
 /* there is a voice for `language` (the talk-voice setting's, else one in vibeos-dictate/voices/LANGUAGE) */
 gboolean         dictate_talk_has_voice (DictateTalk *self, const char *language);
+/* the model is a server's: what is asked of Vibe leaves the phone, and needs a network (the fixed commands answer
+ * without one: dictate-offline.h) */
+gboolean         dictate_talk_needs_network (DictateTalk *self);
 /* the model and the voice loaded now, in the background, so that the first answer comes sooner */
 void             dictate_talk_prepare   (DictateTalk *self, const char *language);
 /* the user said `text` (in `language`): the reply follows */

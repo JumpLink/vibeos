@@ -15,6 +15,7 @@
  * ends the turn by itself, as if stopped. Held (dictate_engine_set_held), it does not: neither a pause nor a long
  * wait for the first word ends the turn until it is let go. */
 #include "dictate-engine.h"
+#include "dictate-gst.h"
 #include "dictate-recogniser.h"
 #include "dictate-vad.h"
 
@@ -110,6 +111,14 @@ dictate_engine_available (DictateEngine *self, char **reason)
   const DictateLanguage *language = dictate_language_lookup (self->language);
   const DictateRecogniserClass *recogniser;
 
+  /* GStreamer reads the microphone: nothing is asked of it before it has started (dictate-gst.h) */
+  if (!dictate_gst_ready ())
+    {
+      if (reason)
+        /* TRANSLATORS: why the microphone cannot be used yet: the audio has not started */
+        *reason = g_strdup (_("Audio unavailable"));
+      return FALSE;
+    }
   if (!model)
     {
       g_autofree char *package = language ? g_strconcat ("vibeos-dictate-", language->code, NULL) : NULL;
@@ -649,6 +658,11 @@ dictate_engine_start (DictateEngine *self)
 
   if (self->state != DICTATE_IDLE)
     return;
+  if (!dictate_gst_ready ())
+    {
+      g_signal_emit (self, signals[SIGNAL_ERROR], 0, _("Audio unavailable"));
+      return;
+    }
   model = self->language ? dictate_model_find (self->language) : NULL;
   if (!model)
     {

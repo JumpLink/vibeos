@@ -51,7 +51,7 @@ vibe_sources = ['src/dictate-stage.c', 'src/dictate-orb.c', 'src/dictate-history
 executable('vibeos-dictate', 'src/dictate-main.c', 'src/dictate-window.c', 'src/dictate-mic.c',
            'src/dictate-engine.c', 'src/dictate-models.c', 'src/dictate-moonshine.c', 'src/dictate-vosk.c',
            'src/dictate-vad.c', 'src/dictate-talk.c', 'src/dictate-voicematch.c', 'src/dictate-fbank.c',
-           voice_sources, brain_sources,
+           'src/dictate-gst.c', 'src/dictate-env.c', voice_sources, brain_sources,
            'src/dictate-download.c', 'src/dictate-download-dialog.c', 'src/dictate-pk.c', 'src/dictate-package.c',
            'src/dictate-access.c', 'src/dictate-settings.c', 'src/dictate-cues.c', vibe_sources, tools_sources, resources,
            link_with: text, install: true,
@@ -60,7 +60,8 @@ executable('vibeos-dictate', 'src/dictate-main.c', 'src/dictate-window.c', 'src/
                     '-DLIBRARY_DIR="@0@"'.format(library_dir)],
            dependencies: [dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'), dependency('spongy-gtk-1'),
                           dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'), dependency('json-glib-1.0'),
-                          cc.find_library('m'), cc.find_library('dl')] + agent_deps + remote_deps + download_deps
+                          dependency('libpulse-mainloop-glib'), cc.find_library('m'), cc.find_library('dl')]
+                          + agent_deps + remote_deps + download_deps
                           + tools_deps)
 
 foreach id : ['vibeos.Dictate', 'vibeos.Agent']
@@ -89,7 +90,7 @@ executable('brain-bench', 'tests/brain-bench.c', brain_sources, include_director
            dependencies: [dependency('glib-2.0'), dependency('gio-2.0'), dependency('llama')] + remote_deps)
 
 # Agent's whole loop on recorded questions, timed (tests/talk-bench.c)
-executable('talk-bench', 'tests/talk-bench.c', 'src/dictate-engine.c', 'src/dictate-models.c',
+executable('talk-bench', 'tests/talk-bench.c', 'src/dictate-gst.c', 'src/dictate-engine.c', 'src/dictate-models.c',
            'src/dictate-moonshine.c', 'src/dictate-vosk.c', 'src/dictate-vad.c', 'src/dictate-talk.c',
            'src/dictate-voicematch.c', 'src/dictate-fbank.c', 'src/dictate-access.c', voice_sources, brain_sources,
            tools_sources,
@@ -100,7 +101,7 @@ executable('talk-bench', 'tests/talk-bench.c', 'src/dictate-engine.c', 'src/dict
                           + remote_deps + tools_deps)
 
 # Agent's loop from typed text: the model's reply spoken on the speaker (tests/agent-say.c)
-executable('agent-say', 'tests/agent-say.c', 'src/dictate-talk.c', 'src/dictate-voicematch.c',
+executable('agent-say', 'tests/agent-say.c', 'src/dictate-gst.c', 'src/dictate-talk.c', 'src/dictate-voicematch.c',
            'src/dictate-fbank.c', 'src/dictate-access.c', voice_sources, brain_sources,
            tools_sources,
            include_directories: 'src',
@@ -111,7 +112,7 @@ executable('agent-say', 'tests/agent-say.c', 'src/dictate-talk.c', 'src/dictate-
 
 # the tools' test set: questions in a private copy of the phone's data (fixtures made by it, the phone's services
 # stood in for on a private bus), each answer scored (tests/agent-eval.c, tests/agent-eval/)
-executable('agent-eval', 'tests/agent-eval.c', 'tests/agent-eval-mock.c', 'src/dictate-talk.c',
+executable('agent-eval', 'tests/agent-eval.c', 'tests/agent-eval-mock.c', 'src/dictate-gst.c', 'src/dictate-talk.c',
            'tests/agent-eval-voice.c', 'src/dictate-access.c', voice_sources,
            brain_sources, tools_sources,
            include_directories: 'src',

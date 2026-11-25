@@ -37,6 +37,8 @@ void        dictate_stage_set_header_end (DictateStage *self, GtkWidget *widget)
 void        dictate_stage_set_call_label (DictateStage *self, const char *label);
 /* a widget under the bar that does not scroll with the exchange (the call going on); NULL for none */
 void        dictate_stage_set_banner     (DictateStage *self, GtkWidget *widget);
+/* a line of what is missing ("No microphone") at the top of the banner, over the call's if there is one; NULL for none */
+void        dictate_stage_set_notice     (DictateStage *self, const char *notice);
 
 /* the exchange going on */
 void        dictate_stage_set_said       (DictateStage *self, const char *said);

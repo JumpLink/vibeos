@@ -29,6 +29,7 @@
 #include "dictate-download-dialog.h"
 #include "dictate-enroll.h"
 #include "dictate-engine.h"
+#include "dictate-env.h"
 #include "dictate-history.h"
 #include "dictate-mic.h"
 #include "dictate-models.h"
@@ -63,6 +64,9 @@ typedef struct {
   GtkWidget *pages, *marker;    /* the conversation and the pages over it (Agent's Settings); Back's marker */
   GtkWidget *page, *scroller, *view, *hint, *mic, *language, *copy, *clear;
   GtkWidget *selection_bar, *select_all;
+  DictateEnv *env;              /* what is there to use: audio, microphone, network */
+  char *notice_shown;           /* the notice as last shown, for the log */
+  GtkWidget *notice;            /* Dictate's: what is missing, over the document (Vibe's is the stage's) */
   int fab_row;                  /* FAB_ROW or FAB_ROW_TABLET, by the device */
   guint place_id;               /* the selection bar is placed when idle */
   GtkTextMark *anchor_start, *anchor_end;     /* the word a finger's selection began on */
@@ -197,6 +201,60 @@ load (Window *self)
 /* --- what the screen shows */
 
 static void vibe_show (Window *self);
+
+/* what is missing, said at the top: the audio not started or no microphone (the microphone looks off, and a tap on it
+ * looks again), and, for a model on a server, no network */
+static void
+show_notices (Window *self)
+{
+  const char *audio = dictate_env_audio_notice (self->env);
+  const char *network = NULL;
+  g_autofree char *text = NULL;
+
+  if (self->talk && !dictate_env_online (self->env) && dictate_talk_needs_network (self->talk))
+    /* TRANSLATORS: a notice at the top of Vibe's window when the phone is offline and Vibe's questions go to a server:
+     * only the basic commands work until the network is back */
+    network = _("No internet connection");
+  if (audio || network)
+    text = g_strjoin ("\n", audio ? audio : network, audio && network ? network : NULL, NULL);
+  if (g_strcmp0 (text, self->notice_shown))
+    {
+      g_message ("window: notice: %s", text ? text : "none");
+      g_free (self->notice_shown);
+      self->notice_shown = g_strdup (text);
+    }
+  if (self->talking)
+    dictate_stage_set_notice (DICTATE_STAGE (self->stage), text);
+  else
+    {
+      gtk_label_set_text (GTK_LABEL (self->notice), text ? text : "");
+      gtk_widget_set_visible (self->notice, text != NULL);
+      gtk_widget_set_opacity (self->mic, audio ? 0.38 : 1.0);
+    }
+}
+
+/* the microphone asked for: FALSE when it cannot be used, with the notice said as the snackbar; what may have changed
+ * unseen is looked at again first */
+static gboolean
+audio_blocked (Window *self)
+{
+  const char *notice;
+
+  dictate_env_recheck (self->env);
+  notice = dictate_env_audio_notice (self->env);
+  show_notices (self);
+  if (!notice)
+    return FALSE;
+  g_message ("window: the microphone is not used: %s", notice);
+  vibeos_snackbar_show (self->snackbar, notice, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
+  return TRUE;
+}
+
+static void
+on_env_changed (DictateEnv *env, Window *self)
+{
+  show_notices (self);
+}
 
 static void
 show_state (Window *self)
@@ -714,6 +772,11 @@ talk_listen (Window *self)
 {
   g_autofree char *reason = NULL;
 
+  if (audio_blocked (self))
+    {
+      show_state (self);
+      return;
+    }
   choose_language (self);
   if (!dictate_engine_available (self->engine, &reason) ||
       !dictate_talk_available (self->talk, dictate_engine_get_language (self->engine), &reason))
@@ -2378,6 +2441,11 @@ start (Window *self)
   g_autofree char *reason = NULL;
   GtkTextIter at;
 
+  if (audio_blocked (self))
+    {
+      show_state (self);
+      return;
+    }
   /* a language installed since the window opened, or one taken away */
   choose_language (self);
   if (!dictate_engine_available (self->engine, &reason))
@@ -3004,6 +3072,9 @@ intro_maybe (gpointer data)
 static void
 on_window_map (GtkWidget *window, Window *self)
 {
+  g_message ("window: shown");
+  if (!self->talk)
+    return;
   if (!self->intro_id)
     self->intro_id = g_idle_add (intro_maybe, self);
 }
@@ -3386,6 +3457,7 @@ window_free (gpointer data)
 
   /* the window's layout goes with the window; the theme stays */
   g_signal_handlers_disconnect_by_data (vibeos_theme_get_default (), self);
+  g_signal_handlers_disconnect_by_data (self->env, self);
   g_clear_handle_id (&self->save_id, g_source_remove);
   g_clear_handle_id (&self->place_id, g_source_remove);
   g_clear_handle_id (&self->intro_id, g_source_remove);
@@ -3421,6 +3493,7 @@ window_free (gpointer data)
   g_signal_handlers_disconnect_by_data (self->settings, self);
   g_clear_object (&self->settings);
   g_free (self->speaking);
+  g_free (self->notice_shown);
   g_free (self->path);
   g_free (self);
 }
@@ -3518,6 +3591,17 @@ dictate_content (Window *self)
   gtk_widget_set_can_target (self->hint, FALSE);
   gtk_overlay_add_overlay (GTK_OVERLAY (page), self->hint);
 
+  /* what is missing, over the top of the document */
+  self->notice = gtk_label_new (NULL);
+  gtk_widget_add_css_class (self->notice, "dictate-notice");
+  gtk_label_set_wrap (GTK_LABEL (self->notice), TRUE);
+  gtk_label_set_xalign (GTK_LABEL (self->notice), 0);
+  gtk_widget_set_halign (self->notice, GTK_ALIGN_FILL);
+  gtk_widget_set_valign (self->notice, GTK_ALIGN_START);
+  gtk_widget_set_can_target (self->notice, FALSE);
+  gtk_widget_set_visible (self->notice, FALSE);
+  gtk_overlay_add_overlay (GTK_OVERLAY (page), self->notice);
+
   /* the text fades out under the FAB's row, as the stopwatch's laps */
   {
     GtkWidget *fade = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
@@ -3570,6 +3654,7 @@ dictate_window_new (GtkApplication *app, gboolean agent)
   GtkWidget *content;
 
   self->window = vibeos_window_new (app);
+  self->env = dictate_env_start ();
   self->engine = dictate_engine_new ();
   self->talking = agent;
   self->talk = agent ? dictate_talk_new () : NULL;
@@ -3611,6 +3696,7 @@ dictate_window_new (GtkApplication *app, gboolean agent)
     gtk_widget_add_controller (self->window, shortcuts);
   }
 
+  g_signal_connect (self->env, "changed", G_CALLBACK (on_env_changed), self);
   g_signal_connect (self->engine, "text", G_CALLBACK (on_text), self);
   g_signal_connect (self->engine, "state-changed", G_CALLBACK (on_state_changed), self);
   g_signal_connect (self->engine, "error", G_CALLBACK (on_error), self);
@@ -3638,9 +3724,9 @@ dictate_window_new (GtkApplication *app, gboolean agent)
       g_signal_connect (self->settings, "changed::talk-speed", G_CALLBACK (on_speed_changed), self);
       dictate_owner_probe ();
       vibe_restore (self);
-      g_signal_connect (self->window, "map", G_CALLBACK (on_window_map), self);
       g_signal_connect (self->window, "notify::is-active", G_CALLBACK (on_window_active), self);
     }
+  g_signal_connect (self->window, "map", G_CALLBACK (on_window_map), self);
   g_signal_connect (self->window, "close-request", G_CALLBACK (on_close_request), self);
   g_signal_connect_swapped (vibeos_layout_get_for_window (GTK_WINDOW (self->window)), "changed",
                             G_CALLBACK (update_margins), self);
@@ -3648,6 +3734,7 @@ dictate_window_new (GtkApplication *app, gboolean agent)
   update_margins (self);
   /* and Agent's model and voice load while the window comes up (language_changed): the first answer is sooner */
   choose_language (self);
+  show_notices (self);
   show_state (self);
   return self->window;
 }
