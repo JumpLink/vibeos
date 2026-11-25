@@ -272,7 +272,7 @@ export async function run() {
     await until(() => global.display.focus_window === win && terminalFocused(), 15000);
     check('the Terminal is up, its terminal focused', !!win && global.display.focus_window === win &&
         terminalFocused(), global.display.list_all_windows().map(w => `"${w.title}"`).join(' '));
-    check('it has the keyboard over it (X-Vibeos-Keyboard=overlay)', kb.keyboardOverlays(win) && !kb.keyboardSlides(win));
+    check('it has the keyboard over it (X-Vibeos-Keyboard=overlay)', kb.keyboardOverlays(win) && !kb.keyboardFits(win));
     win.maximize();
     const tall = () => win.get_frame_rect().height > Main.layoutManager.primaryMonitor.height / 2;
     await until(() => win.maximized_vertically && tall(), 10000);

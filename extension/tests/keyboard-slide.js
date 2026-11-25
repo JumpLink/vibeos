@@ -1,4 +1,5 @@
-// GNOME Console under the on-screen keyboard, in a headless GNOME Shell of the test's own (keyboard-slide.sh runs it as
+// GNOME Console under the on-screen keyboard (an app like any other: the keys go over its window, which slides up
+// only as far as the cursor's line needs), in a headless GNOME Shell of the test's own (keyboard-slide.sh runs it as
 // the shell's automation script): the extension's keyboard swapped in, its touch-focus opening, and a Console of the
 // test's own. Touches and keys come from virtual devices of this shell's own, text from its input method.
 //
@@ -19,6 +20,8 @@ import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+
+import {standInForTheMobileShell} from './keyboard-standin.js';
 
 export const METRICS = {};
 const DIR = GLib.path_get_dirname(GLib.filename_from_uri(import.meta.url)[0]);
@@ -93,6 +96,7 @@ export async function run() {
     const kb = await import(`file://${DIR}/ext/keyboard/keyboard.js`);
     const {dp} = await import(`file://${DIR}/ext/units.js`);
     const {TouchFocusKeyboard} = await import(`file://${DIR}/ext/oskfocus.js`);
+    standInForTheMobileShell();
     const swap = new kb.KeyboardSwap();
     const touchFocus = new TouchFocusKeyboard();
     check('the extension\'s keyboard is in', swap.active && keyboard()?.constructor.name.includes('VibeosKeyboard'));
@@ -122,7 +126,8 @@ export async function run() {
     await until(() => global.display.focus_window === win && terminalFocused(), 15000);
     check('Console is up, its terminal focused', !!win && global.display.focus_window === win && terminalFocused(),
         global.display.list_all_windows().map(w => `"${w.title}"`).join(' '));
-    check('Console slides (keyboard-slide-apps)', kb.keyboardSlides(win));
+    check('Console has the keys over it, as every app (neither overlay nor fit)',
+        !kb.keyboardOverlays(win) && !kb.keyboardFits(win));
     // over the whole work area, as the phone's shell puts every window (this shell's session leaves it floating)
     win.maximize();
     const tall = () => win.get_frame_rect().height > Main.layoutManager.primaryMonitor.height / 2;

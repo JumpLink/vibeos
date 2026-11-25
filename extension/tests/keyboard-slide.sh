@@ -21,7 +21,7 @@ trap 'set +e; [ -z "$bus" ] || kill "$bus" 2>/dev/null; rm -rf "${t:?}"' EXIT
 mkdir "$t/schemas" "$t/home" "$t/data" "$t/config" "$t/cache"
 mkdir -m 700 "$t/run"
 cp -a "$src" "$t/ext"
-cp "$here/keyboard-slide.js" "$t/"
+cp "$here/keyboard-slide.js" "$here/keyboard-standin.js" "$t/"
 cp "$src/../vibeos-launcher/data/vibeos.Shell.gschema.xml" "$t/schemas/"
 glib-compile-schemas "$t/schemas"
 dbus-daemon --session --address="unix:path=$t/run/system_bus" --nofork --nopidfile >/dev/null 2>&1 &

@@ -3,8 +3,8 @@
  * A window runs the user's shell on a pseudo-terminal of its own (term-session.h) in a VTE that the app gives its
  * touches to (term-view.h): a tap brings the keyboard, a long press selects, two fingers scroll the history or, for a
  * program on the alternate screen or one that tracks the mouse, send what a mouse wheel would. The window keeps its
- * size when the keyboard comes up: the shell slides it up just far enough for the cursor's line (X-Vibeos-Keyboard=slide
- * in its desktop file), so the program's lines are not reflowed. */
+ * size when the keyboard comes up: the keys go over it (X-Vibeos-Keyboard=overlay in its desktop file) and the window
+ * makes room itself (term-layout.h), so the program's lines are not reflowed. */
 #include "term-window.h"
 
 #include <glib/gi18n.h>
