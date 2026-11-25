@@ -149,6 +149,13 @@ sync_claims (NaviCompass *self)
 static void
 on_props (GDBusProxy *proxy, GVariant *changed, GStrv invalidated, NaviCompass *self)
 {
+  /* a sensor that comes or goes while Navi runs: iio-sensor-proxy can take its bus name before it has opened a
+   * sensor behind a sensor hub, and says HasCompass or HasAccelerometer later; the claims follow */
+  gboolean has;
+  if (g_variant_lookup (changed, proxy == self->compass ? "HasCompass" : "HasAccelerometer", "b", &has)) {
+    sync_claims (self);
+    return;
+  }
   if (proxy == self->compass)
     read_compass (self);
   else

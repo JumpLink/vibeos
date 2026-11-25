@@ -722,6 +722,169 @@ test_compass (void)
   g_assert_cmpfloat (fabs (remainder (a - 10, 360)), <, 1);
 }
 
+/* ---- the compass's claims, against a stand-in iio-sensor-proxy on a bus of the test's own ---- */
+
+static const char sensor_proxy_xml[] =
+  "<node>"
+  " <interface name='net.hadess.SensorProxy'>"
+  "  <method name='ClaimAccelerometer'/><method name='ReleaseAccelerometer'/>"
+  "  <property name='HasAccelerometer' type='b' access='read'/>"
+  "  <property name='AccelerometerOrientation' type='s' access='read'/>"
+  " </interface>"
+  " <interface name='net.hadess.SensorProxy.Compass'>"
+  "  <method name='ClaimCompass'/><method name='ReleaseCompass'/>"
+  "  <property name='HasCompass' type='b' access='read'/>"
+  "  <property name='CompassHeading' type='d' access='read'/>"
+  " </interface>"
+  "</node>";
+
+typedef struct {
+  gboolean has_compass;
+  double   heading;
+  int      gets;                 /* properties read (a proxy's GetAll reads each) */
+  int      claims, releases;     /* ClaimCompass, ReleaseCompass */
+} SensorStandIn;
+
+static void
+stand_in_call (GDBusConnection *c, const char *sender, const char *path, const char *iface, const char *method,
+               GVariant *params, GDBusMethodInvocation *inv, gpointer data)
+{
+  SensorStandIn *s = data;
+  if (!strcmp (method, "ClaimCompass"))
+    s->claims++;
+  else if (!strcmp (method, "ReleaseCompass"))
+    s->releases++;
+  g_dbus_method_invocation_return_value (inv, NULL);
+}
+
+static GVariant *
+stand_in_get (GDBusConnection *c, const char *sender, const char *path, const char *iface, const char *prop,
+              GError **error, gpointer data)
+{
+  SensorStandIn *s = data;
+  s->gets++;
+  if (!strcmp (prop, "HasCompass"))
+    return g_variant_new_boolean (s->has_compass);
+  if (!strcmp (prop, "CompassHeading"))
+    return g_variant_new_double (s->heading);
+  if (!strcmp (prop, "HasAccelerometer"))
+    return g_variant_new_boolean (FALSE);
+  if (!strcmp (prop, "AccelerometerOrientation"))
+    return g_variant_new_string ("undefined");
+  g_set_error (error, G_DBUS_ERROR, G_DBUS_ERROR_UNKNOWN_PROPERTY, "no property %s", prop);
+  return NULL;
+}
+
+static void
+stand_in_changed (GDBusConnection *c, const char *path, const char *iface, const char *prop, GVariant *value)
+{
+  GVariantBuilder b;
+  const char *none[] = { NULL };
+  g_variant_builder_init (&b, G_VARIANT_TYPE_VARDICT);
+  g_variant_builder_add (&b, "{sv}", prop, value);
+  g_dbus_connection_emit_signal (c, NULL, path, "org.freedesktop.DBus.Properties", "PropertiesChanged",
+                                 g_variant_new ("(sa{sv}^as)", iface, &b, none), NULL);
+  g_dbus_connection_flush_sync (c, NULL, NULL);
+}
+
+/* runs the main loop until *count reaches `want` or `ms` pass; then on for `settle` ms */
+static void
+spin_until (const int *count, int want, int ms, int settle)
+{
+  gint64 end = g_get_monotonic_time () + ms * 1000;
+  while ((!count || *count < want) && g_get_monotonic_time () < end)
+    g_main_context_iteration (NULL, FALSE) || (g_usleep (1000), TRUE);
+  end = g_get_monotonic_time () + settle * 1000;
+  while (g_get_monotonic_time () < end)
+    g_main_context_iteration (NULL, FALSE) || (g_usleep (1000), TRUE);
+}
+
+/* iio-sensor-proxy can take its name before a sensor behind a sensor hub is open: HasCompass is false when Navi
+ * starts and turns true later. The claim follows it then (not only at the start), the heading comes, and the claim
+ * goes back when Navi stops asking. */
+static void
+test_compass_late_sensor (void)
+{
+  g_autofree char *daemon = g_find_program_in_path ("dbus-daemon");
+  if (!daemon) {
+    g_test_skip ("no dbus-daemon");
+    return;
+  }
+  g_autoptr (GTestDBus) bus = g_test_dbus_new (G_TEST_DBUS_NONE);
+  g_test_dbus_up (bus);
+  /* the compass looks for iio-sensor-proxy on the system bus: here, the test's own */
+  g_setenv ("DBUS_SYSTEM_BUS_ADDRESS", g_test_dbus_get_bus_address (bus), TRUE);
+
+  g_autoptr (GError) error = NULL;
+  /* the compass's connection (the system bus singleton), held here so that the bus going away at the end does not
+   * end the test's process */
+  g_autoptr (GDBusConnection) sys = g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, &error);
+  g_assert_no_error (error);
+  g_dbus_connection_set_exit_on_close (sys, FALSE);
+  g_autoptr (GDBusConnection) c = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, &error);
+  g_assert_no_error (error);
+  g_autoptr (GDBusNodeInfo) node = g_dbus_node_info_new_for_xml (sensor_proxy_xml, &error);
+  g_assert_no_error (error);
+  SensorStandIn s = { .has_compass = FALSE, .heading = 24.9 };
+  static const GDBusInterfaceVTable vtable = { stand_in_call, stand_in_get, NULL, { 0 } };
+  guint ids[2];
+  ids[0] = g_dbus_connection_register_object (c, "/net/hadess/SensorProxy", node->interfaces[0], &vtable, &s, NULL,
+                                              &error);
+  g_assert_no_error (error);
+  ids[1] = g_dbus_connection_register_object (c, "/net/hadess/SensorProxy/Compass", node->interfaces[1], &vtable, &s,
+                                              NULL, &error);
+  g_assert_no_error (error);
+  g_autoptr (GVariant) owned = g_dbus_connection_call_sync (c, "org.freedesktop.DBus", "/org/freedesktop/DBus",
+                                                            "org.freedesktop.DBus", "RequestName",
+                                                            g_variant_new ("(su)", "net.hadess.SensorProxy", 0),
+                                                            G_VARIANT_TYPE ("(u)"), G_DBUS_CALL_FLAGS_NONE, -1, NULL,
+                                                            &error);
+  g_assert_no_error (error);
+
+  NaviCompass *nc = navi_compass_new ();
+  navi_compass_set_active (nc, TRUE);
+  /* both proxies have read their properties (2 each); no compass yet, so no claim and no heading */
+  spin_until (&s.gets, 4, 5000, 200);
+  g_assert_cmpint (s.gets, >=, 4);
+  g_assert_cmpint (s.claims, ==, 0);
+  double h = -1;
+  g_assert_false (navi_compass_get_heading (nc, &h));
+
+  /* the sensor opens: HasCompass turns true, and the compass is claimed */
+  s.has_compass = TRUE;
+  stand_in_changed (c, "/net/hadess/SensorProxy/Compass", "net.hadess.SensorProxy.Compass", "HasCompass",
+                    g_variant_new_boolean (TRUE));
+  spin_until (&s.claims, 1, 5000, 100);
+  g_assert_cmpint (s.claims, ==, 1);
+
+  /* a reading after the claim is the heading (portrait: the device's top) */
+  stand_in_changed (c, "/net/hadess/SensorProxy/Compass", "net.hadess.SensorProxy.Compass", "CompassHeading",
+                    g_variant_new_double (24.9));
+  spin_until (NULL, 0, 0, 300);
+  g_assert_true (navi_compass_get_heading (nc, &h));
+  g_assert_cmpfloat_with_epsilon (h, 24.9, 1e-9);
+  /* another property's change neither claims again nor releases */
+  stand_in_changed (c, "/net/hadess/SensorProxy/Compass", "net.hadess.SensorProxy.Compass", "CompassHeading",
+                    g_variant_new_double (30.0));
+  spin_until (NULL, 0, 0, 200);
+  g_assert_cmpint (s.claims, ==, 1);
+  g_assert_cmpint (s.releases, ==, 0);
+
+  /* Navi stops asking: the claim goes back */
+  navi_compass_set_active (nc, FALSE);
+  spin_until (&s.releases, 1, 5000, 100);
+  g_assert_cmpint (s.releases, ==, 1);
+
+  g_object_unref (nc);
+  spin_until (NULL, 0, 0, 100);
+  g_dbus_connection_unregister_object (c, ids[0]);
+  g_dbus_connection_unregister_object (c, ids[1]);
+  g_clear_object (&c);
+  g_dbus_connection_close_sync (sys, NULL, NULL);
+  g_clear_object (&sys);
+  g_test_dbus_down (bus);   /* also unsets DBUS_SYSTEM_BUS_ADDRESS */
+}
+
 int
 main (int argc, char **argv)
 {
@@ -746,5 +909,6 @@ main (int argc, char **argv)
   g_test_add_func ("/navi/search/photon", test_photon);
   g_test_add_func ("/navi/search/poi-groups", test_poi_groups);
   g_test_add_func ("/navi/sun", test_sun);
+  g_test_add_func ("/navi/compass/late-sensor", test_compass_late_sensor);
   return g_test_run ();
 }
