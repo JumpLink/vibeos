@@ -228,6 +228,13 @@ poco)
 	# the UCM file's header named the build machine's kernel tree; it names the kernel instead
 	sed -i 's|^# /home/[^ ]*/surya-kernel:$|# the POCO kernel (7.2.15-surya):|' "$P/usr/share/alsa/ucm2/Xiaomi/surya/HiFi.conf"
 	grep -q '^# the POCO kernel (7.2.15-surya):$' "$P/usr/share/alsa/ucm2/Xiaomi/surya/HiFi.conf" || { echo "HiFi.conf: header not changed" >&2; exit 1; }
+	# Calls in apps on the earpiece, as on Android: HiFi gets an Earpiece device (the top amp alone), which PipeWire
+	# offers as profiles of their own on the Speaker's PCM ("HiFi (Earpiece, Mic1)", below the Speaker's), and
+	# WirePlumber picks one while an app plays a call (communication-profile.lua, opted in for this card only)
+	! grep -q 'SectionDevice."Earpiece"' "$P/usr/share/alsa/ucm2/Xiaomi/surya/HiFi.conf" || { echo "HiFi.conf: the stage has an Earpiece already" >&2; exit 1; }
+	cat "$T/poco/ucm-hifi-earpiece.conf" >> "$P/usr/share/alsa/ucm2/Xiaomi/surya/HiFi.conf"
+	install -D -m 644 "$T/poco/communication-profile.lua" "$P/usr/share/wireplumber/scripts/vibeos/communication-profile.lua"
+	install -D -m 644 "$T/poco/61-vibeos-communication-profile.conf" "$P/usr/share/wireplumber/wireplumber.conf.d/61-vibeos-communication-profile.conf"
 	POSTINST_SH='# the sensor registry: a copy the ADSP may write, seeded once from the shipped one, never replaced
 	S=/var/lib/hexagonrpc/surya/persist
 	if getent passwd fastrpc > /dev/null; then
