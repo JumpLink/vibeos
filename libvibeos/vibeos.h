@@ -27,6 +27,7 @@
 #include "vibeos-dialog.h"
 #include "vibeos-time-picker.h"
 #include "vibeos-locale.h"
+#include "vibeos-restart.h"
 #include "vibeos-layout.h"
 #include "vibeos-page-stack.h"
 #include "vibeos-nav-rail.h"

@@ -48,7 +48,11 @@ on_ringing (DictateCallWatch *w, guint id, GtkApplication *app)
   gboolean open = window && gtk_widget_get_visible (window);
 
   if (!dictate_calls_may_announce (settings, open))
-    return;
+    {
+      g_message ("calls: call %u rings, not said (Announce calls off, quiet hours, or calls not to be read)", id);
+      return;
+    }
+  g_message ("calls: call %u rings: said aloud", id);
   /* not open: a window that is never shown, to say it and to listen */
   if (!window)
     window = dictate_window_new (app, TRUE);
@@ -71,6 +75,30 @@ on_calls_changed (DictateCallWatch *w, GtkApplication *app)
 
   if (window)
     dictate_window_calls_changed (window, dictate_call_watch_calls (w));
+}
+
+/* ---- a new language (vibeos-restart.h): Agent kept running with no window (Announce calls) was started in the
+ * language of its day and stayed in it, its window opened later in that language too (Vibe in German on a phone
+ * switched to Russian, 2026-11-25). It starts over in the new one once it has no window: none shown, and none made
+ * for a call it announces or for the power key held, which go when all is quiet. */
+
+static gboolean
+agent_busy (gpointer app)
+{
+  return agent_window (app) != NULL;
+}
+
+/* as the session starts it for Announce calls: with no window */
+static char **
+agent_restart_arguments (gboolean going, gpointer app)
+{
+  return going ? g_strdupv ((char *[]) { "--agent", "--background", NULL }) : NULL;
+}
+
+static void
+on_window_removed (GtkApplication *app, GtkWindow *window, gpointer data)
+{
+  vibeos_restart_check ();
 }
 
 /* Announce calls on: Agent stays when its window closes; off, it goes with it */
@@ -114,6 +142,9 @@ on_startup (GApplication *app, gpointer data)
   g_signal_connect (watch, "ringing", G_CALLBACK (on_ringing), app);
   g_signal_connect (watch, "stopped", G_CALLBACK (on_stopped), app);
   g_signal_connect (watch, "changed", G_CALLBACK (on_calls_changed), app);
+  /* a call that rings while it starts over is read from the call service as it comes back, and said then */
+  g_signal_connect (app, "window-removed", G_CALLBACK (on_window_removed), NULL);
+  vibeos_restart_follow_language (agent_busy, agent_restart_arguments, app);
 }
 
 static void
