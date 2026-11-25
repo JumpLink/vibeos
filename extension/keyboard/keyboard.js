@@ -23,6 +23,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as InputSources from 'resource:///org/gnome/shell/ui/status/keyboard.js';
 
 import {click} from '../haptics.js';
+import {sounds} from '../sounds.js';
 import {gestureTookTouches} from '../oskfocus.js';
 import {openSettings} from '../settings.js';
 import {inHomeStrip} from '../task.js';
@@ -861,7 +862,8 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         if (!k)
             return;
         // a tick under the finger as it lands, as the shell's own keyboard gives (feedbackd's click, so its profile
-        // decides: none when silent)
+        // decides: none when silent), and the key's sound where the user wants it (sounds.js)
+        sounds().keyTap();
         click();
         this._kbPressed.place(this._kb.view, k);
         this._kbPreviewShow(id, k);
@@ -891,6 +893,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         touch.done = true;
         if (count % 2 === 1)
             click();
+        sounds().keyTap();
         this._kbActivate(touch.k.key);
         this._kbTimer(touch, REPEAT_MS, () => this._kbRepeat(id, count + 1));
     }

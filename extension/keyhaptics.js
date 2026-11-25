@@ -10,6 +10,8 @@ import GLib from 'gi://GLib';
 import * as Keyboard from 'resource:///org/gnome/shell/ui/keyboard.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {sounds} from './sounds.js';
+
 function tick() {
     Gio.DBus.session.call('org.sigxcpu.Feedback', '/org/sigxcpu/Feedback', 'org.sigxcpu.Feedback',
         'TriggerFeedback', new GLib.Variant('(ssa{sv}i)', ['vibeos.Shell', 'button-released', {}, -1]),
@@ -60,6 +62,7 @@ export class KeyHaptics {
         const press = this._keyProto.press;
         this._press = press;
         this._keyProto.press = function () {
+            sounds().keyTap();
             tick();
             return press.call(this);
         };

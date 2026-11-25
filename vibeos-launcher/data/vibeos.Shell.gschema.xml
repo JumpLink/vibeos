@@ -166,5 +166,15 @@
       <summary>Apps whose full screen goes under the camera hole</summary>
       <description>App ids (desktop file names without .desktop) whose full-screen window fills the whole panel, the camera hole (or notch) inside the picture, instead of being kept clear of it by a black band. For video. Other apps keep clear of the hole. An app that offers the choice adds or removes its own id here, and the shell follows at once, with the window open.</description>
     </key>
+    <key name="keyboard-sounds" type="b">
+      <default>false</default>
+      <summary>Keyboard sounds</summary>
+      <description>A soft click as each key of the on-screen keyboard goes down. The default is the device's, not this key's: until the user sets it, it is on where there is no vibration motor (a tablet) and off where there is one (a phone, whose keys tick through feedbackd). Whether a value was set is the key's user value (g_settings_get_user_value is NULL while it was not), which is how the shell and Settings read it; the schema's default of false is only what a reader without that rule sees. Silent in feedbackd's Vibrate and Mute modes and during a call.</description>
+    </key>
+    <key name="volume-change-sound" type="b">
+      <default>false</default>
+      <summary>Volume change sound</summary>
+      <description>The sound theme's audio-volume-change, played through the output whose volume is changing at each step of the volume keys and of the volume panel's slider, at most ten times a second. The default is the device's, not this key's: until the user sets it, it is on where there is no vibration motor (a tablet) and off where there is one (a phone). Whether a value was set is the key's user value (g_settings_get_user_value is NULL while it was not). Silent in feedbackd's Vibrate and Mute modes, during a call, and while the output is muted or at zero.</description>
+    </key>
 </schema>
 </schemalist>

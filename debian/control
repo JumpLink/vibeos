@@ -131,6 +131,9 @@ Depends: gnome-shell (>= 51~),
 Recommends: feedbackd,
             iio-sensor-proxy,
             gir1.2-manette-0.2,
+            gir1.2-gsound-1.0,
+            libcanberra-pulse,
+            sound-theme-freedesktop,
 Suggests: vibeos-session,
 Description: GNOME Shell extension of VibeOS, the shell for touch devices
  The shell@vibeos extension replaces GNOME Shell's top panel, overview and
