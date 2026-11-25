@@ -33,6 +33,12 @@ vibeos (1:0.1.5) unstable; urgency=medium
     a page in every app again instead of going home (from the next login),
     and Settings comes to the front again for the pages other parts ask it
     for (Wallpaper & style, Home settings, an app's App info).
+  * Galaxy S10e: the device package has the kernel the phone runs
+    (7.2.15-s10e-2) and its modules, byte for byte, and the call-audio
+    parts for a car's Bluetooth that the phone already runs. The Bluetooth
+    core no longer drops a car's or headset's link before each sleep (that
+    a link lasts through the sleep is not yet verified), and the sensor hub
+    has its GNSS device (no position fix yet).
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
