@@ -56,8 +56,8 @@ const IFACE = `<node>
     </method>
     <!-- how much of the window in front the on-screen keyboard covers: the logical pixels from the keys' top edge down
          to the window's bottom, 0 when the keyboard is down. A window the shell slides up over the keys, or fits
-         above them, is not counted; one whose app's desktop file says X-Vibeos-Keyboard=overlay is, and the app makes room itself
-         (keyboard.js). Changes are announced as the keyboard starts to come up and to go down. -->
+         above them, is not counted; one whose app's desktop file says X-Vibeos-Keyboard=overlay is, and the app
+         makes room itself (keyboard.js). Changes are announced as the keyboard starts to come up and to go down. -->
     <property name="KeyboardOverlap" type="u" access="read"/>
     <!-- the screen's brightness as the quick settings' slider shows it and sets it, 0..1; -1 when the phone has no
          backlight the shell drives. For Agent, which sets it when asked ("brightness to 50 percent") -->
