@@ -1,0 +1,1096 @@
+# Hebrew translations of vibeos-dialer.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-dialer\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Hebrew\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
+
+# android: Dialer phoneAppLabel
+#: data/vibeos.Dialer.desktop.in data/vibeos.Dialer.InCall.desktop.in
+#: src/dialer-window.c src/incall-window.c
+msgid "Phone"
+msgstr "טלפון"
+
+#: data/vibeos.Dialer.desktop.in
+msgid "Make and receive calls"
+msgstr "ביצוע וקבלה של שיחות"
+
+#: data/vibeos.Dialer.desktop.in
+msgid "Phone;Call;Dial;Dialer;Telephone;"
+msgstr "טלפון;שיחה;שיחות;חיוג;חייגן;התקשרות;Phone;Call;Dial;Dialer;Telephone;"
+
+#: src/answer-view.c
+msgid "Swipe from icon to answer and end ongoing call"
+msgstr "יש להחליק מהסמל כדי לענות ולסיים את השיחה הנוכחית"
+
+#: src/answer-view.c
+msgid "Swipe up to answer and end call on hold"
+msgstr "יש להחליק למעלה כדי לענות ולסיים את השיחה שבהמתנה"
+
+#: src/answer-view.c
+msgid "Swipe up to answer and hold ongoing call"
+msgstr "יש להחליק למעלה כדי לענות ולהעביר את השיחה הנוכחית להמתנה"
+
+#: src/answer-view.c
+msgid "Swipe up to answer"
+msgstr "יש להחליק למעלה כדי לענות"
+
+# android: Dialer contact_grid_incoming_voice_call
+#. the top row: "Call from"; the bottom row: the number's kind and the number, for a contact
+#: src/answer-view.c src/incall-view.c
+msgid "Call from"
+msgstr "שיחה מאת"
+
+#: src/answer-view.c
+msgid "Swipe down to reject"
+msgstr "יש להחליק למטה כדי לדחות"
+
+# android: Dialer call_log_header_today
+#: src/call-dates.c
+msgid "Today"
+msgstr "היום"
+
+# android: Dialer call_log_header_yesterday
+#: src/call-dates.c
+msgid "Yesterday"
+msgstr "אתמול"
+
+#: src/call-dates.c
+msgid "Older"
+msgstr "ישנות יותר"
+
+#: src/call-dates.c
+#, c-format
+msgid "%d min. ago"
+msgid_plural "%d min. ago"
+msgstr[0] "לפני דקה"
+msgstr[1] "לפני %d דק‘"
+msgstr[2] "לפני %d דק‘"
+
+#: src/call-dates.c
+#, c-format
+msgid "In %d min."
+msgid_plural "In %d min."
+msgstr[0] "בעוד דקה"
+msgstr[1] "בעוד %d דק‘"
+msgstr[2] "בעוד %d דק‘"
+
+#: src/call-dates.c
+#, c-format
+msgid "%d hr. ago"
+msgid_plural "%d hr. ago"
+msgstr[0] "לפני שעה"
+msgstr[1] "לפני שעתיים"
+msgstr[2] "לפני %d שע‘"
+
+#: src/call-dates.c
+#, c-format
+msgid "In %d hr."
+msgid_plural "In %d hr."
+msgstr[0] "בעוד שעה"
+msgstr[1] "בעוד שעתיים"
+msgstr[2] "בעוד %d שע‘"
+
+# android: DeskClock alarm_tomorrow (other app, short)
+#: src/call-dates.c
+msgid "Tomorrow"
+msgstr "מחר"
+
+#: src/call-dates.c
+#, c-format
+msgid "%d day ago"
+msgid_plural "%d days ago"
+msgstr[0] "לפני יום"
+msgstr[1] "לפני יומיים"
+msgstr[2] "לפני %d ימים"
+
+#: src/call-dates.c
+#, c-format
+msgid "In %d day"
+msgid_plural "In %d days"
+msgstr[0] "בעוד יום"
+msgstr[1] "בעוד יומיים"
+msgstr[2] "בעוד %d ימים"
+
+#. TRANSLATORS: a call's duration with the abbreviations: "2m 15s"
+#: src/call-dates.c
+#, c-format
+msgctxt "call duration"
+msgid "%dm %ds"
+msgstr "%d דק‘ %d שנ‘"
+
+#. TRANSLATORS: a call's duration under a minute: "12s"
+#: src/call-dates.c
+#, c-format
+msgctxt "call duration"
+msgid "%ds"
+msgstr "%d שנ‘"
+
+# android: Dialer emergency_number
+#: src/call-details.c
+msgid "Emergency number"
+msgstr "מספר חירום"
+
+# android: Dialer call_subject_type_and_number (several translations)
+#: src/call-details.c
+#, c-format
+msgctxt "call_subject_type_and_number"
+msgid "%1$s %2$s"
+msgstr "%1$s %2$s"
+
+#: src/call-details.c src/call-stats.c
+msgid "Call"
+msgstr "התקשרות"
+
+# android: Dialer notification_incoming_call
+#. the "Incoming calls" channel, high importance with a full-screen intent: it peeks, and stays while it rings
+#. quiet: the answer screen is up, so on the ongoing channel, which does not peek
+#: src/call-details.c src/call-notifications.c
+msgid "Incoming call"
+msgstr "שיחה נכנסת"
+
+# android: Dialer type_answered_elsewhere
+#: src/call-details.c
+msgid "Call answered on another device"
+msgstr "השיחה נענתה במכשיר אחר"
+
+# android: Dialer type_outgoing
+#: src/call-details.c
+msgid "Outgoing call"
+msgstr "שיחה יוצאת"
+
+# android: Dialer voicemail_settings_title
+#: src/call-details.c
+msgid "Voicemail"
+msgstr "דואר קולי"
+
+# android: Dialer type_rejected
+#: src/call-details.c
+msgid "Declined call"
+msgstr "שיחה שנדחתה"
+
+# android: Dialer type_blocked
+#: src/call-details.c
+msgid "Blocked call"
+msgstr "שיחה שנחסמה"
+
+# android: Dialer type_missed
+#. a missed call peeks (the "Missed calls" channel is high importance)
+#: src/call-details.c src/call-notifications.c
+msgid "Missed call"
+msgstr "שיחה שלא נענתה"
+
+# android: Dialer toast_text_copied (several translations, short)
+#: src/call-details.c src/call-stats.c
+msgid "Text copied"
+msgstr "הטקסט הועתק"
+
+# android: Dialer copy_number (several translations, short)
+#: src/call-details.c src/call-stats.c src/recents-page.c
+msgid "Copy number"
+msgstr "העתקת המספר"
+
+#: src/call-details.c src/call-stats.c src/recents-page.c
+msgid "Edit number before call"
+msgstr "עריכת המספר לפני השיחה"
+
+# android: Dialer voicemailMultiSelectDeleteConfirm (several translations, short)
+#: src/call-details.c src/recents-page.c
+msgid "Delete"
+msgstr "מחיקה"
+
+# android: Dialer call_details_menu_label (several translations, short)
+#: src/call-details.c src/recents-page.c
+msgid "Call details"
+msgstr "פרטי השיחה"
+
+# android: Framework input_method_nav_back_button_desc (several translations, short)
+#. named "Back", the button the shell's back gesture clicks; "Close" is its description
+#. named "Back", the button the shell's back gesture clicks; "Navigate up" is its description
+#. named "Back", the button the shell's back gesture clicks; "Close" is its description
+#. named "Back", the button the shell's back gesture clicks; "Navigate up" is its description
+#. named "Back", the button the shell's back gesture clicks; "stop searching" is its description
+#: src/call-details.c src/call-history.c src/call-stats.c src/dialer-settings.c
+#: src/favorites-page.c src/search-bar.c
+msgid "Back"
+msgstr "חזרה"
+
+# android: Dialer toolbar_close
+#: src/call-details.c src/call-stats.c
+msgid "Close"
+msgstr "סגירה"
+
+# android: Dialer call_log_all_title (several translations, short)
+#: src/call-history.c
+msgid "All"
+msgstr "הכל"
+
+# android: Dialer call_log_missed_title
+#: src/call-history.c
+msgid "Missed"
+msgstr "שיחות שלא נענו"
+
+#: src/call-history.c
+msgid "Statistics"
+msgstr "נתונים סטטיסטיים"
+
+# android: Dialer clearCallLogConfirmation_title
+#: src/call-history.c
+msgid "Clear call history?"
+msgstr "האם לנקות את היסטוריית השיחות?"
+
+# android: Dialer clearCallLogConfirmation
+#: src/call-history.c
+msgid "This will delete all calls from your history"
+msgstr "פעולה זו תמחק את כל השיחות מההיסטוריה שלך"
+
+# android: Dialer call_incoming_custom_message_cancel (several translations, short)
+#: src/call-history.c src/dialer-settings.c src/incall-view.c
+#: src/recents-page.c
+msgid "Cancel"
+msgstr "ביטול"
+
+# android: Framework httpErrorOk (short)
+#: src/call-history.c src/dialer-settings.c
+msgid "OK"
+msgstr "אישור"
+
+#: src/call-history.c
+msgid "Sort by call count"
+msgstr "מיון לפי מספר השיחות"
+
+#: src/call-history.c
+msgid "Sort by call duration"
+msgstr "מיון לפי משך השיחות"
+
+#: src/call-history.c
+msgid "Clear call history"
+msgstr "ניקוי היסטוריית השיחות"
+
+# android: Dialer call_log_activity_title
+#: src/call-history.c
+msgid "Call History"
+msgstr "היסטוריית שיחות"
+
+# android: Framework action_bar_up_description (several translations, short)
+#: src/call-history.c src/dialer-settings.c src/favorites-page.c
+msgid "Navigate up"
+msgstr "ניווט למעלה"
+
+# android: Dialer description_dialpad_overflow (several translations, short)
+#: src/call-history.c src/dialpad.c src/search-bar.c
+msgid "More options"
+msgstr "אפשרויות נוספות"
+
+# android: Framework decline (several translations, short)
+#. the call notification's text and actions
+#: src/call-notifications.c
+msgid "Decline"
+msgstr "דחייה"
+
+#: src/call-notifications.c
+msgid "Answer"
+msgstr "מענה"
+
+#: src/call-notifications.c
+msgid "Hang up"
+msgstr "ניתוק"
+
+# android: Dialer notification_action_speaker_on
+#: src/call-notifications.c
+msgid "Turn speaker on"
+msgstr "הפעלת הרמקול"
+
+# android: Dialer notification_action_speaker_off
+#: src/call-notifications.c
+msgid "Turn speaker off"
+msgstr "השבתת הרמקול"
+
+#: src/call-notifications.c
+msgid "Dialing"
+msgstr "מתבצע חיוג"
+
+# android: Dialer notification_on_hold
+#: src/call-notifications.c src/incall-view.c
+msgid "On hold"
+msgstr "בהמתנה"
+
+# android: Dialer notification_ongoing_call
+#: src/call-notifications.c
+msgid "Ongoing call"
+msgstr "שיחה פעילה"
+
+#: src/call-notifications.c
+msgid "Call back"
+msgstr "התקשרות חזרה"
+
+# android: Framework phoneTypes[0] (several translations, short)
+#. TRANSLATORS: the home folder, the start of a folder's path ("Home/Recordings"), as Files names it
+#: src/call-recording.c
+msgctxt "folder"
+msgid "Home"
+msgstr "בית"
+
+#: src/calls.c
+msgid "Failed to start call recording"
+msgstr "לא ניתן היה להתחיל את הקלטת השיחה"
+
+#: src/calls.c
+#, c-format
+msgid "The phone is in gateway mode: calls go over SIP"
+msgstr "הטלפון במצב שער (gateway): השיחות עוברות דרך SIP"
+
+#: src/calls.c
+#, c-format
+msgid "Mobile network not available"
+msgstr "הרשת הסלולרית לא זמינה"
+
+#: src/calls.c
+#, c-format
+msgid "No number to call"
+msgstr "אין מספר לחיוג"
+
+# android: Framework emergency_calls_only
+#: src/calls.c
+#, c-format
+msgid "Emergency calls only"
+msgstr "שיחות חירום בלבד"
+
+#: src/calls.c
+#, c-format
+msgid "This phone cannot hold calls"
+msgstr "הטלפון הזה לא יכול להעביר שיחות להמתנה"
+
+#: src/calls-client.c
+msgid "No call service"
+msgstr "אין שירות שיחות"
+
+#: src/call-stats.c
+#, c-format
+msgid "%d call"
+msgid_plural "%d calls"
+msgstr[0] "שיחה אחת"
+msgstr[1] "שתי שיחות"
+msgstr[2] "%d שיחות"
+
+#: src/call-stats.c
+#, c-format
+msgid "%d hr"
+msgid_plural "%d hrs"
+msgstr[0] "שעה אחת"
+msgstr[1] "שעתיים"
+msgstr[2] "%d שעות"
+
+#: src/call-stats.c
+#, c-format
+msgid "%d min"
+msgid_plural "%d mins"
+msgstr[0] "דקה אחת"
+msgstr[1] "%d דקות"
+msgstr[2] "%d דקות"
+
+#: src/call-stats.c
+#, c-format
+msgid "%d sec"
+msgid_plural "%d secs"
+msgstr[0] "שנייה אחת"
+msgstr[1] "%d שניות"
+msgstr[2] "%d שניות"
+
+#: src/call-stats.c
+#, c-format
+msgid "Incoming: %s"
+msgstr "נכנסות: %s"
+
+#: src/call-stats.c
+#, c-format
+msgid "Outgoing: %s"
+msgstr "יוצאות: %s"
+
+#: src/call-stats.c
+#, c-format
+msgid "Missed: %s"
+msgstr "שלא נענו: %s"
+
+#: src/call-stats.c
+#, c-format
+msgid "Blocked: %s"
+msgstr "חסומות: %s"
+
+# android: SystemUI quick_settings_flashlight_tile_level_percentage (other app, several translations)
+#: src/call-stats.c
+#, c-format
+msgid "%d%%"
+msgstr "%d%%"
+
+#. Call durations: the card stays when the number was never talked to, with nothing in it (its container goes)
+#: src/call-stats.c
+msgid "Call durations"
+msgstr "משך השיחות"
+
+#: src/call-stats.c
+msgid "Of total"
+msgstr "מתוך הסך הכול"
+
+#: src/call-stats.c
+msgid "This number"
+msgstr "המספר הזה"
+
+#. Call count
+#: src/call-stats.c
+msgid "Call count"
+msgstr "מספר השיחות"
+
+#. Average call duration: just its title when nothing was talked on
+#: src/call-stats.c
+msgid "Average call duration"
+msgstr "משך שיחה ממוצע"
+
+#: src/call-stats.c
+msgid "Contact statistics details"
+msgstr "פרטים סטטיסטיים של איש הקשר"
+
+#: src/call-stats.c
+#, c-format
+msgid "Total: %1$s, %2$s"
+msgstr "סה\"כ: %1$s, %2$s"
+
+# android: Dialer call_log_all_empty
+#. the empty view covers the band too; no "time range" here, so always this line
+#: src/call-stats.c src/recents-page.c
+msgid "Your call history is empty"
+msgstr "היסטוריית השיחות שלך ריקה"
+
+# android: Dialer add_contact_not_available
+#: src/contacts-app.c
+msgid "No contacts app available"
+msgstr "אין אף אפליקציה לניהול אנשי קשר"
+
+# android: Framework phoneTypeCar (several translations, short)
+#: src/contacts.c
+msgid "Car"
+msgstr "מכונית"
+
+# android: Framework phoneTypeIsdn (short)
+#: src/contacts.c
+msgid "ISDN"
+msgstr "ISDN"
+
+# android: Framework phoneTypeAssistant (several translations, short)
+#: src/contacts.c
+msgid "Assistant"
+msgstr "אסיסטנט"
+
+# android: Framework phoneTypeCallback (short)
+#: src/contacts.c
+msgid "Callback"
+msgstr "התקשרות חזרה"
+
+# android: Framework phoneTypeCompanyMain (adapted, short)
+#: src/contacts.c
+msgid "Company main"
+msgstr "חברה - ראשי"
+
+# android: Framework phoneTypeRadio (short)
+#: src/contacts.c
+msgid "Radio"
+msgstr "רדיו"
+
+# android: Framework phoneTypeTelex (short)
+#: src/contacts.c
+msgid "Telex"
+msgstr "טלקס"
+
+#: src/contacts.c
+msgid "TTY/TDD"
+msgstr "TTY/TDD"
+
+# android: Framework phoneTypes[3] (adapted, short)
+#: src/contacts.c
+msgid "Work fax"
+msgstr "פקס בעבודה"
+
+# android: Framework phoneTypes[4] (adapted, short)
+#: src/contacts.c
+msgid "Home fax"
+msgstr "פקס בבית"
+
+# android: Framework phoneTypeOtherFax (adapted, short)
+#: src/contacts.c
+msgid "Other fax"
+msgstr "פקס נוסף"
+
+# android: Framework phoneTypeWorkPager (adapted, short)
+#: src/contacts.c
+msgid "Work pager"
+msgstr "זימונית מהעבודה"
+
+# android: Framework phoneTypes[5] (short)
+#: src/contacts.c
+msgid "Pager"
+msgstr "זימונית"
+
+# android: Framework phoneTypeWorkMobile (adapted, short)
+#: src/contacts.c
+msgid "Work mobile"
+msgstr "נייד של העבודה"
+
+# android: Framework phoneTypes[1] (several translations, short)
+#: src/contacts.c
+msgid "Mobile"
+msgstr "נייד"
+
+# android: Framework phoneTypes[2] (several translations, short)
+#: src/contacts.c
+msgid "Work"
+msgstr "עבודה"
+
+# android: Framework phoneTypes[0] (several translations, short)
+#: src/contacts.c
+msgctxt "phone number type"
+msgid "Home"
+msgstr "בית"
+
+# android: Contacts local_invisible_directory (short)
+#: src/contacts.c
+msgid "Other"
+msgstr "אחר"
+
+# android: Dialer all_contacts_empty
+#. the empty view: the contacts picture, the line, "Create new contact"
+#: src/contacts-page.c
+msgid "You don't have any contacts yet"
+msgstr "עדיין אין לך אנשי קשר"
+
+# android: Dialer all_contacts_empty_add_contact_action
+#: src/contacts-page.c src/recents-page.c src/search-page.c
+msgid "Create new contact"
+msgstr "איש קשר חדש"
+
+# android: Contacts name_family (short)
+#: src/dialer-settings.c
+msgid "Last name"
+msgstr "שם משפחה"
+
+# android: Contacts name_given (short)
+#: src/dialer-settings.c
+msgid "First name"
+msgstr "שם פרטי"
+
+# android: Contacts display_options_view_family_name_first
+#: src/dialer-settings.c
+msgid "Last name first"
+msgstr "קודם שם המשפחה"
+
+# android: Contacts display_options_view_given_name_first
+#: src/dialer-settings.c
+msgid "First name first"
+msgstr "קודם השם הפרטי"
+
+#: src/dialer-settings.c
+msgid "Sort by"
+msgstr "מיון לפי"
+
+# android: Contacts display_options_view_names_as (short)
+#: src/dialer-settings.c
+msgid "Name format"
+msgstr "פורמט השם"
+
+#: src/dialer-settings.c
+msgid "Display options"
+msgstr "אפשרויות תצוגה"
+
+# android: Dialer ringtone_silent (several translations, short)
+#: src/dialer-settings.c
+msgid "None"
+msgstr "ללא"
+
+# android: Dialer notification_channel_misc (several translations, short)
+#: src/dialer-settings.c
+msgid "Default"
+msgstr "ברירת מחדל"
+
+# android: Dialer ringtone_title (several translations, short)
+#: src/dialer-settings.c
+msgid "Phone ringtone"
+msgstr "רינגטון של טלפון"
+
+#. the vibrator-gated rows: the phone has one (feedbackd)
+#: src/dialer-settings.c
+msgid "Also vibrate for calls"
+msgstr "רטט גם עבור שיחות"
+
+# android: Dialer dtmf_tone_enable_title
+#: src/dialer-settings.c
+msgid "Keypad tones"
+msgstr "צלילי לוח החיוג"
+
+#: src/dialer-settings.c
+msgid "In-call"
+msgstr "במהלך שיחה"
+
+#: src/dialer-settings.c
+msgid "Vibrate on answer"
+msgstr "רטט במענה לשיחה"
+
+#: src/dialer-settings.c
+msgid "Vibrate on call waiting"
+msgstr "רטט בשיחה ממתינה"
+
+#: src/dialer-settings.c
+msgid "Vibrate on hang up"
+msgstr "רטט בניתוק השיחה"
+
+#: src/dialer-settings.c
+msgid "Vibrate every minute"
+msgstr "רטט בכל דקה"
+
+#: src/dialer-settings.c
+msgid "Vibrates at the 45 second mark of every minute during outgoing calls"
+msgstr "רטט בשנייה ה-45 של כל דקה במהלך שיחות יוצאות"
+
+# android: Dialer sounds_and_vibration_title
+#: src/dialer-settings.c
+msgid "Sounds and vibration"
+msgstr "צלילים ורטט"
+
+#: src/dialer-settings.c
+msgid "This device can't record calls"
+msgstr "המכשיר הזה לא יכול להקליט שיחות"
+
+#: src/dialer-settings.c
+msgid "To record calls on this device, turn off Announce recording"
+msgstr "כדי להקליט שיחות במכשיר הזה, יש להשבית את \"הודעה על הקלטה\""
+
+#: src/dialer-settings.c
+msgid "This device can't play it to the other person"
+msgstr "המכשיר הזה לא יכול להשמיע אותה לצד השני"
+
+#: src/dialer-settings.c
+msgid "Both sides hear “This call is now being recorded” when recording starts"
+msgstr "שני הצדדים שומעים \"השיחה הזו מוקלטת עכשיו\" כשההקלטה מתחילה"
+
+#: src/dialer-settings.c
+msgid "Call recordings can't be saved in this folder"
+msgstr "לא ניתן לשמור הקלטות שיחה בתיקייה הזו"
+
+#: src/dialer-settings.c
+msgid "Storage location"
+msgstr "מיקום האחסון"
+
+#: src/dialer-settings.c
+msgid "Record every call"
+msgstr "הקלטה של כל שיחה"
+
+#: src/dialer-settings.c
+msgid "Announce recording"
+msgstr "הודעה על הקלטה"
+
+#: src/dialer-settings.c
+msgid "Call recording"
+msgstr "הקלטת שיחות"
+
+# android: Dialer unblock_report_number_alert_title
+#: src/dialer-settings.c src/recents-page.c
+#, c-format
+msgid "Unblock %s?"
+msgstr "לבטל את החסימה של %s?"
+
+# android: Dialer unblock_number (several translations, short)
+#: src/dialer-settings.c
+msgid "Unblock"
+msgstr "ביטול החסימה"
+
+#: src/dialer-settings.c
+msgid "Add a number"
+msgstr "הוספת מספר"
+
+# android: Contacts non_phone_caption (short)
+#: src/dialer-settings.c
+msgid "Phone number"
+msgstr "מספר טלפון"
+
+# android: Dialer block_number (several translations, short)
+#: src/dialer-settings.c
+msgid "Block"
+msgstr "חסימה"
+
+#: src/dialer-settings.c
+msgid "You won't receive calls or texts from blocked numbers."
+msgstr "שיחות והודעות טקסט ממספרים חסומים לא יתקבלו."
+
+# android: Dialer manage_blocked_numbers_label
+#: src/dialer-settings.c
+msgid "Blocked numbers"
+msgstr "מספרים חסומים"
+
+# android: Dialer dialer_settings_label (several translations, short)
+#: src/dialer-settings.c src/dialer-window.c
+msgid "Settings"
+msgstr "הגדרות"
+
+#: src/dialer-window.c src/nav-bar.c
+msgctxt "bottom_nav_count_9_plus"
+msgid "9+"
+msgstr "9+"
+
+# android: Dialer voice_search_not_available
+#. voice search: no recogniser on this phone
+#: src/dialer-window.c
+msgid "Voice search not available"
+msgstr "חיפוש קולי אינו זמין"
+
+# android: Dialer callHistoryIconLabel
+#: src/dialer-window.c
+msgid "Call history"
+msgstr "היסטוריית שיחות"
+
+#: src/dialer-window.c
+msgid "About"
+msgstr "מידע על האפליקציה"
+
+#: src/dialer-window.c
+msgid "key pad"
+msgstr "לוח מקשים"
+
+#: src/dialer-window.c
+msgid "Choose a call to see its details"
+msgstr "יש לבחור שיחה כדי לראות את הפרטים שלה"
+
+# android: Dialer favorites_header
+#: src/dialer-window.c
+msgctxt "tab_title_speed_dial"
+msgid "Favorites"
+msgstr "מועדפים"
+
+#: src/dialer-window.c
+msgctxt "tab_title_call_history"
+msgid "Recents"
+msgstr "אחרונות"
+
+# android: Dialer tab_all_contacts
+#: src/dialer-window.c
+msgctxt "tab_all_contacts"
+msgid "Contacts"
+msgstr "אנשי קשר"
+
+#: src/dialpad.c
+msgid "Close keypad"
+msgstr "סגירת לוח המקשים"
+
+# android: Dialer description_delete_button
+#: src/dialpad.c
+msgid "backspace"
+msgstr "Backspace"
+
+# android: Dialer add_2sec_pause
+#: src/dialpad-sheet.c
+msgid "Add 2-sec pause"
+msgstr "הוספת השהיה של 2 שניות"
+
+#: src/dialpad-sheet.c
+msgid "Add wait"
+msgstr "הוספת המתנה"
+
+# android: Dialer description_dial_button
+#: src/dialpad-sheet.c
+msgid "dial"
+msgstr "חיוג"
+
+#: src/favorites-page.c
+msgctxt "disambig_option_voice_call"
+msgid "Call"
+msgstr "התקשרות"
+
+# android: Dialer speed_dial_disambig_dialog_title
+#: src/favorites-page.c
+msgid "Choose call type"
+msgstr "בחירת סוג השיחה"
+
+#. "Remember this choice": a check box in a strip of its own
+#: src/favorites-page.c
+msgid "Remember this choice"
+msgstr "לזכור את הבחירה הזו"
+
+# android: Dialer call_subject_type_and_number (several translations)
+#: src/favorites-page.c src/search-page.c
+#, c-format
+msgid "%1$s %2$s"
+msgstr "%1$s %2$s"
+
+# android: Dialer contact_menu_voice_call
+#: src/favorites-page.c
+msgid "Voice Call"
+msgstr "שיחה קולית"
+
+# android: Dialer notification_missedCall_message
+#: src/favorites-page.c
+msgid "Message"
+msgstr "הודעה"
+
+# android: Dialer contact_menu_remove (several translations, short)
+#: src/favorites-page.c
+msgid "Remove"
+msgstr "הסרה"
+
+# android: Dialer contact_menu_contact_info
+#: src/favorites-page.c
+msgid "Contact info"
+msgstr "פרטי התקשרות"
+
+#: src/favorites-page.c
+msgid "Choose a contact"
+msgstr "בחירת איש קשר"
+
+# android: Dialer favorites_header
+#: src/favorites-page.c
+msgid "Favorites"
+msgstr "מועדפים"
+
+# android: Dialer speed_dial_add_button_text (several translations, short)
+#: src/favorites-page.c
+msgctxt "speed_dial_add_button_text"
+msgid "Add"
+msgstr "הוספה"
+
+# android: Dialer speed_dial_no_contacts_description
+#: src/favorites-page.c
+msgid "You haven't added any favorites yet"
+msgstr "לא הוספת עדיין אף אחד לרשימת המועדפים"
+
+# android: Dialer suggested_contact_bottom_sheet_add_favorite_option
+#: src/favorites-page.c
+msgid "Add favorite"
+msgstr "הוספה למועדפים"
+
+# android: Dialer incall_connecting
+#: src/incall-view.c
+msgid "Calling…"
+msgstr "מתקשר…"
+
+# android: Dialer incall_hanging_up
+#: src/incall-view.c
+msgid "Hanging up"
+msgstr "מנתק"
+
+#. what ended the call: busy is named; the others end with "Call ended"
+#: src/incall-view.c
+msgid "Line busy"
+msgstr "הקו תפוס"
+
+# android: Dialer incall_call_ended
+#: src/incall-view.c
+msgid "Call ended"
+msgstr "השיחה הסתיימה"
+
+#: src/incall-view.c
+#, c-format
+msgid "Recording call – %s"
+msgstr "השיחה מוקלטת – %s"
+
+# android: SystemUI screenrecord_stop_description (other app, short)
+#: src/incall-view.c
+msgid "Stop recording"
+msgstr "הפסקת ההקלטה"
+
+#: src/incall-view.c
+msgid "Record call"
+msgstr "הקלטת השיחה"
+
+#. LineageOS's legal notice, before the first recording the user starts
+#: src/incall-view.c
+msgid "Enable call recording?"
+msgstr "להפעיל הקלטת שיחות?"
+
+#: src/incall-view.c
+msgid "Notice: You are responsible for compliance with any laws, regulations and rules that apply to the use of call recording functionality and the use or distribution of those recordings."
+msgstr "הודעה: האחריות לציות לכל החוקים, התקנות והכללים שחלים על השימוש בפונקציה של הקלטת שיחות ועל השימוש בהקלטות האלה או הפצתן מוטלת עליך."
+
+#: src/incall-view.c
+msgid "This phone can't send keypad tones"
+msgstr "הטלפון הזה לא יכול לשלוח צלילי מקשים"
+
+# android: Framework bg_user_sound_notification_button_mute (several translations, short)
+#. the grid's buttons, then the keypad over them, then the end-call button over that
+#: src/incall-view.c
+msgid "Mute"
+msgstr "השתקה"
+
+# android: Dialer incall_label_dialpad
+#: src/incall-view.c
+msgid "Keypad"
+msgstr "לוח חיוג"
+
+# android: Dialer incall_content_description_speaker
+#: src/incall-view.c
+msgid "Speaker"
+msgstr "רמקול"
+
+#: src/incall-view.c
+msgid "Swap"
+msgstr "החלפה"
+
+#: src/incall-view.c
+msgid "Add call"
+msgstr "הוספת שיחה"
+
+# android: Dialer incall_label_hold
+#: src/incall-view.c
+msgid "Hold"
+msgstr "המתנה"
+
+#: src/incall-view.c
+msgid "End call"
+msgstr "סיום השיחה"
+
+#: src/incall-window.c
+msgid "A call is ringing"
+msgstr "יש שיחה נכנסת"
+
+#: src/incall-window.c
+msgid ""
+"Send the following tones?\n"
+msgstr ""
+"לשלוח את הצלילים הבאים?\n"
+
+# android: Dialer pause_prompt_no
+#: src/incall-window.c
+msgid "No"
+msgstr "לא"
+
+# android: Dialer pause_prompt_yes
+#: src/incall-window.c
+msgid "Yes"
+msgstr "כן"
+
+#: src/modem.c
+msgid "There is no modem"
+msgstr "אין מודם"
+
+# android: Dialer private_num_non_verizon
+#: src/phone-number.c
+msgid "Private number"
+msgstr "מספר פרטי"
+
+# android: Dialer new_call_log_unknown
+#: src/phone-number.c
+msgid "Unknown"
+msgstr "לא ידוע"
+
+# android: Dialer payphone
+#: src/phone-number.c
+msgid "Payphone"
+msgstr "טלפון ציבורי"
+
+# android: Dialer new_call_log_secondary_blocked (several translations, short)
+#: src/recents-page.c
+msgid "Blocked"
+msgstr "חסום"
+
+# android: Dialer call_log_item_count_and_date
+#: src/recents-page.c
+#, c-format
+msgid "(%1$u) %2$s"
+msgstr "(%1$u) %2$s"
+
+#: src/recents-page.c src/search-page.c
+msgid "Add to a contact"
+msgstr "הוספה לאיש קשר"
+
+#: src/recents-page.c
+msgid "Send a message"
+msgstr "שליחת הודעה"
+
+#: src/recents-page.c
+msgid "Unblock number"
+msgstr "ביטול חסימת המספר"
+
+#: src/recents-page.c
+msgid "Block number"
+msgstr "חסימת המספר"
+
+#: src/recents-page.c
+#, c-format
+msgid "Call details for %s"
+msgstr "פרטי שיחה עבור %s"
+
+# android: Dialer menu_callNumber (several translations)
+#: src/recents-page.c src/search-page.c
+#, c-format
+msgid "Call %s"
+msgstr "התקשרות אל %s"
+
+# android: Dialer block_number_failed_toast
+#: src/recents-page.c
+msgid "Problem blocking this number"
+msgstr "לא ניתן היה לחסום את המספר הזה"
+
+# android: Dialer unblock_number_failed_toast
+#: src/recents-page.c
+msgid "Problem unblocking this number"
+msgstr "לא ניתן היה לבטל את החסימה של המספר הזה"
+
+# android: Dialer block_number_confirmation_title
+#: src/recents-page.c
+#, c-format
+msgid "Block %s?"
+msgstr "לחסום את %s?"
+
+# android: Dialer block_number_confirmation_message_new_filtering
+#: src/recents-page.c
+msgid "You will no longer receive calls or texts from this number."
+msgstr "לא יגיעו אליך יותר שיחות או הודעות טקסט מהמספר הזה."
+
+#: src/recents-page.c
+msgid "BLOCK"
+msgstr "חסימה"
+
+# android: Dialer unblock_number_ok (several translations, short)
+#: src/recents-page.c
+msgid "UNBLOCK"
+msgstr "ביטול חסימה"
+
+# android: Dialer call_log_missed_empty
+#: src/recents-page.c
+msgid "You have no missed calls."
+msgstr "אין שיחות שלא נענו."
+
+#: src/recents-page.c
+msgid "Make a call"
+msgstr "התקשרות"
+
+# android: Contacts searchHint (several translations, short)
+#: src/search-bar.c
+msgid "Search contacts"
+msgstr "חיפוש אנשי קשר"
+
+#: src/search-bar.c
+msgid "Start voice search"
+msgstr "הפעלת חיפוש קולי"
+
+#: src/search-bar.c
+msgid "stop searching"
+msgstr "הפסקת החיפוש"
+
+#: src/search-bar.c
+msgid "Clear search"
+msgstr "ניקוי החיפוש"
+
+# android: Dialer all_contacts
+#: src/search-page.c
+msgid "All contacts"
+msgstr "כל אנשי הקשר"
+
+#: src/search-page.c
+msgid "Send SMS"
+msgstr "שליחת SMS"

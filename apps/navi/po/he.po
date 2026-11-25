@@ -1,0 +1,1038 @@
+# Hebrew translations of vibeos-navi.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-navi\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Hebrew\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
+
+#: data/vibeos.Navi.desktop.in
+msgid "Navi"
+msgstr "Navi"
+
+#: data/vibeos.Navi.desktop.in
+msgid "Turn-by-turn directions for driving"
+msgstr "הוראות נסיעה מפורטות לנהיגה"
+
+#: data/vibeos.Navi.desktop.in
+msgid "map;navigation;route;directions;drive;"
+msgstr "מפה;ניווט;מסלול;הוראות נסיעה;נהיגה;map;navigation;route;directions;drive;"
+
+#: src/navi-alerts.c
+msgid "Red light camera"
+msgstr "מצלמת רמזור"
+
+#: src/navi-alerts.c
+msgid "Section control"
+msgstr "מצלמת מהירות ממוצעת"
+
+#: src/navi-alerts.c
+msgid "Speed camera"
+msgstr "מצלמת מהירות"
+
+#: src/navi-alerts.c
+msgid "Danger zone"
+msgstr "אזור מסוכן"
+
+#: src/navi-geo.c
+#, c-format
+msgid "%ld min"
+msgstr "%ld דק‘"
+
+#: src/navi-geo.c
+#, c-format
+msgid "%ld h"
+msgstr "%ld שע‘"
+
+#. TRANSLATORS: hours and minutes, "1 h 37 min"
+#: src/navi-geo.c
+#, c-format
+msgid "%ld h %ld min"
+msgstr "%ld שע‘ %ld דק‘"
+
+# android: Framework input_method_nav_back_button_desc (several translations, short)
+#: src/navi-main.c
+msgid "Back"
+msgstr "חזרה"
+
+#: src/navi-main.c
+msgid "Destination"
+msgstr "יעד"
+
+# android: Framework accessibility_system_action_menu_label (short)
+#: src/navi-main.c src/navi-panels.c
+msgid "Menu"
+msgstr "תפריט"
+
+#: src/navi-main.c
+msgid "Drive"
+msgstr "נסיעה"
+
+# android: Framework search_go (several translations, short)
+#: src/navi-main.c src/navi-panels.c
+msgid "Search"
+msgstr "חיפוש"
+
+#: src/navi-panels.c
+msgid "Gas station"
+msgstr "תחנת דלק"
+
+#: src/navi-panels.c
+msgid "EV charging"
+msgstr "טעינת רכב חשמלי"
+
+#: src/navi-panels.c
+msgid "Parking"
+msgstr "חניה"
+
+#: src/navi-panels.c
+msgid "Restaurant"
+msgstr "מסעדה"
+
+#: src/navi-panels.c
+msgid "Fast food"
+msgstr "מזון מהיר"
+
+#: src/navi-panels.c
+msgid "Café"
+msgstr "בית קפה"
+
+#: src/navi-panels.c
+msgid "Supermarket"
+msgstr "סופרמרקט"
+
+#: src/navi-panels.c
+msgid "Pharmacy"
+msgstr "בית מרקחת"
+
+#: src/navi-panels.c
+msgid "Hospital"
+msgstr "בית חולים"
+
+#: src/navi-panels.c
+msgid "ATM"
+msgstr "כספומט"
+
+#: src/navi-panels.c
+msgid "Bank"
+msgstr "בנק"
+
+#: src/navi-panels.c
+msgid "Hotel"
+msgstr "מלון"
+
+#: src/navi-panels.c
+msgid "Toilets"
+msgstr "שירותים"
+
+#: src/navi-panels.c
+msgid "Search for your home address"
+msgstr "חיפוש כתובת הבית"
+
+#: src/navi-panels.c
+msgid "Search for your work address"
+msgstr "חיפוש כתובת העבודה"
+
+# android: Settings storage_menu_rename (several translations, short)
+#: src/navi-panels.c
+msgid "Rename"
+msgstr "שינוי שם"
+
+# android: Framework cancel (several translations, short)
+#: src/navi-panels.c ../dictate/src/dictate-download-dialog.c
+msgid "Cancel"
+msgstr "ביטול"
+
+# android: Framework autofill_save_yes (several translations, short)
+#: src/navi-panels.c
+msgid "Save"
+msgstr "שמירה"
+
+# android: Framework kg_reordering_delete_drop_target_text (several translations, short)
+#: src/navi-panels.c
+msgid "Remove"
+msgstr "הסרה"
+
+# android: Framework action_menu_overflow_description (several translations, short)
+#: src/navi-panels.c
+msgid "More options"
+msgstr "אפשרויות נוספות"
+
+#: src/navi-panels.c
+msgid "Cancel reminder"
+msgstr "ביטול התזכורת"
+
+# android: Framework accessibility_system_action_home_label (several translations, short)
+#: src/navi-panels.c
+msgid "Home"
+msgstr "בית"
+
+# android: Framework resolver_work_tab (several translations, short)
+#: src/navi-panels.c
+msgid "Work"
+msgstr "עבודה"
+
+#: src/navi-panels.c
+msgid "Set once and go"
+msgstr "מגדירים פעם אחת ונוסעים"
+
+#: src/navi-panels.c
+msgid "Planned drive"
+msgstr "נסיעה מתוכננת"
+
+#: src/navi-panels.c
+msgctxt "heading over the saved places"
+msgid "Saved"
+msgstr "שמורים"
+
+#: src/navi-panels.c
+msgid "Recent"
+msgstr "אחרונים"
+
+#: src/navi-panels.c
+msgid "Search is unavailable right now"
+msgstr "החיפוש לא זמין כרגע"
+
+#: src/navi-panels.c
+msgid "No results"
+msgstr "אין תוצאות"
+
+#: src/navi-panels.c
+msgid "Search is unavailable right now. These are from the map, nearby."
+msgstr "החיפוש לא זמין כרגע. אלה מקומות מהמפה, בסביבה."
+
+#: src/navi-panels.c
+msgid "None along the route"
+msgstr "אין לאורך המסלול"
+
+#: src/navi-panels.c
+msgid "Along the route"
+msgstr "לאורך המסלול"
+
+#: src/navi-panels.c
+#, c-format
+msgid "%s ahead · %s"
+msgstr "בעוד %s · %s"
+
+#: src/navi-panels.c
+#, c-format
+msgid "%s ahead"
+msgstr "בעוד %s"
+
+#: src/navi-panels.c
+msgid "On the route"
+msgstr "על המסלול"
+
+#: src/navi-panels.c
+#, c-format
+msgid "+%d min"
+msgstr "+%d דק‘"
+
+#: src/navi-panels.c
+msgid "Getting ready…"
+msgstr "בהכנה…"
+
+#: src/navi-panels.c
+msgid "Say where to go"
+msgstr "לאן נוסעים? אפשר לומר"
+
+#: src/navi-panels.c
+msgid "Search by voice"
+msgstr "חיפוש קולי"
+
+#: src/navi-panels.c
+msgid "Where to?"
+msgstr "לאן?"
+
+#: src/navi-panels.c
+msgid "Gas"
+msgstr "דלק"
+
+# android: SettingsLib usb_configuration_titles[0] (several translations, short)
+#: src/navi-panels.c
+msgid "Charging"
+msgstr "בטעינה"
+
+#: src/navi-panels.c
+msgid "Food"
+msgstr "אוכל"
+
+#: src/navi-panels.c
+msgid "Coffee"
+msgstr "קפה"
+
+#: src/navi-panels.c
+msgid "Groceries"
+msgstr "מצרכים"
+
+#. Waze's two choices; a tap outside or Back keeps the drive as it is (three buttons do not fit a phone)
+#: src/navi-panels.c
+#, c-format
+msgid "Drive to %s?"
+msgstr "לנסוע אל %s?"
+
+#: src/navi-panels.c
+msgid "Drive to this place?"
+msgstr "לנסוע למקום הזה?"
+
+#: src/navi-panels.c
+msgid "Add it as a stop on the way, or make it the new destination and cancel the current route."
+msgstr "אפשר להוסיף אותו כעצירה בדרך, או להגדיר אותו כיעד החדש ולבטל את המסלול הנוכחי."
+
+#: src/navi-panels.c
+msgid "Add a stop"
+msgstr "הוספת עצירה"
+
+#: src/navi-panels.c
+msgid "New destination"
+msgstr "יעד חדש"
+
+#: src/navi-panels.c
+msgid "Cancel the current route?"
+msgstr "לבטל את המסלול הנוכחי?"
+
+#: src/navi-panels.c
+msgid "Keep driving"
+msgstr "המשך נסיעה"
+
+#: src/navi-panels.c
+msgid "Keep route"
+msgstr "שמירת המסלול"
+
+#: src/navi-panels.c
+msgid "Cancel route"
+msgstr "ביטול המסלול"
+
+#: src/navi-panels.c
+msgid "Always on"
+msgstr "תמיד פועל"
+
+# android: Framework wifi_calling_off_summary (several translations, short)
+#: src/navi-panels.c
+msgid "Off"
+msgstr "כבוי"
+
+#: src/navi-panels.c
+msgid "As the system"
+msgstr "כמו במערכת"
+
+#: src/navi-panels.c
+msgid "Only at night"
+msgstr "רק בלילה"
+
+#: src/navi-panels.c
+msgid "3D"
+msgstr "תלת-ממד"
+
+#: src/navi-panels.c
+msgid "2D"
+msgstr "דו-ממד"
+
+# android: Aperture effect_auto (adapted, short)
+#: src/navi-panels.c
+msgid "Auto"
+msgstr "אוטומטי"
+
+#: src/navi-panels.c
+msgid "Alerts only"
+msgstr "התראות בלבד"
+
+#: src/navi-panels.c
+msgid "On"
+msgstr "מופעל"
+
+#: src/navi-panels.c
+msgid "Motorcycle"
+msgstr "אופנוע"
+
+# android: Settings zen_mode_icon_options_descriptions[28] (short)
+#: src/navi-panels.c
+msgid "Car"
+msgstr "רכב"
+
+#: src/navi-panels.c
+msgid "Kilometers"
+msgstr "קילומטרים"
+
+#: src/navi-panels.c
+msgid "Miles"
+msgstr "מיילים"
+
+#: src/navi-panels.c
+msgid "At the limit"
+msgstr "במהירות המותרת"
+
+#: src/navi-panels.c
+msgid "5 mph over"
+msgstr "5 קמ\"ש מעל"
+
+#: src/navi-panels.c
+msgid "10 km/h over"
+msgstr "10 קמ\"ש מעל"
+
+#: src/navi-panels.c
+#, no-c-format
+msgid "10 % over"
+msgstr "10% מעל"
+
+#: src/navi-panels.c
+msgid "3 mph over"
+msgstr "3 מייל לשעה מעל"
+
+#: src/navi-panels.c
+msgid "5 km/h over"
+msgstr "5 קמ\"ש מעל"
+
+#: src/navi-panels.c
+msgid "Tilted, always"
+msgstr "תמיד מוטה"
+
+#: src/navi-panels.c
+msgid "Flat, always"
+msgstr "תמיד שטוח"
+
+#: src/navi-panels.c
+msgid "Flat while browsing, 3D while driving"
+msgstr "שטוח בזמן עיון, תלת-ממד בזמן נהיגה"
+
+#: src/navi-panels.c
+msgid "Miles in the UK and the US, else kilometers"
+msgstr "מיילים בבריטניה ובארה\"ב, אחרת קילומטרים"
+
+#: src/navi-panels.c
+msgid "Not set: tap to search for it"
+msgstr "לא הוגדר: אפשר להקיש כדי לחפש"
+
+# android: Settings dark_ui_title (adapted, short)
+#: src/navi-panels.c
+msgid "Dark mode"
+msgstr "מצב כהה"
+
+#: src/navi-panels.c
+msgid "Map view"
+msgstr "תצוגת המפה"
+
+#: src/navi-panels.c
+msgid "Speeding warning"
+msgstr "אזהרה על מהירות מופרזת"
+
+#: src/navi-panels.c
+msgid "Vehicle type"
+msgstr "סוג הרכב"
+
+#: src/navi-panels.c
+msgid "Units"
+msgstr "יחידות"
+
+#: src/navi-panels.c
+msgid "Spoken directions"
+msgstr "הוראות קוליות"
+
+#: src/navi-panels.c
+msgid "Voice language"
+msgstr "שפת הקול"
+
+#: src/navi-panels.c
+msgid "Forget Home?"
+msgstr "לשכוח את כתובת הבית?"
+
+#: src/navi-panels.c
+msgid "Forget Work?"
+msgstr "לשכוח את כתובת העבודה?"
+
+#: src/navi-panels.c
+msgid "Forget"
+msgstr "שכחה"
+
+# android: Framework global_action_settings (several translations, short)
+#: src/navi-panels.c
+msgid "Settings"
+msgstr "הגדרות"
+
+#: src/navi-panels.c
+msgid "Map display"
+msgstr "תצוגת המפה"
+
+#: src/navi-panels.c
+msgid "Auto: flat while browsing, 3D while driving"
+msgstr "אוטומטי: שטוח בזמן עיון, תלת-ממד בזמן נהיגה"
+
+#: src/navi-panels.c
+msgid "Keep map north up"
+msgstr "הצפון תמיד למעלה"
+
+#: src/navi-panels.c
+msgid "Auto zoom"
+msgstr "זום אוטומטי"
+
+#: src/navi-panels.c
+msgid "Zoom out as the car goes faster"
+msgstr "הקטנת התצוגה ככל שהרכב נוסע מהר יותר"
+
+#. Waze's Navigation: the next route, and a new one on the way, follow them
+#: src/navi-panels.c
+msgid "Navigation"
+msgstr "ניווט"
+
+#: src/navi-panels.c
+msgid "Avoid toll roads"
+msgstr "הימנעות מכבישי אגרה"
+
+#: src/navi-panels.c
+msgid "Avoid highways"
+msgstr "הימנעות מכבישים מהירים"
+
+#: src/navi-panels.c
+msgid "Avoid ferries"
+msgstr "הימנעות ממעבורות"
+
+#: src/navi-panels.c
+msgid "Voice and sound"
+msgstr "קול וצליל"
+
+# android: Framework notification_channel_network_alert (short)
+#: src/navi-panels.c
+msgid "Alerts"
+msgstr "התראות"
+
+#: src/navi-panels.c
+msgid "Speed camera alerts"
+msgstr "התראות על מצלמות מהירות"
+
+#: src/navi-panels.c
+msgid "Where the law allows them: never in Switzerland, only danger zones in France, and in Germany not for the driver while driving"
+msgstr "היכן שהחוק מתיר אותן: אף פעם לא בשווייץ, רק אזורים מסוכנים בצרפת, ובגרמניה לא לנהג בזמן הנהיגה"
+
+#: src/navi-panels.c
+msgid "The speedometer turns red above the limit"
+msgstr "מד המהירות הופך לאדום מעל המהירות המותרת"
+
+#: src/navi-panels.c
+msgid "Saved places"
+msgstr "מקומות שמורים"
+
+#: src/navi-panels.c
+msgid "Stop navigation and exit?"
+msgstr "לעצור את הניווט ולצאת?"
+
+#: src/navi-panels.c
+msgid "Exit"
+msgstr "יציאה"
+
+#: src/navi-panels.c
+msgid "Sound off"
+msgstr "הקול מושתק"
+
+#: src/navi-panels.c
+msgid "Sound on"
+msgstr "הקול מופעל"
+
+#: src/navi-panels.c
+msgid "Saved as Home"
+msgstr "נשמר בתור \"בית\""
+
+#: src/navi-panels.c
+msgid "Saved as Work"
+msgstr "נשמר בתור \"עבודה\""
+
+# android: Framework aerr_close (short)
+#: src/navi-panels.c
+msgid "Close"
+msgstr "סגירה"
+
+#: src/navi-panels.c
+msgid "Set as Home"
+msgstr "הגדרה בתור \"בית\""
+
+#: src/navi-panels.c
+msgid "Set as Work"
+msgstr "הגדרה בתור \"עבודה\""
+
+#: src/navi-panels.c
+msgid "View routes"
+msgstr "הצגת מסלולים"
+
+#: src/navi-panels.c
+msgid "Reminders cannot be set here"
+msgstr "לא ניתן להגדיר כאן תזכורות"
+
+#: src/navi-panels.c
+msgid "Your location"
+msgstr "המיקום שלך"
+
+# android: Settings retry (several translations, short)
+#. after a failure: ask again
+#: src/navi-panels.c ../dictate/src/dictate-download-dialog.c
+msgid "Retry"
+msgstr "ניסיון נוסף"
+
+#: src/navi-panels.c
+msgid "Leave later"
+msgstr "יציאה מאוחר יותר"
+
+#: src/navi-panels.c
+msgid "Go now"
+msgstr "יציאה עכשיו"
+
+# android: Dialer child_number (adapted, several translations)
+#: src/navi-panels.c
+#, c-format
+msgid "Via %s"
+msgstr "דרך %s"
+
+#: src/navi-panels.c
+msgid "Best route"
+msgstr "המסלול הטוב ביותר"
+
+#: src/navi-panels.c
+msgid "Toll road"
+msgstr "כביש אגרה"
+
+#: src/navi-panels.c
+msgid "Ferry"
+msgstr "מעבורת"
+
+# android: SystemUI accessibility_recent (short)
+#: src/navi-panels.c
+msgid "Overview"
+msgstr "סקירה"
+
+#: src/navi-panels.c
+msgid "Re-center"
+msgstr "מרכוז"
+
+# android: Settings service_stop (several translations, short)
+#: src/navi-panels.c
+msgid "Stop"
+msgstr "עצירה"
+
+#: src/navi-panels.c
+msgid "Continue"
+msgstr "המשך"
+
+#: src/navi-panels.c
+msgid "You have arrived"
+msgstr "הגעת ליעד"
+
+# android: Framework sim_done_button (several translations, short)
+#: src/navi-panels.c
+msgid "Done"
+msgstr "סיום"
+
+#: src/navi-panels.c
+msgid "Your destination is on the right"
+msgstr "היעד שלך מימין"
+
+#: src/navi-panels.c
+msgid "Your destination is on the left"
+msgstr "היעד שלך משמאל"
+
+#: src/navi-panels.c
+msgid "Lanes"
+msgstr "נתיבים"
+
+#: src/navi-panels.c
+msgid "and then"
+msgstr "ואז"
+
+#: src/navi-panels.c
+msgid "North up"
+msgstr "הצפון למעלה"
+
+#: src/navi-panels.c
+msgid "Drive here"
+msgstr "נסיעה לכאן"
+
+#: src/navi-panels.c
+msgid "Go"
+msgstr "יציאה לדרך"
+
+#: src/navi-panels.c
+msgctxt "the place is a saved one"
+msgid "Saved"
+msgstr "שמור"
+
+#: src/navi-panels.c
+msgid "Your Home"
+msgstr "הבית שלך"
+
+#: src/navi-panels.c
+msgid "Your Work"
+msgstr "העבודה שלך"
+
+#: src/navi-panels.c
+msgid "Finding the best routes…"
+msgstr "מתבצע חיפוש של המסלולים הטובים ביותר…"
+
+#: src/navi-panels.c
+msgid "The map's centre"
+msgstr "מרכז המפה"
+
+#: src/navi-panels.c
+msgid "Finding a new route…"
+msgstr "מתבצע חיפוש של מסלול חדש…"
+
+#: src/navi-panels.c
+msgid "No route from here yet. Trying again…"
+msgstr "עדיין אין מסלול מכאן. מתבצע ניסיון נוסף…"
+
+#: src/navi-panels.c
+msgid "Your destination"
+msgstr "היעד שלך"
+
+#: src/navi-panels.c
+#, c-format
+msgid "Speed limit %d mph"
+msgstr "מהירות מותרת %d מייל לשעה"
+
+#: src/navi-panels.c
+#, c-format
+msgid "Speed limit %d km/h"
+msgstr "מהירות מותרת %d קמ\"ש"
+
+#: src/navi-panels.c
+msgid "No speed limit"
+msgstr "אין הגבלת מהירות"
+
+#: src/navi-panels.c
+msgid ""
+"Not allowed everywhere. In Germany the driver may not use them while driving (§23 (1c) StVO); a passenger may. In Switzerland Navi never shows them, and in France only danger zones.\n"
+"\n"
+"You can turn them off in Settings at any time."
+msgstr ""
+"לא מותר בכל מקום. בגרמניה הנהג לא רשאי להשתמש בהן בזמן הנהיגה (§23 (1c) StVO), אבל נוסע רשאי. בשווייץ Navi אף פעם לא מציגה אותן, ובצרפת רק אזורים מסוכנים.\n"
+"\n"
+"אפשר להשבית אותן בהגדרות בכל שלב."
+
+# android: Framework nas_upgrade_notification_disable_action (several translations, short)
+#: src/navi-panels.c
+msgid "Turn off"
+msgstr "השבתה"
+
+# android: Framework httpErrorOk (short)
+#: src/navi-panels.c ../dictate/src/dictate-download-dialog.c
+msgid "OK"
+msgstr "אישור"
+
+#: src/navi-plan.c
+#, c-format
+msgid "Time to leave for %s"
+msgstr "הגיע הזמן לצאת אל %s"
+
+#: src/navi-plan.c
+msgid "Tap for the routes from where you are."
+msgstr "אפשר להקיש כדי לראות את המסלולים מהמיקום הנוכחי."
+
+#. TRANSLATORS: when the reminder to leave comes, "Reminder at 08:15"; the form follows the time's hour as shown
+#. * (the singular for 1:00), for words that change with it
+#: src/navi-plan.c
+#, c-format
+msgid "Reminder at %s"
+msgid_plural "Reminder at %s"
+msgstr[0] "תזכורת בשעה %s"
+msgstr[1] "תזכורת בשעה %s"
+msgstr[2] "תזכורת בשעה %s"
+
+#. TRANSLATORS: "Reminder tomorrow at 08:15"; the form follows the time's hour, as above
+#: src/navi-plan.c
+#, c-format
+msgid "Reminder tomorrow at %s"
+msgid_plural "Reminder tomorrow at %s"
+msgstr[0] "תזכורת מחר בשעה %s"
+msgstr[1] "תזכורת מחר בשעה %s"
+msgstr[2] "תזכורת מחר בשעה %s"
+
+#. TRANSLATORS: the day (its short name) and time, "Reminder on Mon at 08:15"; the form follows the time's hour, as
+#. * above
+#: src/navi-plan.c
+#, c-format
+msgid "Reminder on %s at %s"
+msgid_plural "Reminder on %s at %s"
+msgstr[0] "תזכורת: %s, %s"
+msgstr[1] "תזכורת: %s, %s"
+msgstr[2] "תזכורת: %s, %s"
+
+#. TRANSLATORS: Navi's voice in Russian; tiny-voca is its name
+#: src/navi-voice.c
+msgid "tiny-voca voice, on this device"
+msgstr "הקול tiny-voca, במכשיר הזה"
+
+#: src/navi-voice.c
+#, c-format
+msgid "Piper voice %s, on this device"
+msgstr "הקול %s של Piper, במכשיר הזה"
+
+#: src/navi-voice.c
+msgid "Piper voice, on this device"
+msgstr "קול של Piper, במכשיר הזה"
+
+#: src/navi-voice.c
+msgid "eSpeak NG voices, on this device"
+msgstr "קולות של eSpeak NG, במכשיר הזה"
+
+#: src/navi-voice.c
+msgid "No voice on this phone"
+msgstr "אין קול בטלפון הזה"
+
+#: src/navi-window.c
+msgid "The map cannot be loaded. Check the connection."
+msgstr "לא ניתן לטעון את המפה. יש לבדוק את החיבור."
+
+#: src/navi-window.c
+msgid "Best"
+msgstr "הכי טוב"
+
+#: src/navi-window.c
+msgid "Navigating"
+msgstr "ניווט פעיל"
+
+#: src/navi-window.c
+msgid "Navi cannot reach a road there. Choose a place on a road in Europe."
+msgstr "ל-Navi אין גישה לכביש במקום הזה. יש לבחור מקום על כביש באירופה."
+
+#: src/navi-window.c
+msgid "No route found there. Choose a place on a road."
+msgstr "לא נמצא מסלול למקום הזה. יש לבחור מקום על כביש."
+
+#: src/navi-window.c
+msgid "The route server cannot be reached. Check the connection."
+msgstr "אין חיבור לשרת המסלולים. יש לבדוק את החיבור."
+
+#: src/navi-window.c
+msgid "No GPS – showing your approximate location"
+msgstr "אין GPS – מוצג המיקום המשוער שלך"
+
+#: src/navi-window.c
+msgid "Dropped pin"
+msgstr "נעץ שהוצב"
+
+#: src/navi-window.c
+msgid "Place"
+msgstr "מקום"
+
+#. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Needs %s, which is not installed"
+msgstr "נדרש %s, שלא מותקן"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Not available on this phone"
+msgstr "לא זמין בטלפון הזה"
+
+#. TRANSLATORS: under a language in the list; the first %s is a speech recogniser (Vosk), the second a size
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s and %s to download"
+msgstr "%s ו-%s להורדה"
+
+#. TRANSLATORS: under a language in the list; %s is a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s to install"
+msgstr "%s להתקנה"
+
+#. TRANSLATORS: under a language in the list; %s is a size: 90.4 MB
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s to download"
+msgstr "%s להורדה"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s was not downloaded"
+msgstr "ההורדה של %s לא בוצעה"
+
+#. TRANSLATORS: the first %s is what went wrong, the second a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s. %s was installed, but none of the files were kept on the phone."
+msgstr "%s. %s הותקן, אבל אף אחד מהקבצים לא נשמר בטלפון."
+
+#. TRANSLATORS: %s is what went wrong
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s. Nothing of it was kept on the phone."
+msgstr "%s. שום דבר ממנה לא נשמר בטלפון."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: a quarter done."
+msgstr "מתבצעת הורדה של %s: רבע הושלם."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: half done."
+msgstr "מתבצעת הורדה של %s: חצי הושלם."
+
+#. TRANSLATORS: said aloud while a language downloads; %s is its name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s: three quarters done."
+msgstr "מתבצעת הורדה של %s: שלושה רבעים הושלמו."
+
+#. TRANSLATORS: the progress, two sizes: 12.3 MB of 90.4 MB
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s of %s"
+msgstr "%s מתוך %s"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Unpacking and installing…"
+msgstr "מתבצעים חילוץ והתקנה…"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Installing…"
+msgstr "מתבצעת התקנה…"
+
+# android: Framework serviceClassVoice (short)
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Voice"
+msgstr "קול"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Speech recognition"
+msgstr "זיהוי דיבור"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "The files came, but the language is still not ready"
+msgstr "הקבצים הגיעו, אבל השפה עדיין לא מוכנה"
+
+#. TRANSLATORS: in the progress dialog; %s is a speech recogniser (Vosk)
+#. TRANSLATORS: what is installed, in the download dialog; %s is a speech recogniser (Vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s speech recogniser"
+msgstr "מזהה הדיבור %s"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Downloading %s"
+msgstr "מתבצעת הורדה של %s"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "The package was installed, but the language is still not ready"
+msgstr "החבילה הותקנה, אבל השפה עדיין לא מוכנה"
+
+#. TRANSLATORS: the sum of the sizes in the download dialog; %s is a size: 90.4 MB
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s in all"
+msgstr "סה\"כ %s"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Deutsch)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "Download %s?"
+msgstr "להוריד את %s?"
+
+#. TRANSLATORS: under the title "Download Deutsch?"; %s is an app's name (Navi)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "To speak this language, %s needs this on the phone:"
+msgstr "כדי לדבר בשפה הזו, %s צריכה את הרכיב הזה בטלפון:"
+
+#. TRANSLATORS: under the title "Download Deutsch?"
+#: ../dictate/src/dictate-download-dialog.c
+msgid "To hear and speak this language, Vibe needs these on the phone:"
+msgstr "כדי לשמוע ולדבר בשפה הזו, Vibe צריך את הרכיבים האלה בטלפון:"
+
+#. TRANSLATORS: under the title "Download Deutsch?"
+#: ../dictate/src/dictate-download-dialog.c
+msgid "To hear this language, Dictate needs these on the phone:"
+msgstr "כדי לשמוע את השפה הזו, \"הכתבה\" צריכה את הרכיבים האלה בטלפון:"
+
+#. TRANSLATORS: under it; %s is its Debian package (vibeos-dictate-vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "the %s package from the VibeOS archive"
+msgstr "החבילה %s מהארכיון של VibeOS"
+
+#. TRANSLATORS: under what is downloaded: what it is, its licence and where it comes from
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s · %s · from %s"
+msgstr "%s · %s · מ-%s"
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "Download"
+msgstr "הורדה"
+
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself (Français)
+#. TRANSLATORS: a dialog's title; %s is the language's name for itself
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s is not available"
+msgstr "%s לא זמינה"
+
+#. TRANSLATORS: the first %s is the language's name for itself, the second a speech recogniser (Vosk), the
+#. * third its Debian package (vibeos-dictate-vosk)
+#: ../dictate/src/dictate-download-dialog.c
+#, c-format
+msgid "%s is heard by %s, which is not installed on this phone. Install the %s package, then choose %s again."
+msgstr "את השפה %s מזהה %s, שלא מותקן בטלפון הזה. יש להתקין את החבילה %s ואז לבחור שוב את %s."
+
+#: ../dictate/src/dictate-download-dialog.c
+msgid "There is nothing to download for it."
+msgstr "אין מה להוריד עבורה."
+
+#. TRANSLATORS: %s is what went wrong, from the network or the file system
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "The download failed: %s"
+msgstr "ההורדה נכשלה: %s"
+
+#. TRANSLATORS: %s is what went wrong
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "The files could not be put in place: %s"
+msgstr "לא ניתן היה להעביר את הקבצים למקומם: %s"
+
+#. TRANSLATORS: %s is a file's name
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "%s did not come whole"
+msgstr "הקובץ %s לא הגיע במלואו"
+
+#. TRANSLATORS: %s is a file's name
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "%s is not the file it should be: its checksum does not match"
+msgstr "הקובץ %s הוא לא הקובץ הנכון: סכום הביקורת שלו לא תואם"
+
+#. TRANSLATORS: %s is a file's name
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "%s is larger than it should be"
+msgstr "הקובץ %s גדול יותר מהצפוי"
+
+#. TRANSLATORS: %s is a file's name, %u and the last %s the server's answer (404, Not Found)
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "The server did not give %s: %u %s"
+msgstr "השרת לא סיפק את %s: %u %s"
+
+#. TRANSLATORS: %s is a file's name
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "%s is not the size it should be: it has changed on the server"
+msgstr "הגודל של %s לא תואם: הקובץ השתנה בשרת"
+
+#. TRANSLATORS: the %s are sizes: 90.4 MB
+#: ../dictate/src/dictate-download.c
+#, c-format
+msgid "There is not enough space on the phone: %s are needed, %s are free"
+msgstr "אין מספיק מקום בטלפון: נדרשים %s, ופנויים %s"

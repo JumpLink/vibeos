@@ -1,0 +1,1241 @@
+# Hebrew translations of vibeos-software.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-software\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Hebrew\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
+
+#: data/vibeos.Software.desktop.in src/sw-account-pages.c src/sw-window.c
+msgid "Software"
+msgstr "תוכנות"
+
+#: data/vibeos.Software.desktop.in
+msgid "Find, install and update apps and games"
+msgstr "חיפוש, התקנה ועדכון של אפליקציות ומשחקים"
+
+#: data/vibeos.Software.desktop.in
+msgid "Store;Apps;Games;Install;Update;Uninstall;Review;"
+msgstr "חנות;אפליקציות;משחקים;התקנה;עדכון;הסרה;ביקורת;Store;Apps;Games;Install;Update;Uninstall;Review;"
+
+#: src/sw-account-pages.c
+msgid "You are signed in"
+msgstr "הכניסה לחשבון בוצעה"
+
+#: src/sw-account-pages.c
+msgid "Enter your email address."
+msgstr "יש להזין את כתובת האימייל."
+
+#: src/sw-account-pages.c
+msgid "Enter your password."
+msgstr "יש להזין את הסיסמה."
+
+# android: Settings wifi_sign_in_button_text (several translations, short)
+#: src/sw-account-pages.c src/sw-app-page.c src/sw-mine.c
+msgid "Sign in"
+msgstr "כניסה"
+
+#: src/sw-account-pages.c
+msgid "Sign in to rate and review apps, and to see your apps on all your devices."
+msgstr "אחרי הכניסה לחשבון אפשר לדרג אפליקציות, לכתוב ביקורות ולראות את האפליקציות שלך בכל המכשירים."
+
+# android: Settings preview_pager_email_title (several translations, short)
+#: src/sw-account-pages.c
+msgid "Email"
+msgstr "אימייל"
+
+# android: Settings unlock_set_unlock_password_title (short)
+#: src/sw-account-pages.c
+msgid "Password"
+msgstr "סיסמה"
+
+# android: Settings lockpassword_forgot_password
+#: src/sw-account-pages.c
+msgid "Forgot your password?"
+msgstr "שכחת סיסמה?"
+
+#: src/sw-account-pages.c
+msgid "No account yet?"
+msgstr "אין לך עדיין חשבון?"
+
+#: src/sw-account-pages.c
+msgid "Create an account"
+msgstr "יצירת חשבון"
+
+#: src/sw-account-pages.c
+msgid "Enter a name. It shows on your reviews."
+msgstr "יש להזין שם. השם יוצג בביקורות שלך."
+
+#: src/sw-account-pages.c
+msgid "With an account you can rate and review apps, and see your apps on all your devices. The store emails you a code to confirm the address."
+msgstr "עם חשבון אפשר לדרג אפליקציות, לכתוב ביקורות ולראות את האפליקציות שלך בכל המכשירים. החנות תשלח קוד באימייל לאישור הכתובת."
+
+# android: Settings security_settings_fingerprint_enroll_dialog_name_label (short)
+#: src/sw-account-pages.c
+msgid "Name"
+msgstr "שם"
+
+#: src/sw-account-pages.c
+msgid "Shown on your reviews"
+msgstr "מוצג בביקורות שלך"
+
+#: src/sw-account-pages.c
+msgid "At least 8 characters"
+msgstr "8 תווים לפחות"
+
+#: src/sw-account-pages.c
+msgid "Create the account"
+msgstr "יצירת החשבון"
+
+#: src/sw-account-pages.c
+msgid "Send a new code"
+msgstr "שליחת קוד חדש"
+
+#. TRANSLATORS: %d is the seconds left until a new code can be asked for, "s" the abbreviation of seconds
+#: src/sw-account-pages.c
+#, c-format
+msgid "Send a new code in %d s"
+msgstr "שליחת קוד חדש בעוד %d שנ‘"
+
+#. TRANSLATORS: %s is the store's message (a whole sentence), %d how many more codes may be tried
+#: src/sw-account-pages.c
+#, c-format
+msgid "%s %d try left."
+msgid_plural "%s %d tries left."
+msgstr[0] "%s נשאר עוד ניסיון אחד."
+msgstr[1] "%s נשארו עוד שני ניסיונות."
+msgstr[2] "%s נשארו עוד %d ניסיונות."
+
+#. TRANSLATORS: %d is the code's length in digits, %s the email address
+#: src/sw-account-pages.c
+#, c-format
+msgid "The store sent a %d-digit code to %s. Enter it here to confirm the address. It works for 15 minutes."
+msgstr "החנות שלחה קוד בן %d ספרות אל %s. יש להזין אותו כאן כדי לאשר את הכתובת. הקוד תקף ל-15 דקות."
+
+#. TRANSLATORS: %d is the code's length in digits, %s the email address
+#: src/sw-account-pages.c
+#, c-format
+msgid "Confirm your address to rate and review apps: enter the %d-digit code the store emailed to %s, or ask for a new one."
+msgstr "כדי לדרג אפליקציות ולכתוב ביקורות צריך לאשר את הכתובת: יש להזין את הקוד בן %d הספרות שהחנות שלחה אל %s, או לבקש קוד חדש."
+
+#: src/sw-account-pages.c
+msgid "A new code is on its way"
+msgstr "קוד חדש בדרך"
+
+#: src/sw-account-pages.c
+msgid "Your address is confirmed"
+msgstr "הכתובת שלך אושרה"
+
+#: src/sw-account-pages.c
+msgid "Confirm your email"
+msgstr "אישור כתובת האימייל"
+
+# android: Settings security_settings_remoteauth_enroll_enrolling_agree (short)
+#: src/sw-account-pages.c
+msgid "Confirm"
+msgstr "אישור"
+
+# android: Aperture location_permission_dialog_later (other app, short)
+#: src/sw-account-pages.c
+msgid "Later"
+msgstr "אחר כך"
+
+#: src/sw-account-pages.c
+msgid "Your password is changed, and you are signed in"
+msgstr "הסיסמה שונתה והכניסה לחשבון בוצעה"
+
+#: src/sw-account-pages.c
+msgid "Enter the address you signed up with. If it has an account, the store emails a code to it to set a new password."
+msgstr "יש להזין את הכתובת שאיתה נרשמת. אם יש לה חשבון, החנות תשלח אליה קוד להגדרת סיסמה חדשה."
+
+#: src/sw-account-pages.c
+msgid "Send the code"
+msgstr "שליחת הקוד"
+
+#. TRANSLATORS: %s is the email address (partly hidden), %d the code's length in digits
+#: src/sw-account-pages.c
+#, c-format
+msgid "If %s has an account, a %d-digit code is on its way to it. Enter it here."
+msgstr "אם ל-%s יש חשבון, קוד בן %d ספרות בדרך אליה. יש להזין אותו כאן."
+
+# android: Settings next_label (short)
+#: src/sw-account-pages.c
+msgid "Next"
+msgstr "הבא"
+
+#: src/sw-account-pages.c
+msgid "Choose a new password. Every device signed in to the account is signed out, and this one signed in."
+msgstr "יש לבחור סיסמה חדשה. כל המכשירים שמחוברים לחשבון ינותקו ממנו, והמכשיר הזה יחובר."
+
+#: src/sw-account-pages.c
+msgid "New password"
+msgstr "סיסמה חדשה"
+
+#: src/sw-account-pages.c
+msgid "Set the password"
+msgstr "הגדרת הסיסמה"
+
+#: src/sw-account-pages.c
+msgid "On Wi-Fi only"
+msgstr "רק ב-Wi-Fi"
+
+#: src/sw-account-pages.c
+msgid "Not on a network that counts the data (a phone's mobile data)"
+msgstr "לא ברשת שמודדת את הנתונים (חבילת הגלישה של הטלפון)"
+
+#: src/sw-account-pages.c
+msgid "On any network"
+msgstr "בכל רשת"
+
+#. TRANSLATORS: Mine is the tab of the apps on the device, "Check for updates" its button
+#: src/sw-account-pages.c
+msgid "Only when I ask"
+msgstr "רק לפי בקשה"
+
+#: src/sw-account-pages.c
+msgid "Mine's Check for updates"
+msgstr "הלחצן \"בדיקת עדכונים\" בכרטיסייה \"שלי\""
+
+#. TRANSLATORS: the theme: light or dark as the system's
+#: src/sw-account-pages.c
+msgid "As the system"
+msgstr "כמו במערכת"
+
+# android: Etar preferences_light_theme (other app, short)
+#: src/sw-account-pages.c
+msgid "Light"
+msgstr "בהירה"
+
+# android: Etar preferences_dark_theme (other app, short)
+#: src/sw-account-pages.c
+msgid "Dark"
+msgstr "כהה"
+
+#: src/sw-account-pages.c
+msgid "Software's settings are not installed."
+msgstr "ההגדרות של \"תוכנות\" לא מותקנות."
+
+#: src/sw-account-pages.c
+msgid "Look for updates"
+msgstr "חיפוש עדכונים"
+
+#: src/sw-account-pages.c
+msgid "Software looks for updates when it starts and when apps change. It does not install them by itself: update from Mine."
+msgstr "האפליקציה \"תוכנות\" מחפשת עדכונים כשהיא מופעלת וכשאפליקציות משתנות. היא לא מתקינה אותם בעצמה: העדכון נעשה מהכרטיסייה \"שלי\"."
+
+# android: Etar preferences_theme (other app, several translations, short)
+#: src/sw-account-pages.c
+msgid "Theme"
+msgstr "ערכת נושא"
+
+#: src/sw-account-pages.c
+msgid "VibeOS apps only"
+msgstr "רק אפליקציות של VibeOS"
+
+#: src/sw-account-pages.c
+msgid "None of Debian's in the store's lists"
+msgstr "בלי אפליקציות של Debian ברשימות של החנות"
+
+#: src/sw-account-pages.c
+msgid "About Software"
+msgstr "מידע על \"תוכנות\""
+
+# android: PackageInstaller external_sources_settings (several translations, short)
+#: src/sw-account-pages.c
+msgid "Settings"
+msgstr "הגדרות"
+
+#: src/sw-account-pages.c
+msgid "The catalog"
+msgstr "הקטלוג"
+
+#: src/sw-account-pages.c
+msgid "The apps, their descriptions and pictures come from the store at vibeos.top, which takes them from Debian's and VibeOS's software sources and the apps' own AppStream data."
+msgstr "האפליקציות, התיאורים והתמונות שלהן מגיעים מהחנות באתר vibeos.top, שלוקחת אותם ממקורות התוכנה של Debian ושל VibeOS ומנתוני ה-AppStream של האפליקציות עצמן."
+
+#. TRANSLATORS: keep the links' markup as it is
+#: src/sw-account-pages.c
+msgid "The category icons are Font Awesome Free 7.0.0 by Fonticons, Inc. (solid style, unchanged), under the <a href=\"https://creativecommons.org/licenses/by/4.0/\">Creative Commons Attribution 4.0</a> licence. <a href=\"https://fontawesome.com\">fontawesome.com</a>"
+msgstr "סמלי הקטגוריות הם Font Awesome Free 7.0.0 של Fonticons, Inc. (בסגנון solid, ללא שינוי), במסגרת הרישיון <a href=\"https://creativecommons.org/licenses/by/4.0/\">Creative Commons Attribution 4.0</a>. <a href=\"https://fontawesome.com\">fontawesome.com</a>"
+
+#: src/sw-account-pages.c
+msgid "You are signed out"
+msgstr "היציאה מהחשבון בוצעה"
+
+#: src/sw-account-pages.c
+msgid "Sign out?"
+msgstr "לצאת מהחשבון?"
+
+#: src/sw-account-pages.c
+msgid "Your reviews and your apps stay. Sign in again to write reviews."
+msgstr "הביקורות והאפליקציות שלך יישארו. כדי לכתוב ביקורות צריך להיכנס שוב."
+
+# android: PackageInstaller cancel (several translations, short)
+#: src/sw-account-pages.c src/sw-app-page.c src/sw-reviews.c
+msgid "Cancel"
+msgstr "ביטול"
+
+#: src/sw-account-pages.c
+msgid "Sign out"
+msgstr "יציאה"
+
+#: src/sw-account-pages.c
+msgid "Signed in"
+msgstr "מחובר"
+
+#: src/sw-account-pages.c
+msgid "Confirm your email address"
+msgstr "אישור כתובת האימייל"
+
+#: src/sw-account-pages.c
+msgid "Needed to rate and review apps"
+msgstr "נדרש כדי לדרג אפליקציות ולכתוב ביקורות"
+
+#: src/sw-account-pages.c
+msgid "My reviews"
+msgstr "הביקורות שלי"
+
+#: src/sw-account-pages.c
+msgid "Delete the account"
+msgstr "מחיקת החשבון"
+
+#: src/sw-account-pages.c src/sw-mine.c
+msgid "Account and settings"
+msgstr "חשבון והגדרות"
+
+#: src/sw-account-pages.c
+msgid "Your account is deleted"
+msgstr "החשבון שלך נמחק"
+
+#: src/sw-account-pages.c
+msgid "Enter your password to delete the account."
+msgstr "כדי למחוק את החשבון יש להזין את הסיסמה."
+
+#: src/sw-account-pages.c
+msgid "The store deletes the account, its devices, the list of apps it had and its helpful votes. It cannot be undone. Your apps stay installed."
+msgstr "החנות תמחק את החשבון, את המכשירים שלו, את רשימת האפליקציות שהיו בו ואת ההצבעות שלו על ביקורות מועילות. אי אפשר לבטל את הפעולה. האפליקציות שלך יישארו מותקנות."
+
+#: src/sw-account-pages.c
+msgid "Delete my reviews too"
+msgstr "מחיקה גם של הביקורות שלי"
+
+#: src/sw-account-pages.c
+msgid "Otherwise they stay, under \"Deleted account\", and nobody can change them"
+msgstr "אחרת הן יישארו, תחת \"חשבון שנמחק\", ואף אחד לא יוכל לשנות אותן"
+
+#: src/sw-account-pages.c
+msgid "A moderator hid this review: only you see it."
+msgstr "מנחה הסתיר את הביקורת הזו: רק לך היא מוצגת."
+
+#: src/sw-account-pages.c
+msgid "You have not reviewed any apps yet. An app's page has its stars to tap."
+msgstr "עדיין לא כתבת ביקורת על אף אפליקציה. בדף של כל אפליקציה יש כוכבים להקשה."
+
+# android: Settings request_manage_credentials_more (several translations, short)
+#: src/sw-account-pages.c
+msgid "Show more"
+msgstr "הצגת פרטים נוספים"
+
+#: src/sw-account.c
+msgid "Software could not keep your sign-in in the keyring. You will need to sign in again next time."
+msgstr "האפליקציה \"תוכנות\" לא הצליחה לשמור את פרטי הכניסה שלך במחזיק המפתחות. בפעם הבאה יהיה צורך להיכנס שוב."
+
+#. TRANSLATORS: the keyring entry's name, as a password manager shows it; %s is the store's address
+#: src/sw-account.c
+#, c-format
+msgid "VibeOS Software: the store account on %s"
+msgstr "תוכנות של VibeOS: חשבון החנות ב-%s"
+
+#: src/sw-account.c
+msgid "You were signed out of the store. Sign in again to review apps."
+msgstr "יצאת מהחשבון בחנות. כדי לכתוב ביקורות על אפליקציות צריך להיכנס שוב."
+
+#. TRANSLATORS: %u is the HTTP status code
+#: src/sw-api.c
+#, c-format
+msgid "The store is not working right now (error %u). Try again later."
+msgstr "החנות לא פועלת כרגע (שגיאה %u). אפשר לנסות שוב מאוחר יותר."
+
+#. TRANSLATORS: %u is the HTTP status code
+#: src/sw-api.c
+#, c-format
+msgid "The store answered with error %u."
+msgstr "החנות השיבה עם שגיאה %u."
+
+#: src/sw-api.c
+msgid "The store's answer could not be read. Try again later."
+msgstr "לא ניתן היה לקרוא את התשובה של החנות. אפשר לנסות שוב מאוחר יותר."
+
+#: src/sw-api.c
+#, c-format
+msgid "%s Try again in %d minute."
+msgid_plural "%s Try again in %d minutes."
+msgstr[0] "%s אפשר לנסות שוב בעוד דקה."
+msgstr[1] "%s אפשר לנסות שוב בעוד שתי דקות."
+msgstr[2] "%s אפשר לנסות שוב בעוד %d דקות."
+
+#: src/sw-api.c
+#, c-format
+msgid "%s Try again in %d second."
+msgid_plural "%s Try again in %d seconds."
+msgstr[0] "%s אפשר לנסות שוב בעוד שנייה."
+msgstr[1] "%s אפשר לנסות שוב בעוד שתי שניות."
+msgstr[2] "%s אפשר לנסות שוב בעוד %d שניות."
+
+# android: Settings wifi_dpp_failure_not_compatible (adapted)
+#: src/sw-api.c
+msgid "Something went wrong."
+msgstr "משהו השתבש."
+
+#: src/sw-api.c
+msgid "Software cannot reach the store. Check the internet connection and try again."
+msgstr "האפליקציה \"תוכנות\" לא מצליחה להתחבר לחנות. יש לבדוק את החיבור לאינטרנט ולנסות שוב."
+
+#: src/sw-api.c
+msgid "The store's address is not valid."
+msgstr "הכתובת של החנות לא תקינה."
+
+#: src/sw-app-page.c
+msgid "This app has no window of its own to open."
+msgstr "לאפליקציה הזו אין חלון משלה שאפשר לפתוח."
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-app-page.c
+#, c-format
+msgid "Uninstall %s?"
+msgstr "להסיר את %s?"
+
+#: src/sw-app-page.c
+msgid "The app goes. What it keeps in your home folder stays."
+msgstr "האפליקציה תוסר. מה שהיא שומרת בתיקיית הבית שלך יישאר."
+
+# android: Settings uninstall_text (several translations, short)
+#: src/sw-app-page.c
+msgid "Uninstall"
+msgstr "הסרה"
+
+# android: PackageInstaller install (several translations, short)
+#: src/sw-app-page.c src/sw-widgets.c
+msgid "Install"
+msgstr "התקנה"
+
+# android: PackageInstaller update
+#: src/sw-app-page.c src/sw-widgets.c
+msgid "Update"
+msgstr "עדכון"
+
+# android: PackageInstaller launch
+#: src/sw-app-page.c src/sw-widgets.c src/sw-window.c
+msgid "Open"
+msgstr "פתיחה"
+
+# android: Settings installed (several translations, short)
+#: src/sw-app-page.c
+msgid "Installed"
+msgstr "מותקנת"
+
+#. TRANSLATORS: %s is the new version's number, then the size of its download
+#: src/sw-app-page.c
+#, c-format
+msgid "Version %s is out · %s"
+msgstr "גרסה %s זמינה · %s"
+
+#: src/sw-app-page.c
+#, c-format
+msgid "Version %s is out"
+msgstr "גרסה %s זמינה"
+
+#. TRANSLATORS: under the number of the app's installs
+#: src/sw-app-page.c
+msgid "installs"
+msgstr "התקנות"
+
+#. TRANSLATORS: under the size of the app's download
+#: src/sw-app-page.c
+msgid "download"
+msgstr "הורדה"
+
+#. TRANSLATORS: under the app's age rating ("12+")
+#: src/sw-app-page.c
+msgid "age rating"
+msgstr "סיווג גיל"
+
+#: src/sw-app-page.c
+#, c-format
+msgid "Screenshot %u of %u"
+msgstr "צילום מסך %u מתוך %u"
+
+#: src/sw-app-page.c
+msgid "About this app"
+msgstr "מידע על האפליקציה"
+
+# android: Settings page_agnostic_notification_action (short)
+#: src/sw-app-page.c
+msgid "Read more"
+msgstr "עוד פרטים"
+
+#: src/sw-app-page.c
+msgid "What's new"
+msgstr "מה חדש"
+
+#. TRANSLATORS: the version's number, then the date it came out
+#: src/sw-app-page.c
+#, c-format
+msgid "Version %s · %s"
+msgstr "גרסה %s · %s"
+
+# android: Settings vpn_version_info
+#: src/sw-app-page.c src/sw-mine.c src/sw-reviews.c
+#, c-format
+msgid "Version %s"
+msgstr "גרסה %s"
+
+#: src/sw-app-page.c
+msgid "The developer did not say what changed."
+msgstr "המפתח לא ציין מה השתנה."
+
+# android: Settings permissions_label (short)
+#: src/sw-app-page.c
+msgid "Permissions"
+msgstr "הרשאות"
+
+#: src/sw-app-page.c
+msgid "What the app says it uses. VibeOS's own apps are part of the system: they do not run in a sandbox."
+msgstr "מה שהאפליקציה מצהירה שהיא משתמשת בו. האפליקציות של VibeOS הן חלק מהמערכת: הן לא פועלות בארגז חול."
+
+#: src/sw-app-page.c
+msgid "What the app asks for. VibeOS enforces these permissions: the app runs in a sandbox, and you allow or deny each one in Settings. Taking one away stops the app."
+msgstr "מה שהאפליקציה מבקשת. VibeOS אוכפת את ההרשאות האלה: האפליקציה פועלת בארגז חול, ואפשר לאשר או לדחות כל הרשאה בהגדרות. ביטול של הרשאה עוצר את האפליקציה."
+
+#: src/sw-app-page.c
+msgid "The app declares no permissions."
+msgstr "האפליקציה לא מצהירה על הרשאות."
+
+#: src/sw-app-page.c
+msgid "The app declares no permissions. Until you change them in Settings, it may use the network, and you are asked before it gets your location or the camera, or runs in the background."
+msgstr "האפליקציה לא מצהירה על הרשאות. כל עוד לא משנים אותן בהגדרות, היא יכולה להשתמש ברשת, ולפני שהיא מקבלת גישה למיקום או למצלמה, או פועלת ברקע, תופיע בקשת אישור."
+
+#: src/sw-app-page.c
+msgid "Permissions in Settings"
+msgstr "הרשאות בהגדרות"
+
+#: src/sw-app-page.c
+msgid "Allow or deny each one for this app"
+msgstr "אישור או דחייה של כל הרשאה לאפליקציה הזו"
+
+#: src/sw-app-page.c
+msgid "Confirm your email address to rate and review apps."
+msgstr "כדי לדרג אפליקציות ולכתוב ביקורות צריך לאשר את כתובת האימייל."
+
+#: src/sw-app-page.c
+msgid "Install the app to rate it: the store takes reviews from people who have had it on one of their devices."
+msgstr "כדי לדרג את האפליקציה צריך להתקין אותה: החנות מקבלת ביקורות רק ממי שהאפליקציה הייתה מותקנת באחד המכשירים שלו."
+
+#: src/sw-app-page.c
+msgid "The store does not take a review of this app from your account."
+msgstr "החנות לא מקבלת מהחשבון שלך ביקורת על האפליקציה הזו."
+
+#: src/sw-app-page.c
+msgid "Sign in to rate and review apps."
+msgstr "כדי לדרג אפליקציות ולכתוב ביקורות צריך להיכנס לחשבון."
+
+#: src/sw-app-page.c src/sw-reviews.c
+msgid "Your review"
+msgstr "הביקורת שלך"
+
+#: src/sw-app-page.c
+msgid "A moderator hid your review: only you see it."
+msgstr "מנחה הסתיר את הביקורת שלך: רק לך היא מוצגת."
+
+#: src/sw-app-page.c
+msgid "Confirm the address"
+msgstr "אישור הכתובת"
+
+#: src/sw-app-page.c src/sw-reviews.c
+msgid "Rate the app"
+msgstr "דירוג האפליקציה"
+
+#: src/sw-app-page.c
+msgid "Write a review"
+msgstr "כתיבת ביקורת"
+
+#: src/sw-app-page.c
+msgid "Ratings and reviews"
+msgstr "דירוגים וביקורות"
+
+#: src/sw-app-page.c
+msgid "All reviews"
+msgstr "כל הביקורות"
+
+#: src/sw-app-page.c
+msgid "Similar apps"
+msgstr "אפליקציות דומות"
+
+#: src/sw-app-page.c
+msgid "Information"
+msgstr "מידע"
+
+#: src/sw-app-page.c
+msgid "Developer"
+msgstr "מפתח"
+
+# android: Settings vpn_version (short)
+#: src/sw-app-page.c
+msgid "Version"
+msgstr "גרסה"
+
+#: src/sw-app-page.c
+msgid "Installed version"
+msgstr "הגרסה המותקנת"
+
+#: src/sw-app-page.c
+msgid "Released"
+msgstr "תאריך פרסום"
+
+#: src/sw-app-page.c
+msgid "Download size"
+msgstr "גודל ההורדה"
+
+#: src/sw-app-page.c
+msgid "Size when installed"
+msgstr "גודל אחרי ההתקנה"
+
+#: src/sw-app-page.c
+msgid "Category"
+msgstr "קטגוריה"
+
+#: src/sw-app-page.c
+msgid "Licence"
+msgstr "רישיון"
+
+#: src/sw-app-page.c
+msgid "Comes from"
+msgstr "מקור"
+
+#: src/sw-app-page.c
+msgid "The VibeOS software sources"
+msgstr "מקורות התוכנה של VibeOS"
+
+#: src/sw-app-page.c
+msgid "Debian's software sources"
+msgstr "מקורות התוכנה של Debian"
+
+#: src/sw-app-page.c
+msgid "Fits a phone"
+msgstr "מתאימה לטלפון"
+
+# android: Settings wifi_hidden_entries[1] (short)
+#: src/sw-app-page.c
+msgid "Yes"
+msgstr "כן"
+
+#. TRANSLATORS: whether the app fits a phone: not known to fit one
+#: src/sw-app-page.c
+msgid "Not known to"
+msgstr "לא ידוע"
+
+#: src/sw-app-page.c
+msgid "Package"
+msgstr "חבילה"
+
+#: src/sw-app-page.c
+msgid "Homepage"
+msgstr "דף הבית"
+
+#: src/sw-app-page.c
+msgid "This app is not in the store any more."
+msgstr "האפליקציה הזו כבר לא נמצאת בחנות."
+
+# android: Settings security_settings_face_enroll_introduction_more (short)
+#: src/sw-app-page.c src/sw-reviews.c
+msgid "More"
+msgstr "עוד"
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-check.c
+#, c-format
+msgid "%s can be updated"
+msgstr "יש עדכון ל-%s"
+
+#. TRANSLATORS: %s is the new version's number
+#: src/sw-check.c
+#, c-format
+msgid "Version %s is ready to install."
+msgstr "גרסה %s מוכנה להתקנה."
+
+#: src/sw-check.c
+msgid "A new version is ready to install."
+msgstr "גרסה חדשה מוכנה להתקנה."
+
+#: src/sw-check.c
+#, c-format
+msgid "%u app can be updated"
+msgid_plural "%u apps can be updated"
+msgstr[0] "יש עדכון לאפליקציה אחת"
+msgstr[1] "יש עדכונים לשתי אפליקציות"
+msgstr[2] "יש עדכונים ל-%u אפליקציות"
+
+#. TRANSLATORS: two apps' names
+#: src/sw-check.c
+#, c-format
+msgid "%s and %s"
+msgstr "%s ו-%s"
+
+#. TRANSLATORS: three apps' names
+#: src/sw-check.c
+#, c-format
+msgid "%s, %s and %s"
+msgstr "%s, %s ו-%s"
+
+#. TRANSLATORS: three apps' names, then how many more apps can be updated
+#: src/sw-check.c
+#, c-format
+msgid "%s, %s, %s and %u more"
+msgid_plural "%s, %s, %s and %u more"
+msgstr[0] "%s, %s, %s ועוד אחת"
+msgstr[1] "%s, %s, %s ועוד שתיים"
+msgstr[2] "%s, %s, %s ועוד %u"
+
+#: src/sw-featured.c
+msgid "See all"
+msgstr "הצגת הכול"
+
+#: src/sw-featured.c
+#, c-format
+msgid "%u category"
+msgid_plural "%u categories"
+msgstr[0] "קטגוריה אחת"
+msgstr[1] "שתי קטגוריות"
+msgstr[2] "%u קטגוריות"
+
+# android: Dialer helpline_categories (other app, short)
+#: src/sw-featured.c
+msgid "Categories"
+msgstr "קטגוריות"
+
+#: src/sw-featured.c
+msgid "Nothing here yet. Come back later."
+msgstr "אין כאן עדיין שום דבר. אפשר לחזור מאוחר יותר."
+
+# android: Settings retry (several translations, short)
+#: src/sw-featured.c src/sw-list.c src/sw-mine.c src/sw-widgets.c
+msgid "Retry"
+msgstr "ניסיון נוסף"
+
+#: src/sw-featured.c src/sw-search.c
+msgid "Search apps and games"
+msgstr "חיפוש אפליקציות ומשחקים"
+
+# android: Launcher3 all_apps_search_bar_hint (other app, short)
+#: src/sw-featured.c src/sw-search.c
+msgid "Search apps"
+msgstr "חיפוש אפליקציות"
+
+#: src/sw-featured.c src/sw-search.c
+msgid "Search games"
+msgstr "חיפוש משחקים"
+
+#: src/sw-featured.c
+msgid "Recommended"
+msgstr "מומלצות"
+
+#: src/sw-featured.c
+msgid "Popular"
+msgstr "פופולריות"
+
+#: src/sw-installer.c
+msgid "Stopping…"
+msgstr "מתבצעת עצירה…"
+
+#: src/sw-installer.c
+msgid "Queued"
+msgstr "בתור"
+
+#: src/sw-installer.c
+msgid "Starting…"
+msgstr "מתבצעת הפעלה…"
+
+#: src/sw-installer.c
+#, c-format
+msgid "Downloading %d%%"
+msgstr "מתבצעת הורדה %d%%"
+
+#: src/sw-installer.c
+msgid "Downloading…"
+msgstr "מתבצעת הורדה…"
+
+#: src/sw-installer.c
+#, c-format
+msgid "Installing %d%%"
+msgstr "מתבצעת התקנה %d%%"
+
+# android: PackageInstaller installing
+#: src/sw-installer.c
+msgid "Installing…"
+msgstr "בהתקנה…"
+
+#: src/sw-installer.c
+msgid "Uninstalling…"
+msgstr "מתבצעת הסרה…"
+
+#: src/sw-installer.c
+msgid "Waiting for your password"
+msgstr "בהמתנה לסיסמה"
+
+#: src/sw-installer.c
+msgid "Waiting for another install to finish"
+msgstr "בהמתנה לסיום של התקנה אחרת"
+
+#: src/sw-installer.c
+msgid "Waiting for your answer"
+msgstr "בהמתנה לתשובה"
+
+#: src/sw-installer.c
+msgid "Refreshing the software sources…"
+msgstr "מתבצע רענון של מקורות התוכנה…"
+
+# android: Framework lockscreen_glogin_checking_password (several translations, short)
+#: src/sw-installer.c
+msgid "Checking…"
+msgstr "בבדיקה…"
+
+#: src/sw-installer.c
+msgid "Finishing…"
+msgstr "מתבצע סיום…"
+
+#: src/sw-installer.c
+msgid "App Installer is not installed. Software installs and uninstalls apps through it."
+msgstr "מתקין האפליקציות לא מותקן. \"תוכנות\" מתקינה ומסירה אפליקציות באמצעותו."
+
+#. TRANSLATORS: %s is the error's own message
+#: src/sw-installer.c
+#, c-format
+msgid "App Installer could not start: %s"
+msgstr "לא ניתן היה להפעיל את מתקין האפליקציות: %s"
+
+#: src/sw-installer.c
+msgid "Software cannot reach the session bus to ask App Installer."
+msgstr "האפליקציה \"תוכנות\" לא מצליחה להתחבר לאפיק הסשן כדי לפנות למתקין האפליקציות."
+
+#: src/sw-installer.c
+msgid "App Installer stopped before it was done. Try again."
+msgstr "מתקין האפליקציות הפסיק לפני שסיים. יש לנסות שוב."
+
+#: src/sw-installer.c
+msgid "No session bus."
+msgstr "אין אפיק סשן."
+
+#: src/sw-json.c
+msgid "No ratings yet"
+msgstr "עדיין אין דירוגים"
+
+#. an int for gettext's sake (the format of a translated string cannot name gint64's)
+#: src/sw-json.c
+#, c-format
+msgid "%d rating"
+msgid_plural "%d ratings"
+msgstr[0] "דירוג אחד"
+msgstr[1] "שני דירוגים"
+msgstr[2] "%d דירוגים"
+
+#: src/sw-list.c
+msgid "No apps here yet."
+msgstr "אין כאן עדיין אפליקציות."
+
+# android: Settings running_processes_header_apps_prefix (short)
+#: src/sw-list.c src/sw-window.c
+msgid "Apps"
+msgstr "אפליקציות"
+
+#: src/sw-list.c
+#, c-format
+msgid "%d app"
+msgid_plural "%d apps"
+msgstr[0] "אפליקציה אחת"
+msgstr[1] "שתי אפליקציות"
+msgstr[2] "%d אפליקציות"
+
+#: src/sw-list.c
+msgid "Game categories"
+msgstr "קטגוריות של משחקים"
+
+#: src/sw-list.c
+msgid "App categories"
+msgstr "קטגוריות של אפליקציות"
+
+# android: Framework in_progress (adapted, short)
+#: src/sw-mine.c
+msgid "In progress"
+msgstr "בתהליך"
+
+#. TRANSLATORS: %s is how far the job has got ("Downloading 42%")
+#: src/sw-mine.c
+#, c-format
+msgid "Uninstalling · %s"
+msgstr "הסרה · %s"
+
+#: src/sw-mine.c
+#, c-format
+msgid "Updating · %s"
+msgstr "עדכון · %s"
+
+#: src/sw-mine.c
+#, c-format
+msgid "Installing · %s"
+msgstr "התקנה · %s"
+
+# android: Settings safety_center_system_and_updates_summary (short)
+#: src/sw-mine.c
+msgid "Updates"
+msgstr "עדכונים"
+
+#: src/sw-mine.c
+msgid "Update all"
+msgstr "עדכון הכול"
+
+#: src/sw-mine.c
+msgid "Your apps are up to date."
+msgstr "כל האפליקציות שלך מעודכנות."
+
+#: src/sw-mine.c
+msgid "Check again"
+msgstr "בדיקה חוזרת"
+
+#: src/sw-mine.c
+msgid "Software has not looked for updates yet."
+msgstr "האפליקציה \"תוכנות\" עדיין לא חיפשה עדכונים."
+
+#: src/sw-mine.c
+msgid "Check for updates"
+msgstr "בדיקת עדכונים"
+
+#: src/sw-mine.c src/sw-window.c
+msgid "Mine"
+msgstr "שלי"
+
+# android: Settings filter_apps_all (short)
+#: src/sw-mine.c
+msgid "All apps"
+msgstr "כל האפליקציות"
+
+#: src/sw-mine.c
+msgid "On this device and on your others"
+msgstr "במכשיר הזה ובמכשירים האחרים שלך"
+
+#: src/sw-mine.c
+msgid "None of the apps on this device are in the store."
+msgstr "אף אחת מהאפליקציות במכשיר הזה לא נמצאת בחנות."
+
+#: src/sw-mine.c
+msgid "Nothing is installed."
+msgstr "אין שום דבר מותקן."
+
+#: src/sw-mine.c
+msgid "On another of your devices"
+msgstr "באחד המכשירים האחרים שלך"
+
+#. TRANSLATORS: %s is a date
+#: src/sw-mine.c
+#, c-format
+msgid "Last installed %s"
+msgstr "הותקנה לאחרונה ב-%s"
+
+#: src/sw-mine.c
+msgid "Every app your account had is on this device."
+msgstr "כל האפליקציות שהיו בחשבון שלך נמצאות במכשיר הזה."
+
+#: src/sw-mine.c
+msgid "Sign in to see the apps your account had on your other devices, or before."
+msgstr "אחרי הכניסה לחשבון אפשר לראות את האפליקציות שהיו בחשבון שלך במכשירים האחרים, או בעבר."
+
+#: src/sw-mine.c
+msgid "On this device"
+msgstr "במכשיר הזה"
+
+#: src/sw-mine.c
+msgid "Not on this device"
+msgstr "לא במכשיר הזה"
+
+#: src/sw-reviews.c
+#, c-format
+msgid "Helpful · %d"
+msgstr "מועילה · %d"
+
+#: src/sw-reviews.c
+msgid "Helpful"
+msgstr "מועילה"
+
+#: src/sw-reviews.c
+msgid "Sign in to mark reviews as helpful."
+msgstr "כדי לסמן ביקורות כמועילות צריך להיכנס לחשבון."
+
+# android: Settings edit (several translations, short)
+#: src/sw-reviews.c
+msgid "Edit"
+msgstr "עריכה"
+
+#: src/sw-reviews.c
+msgid "Report"
+msgstr "דיווח"
+
+#: src/sw-reviews.c
+msgid "Someone"
+msgstr "מישהו"
+
+#: src/sw-reviews.c
+#, c-format
+msgid "%s · edited"
+msgstr "%s · נערכה"
+
+#: src/sw-reviews.c
+msgid "Most helpful"
+msgstr "המועילות ביותר"
+
+#: src/sw-reviews.c
+msgid "Newest"
+msgstr "החדשות ביותר"
+
+#. TRANSLATORS: reviews sorted by their stars, the most first
+#: src/sw-reviews.c
+msgid "Highest"
+msgstr "הדירוג הגבוה ביותר"
+
+#. TRANSLATORS: reviews sorted by their stars, the fewest first
+#: src/sw-reviews.c
+msgid "Lowest"
+msgstr "הדירוג הנמוך ביותר"
+
+#: src/sw-reviews.c
+msgid "No reviews yet."
+msgstr "עדיין אין ביקורות."
+
+#: src/sw-reviews.c
+msgid "Reviews"
+msgstr "ביקורות"
+
+#: src/sw-reviews.c
+msgid "Your review is changed"
+msgstr "הביקורת שלך עודכנה"
+
+#: src/sw-reviews.c
+msgid "Thank you for your review"
+msgstr "תודה על הביקורת"
+
+#: src/sw-reviews.c
+msgid "Your review is deleted"
+msgstr "הביקורת שלך נמחקה"
+
+#: src/sw-reviews.c
+msgid "Delete your review?"
+msgstr "למחוק את הביקורת שלך?"
+
+#: src/sw-reviews.c
+msgid "Your stars and text go, and the app's rating no longer counts them."
+msgstr "הכוכבים והטקסט שלך יימחקו, והדירוג של האפליקציה כבר לא יכלול אותם."
+
+# android: Settings security_settings_fingerprint_enroll_dialog_delete (several translations, short)
+#: src/sw-reviews.c
+msgid "Delete"
+msgstr "מחיקה"
+
+#: src/sw-reviews.c
+#, c-format
+msgid "Rate %s"
+msgstr "דירוג של %s"
+
+#: src/sw-reviews.c src/sw-widgets.c
+msgid "Your rating"
+msgstr "הדירוג שלך"
+
+#: src/sw-reviews.c
+msgid "Your review (if you want to say more)"
+msgstr "הביקורת שלך (אם יש לך מה להוסיף)"
+
+#: src/sw-reviews.c
+msgid "Your review shows with your account's name. Be kind, and say what you think of the app."
+msgstr "הביקורת שלך מוצגת עם השם של החשבון שלך. כדאי לכתוב בנימוס ולומר מה דעתך על האפליקציה."
+
+# android: Settings save (several translations, short)
+#: src/sw-reviews.c
+msgid "Save"
+msgstr "שמירה"
+
+# android: Framework whichSendToApplicationLabel (several translations, short)
+#: src/sw-reviews.c
+msgid "Send"
+msgstr "שליחה"
+
+#: src/sw-reviews.c
+msgid "Delete my review"
+msgstr "מחיקת הביקורת שלי"
+
+#: src/sw-reviews.c
+msgid "Spam or an advert"
+msgstr "ספאם או פרסומת"
+
+#: src/sw-reviews.c
+msgid "Offensive"
+msgstr "פוגענית"
+
+#: src/sw-reviews.c
+msgid "Not about this app"
+msgstr "לא קשורה לאפליקציה הזו"
+
+#: src/sw-reviews.c
+msgid "Fake or misleading"
+msgstr "מזויפת או מטעה"
+
+#: src/sw-reviews.c
+msgid "Something else"
+msgstr "משהו אחר"
+
+#: src/sw-reviews.c
+msgid "Thank you. The store team will look at the review."
+msgstr "תודה. צוות החנות יבדוק את הביקורת."
+
+#: src/sw-reviews.c
+msgid "Sign in to report reviews."
+msgstr "כדי לדווח על ביקורות צריך להיכנס לחשבון."
+
+#: src/sw-reviews.c
+msgid "Report the review"
+msgstr "דיווח על הביקורת"
+
+#: src/sw-reviews.c
+msgid "What is wrong with it?"
+msgstr "מה הבעיה בה?"
+
+#: src/sw-reviews.c
+msgid "More about it (if you want)"
+msgstr "פרטים נוספים (לא חובה)"
+
+#: src/sw-reviews.c
+msgid "Send the report"
+msgstr "שליחת הדיווח"
+
+#. TRANSLATORS: %s is the search as the store corrected it; keep the markup
+#: src/sw-search.c
+#, c-format
+msgid "Showing results for <b>%s</b>"
+msgstr "מוצגות תוצאות עבור <b>%s</b>"
+
+# android: Settings locale_search_menu (several translations, short)
+#: src/sw-search.c
+msgid "Search"
+msgstr "חיפוש"
+
+#. TRANSLATORS: %s is what was searched for; quote it as the language does
+#: src/sw-search.c
+#, c-format
+msgid "Nothing in the store matches “%s”. Try other words."
+msgstr "אין בחנות שום דבר שתואם ל-\"%s\". כדאי לנסות מילים אחרות."
+
+#: src/sw-search.c
+msgid "Put it in the search field"
+msgstr "הכנסה לשדה החיפוש"
+
+#: src/sw-search.c
+msgid "Recent searches"
+msgstr "חיפושים אחרונים"
+
+# android: Settings proxy_clear_text (several translations, short)
+#: src/sw-search.c
+msgid "Clear"
+msgstr "ניקוי"
+
+# android: Settings wifi_autojoin_disabled_positive_button (several translations, short)
+#: src/sw-viewer.c
+msgid "Back"
+msgstr "חזרה"
+
+# android: PackageInstaller close
+#: src/sw-viewer.c
+msgid "Close"
+msgstr "סגירה"
+
+# android: SystemUI notification_channel_screenshot (other app, short)
+#: src/sw-viewer.c
+msgid "Screenshots"
+msgstr "צילומי מסך"
+
+# android: Settings mobile_data_no_connection (short)
+#: src/sw-widgets.c
+msgid "No connection"
+msgstr "אין חיבור"
+
+# android: Settings wifi_dpp_failure_not_compatible
+#: src/sw-widgets.c
+msgid "Something went wrong"
+msgstr "משהו השתבש"
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-widgets.c
+#, c-format
+msgid "%s has no window of its own to open."
+msgstr "לאפליקציה %s אין חלון משלה שאפשר לפתוח."
+
+#: src/sw-widgets.c
+msgid "Hide the password"
+msgstr "הסתרת הסיסמה"
+
+#: src/sw-widgets.c
+msgid "Show the password"
+msgstr "הצגת הסיסמה"
+
+#: src/sw-widgets.c
+msgid "The code"
+msgstr "הקוד"
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-window.c
+#, c-format
+msgid "%s is uninstalled"
+msgstr "ההסרה של %s הושלמה"
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-window.c
+#, c-format
+msgid "%s is updated"
+msgstr "העדכון של %s הושלם"
+
+#: src/sw-window.c
+#, c-format
+msgid "%s is installed"
+msgstr "ההתקנה של %s הושלמה"
+
+#. TRANSLATORS: %s is the app's name
+#: src/sw-window.c
+#, c-format
+msgid "%s was not uninstalled"
+msgstr "ההסרה של %s לא בוצעה"
+
+#: src/sw-window.c
+#, c-format
+msgid "%s was not installed"
+msgstr "ההתקנה של %s לא בוצעה"
+
+#: src/sw-window.c
+msgid "The app could not be uninstalled."
+msgstr "לא ניתן היה להסיר את האפליקציה."
+
+#: src/sw-window.c
+msgid "The app could not be installed."
+msgstr "לא ניתן היה להתקין את האפליקציה."
+
+#: src/sw-window.c
+msgid "Featured"
+msgstr "מובחרים"
+
+# android: Settings storage_games (short)
+#: src/sw-window.c
+msgid "Games"
+msgstr "משחקים"

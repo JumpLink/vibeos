@@ -1,0 +1,276 @@
+# Hebrew translations of vibeos-weather.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-weather\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Hebrew\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
+
+#: data/vibeos.Weather.desktop.in src/main.c
+msgid "Weather"
+msgstr "מזג אוויר"
+
+#: data/vibeos.Weather.desktop.in
+msgid "The weather where you are"
+msgstr "מזג האוויר במקום שבו נמצאים"
+
+#: data/vibeos.Weather.desktop.in
+msgid "forecast;temperature;rain;"
+msgstr "מזג אוויר;תחזית;טמפרטורה;גשם;forecast;temperature;rain;weather;"
+
+#. TRANSLATORS: the sky, as the page names it under the temperature
+#: src/main.c
+msgctxt "sky"
+msgid "Clear"
+msgstr "בהיר"
+
+#: src/main.c
+msgid "Mostly clear"
+msgstr "בהיר ברובו"
+
+#: src/main.c
+msgid "Partly cloudy"
+msgstr "מעונן חלקית"
+
+#: src/main.c
+msgid "Cloudy"
+msgstr "מעונן"
+
+#: src/main.c
+msgid "Fog"
+msgstr "ערפל"
+
+#: src/main.c
+msgid "Drizzle"
+msgstr "טפטוף"
+
+#: src/main.c
+msgid "Freezing drizzle"
+msgstr "טפטוף קופא"
+
+#: src/main.c
+msgid "Rain"
+msgstr "גשם"
+
+#: src/main.c
+msgid "Heavy rain"
+msgstr "גשם כבד"
+
+#: src/main.c
+msgid "Freezing rain"
+msgstr "גשם קופא"
+
+#: src/main.c
+msgid "Snow"
+msgstr "שלג"
+
+#: src/main.c
+msgid "Snow grains"
+msgstr "גרגרי שלג"
+
+#: src/main.c
+msgid "Showers"
+msgstr "ממטרים"
+
+#: src/main.c
+msgid "Heavy showers"
+msgstr "ממטרים כבדים"
+
+#: src/main.c
+msgid "Snow showers"
+msgstr "ממטרי שלג"
+
+#: src/main.c
+msgid "Thunderstorm"
+msgstr "סופת רעמים"
+
+#: src/main.c
+msgid "Sunrise"
+msgstr "זריחה"
+
+#: src/main.c
+msgid "Sunset"
+msgstr "שקיעה"
+
+#. TRANSLATORS: the UV index's levels
+#: src/main.c
+msgctxt "uv"
+msgid "Low"
+msgstr "נמוך"
+
+# android: Settings ram_states[1] (short)
+#: src/main.c
+msgctxt "uv"
+msgid "Moderate"
+msgstr "בינוני"
+
+#: src/main.c
+msgctxt "uv"
+msgid "High"
+msgstr "גבוה"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Very high"
+msgstr "גבוה מאוד"
+
+#: src/main.c
+msgctxt "uv"
+msgid "Extreme"
+msgstr "קיצוני"
+
+#. TRANSLATORS: today's highest and lowest temperatures, then what it feels like now
+#: src/main.c
+#, c-format
+msgid ""
+"↑%s / ↓%s\n"
+"Feels like %s"
+msgstr ""
+"↑%s / ↓%s\n"
+"מרגיש כמו %s"
+
+#. TRANSLATORS: today's sky ("Partly cloudy"), then its highest and lowest temperatures ("12°")
+#: src/main.c
+#, c-format
+msgid "%s. High %s, low %s."
+msgstr "%s. מקסימום %s, מינימום %s."
+
+#: src/main.c
+msgid "Today's temperature"
+msgstr "הטמפרטורה היום"
+
+#: src/main.c
+msgid "About the same as yesterday"
+msgstr "בערך כמו אתמול"
+
+#: src/main.c
+msgid "Temperatures a little lower than yesterday"
+msgstr "טמפרטורות מעט נמוכות יותר מאתמול"
+
+#: src/main.c
+msgid "Much colder than yesterday"
+msgstr "קר הרבה יותר מאתמול"
+
+#: src/main.c
+msgid "Temperatures a little higher than yesterday"
+msgstr "טמפרטורות מעט גבוהות יותר מאתמול"
+
+#: src/main.c
+msgid "Much warmer than yesterday"
+msgstr "חם הרבה יותר מאתמול"
+
+# android: DocumentsUI search_last_modified_2_days (short)
+#: src/main.c
+msgid "Yesterday"
+msgstr "אתמול"
+
+# android: DocumentsUI search_last_modified_1_day (short)
+#: src/main.c
+msgid "Today"
+msgstr "היום"
+
+#. TRANSLATORS: under the sunrise's time; %s is the sunset's
+#: src/main.c
+#, c-format
+msgid "Sunset %s"
+msgstr "שקיעה %s"
+
+#: src/main.c
+msgid "UV index"
+msgstr "מדד UV"
+
+#: src/main.c
+msgid "Humidity"
+msgstr "לחות"
+
+#: src/main.c
+msgid "Wind"
+msgstr "רוח"
+
+#: src/main.c
+msgid "Pressure"
+msgstr "לחץ אוויר"
+
+#: src/main.c
+msgid "No forecast: Open-Meteo did not answer. Tap reload to try again."
+msgstr "אין תחזית: Open-Meteo לא הגיב. אפשר להקיש על \"טעינה מחדש\" כדי לנסות שוב."
+
+#: src/main.c
+msgid "No location. Turn on Location in Settings, then tap reload, or set a city in the ⋮ menu."
+msgstr "אין מיקום. יש להפעיל את \"מיקום\" בהגדרות ואז להקיש על \"טעינה מחדש\", או להגדיר עיר בתפריט ⋮."
+
+#: src/main.c
+#, c-format
+msgid "Getting the weather for %s…"
+msgstr "מתקבל מזג האוויר עבור %s…"
+
+#. TRANSLATORS: under "Use my location"; %s is the city chosen now
+#: src/main.c
+#, c-format
+msgid "Instead of %s"
+msgstr "במקום %s"
+
+#: src/main.c
+msgid "Use my location"
+msgstr "שימוש במיקום שלי"
+
+#: src/main.c
+msgid "No answer. Check the connection, then type again."
+msgstr "אין תשובה. יש לבדוק את החיבור ולהקליד שוב."
+
+#: src/main.c
+msgid "No cities found"
+msgstr "לא נמצאו ערים"
+
+#: src/main.c
+msgid "Set City"
+msgstr "הגדרת עיר"
+
+#: src/main.c
+msgid "City name"
+msgstr "שם העיר"
+
+# android: Settings proxy_clear_text (several translations, short)
+#: src/main.c
+msgid "Clear"
+msgstr "ניקוי"
+
+#: src/main.c
+msgid ""
+"Weather forecasts by <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, under <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n"
+"\n"
+"Set City finds cities with Open-Meteo's geocoding, on data from <a href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0."
+msgstr ""
+"תחזיות מזג האוויר מ-<a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, במסגרת <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n"
+"\n"
+"\"הגדרת עיר\" מוצאת ערים באמצעות שירות הגיאוקודינג של Open-Meteo, על סמך נתונים מ-<a href=\"https://www.geonames.org/\">GeoNames</a>, במסגרת CC BY 4.0."
+
+#: src/main.c
+msgid "The place's name, where the phone is, from OpenStreetMap's <a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a>. Data © <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the <a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)."
+msgstr "שם המקום שבו נמצא הטלפון, מ-<a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a> של OpenStreetMap. הנתונים © <a href=\"https://www.openstreetmap.org/copyright\">התורמים של OpenStreetMap</a>, במסגרת <a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)."
+
+#: src/main.c
+msgid "About"
+msgstr "מידע על האפליקציה"
+
+#: src/main.c
+msgid "Reload"
+msgstr "טעינה מחדש"
+
+# android: Framework action_menu_overflow_description (several translations, short)
+#: src/main.c
+msgid "More options"
+msgstr "אפשרויות נוספות"
+
+#: src/main.c
+msgid "Finding where you are…"
+msgstr "מתבצע איתור של המיקום…"

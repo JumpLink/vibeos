@@ -1,0 +1,159 @@
+# Hebrew translations of vibeos-video.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-video\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Hebrew\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
+
+#. the name the sound settings list it under
+#: data/vibeos.Video.desktop.in main.c
+msgid "Video Player"
+msgstr "נגן וידאו"
+
+#: data/vibeos.Video.desktop.in
+msgid "Play videos"
+msgstr "הפעלת סרטונים"
+
+#: main.c
+msgid "Playing a video"
+msgstr "סרטון מופעל"
+
+# android: Framework VideoView_error_text_unknown (adapted)
+#: main.c
+msgid "Can’t play this video"
+msgstr "לא ניתן להפעיל את הסרטון הזה"
+
+#: main.c
+msgid "Exit full screen"
+msgstr "יציאה ממסך מלא"
+
+# android: Settings accessibility_magnification_area_settings_full_screen_summary (short)
+#: main.c
+msgid "Full screen"
+msgstr "מסך מלא"
+
+#. TRANSLATORS: keep the links' markup as it is
+#: main.c
+msgid "Videos are played by <a href=\"https://mpv.io/\">mpv</a> (libmpv), under the GNU GPL 2.0 or later."
+msgstr "הסרטונים מופעלים באמצעות <a href=\"https://mpv.io/\">mpv</a> (libmpv), במסגרת רישיון GNU GPL 2.0 ואילך."
+
+#. TRANSLATORS: keep the links' markup as it is
+#: main.c
+msgid "<a href=\"https://ffmpeg.org/\">FFmpeg</a> reads and decodes them, under the GNU LGPL 2.1 or later (the GPL 2.0 or later as Debian builds it)."
+msgstr "<a href=\"https://ffmpeg.org/\">FFmpeg</a> קורא ומפענח אותם, במסגרת רישיון GNU LGPL 2.1 ואילך (או GPL 2.0 ואילך, כפי ש-Debian בונה אותו)."
+
+#: main.c
+msgid "Timed text"
+msgstr "טקסט מתוזמן"
+
+#. TRANSLATORS: a track with neither a title nor a language; %u is its number
+#: main.c
+#, c-format
+msgid "Track %u"
+msgstr "רצועה %u"
+
+# android: SettingsLib bluetooth_a2dp_codec_channel_mode_titles[1] (short)
+#: main.c
+msgid "Mono"
+msgstr "מונו"
+
+# android: SettingsLib bluetooth_a2dp_codec_channel_mode_titles[2] (short)
+#: main.c
+msgid "Stereo"
+msgstr "סטריאו"
+
+#. TRANSLATORS: a subtitle track read from a file of its own, next to the video
+#: main.c
+msgid "From a file"
+msgstr "מקובץ"
+
+# android: Framework wifi_calling_off_summary (several translations, short)
+#: main.c
+msgctxt "no track"
+msgid "Off"
+msgstr "כבוי"
+
+#: main.c
+msgid "Audio track"
+msgstr "רצועת אודיו"
+
+#: main.c
+msgid "Subtitles"
+msgstr "כתוביות"
+
+#: main.c
+msgid "Black bar at the camera"
+msgstr "פס שחור ליד המצלמה"
+
+#: main.c
+msgid "Keep full screen clear of the camera hole instead of playing under it"
+msgstr "המסך המלא יישאר מחוץ לחור של המצלמה, במקום להציג את הסרטון מתחתיו"
+
+# android: Framework global_action_settings (several translations, short)
+#: main.c
+msgid "Settings"
+msgstr "הגדרות"
+
+# android: Framework volume_unknown (several translations, short)
+#: main.c
+msgid "Volume"
+msgstr "עוצמת קול"
+
+# android: Settings category_name_brightness (short)
+#: main.c
+msgid "Brightness"
+msgstr "בהירות"
+
+# android: Framework input_method_nav_back_button_desc (several translations, short)
+#: main.c
+msgid "Back"
+msgstr "חזרה"
+
+#. TRANSLATORS: shown in the video player's top bar while a film plays without sound because the device has no sound
+#. output (no speaker, headphones or Bluetooth device that takes it)
+#: main.c
+msgid "No audio output"
+msgstr "אין פלט אודיו"
+
+# android: Framework action_menu_overflow_description (several translations, short)
+#: main.c
+msgid "More options"
+msgstr "אפשרויות נוספות"
+
+#: main.c
+msgid "Back 10 seconds"
+msgstr "10 שניות אחורה"
+
+#: main.c
+msgid "Play or pause"
+msgstr "הפעלה או השהיה"
+
+#: main.c
+msgid "On 10 seconds"
+msgstr "10 שניות קדימה"
+
+#: main.c
+msgid "Open a video from Files"
+msgstr "פתיחת סרטון מ\"קבצים\""
+
+#: main.c
+msgid "Opening…"
+msgstr "מתבצעת פתיחה…"
+
+#: main.c
+msgid "Can’t reach this video"
+msgstr "אין גישה לסרטון הזה"
+
+#: main.c
+msgid "The player could not start"
+msgstr "לא ניתן היה להפעיל את הנגן"

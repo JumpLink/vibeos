@@ -1,0 +1,4133 @@
+# Hebrew translations of vibeos-settings.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-settings\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 23:05+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Hebrew\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
+
+# android: Settings settings_label (several translations, short)
+#. GNOME Settings' @panel@ panel, which VibeOS Settings replaces: its page in VibeOS Settings
+#. GNOME Settings, which VibeOS Settings replaces: VibeOS Settings answers to its name on the session bus too
+#. (org.gnome.Settings.service), so this opens VibeOS Settings. Hidden: VibeOS Settings has its own launcher entry.
+#: data/gnome-panel.desktop.in data/org.gnome.Settings.desktop.in
+#: data/vibeos.Settings.desktop.in src/main.c src/ns-pages.c src/ns-system.c
+msgid "Settings"
+msgstr "הגדרות"
+
+#: data/gnome-panel.desktop.in data/org.gnome.Settings.desktop.in
+#: data/vibeos.Settings.desktop.in
+msgid "Wi-Fi, sound, display, apps and more"
+msgstr "Wi-Fi, צליל, תצוגה, אפליקציות ועוד"
+
+#: data/vibeos.Settings.desktop.in
+msgid "preferences;settings;wifi;display;wallpaper;"
+msgstr "הגדרות;העדפות;Wi-Fi;wifi;רשת;תצוגה;טפט;settings;preferences;"
+
+# android: Settings network_dashboard_title (adapted)
+#: src/main.c src/ns-pages.c
+msgid "Network and Internet"
+msgstr "רשת ואינטרנט"
+
+#: src/main.c
+msgid "Wi-Fi, hotspot"
+msgstr "Wi-Fi, נקודת אינטרנט (Hotspot)"
+
+#. TRANSLATORS: this and the other lowercase lists of words here are a page's search keywords: words, separated by
+#. * spaces, that find it (as many as fit the language; the English ones find it too)
+#: src/main.c
+msgid ""
+"wlan wifi internet sim mobile data apn vpn hotspot tethering flight airplane "
+"proxy wired"
+msgstr ""
+"wlan wifi אינטרנט רשת סים חבילת גלישה נתונים סלולריים apn vpn נקודת אינטרנט "
+"hotspot שיתוף אינטרנט טיסה מצב טיסה proxy רשת קווית"
+
+# android: Settings connected_devices_dashboard_title
+#: src/main.c src/ns-net.c src/ns-pages.c
+msgid "Connected devices"
+msgstr "מכשירים מחוברים"
+
+#: src/main.c
+msgid "Bluetooth, pairing"
+msgstr "Bluetooth, התאמה"
+
+#: src/main.c
+msgid ""
+"pair headphones speaker watch sharing visible device name printers printing"
+msgstr "התאמה אוזניות רמקול שעון שיתוף גלוי שם המכשיר מדפסות הדפסה"
+
+# android: Settings running_processes_header_apps_prefix
+#: src/main.c src/ns-apps.c
+msgid "Apps"
+msgstr "אפליקציות"
+
+# android: Settings app_and_notification_dashboard_summary
+#: src/main.c
+msgid "Recent apps, default apps"
+msgstr "אפליקציות אחרונות, אפליקציות ברירת מחדל"
+
+#: src/main.c
+msgid "permissions storage default browser email"
+msgstr "הרשאות אחסון ברירת מחדל דפדפן אימייל"
+
+# android: Settings action_corner_action_titles[3] (several translations, short)
+#: src/main.c src/ns-apps.c src/ns-shell.c
+msgid "Notifications"
+msgstr "התראות"
+
+#: src/main.c
+msgid "App notifications, do not disturb"
+msgstr "התראות של אפליקציות, נא לא להפריע"
+
+#: src/main.c
+msgid "dnd banner pop-up lock screen emergency alerts"
+msgstr "נא לא להפריע באנר חלון קופץ מסך נעילה התרעות חירום"
+
+# android: SystemUI sound_settings (adapted)
+#: src/main.c src/ns-sound.c
+msgid "Sound and vibration"
+msgstr "צליל ורטט"
+
+#: src/main.c
+msgid "Volume, vibration, ringtone"
+msgstr "עוצמת קול, רטט, רינגטון"
+
+#: src/main.c
+msgid ""
+"ringtone alarm sound speaker microphone vibrate mute silent haptic dial pad "
+"tones"
+msgstr ""
+"רינגטון שעון מעורר צליל רמקול מיקרופון רטט השתקה שקט משוב מישוש לוח חיוג "
+"צלילים"
+
+# android: Settings display_category_title (several translations, short)
+#: src/main.c src/ns-pages.c
+msgid "Display"
+msgstr "תצוגה"
+
+# android: Settings display_dashboard_summary
+#: src/main.c
+msgid "Dark theme, font size, brightness"
+msgstr "עיצוב כהה, גודל הגופן, בהירות"
+
+#: src/main.c
+msgid ""
+"screen timeout adaptive brightness night light intensity warm amber rotate "
+"scale always on aod display size text bold zoom lock screen"
+msgstr ""
+"זמן קצוב לכיבוי המסך בהירות אוטומטית תאורת לילה עוצמה חם ענבר סיבוב קנה מידה "
+"תמיד מופעל aod גודל התצוגה טקסט מודגש הגדלה מסך נעילה"
+
+# android: Settings style_and_wallpaper_settings_title (adapted)
+#: src/main.c src/ns-pages.c
+msgid "Wallpaper and style"
+msgstr "טפט וסגנון"
+
+#: src/main.c
+msgid "Wallpapers, colors, home screen"
+msgstr "טפטים, צבעים, מסך הבית"
+
+#: src/main.c
+msgid ""
+"background accent dark theme colour color parallax launcher grid columns "
+"rows layout icon size pack shape app names labels drawer"
+msgstr ""
+"רקע צבע הדגשה עיצוב כהה צבע פרלקסה מסך הבית רשת עמודות שורות פריסה גודל "
+"סמלים חבילת סמלים צורה שמות אפליקציות תוויות רשימת האפליקציות"
+
+# android: Settings device_details_battery
+#: src/main.c src/ns-pages.c
+msgid "Battery"
+msgstr "סוללה"
+
+#: src/main.c
+msgid "Charge, power and screen blank"
+msgstr "טעינה, חשמל וכיבוי המסך"
+
+#: src/main.c
+msgid "power dim health temperature voltage capacity"
+msgstr "חשמל עמעום תקינות טמפרטורה מתח קיבולת"
+
+# android: Settings header_category_system
+#: src/main.c src/ns-pages.c
+msgid "System"
+msgstr "מערכת"
+
+#: src/main.c
+msgid "Languages, keyboard, time"
+msgstr "שפות, מקלדת, שעה"
+
+#: src/main.c
+msgid ""
+"region locale language keyboard clock date time users mouse touchpad updates "
+"software upgrade gestures power button"
+msgstr ""
+"אזור שפה מקלדת שעון תאריך שעה משתמשים עכבר לוח מגע עדכונים תוכנה שדרוג "
+"תנועות לחצן הפעלה"
+
+#: src/main.c src/ns-caps.c
+msgid "About phone"
+msgstr "מידע על הטלפון"
+
+#: src/main.c src/ns-pages.c
+msgid "Device name, versions"
+msgstr "שם המכשיר, גרסאות"
+
+#: src/main.c
+msgid "phone tablet model kernel version memory storage name about"
+msgstr "טלפון טאבלט דגם ליבה גרסה זיכרון אחסון שם מידע"
+
+# android: Settings safety_center_title (adapted)
+#: src/main.c src/ns-privacy.c
+msgid "Security and privacy"
+msgstr "אבטחה ופרטיות"
+
+#: src/main.c
+msgid "Screen lock, permissions"
+msgstr "נעילת מסך, הרשאות"
+
+#: src/main.c
+msgid ""
+"password pin pattern swipe unlock lock screen camera microphone history trash"
+msgstr ""
+"סיסמה קוד אימות קו ביטול נעילה החלקה ביטול נעילה מסך נעילה מצלמה מיקרופון "
+"היסטוריה אשפה"
+
+# android: Settings app_ops_labels[0]
+#: src/main.c src/ns-perms.c src/ns-privacy.c
+msgid "Location"
+msgstr "מיקום"
+
+#: src/main.c src/ns-privacy.c
+msgid "Location services, app access"
+msgstr "שירותי מיקום, גישה לאפליקציות"
+
+#: src/main.c
+msgid "gps geoclue"
+msgstr "gps geoclue מיקום לוויינים"
+
+# android: Settings account_settings_title
+#: src/main.c src/ns-accounts.c
+msgid "Accounts"
+msgstr "חשבונות"
+
+#: src/main.c src/ns-accounts.c
+msgid "Online accounts"
+msgstr "חשבונות אונליין"
+
+#: src/main.c
+msgid "google nextcloud email"
+msgstr "google nextcloud אימייל דואר"
+
+# android: Settings keyboard_a11y_category
+#: src/main.c src/ns-privacy.c
+msgid "Accessibility"
+msgstr "נגישות"
+
+#: src/main.c
+msgid "Display, interaction"
+msgstr "תצוגה, אינטראקציה"
+
+#: src/main.c
+msgid "zoom contrast screen reader animations font size bold text display size"
+msgstr "הגדלה זום ניגודיות קורא מסך אנימציות גודל הגופן טקסט מודגש גודל התצוגה"
+
+# android: Settings wifi_settings
+#: src/main.c src/ns-net.c src/ns-pages.c
+msgid "Wi-Fi"
+msgstr "Wi-Fi"
+
+#. TRANSLATORS: this and the other lowercase lists of words here are a setting's search keywords: words,
+#. * separated by spaces, that find it (as many as fit the language; the English ones find it too)
+#: src/main.c
+msgid "wlan wireless networks saved password ssid internet"
+msgstr "wlan רשתות אלחוטיות שמורות סיסמה ssid אינטרנט"
+
+#: src/main.c src/ns-net.c src/ns-pages.c
+msgid "Wi-Fi hotspot"
+msgstr "נקודת Wi-Fi לשיתוף אינטרנט"
+
+#: src/main.c
+msgid "access point tethering share mobile data"
+msgstr "נקודת גישה שיתוף אינטרנט שיתוף חבילת גלישה"
+
+#. a SIM's mobile data and a hotspot that shares it: with a modem only
+#: src/main.c src/ns-net.c src/ns-pages.c
+msgid "SIMs"
+msgstr "כרטיסי SIM"
+
+#: src/main.c
+msgid "sim mobile data roaming apn carrier operator pin"
+msgstr "סים חבילת גלישה נדידה apn ספק סלולרי מפעיל קוד pin"
+
+# android: Settings airplane_mode
+#: src/main.c src/ns-pages.c
+msgid "Airplane mode"
+msgstr "מצב טיסה"
+
+#: src/main.c
+msgid "flight mode offline radios"
+msgstr "מצב טיסה אופליין ללא רשת רדיו"
+
+#: src/main.c src/ns-net.c src/ns-pages.c
+msgid "Network and VPN"
+msgstr "רשת ו-VPN"
+
+#: src/main.c
+msgid "vpn wired ethernet proxy"
+msgstr "vpn רשת קווית אתרנט proxy"
+
+# android: Settings bluetooth
+#: src/main.c src/ns-bt.c src/ns-pages.c
+msgid "Bluetooth"
+msgstr "Bluetooth"
+
+#: src/main.c
+msgid "pair pairing headphones headset speaker watch earbuds"
+msgstr "התאמה אוזניות דיבורית רמקול שעון אוזניות אלחוטיות"
+
+# android: Settings connected_device_connections_title
+#: src/main.c src/ns-pages.c
+msgid "Connection preferences"
+msgstr "העדפות חיבור"
+
+#: src/main.c
+msgid "bluetooth sharing printing"
+msgstr "bluetooth שיתוף הדפסה"
+
+#: src/main.c src/ns-bt.c src/ns-pages.c
+msgid "Sharing"
+msgstr "שיתוף"
+
+#: src/main.c
+msgid "device name visible visibility"
+msgstr "שם המכשיר גלוי חשיפה"
+
+#: src/main.c src/ns-net.c
+msgid "Printers"
+msgstr "מדפסות"
+
+#: src/main.c
+msgid "print printing printer"
+msgstr "הדפסה מדפסת"
+
+# android: Settings app_default_dashboard_title
+#: src/main.c src/ns-apps.c
+msgid "Default apps"
+msgstr "אפליקציות ברירת מחדל"
+
+#: src/main.c
+msgid "browser email music photos video open with"
+msgstr "דפדפן אימייל מוזיקה תמונות סרטונים פתיחה באמצעות"
+
+# android: Framework DndMmi
+#: src/main.c src/ns-apps.c
+msgid "Do not disturb"
+msgstr "נא לא להפריע"
+
+#: src/main.c
+msgid "dnd silence quiet pop-ups"
+msgstr "נא לא להפריע השתקה שקט חלונות קופצים"
+
+# android: Framework volume_unknown (several translations, short)
+#: src/main.c
+msgid "Volume"
+msgstr "עוצמת קול"
+
+#: src/main.c
+msgid "media alarm ring ringtone loudness mute"
+msgstr "מדיה שעון מעורר צלצול רינגטון עוצמה השתקה"
+
+# android: Settings notification_vibrate_title
+#: src/main.c src/ns-sound.c
+msgid "Vibration"
+msgstr "רטט"
+
+#: src/main.c
+msgid "haptic haptics vibrate intensity"
+msgstr "משוב מישוש רטט עוצמה"
+
+# android: Settings category_name_brightness
+#. both rows wait for an answer (mutter's, the sensor's): the card shows with the first that has something
+#: src/main.c src/ns-pages.c
+msgid "Brightness"
+msgstr "בהירות"
+
+#: src/main.c
+msgid "adaptive brightness dim light"
+msgstr "בהירות אוטומטית עמעום אור"
+
+# android: Settings screen_timeout
+#: src/main.c src/ns-pages.c
+msgid "Screen timeout"
+msgstr "זמן קצוב לכיבוי המסך"
+
+#: src/main.c
+msgid "sleep screen off timeout"
+msgstr "שינה כיבוי המסך זמן קצוב"
+
+# android: Settings dark_ui_mode
+#: src/main.c src/ns-pages.c
+msgid "Dark theme"
+msgstr "עיצוב כהה"
+
+#: src/main.c
+msgid "dark mode night black"
+msgstr "מצב כהה לילה שחור"
+
+# android: Settings accessibility_text_reading_options_title (adapted)
+#: src/main.c src/ns-pages.c src/ns-privacy.c
+msgid "Display size and text"
+msgstr "גודל התצוגה והטקסט"
+
+#: src/main.c
+msgid "font size bold text zoom scale bigger smaller"
+msgstr "גודל הגופן טקסט מודגש הגדלה זום קנה מידה גדול יותר קטן יותר"
+
+# android: Settings night_display_title (adapted)
+#: src/main.c src/ns-pages.c
+msgid "Night light"
+msgstr "תאורת לילה"
+
+#: src/main.c
+msgid "warm amber blue light filter evening"
+msgstr "חם ענבר אור כחול מסנן ערב"
+
+#: src/main.c src/ns-pages.c src/ns-system.c
+msgid "Wallpapers"
+msgstr "טפטים"
+
+#: src/main.c
+msgid "background picture photo parallax"
+msgstr "רקע תמונה צילום פרלקסה"
+
+# android: Settings preview_pager_home_title
+#: src/main.c src/ns-pages.c
+msgid "Home screen"
+msgstr "מסך הבית"
+
+#: src/main.c
+msgid "launcher grid columns rows icons drawer app names"
+msgstr "מסך הבית רשת עמודות שורות סמלים רשימת האפליקציות שמות אפליקציות"
+
+# android: Settings advanced_battery_title
+#: src/main.c src/ns-pages.c
+msgid "Battery usage"
+msgstr "שימוש בסוללה"
+
+#: src/main.c
+msgid "since last full charge history chart graph"
+msgstr "מאז הטעינה המלאה האחרונה היסטוריה תרשים גרף"
+
+# android: Settings battery_info
+#: src/main.c src/ns-pages.c
+msgid "Battery information"
+msgstr "מידע על הסוללה"
+
+#: src/main.c
+msgid "health temperature capacity voltage"
+msgstr "תקינות טמפרטורה קיבולת מתח"
+
+#: src/main.c src/ns-pages.c src/ns-system.c
+msgid "Power and screen blank"
+msgstr "חשמל וכיבוי המסך"
+
+#: src/main.c
+msgid "suspend sleep dim screen blank power saving"
+msgstr "השהיה שינה עמעום כיבוי המסך חיסכון בחשמל"
+
+# android: Settings language_and_region_title (adapted)
+#: src/main.c src/ns-pages.c src/ns-system.c
+msgid "Language and region"
+msgstr "שפה ואזור"
+
+#: src/main.c
+msgid "language region locale formats translation"
+msgstr "שפה אזור לוקאל פורמטים תרגום"
+
+# android: Settings keyboard_settings
+#: src/main.c src/ns-pages.c src/ns-shell.c
+msgid "Keyboard"
+msgstr "מקלדת"
+
+#: src/main.c
+msgid "on-screen keyboard osk layouts input typing"
+msgstr "מקלדת וירטואלית מקלדת במסך osk פריסות קלט הקלדה"
+
+# android: LatinIME auto_correction (short)
+#: src/main.c src/ns-shell.c
+msgid "Auto-correction"
+msgstr "תיקון אוטומטי"
+
+#: src/main.c
+msgid ""
+"autocorrect spelling typos suggestions next word prediction text correction"
+msgstr "תיקון אוטומטי איות שגיאות הקלדה הצעות המילה הבאה חיזוי תיקון טקסט"
+
+# android: Settings gesture_preference_title (several translations, short)
+#: src/main.c src/ns-buttons.c src/ns-pages.c
+msgid "Gestures"
+msgstr "תנועות לביצוע פעולות"
+
+#: src/main.c
+msgid "buttons keys shortcut quick launch"
+msgstr "לחצנים מקשים קיצור דרך הפעלה מהירה"
+
+#: src/main.c src/ns-buttons.c src/ns-pages.c
+msgid "Double-press power button"
+msgstr "לחיצה כפולה על לחצן ההפעלה"
+
+#: src/main.c
+msgid "power key twice double press open app camera agent shortcut"
+msgstr "לחצן הפעלה פעמיים לחיצה כפולה פתיחת אפליקציה מצלמה עוזר קיצור דרך"
+
+#: src/main.c src/ns-buttons.c
+msgid "Side button"
+msgstr "לחצן הצד"
+
+#: src/main.c
+msgid "side key button app recents camera shortcut"
+msgstr "לחצן צד מקש אפליקציה אפליקציות אחרונות מצלמה קיצור דרך"
+
+#: src/main.c src/ns-pages.c src/ns-system.c
+msgid "Mouse and touchpad"
+msgstr "עכבר ולוח מגע"
+
+#: src/main.c
+msgid "pointer speed scrolling cursor"
+msgstr "מהירות המצביע גלילה סמן"
+
+# android: Settings date_and_time (adapted)
+#: src/main.c src/ns-pages.c src/ns-system.c
+msgid "Date and time"
+msgstr "תאריך ושעה"
+
+#: src/main.c
+msgid "clock time zone timezone 24-hour automatic"
+msgstr "שעון אזור זמן 24 שעות אוטומטי"
+
+# android: Settings user_settings_title
+#: src/main.c src/ns-pages.c src/ns-system.c
+msgid "Users"
+msgstr "משתמשים"
+
+#: src/main.c
+msgid "user account password name avatar picture"
+msgstr "משתמש חשבון סיסמה שם תמונת פרופיל תמונה"
+
+#: src/main.c src/ns-pages.c src/ns-system.c
+msgid "Software information"
+msgstr "מידע על התוכנה"
+
+#: src/main.c
+msgid "version build kernel device name"
+msgstr "גרסה build ליבה שם המכשיר"
+
+# android: Settings lockscreen_settings_title (several translations, short)
+#: src/main.c src/ns-pages.c src/ns-privacy.c src/ns-shell.c
+msgid "Lock screen"
+msgstr "מסך נעילה"
+
+#: src/main.c
+msgid "screen lock password pin pattern swipe unlock"
+msgstr "נעילת מסך סיסמה קוד אימות קו ביטול נעילה החלקה ביטול נעילה"
+
+#: src/main.c
+msgid "Camera and microphone"
+msgstr "מצלמה ומיקרופון"
+
+#: src/main.c
+msgid "permission access"
+msgstr "הרשאה גישה"
+
+#: src/main.c
+msgid "Recent files"
+msgstr "קבצים אחרונים"
+
+#: src/main.c
+msgid "history remember clean up trash"
+msgstr "היסטוריה זכירה ניקוי אשפה"
+
+# android: Settings screen_reader_category_title
+#: src/main.c src/ns-privacy.c
+msgid "Screen reader"
+msgstr "קורא מסך"
+
+#: src/main.c
+msgid "orca talkback speech read aloud blind"
+msgstr "orca talkback דיבור הקראה עיוורים קורא מסך"
+
+#: src/main.c src/ns-privacy.c
+msgid "High contrast"
+msgstr "ניגודיות גבוהה"
+
+#: src/main.c
+msgid "contrast colours colors outlines"
+msgstr "ניגודיות צבעים קווי מתאר"
+
+#: src/main.c src/ns-privacy.c
+msgid "Reduce animations"
+msgstr "הפחתת אנימציות"
+
+#: src/main.c
+msgid "motion animations movement"
+msgstr "תנועה אנימציות"
+
+# android: Settings sticky_keys (quotes added)
+#: src/main.c src/ns-privacy.c
+msgid "Sticky keys"
+msgstr "מקשים \"דביקים\""
+
+#: src/main.c
+msgid "hardware keyboard slow keys bounce keys"
+msgstr "מקלדת פיזית האטת המקשים סינון הקשות חוזרות"
+
+# android: Settings homepage_search (adapted)
+#: src/main.c
+msgid "Search settings"
+msgstr "חיפוש בהגדרות"
+
+#: src/main.c
+msgid "Mobile, Wi-Fi, hotspot"
+msgstr "סלולרי, Wi-Fi, נקודת אינטרנט"
+
+#: src/main.c
+msgid "Wi-Fi, VPN"
+msgstr "Wi-Fi, VPN"
+
+#: src/main.c
+msgid "Volume, alarm sound"
+msgstr "עוצמת קול, צליל השעון המעורר"
+
+#: src/ns-accounts-net.c
+msgid "The signing certificate authority is not known."
+msgstr "רשות האישורים שחתמה על האישור אינה מוכרת."
+
+#: src/ns-accounts-net.c
+msgid ""
+"The certificate does not match the expected identity of the site that it was "
+"retrieved from."
+msgstr "האישור לא תואם לזהות הצפויה של האתר שממנו הוא התקבל."
+
+#: src/ns-accounts-net.c
+msgid "The certificate’s activation time is still in the future."
+msgstr "מועד ההפעלה של האישור עדיין לא הגיע."
+
+#: src/ns-accounts-net.c
+msgid "The certificate has expired."
+msgstr "תוקף האישור פג."
+
+#: src/ns-accounts-net.c
+msgid "The certificate has been revoked."
+msgstr "האישור בוטל."
+
+#: src/ns-accounts-net.c
+msgid "The certificate’s algorithm is considered insecure."
+msgstr "האלגוריתם של האישור נחשב לא מאובטח."
+
+#: src/ns-accounts-net.c
+msgid "Invalid certificate."
+msgstr "האישור לא תקין."
+
+#: src/ns-accounts-net.c
+msgid "Not supported"
+msgstr "אין תמיכה"
+
+# android: SystemUI controls_error_removed (short)
+#: src/ns-accounts-net.c
+msgid "Not found"
+msgstr "לא נמצא"
+
+#: src/ns-accounts-net.c src/ns-accounts.c
+msgid "Authentication failed"
+msgstr "האימות נכשל"
+
+#: src/ns-accounts-net.c src/ns-accounts.c
+#, c-format
+msgid "Invalid URI: %s"
+msgstr "כתובת URI לא תקינה: %s"
+
+#: src/ns-accounts-net.c
+msgid "DAV not supported"
+msgstr "אין תמיכה ב-DAV"
+
+#: src/ns-accounts-net.c
+msgid "Cannot find WebDAV endpoint"
+msgstr "לא נמצאה נקודת קצה של WebDAV"
+
+#: src/ns-accounts-net.c
+msgid "Connection closed"
+msgstr "החיבור נסגר"
+
+#: src/ns-accounts-net.c
+msgid "Service not available"
+msgstr "השירות לא זמין"
+
+#: src/ns-accounts-net.c
+msgid "Server does not support STARTTLS"
+msgstr "השרת לא תומך ב-STARTTLS"
+
+#: src/ns-accounts-net.c
+msgid "TLS not available"
+msgstr "TLS לא זמין"
+
+#: src/ns-accounts-net.c
+msgid "Unknown authentication mechanism"
+msgstr "מנגנון אימות לא ידוע"
+
+#. TRANSLATORS: %s is the email address
+#: src/ns-accounts-net.c
+#, c-format
+msgid "Failed to autoconfig '%s'"
+msgstr "ההגדרה האוטומטית של \"%s\" נכשלה"
+
+#: src/ns-accounts-net.c
+msgid "Failed to parse autodiscover response XML"
+msgstr "לא ניתן לנתח את קובץ ה-XML שהתקבל מ-autodiscover"
+
+#: src/ns-accounts-net.c
+msgid "Failed to find ASUrl in autodiscover response"
+msgstr "לא נמצא ASUrl בתשובה של autodiscover"
+
+#: src/ns-accounts-net.c
+msgid "Could not parse response"
+msgstr "לא ניתן לנתח את התשובה"
+
+#: src/ns-accounts.c
+msgid "Ignore"
+msgstr "התעלמות"
+
+# android: Settings wifi_status
+#: src/ns-accounts.c src/ns-net.c
+msgid "Status"
+msgstr "סטטוס"
+
+# android: Settings bluetooth_disable_hw_offload_dialog_cancel (several translations, short)
+#: src/ns-accounts.c src/ns-pattern.c src/ns-ui.c
+msgid "Cancel"
+msgstr "ביטול"
+
+#: src/ns-accounts.c
+msgid "Signing in…"
+msgstr "מתבצעת כניסה…"
+
+# android: Settings wifi_add_app_single_network_saving_summary
+#: src/ns-accounts.c
+msgid "Saving…"
+msgstr "מתבצעת שמירה…"
+
+#: src/ns-accounts.c
+msgid "Adding the account…"
+msgstr "החשבון מתווסף…"
+
+#: src/ns-accounts.c
+msgid "Checking the server…"
+msgstr "מתבצעת בדיקה של השרת…"
+
+#: src/ns-accounts.c
+msgid "Looking for the server's calendars, contacts and files…"
+msgstr "מתבצע חיפוש של היומנים, אנשי הקשר והקבצים בשרת…"
+
+# android: Settings my_device_info_account_preference_title
+#: src/ns-accounts.c
+msgid "Account"
+msgstr "חשבון"
+
+#: src/ns-accounts.c
+msgid "Calendars, contacts and files from a WebDAV server"
+msgstr "יומנים, אנשי קשר וקבצים משרת WebDAV"
+
+# android: Settings wifi_sign_in_button_text (several translations, short)
+#: src/ns-accounts.c
+msgid "Sign in"
+msgstr "כניסה"
+
+#: src/ns-accounts.c
+msgid "Server address"
+msgstr "כתובת השרת"
+
+#: src/ns-accounts.c
+msgid "For example example.com or 192.0.2.82"
+msgstr "לדוגמה example.com או 192.0.2.82"
+
+# android: Jelly auth_dialog_username (adapted, other app, short)
+#: src/ns-accounts.c src/ns-system.c
+msgid "User name"
+msgstr "שם משתמש"
+
+# android: Settings unlock_set_unlock_password_title
+#: src/ns-accounts.c src/ns-net.c
+msgid "Password"
+msgstr "סיסמה"
+
+#: src/ns-accounts.c
+msgid "Server addresses (optional)"
+msgstr "כתובות השרת (אופציונלי)"
+
+# android: Settings storage_files (several translations, short)
+#: src/ns-accounts.c
+msgid "Files"
+msgstr "קבצים"
+
+#: src/ns-accounts.c
+msgid "Calendar (CalDAV)"
+msgstr "יומן (CalDAV)"
+
+#: src/ns-accounts.c
+msgid "Contacts (CardDAV)"
+msgstr "אנשי קשר (CardDAV)"
+
+#. TRANSLATORS: the user name asked for, then the one the server signed in
+#: src/ns-accounts.c
+#, c-format
+msgid "Was asked to log in as %s, but logged in as %s"
+msgstr "התבקשה כניסה בתור %s, אבל הכניסה בוצעה בתור %s"
+
+#: src/ns-accounts.c
+msgid "Sign in on the page that opened in the browser, then come back here."
+msgstr "יש להיכנס בדף שנפתח בדפדפן ואז לחזור לכאן."
+
+#: src/ns-accounts.c
+msgid "Opening the sign-in page in the browser…"
+msgstr "דף הכניסה נפתח בדפדפן…"
+
+#: src/ns-accounts.c
+msgid "Connecting to the server…"
+msgstr "מתבצעת התחברות לשרת…"
+
+#: src/ns-accounts.c
+msgid ""
+"Your Nextcloud server's files, calendars and contacts. You sign in in the "
+"browser."
+msgstr "הקבצים, היומנים ואנשי הקשר בשרת Nextcloud. הכניסה מתבצעת בדפדפן."
+
+#: src/ns-accounts.c
+msgid "The server's sign-in page opens in the browser."
+msgstr "דף הכניסה של השרת נפתח בדפדפן."
+
+#. ---- IMAP and SMTP (goaimapsmtpprovider.c) ----
+#. GoaTlsType - 1, as GOA's dialog lists them
+#: src/ns-accounts.c
+msgid "STARTTLS after connecting"
+msgstr "STARTTLS אחרי ההתחברות"
+
+#: src/ns-accounts.c
+msgid "SSL on a dedicated port"
+msgstr "SSL ביציאה ייעודית"
+
+#: src/ns-accounts.c
+msgid "The servers below were found for this address."
+msgstr "השרתים שבהמשך נמצאו עבור הכתובת הזו."
+
+#: src/ns-accounts.c
+msgid "The servers for this address could not be found: enter them below."
+msgstr "לא נמצאו שרתים עבור הכתובת הזו: יש להזין אותם בהמשך."
+
+#: src/ns-accounts.c
+msgid "Looking up the servers for this address…"
+msgstr "מתבצע חיפוש של השרתים עבור הכתובת הזו…"
+
+#: src/ns-accounts.c
+msgid "The servers are looked up from your provider when possible."
+msgstr "כשאפשר, השרתים מאותרים אצל ספק השירות."
+
+#: src/ns-accounts.c
+msgid "Checking the outgoing mail server…"
+msgstr "מתבצעת בדיקה של שרת הדואר היוצא…"
+
+#: src/ns-accounts.c
+msgid "Checking the incoming mail server…"
+msgstr "מתבצעת בדיקה של שרת הדואר הנכנס…"
+
+#: src/ns-accounts.c
+msgid "Incoming mail (IMAP)"
+msgstr "דואר נכנס (IMAP)"
+
+# android: Settings apn_server
+#: src/ns-accounts.c
+msgid "Server"
+msgstr "שרת"
+
+#: src/ns-accounts.c
+msgid "Outgoing mail (SMTP)"
+msgstr "דואר יוצא (SMTP)"
+
+#: src/ns-accounts.c
+msgid "Mail from any provider, by IMAP and SMTP"
+msgstr "דואר מכל ספק, באמצעות IMAP ו-SMTP"
+
+# android: Settings security_settings_fingerprint_enroll_dialog_name_label
+#: src/ns-accounts.c src/ns-system.c
+msgid "Name"
+msgstr "שם"
+
+# android: Framework autofill_save_type_email_address (adapted, short)
+#: src/ns-accounts.c
+msgid "Email address"
+msgstr "כתובת אימייל"
+
+# android: Settings encryption_settings_title
+#: src/ns-accounts.c
+msgid "Encryption"
+msgstr "הצפנה"
+
+#: src/ns-accounts.c
+msgid "For example imap.example.com"
+msgstr "לדוגמה imap.example.com"
+
+#: src/ns-accounts.c
+msgid ""
+"For example smtp.example.com. Leave it empty for an account that only reads "
+"mail."
+msgstr "לדוגמה smtp.example.com. אפשר להשאיר את השדה ריק בחשבון שרק קורא דואר."
+
+#: src/ns-accounts.c
+msgid "Looking for the Exchange server…"
+msgstr "מתבצע חיפוש של שרת ה-Exchange…"
+
+#: src/ns-accounts.c
+msgid "Calendars, contacts and mail from a Microsoft Exchange server"
+msgstr "יומנים, אנשי קשר ודואר משרת Microsoft Exchange"
+
+#: src/ns-accounts.c
+msgid "The account's details are found from the email address when possible."
+msgstr "כשאפשר, פרטי החשבון מאותרים לפי כתובת האימייל."
+
+#: src/ns-accounts.c
+msgid "Account details"
+msgstr "פרטי החשבון"
+
+# android: Settings wifi_eap_domain (several translations, short)
+#: src/ns-accounts.c src/ns-net.c
+msgid "Domain"
+msgstr "דומיין"
+
+#: src/ns-accounts.c
+msgid "For example example.com"
+msgstr "לדוגמה example.com"
+
+#: src/ns-accounts.c
+msgid "Identity service returned invalid key"
+msgstr "שירות הזהויות החזיר מפתח לא תקין"
+
+#: src/ns-accounts.c
+msgid "The principal is a user name and a realm: user@EXAMPLE.COM"
+msgstr "ה-principal הוא שם משתמש ו-realm: user@EXAMPLE.COM"
+
+#: src/ns-accounts.c
+msgid "Web and network resources of your organization, by Kerberos"
+msgstr "משאבי האינטרנט והרשת של הארגון, באמצעות Kerberos"
+
+#: src/ns-accounts.c
+msgid "Principal"
+msgstr "Principal"
+
+#: src/ns-accounts.c
+msgid "Your Fedora account's user name"
+msgstr "שם המשתמש בחשבון Fedora"
+
+#: src/ns-accounts.c
+msgid "For example user@EXAMPLE.COM"
+msgstr "לדוגמה user@EXAMPLE.COM"
+
+#: src/ns-accounts.c
+msgid "Remember the password"
+msgstr "שמירת הסיסמה"
+
+#: src/ns-accounts.c
+msgid "Signs in again on its own when the ticket runs out"
+msgstr "כניסה מחדש באופן אוטומטי כשתוקף הכרטיס פג"
+
+#: src/ns-accounts.c
+msgid "The account is gone."
+msgstr "החשבון כבר לא קיים."
+
+#. not GOA's dialog as this page knows it: its own window stays, and the sign-in is done there
+#: src/ns-accounts.c
+msgid "Continue in the window that opened."
+msgstr "יש להמשיך בחלון שנפתח."
+
+#: src/ns-accounts.c
+msgid ""
+"This version of GNOME Online Accounts asks for an organization's details "
+"differently."
+msgstr "הגרסה הזו של GNOME Online Accounts מבקשת את פרטי הארגון בדרך אחרת."
+
+#: src/ns-accounts.c
+msgid "The sign-in page opens in the browser."
+msgstr "דף הכניסה נפתח בדפדפן."
+
+#. TRANSLATORS: %s is the provider ("Google")
+#: src/ns-accounts.c
+#, c-format
+msgid "You sign in to %s in the browser, on its own page."
+msgstr "הכניסה ל-%s מתבצעת בדפדפן, בדף הכניסה שלו."
+
+#: src/ns-accounts.c
+msgid "Use an organization account"
+msgstr "שימוש בחשבון של ארגון"
+
+#: src/ns-accounts.c
+msgid "Sign in with details from an organization or developer account"
+msgstr "כניסה עם פרטים של חשבון ארגון או חשבון מפתח"
+
+#: src/ns-accounts.c
+msgid "Details from your organization"
+msgstr "פרטים מהארגון"
+
+#: src/ns-accounts.c
+msgid "Client ID (optional)"
+msgstr "מזהה לקוח (אופציונלי)"
+
+#: src/ns-accounts.c
+msgid "Tenant ID"
+msgstr "מזהה דייר (Tenant ID)"
+
+#: src/ns-accounts.c
+msgid "No providers"
+msgstr "אין ספקים"
+
+# android: Settings add_account_label
+#: src/ns-accounts.c
+msgid "Add account"
+msgstr "הוספת חשבון"
+
+# android: Settings zen_mode_icon_options_descriptions[6] (several translations, short)
+#: src/ns-accounts.c src/ns-apps.c src/ns-perms.c
+msgid "Calendar"
+msgstr "יומן"
+
+# android: Settings sync_contacts
+#: src/ns-accounts.c src/ns-pages.c src/ns-perms.c
+msgid "Contacts"
+msgstr "אנשי קשר"
+
+#: src/ns-accounts.c
+msgid ""
+"The phone stops using it and forgets its sign-in. The account itself stays "
+"with its provider."
+msgstr ""
+"הטלפון יפסיק להשתמש בחשבון וימחק את פרטי הכניסה אליו. החשבון עצמו נשאר אצל "
+"הספק."
+
+#: src/ns-accounts.c
+msgid ""
+"The tablet stops using it and forgets its sign-in. The account itself stays "
+"with its provider."
+msgstr ""
+"הטאבלט יפסיק להשתמש בחשבון וימחק את פרטי הכניסה אליו. החשבון עצמו נשאר אצל "
+"הספק."
+
+#: src/ns-accounts.c
+msgid "Remove this account?"
+msgstr "להסיר את החשבון הזה?"
+
+# android: Settings locale_remove_menu (several translations, short)
+#: src/ns-accounts.c src/ns-net.c src/ns-shell.c
+msgid "Remove"
+msgstr "הסרה"
+
+#: src/ns-accounts.c
+msgid "Sign in again"
+msgstr "כניסה מחדש"
+
+#: src/ns-accounts.c
+msgid "Servers"
+msgstr "שרתים"
+
+#: src/ns-accounts.c
+msgid "Exchange server"
+msgstr "שרת Exchange"
+
+#: src/ns-accounts.c
+msgid "Calendars"
+msgstr "יומנים"
+
+#: src/ns-accounts.c
+msgid ""
+"The account could not sign in. Its calendars, contacts and files wait until "
+"it does."
+msgstr ""
+"לא ניתן היה להיכנס לחשבון. היומנים, אנשי הקשר והקבצים שלו ימתינו עד שהכניסה "
+"תצליח."
+
+#: src/ns-accounts.c
+msgid "Use for"
+msgstr "שימוש עבור"
+
+# android: Settings remove_account_label
+#: src/ns-accounts.c
+msgid "Remove account"
+msgstr "הסרת החשבון"
+
+#: src/ns-accounts.c
+msgid "Needs you to sign in again"
+msgstr "נדרשת כניסה מחדש"
+
+#: src/ns-accounts.c
+msgid ""
+"No online accounts yet. Add one to get its calendars, contacts and files "
+"here."
+msgstr ""
+"עדיין אין חשבונות אונליין. אפשר להוסיף חשבון כדי לקבל כאן את היומנים, אנשי "
+"הקשר והקבצים שלו."
+
+#: src/ns-apps.c
+msgid "Allow notifications"
+msgstr "הצגת התראות"
+
+#: src/ns-apps.c
+msgid "Pop-up"
+msgstr "הופעה במסך"
+
+#: src/ns-apps.c
+msgid "Show a banner at the top of the screen"
+msgstr "הצגת באנר בחלק העליון של המסך"
+
+#: src/ns-apps.c
+msgid "Show on the lock screen"
+msgstr "הצגה במסך הנעילה"
+
+#: src/ns-apps.c
+msgid "The app's icon below the clock"
+msgstr "סמל האפליקציה מתחת לשעון"
+
+# android: Settings notification_listener_allowed (several translations, short)
+#: src/ns-apps.c src/ns-perms.c
+msgid "Allowed"
+msgstr "יש הרשאה"
+
+# android: Settings autofill_logging_level_entries[0] (several translations, short)
+#: src/ns-apps.c src/ns-bt.c src/ns-buttons.c src/ns-displays.c src/ns-net.c
+#: src/ns-pages.c
+msgid "Off"
+msgstr "כבוי"
+
+#: src/ns-apps.c
+msgid "Emergency alerts"
+msgstr "התרעות על מקרי חירום"
+
+#: src/ns-apps.c
+msgid "Alerts from the mobile network"
+msgstr "התרעות מהרשת הסלולרית"
+
+# android: Settings extreme_threats_title
+#: src/ns-apps.c
+msgid "Extreme threats"
+msgstr "איומים קיצוניים"
+
+#: src/ns-apps.c
+msgid "To life and safety"
+msgstr "לחיים ולבטיחות"
+
+# android: Settings severe_threats_title
+#: src/ns-apps.c
+msgid "Severe threats"
+msgstr "איומים חמורים"
+
+#: src/ns-apps.c
+msgid "Public safety"
+msgstr "ביטחון הציבור"
+
+#: src/ns-apps.c
+msgid "What to do in a risky situation"
+msgstr "מה עושים במצב מסוכן"
+
+#: src/ns-apps.c
+msgid "Amber alerts"
+msgstr "התרעות AMBER"
+
+#: src/ns-apps.c
+msgid "Child abduction emergencies"
+msgstr "מקרי חירום של חטיפת ילדים"
+
+#: src/ns-apps.c
+msgid "Test alerts"
+msgstr "התרעות בדיקה"
+
+#: src/ns-apps.c
+msgid "Periodic tests of the alert system"
+msgstr "בדיקות תקופתיות של מערכת ההתרעות"
+
+#: src/ns-apps.c
+msgid ""
+"Presidential alerts are always shown. Alerts need a SIM and a modem that "
+"receives them."
+msgstr ""
+"התרעות נשיאותיות מוצגות תמיד. כדי לקבל התרעות נדרשים כרטיס SIM ומודם שקולט "
+"אותן."
+
+#: src/ns-apps.c
+msgid "Cell broadcast warnings"
+msgstr "אזהרות בשידור סלולרי"
+
+# android: Settings general_notification_header (several translations, short)
+#. Android 17's groups: the apps' own settings on a page of their own, then what the lock screen shows
+#: src/ns-apps.c
+msgid "Manage"
+msgstr "ניהול"
+
+#: src/ns-apps.c
+msgid "App notifications"
+msgstr "התראות של אפליקציות"
+
+# android: Settings app_notification_field_summary
+#: src/ns-apps.c
+msgid "Control notifications from individual apps"
+msgstr "ניהול התראות מאפליקציות ספציפיות"
+
+# android: Settings privacy_header
+#: src/ns-apps.c
+msgid "Privacy"
+msgstr "פרטיות"
+
+# android: Settings lock_screen_notifs_title
+#: src/ns-apps.c
+msgid "Notifications on lock screen"
+msgstr "התראות במסך הנעילה"
+
+#: src/ns-apps.c src/ns-shell.c
+msgid "Their apps' icons below the clock"
+msgstr "סמלי האפליקציות שלהן מתחת לשעון"
+
+#: src/ns-apps.c
+msgid "No pop-ups: notifications wait in the list"
+msgstr "ללא הופעה במסך: ההתראות ממתינות ברשימה"
+
+# android: Settings vpn_version
+#: src/ns-apps.c
+msgid "Version"
+msgstr "גרסה"
+
+# android: Settings uninstall_text (several translations, short)
+#: src/ns-apps.c
+msgid "Uninstall"
+msgstr "הסרה"
+
+#: src/ns-apps.c
+msgid "App Installer is not installed: it uninstalls apps"
+msgstr "מתקין האפליקציות לא מותקן: הוא זה שמסיר אפליקציות"
+
+#: src/ns-apps.c
+msgid "Could not uninstall, try again"
+msgstr "לא ניתן היה להסיר את ההתקנה, יש לנסות שוב"
+
+# android: PackageInstaller uninstalling (other app, short)
+#: src/ns-apps.c
+msgid "Uninstalling…"
+msgstr "בתהליך הסרת התקנה…"
+
+# android: Settings service_foreground_processes (several translations)
+#. TRANSLATORS: %s is a size ("12 MB")
+#: src/ns-apps.c
+#, c-format
+msgid "%s used"
+msgstr "%s בשימוש"
+
+# android: Settings clear_cache_btn_text
+#: src/ns-apps.c
+msgid "Clear cache"
+msgstr "מחיקת המטמון"
+
+#: src/ns-apps.c
+msgid "Clearing…"
+msgstr "מתבצע ניקוי…"
+
+# android: Settings storage_settings_for_app (adapted)
+#: src/ns-apps.c
+msgid "Storage and cache"
+msgstr "אחסון ומטמון"
+
+# android: Settings app_info_storage_title
+#: src/ns-apps.c
+msgid "Space used"
+msgstr "נפח האחסון המנוצל"
+
+# android: Settings application_size_label
+#: src/ns-apps.c
+msgid "App size"
+msgstr "גודל האפליקציה"
+
+# android: Settings data_size_label
+#: src/ns-apps.c
+msgid "User data"
+msgstr "נתוני משתמש"
+
+# android: Settings cache_header_label
+#: src/ns-apps.c
+msgid "Cache"
+msgstr "מטמון"
+
+# android: Settings total_size_label (quotes added)
+#: src/ns-apps.c
+msgid "Total"
+msgstr "סה\"כ"
+
+# android: Settings memory_calculating_size (several translations, short)
+#: src/ns-apps.c
+msgid "Calculating…"
+msgstr "החישוב מתבצע…"
+
+# android: Settings launch_instant_app
+#: src/ns-apps.c
+msgid "Open"
+msgstr "פתיחה"
+
+#: src/ns-apps.c
+msgid "App ID"
+msgstr "מזהה האפליקציה"
+
+# android: Framework duration_minutes_relative
+#: src/ns-apps.c
+#, c-format
+msgid "%d minute ago"
+msgid_plural "%d minutes ago"
+msgstr[0] "לפני דקה"
+msgstr[1] "לפני %d דקות"
+msgstr[2] "לפני %d דקות"
+
+#: src/ns-apps.c
+#, c-format
+msgid "%d hour ago"
+msgid_plural "%d hours ago"
+msgstr[0] "לפני שעה"
+msgstr[1] "לפני שעתיים"
+msgstr[2] "לפני %d שעות"
+
+#: src/ns-apps.c
+#, c-format
+msgid "%d day ago"
+msgid_plural "%d days ago"
+msgstr[0] "לפני יום"
+msgstr[1] "לפני יומיים"
+msgstr[2] "לפני %d ימים"
+
+# android: Settings recent_app_category_title
+#: src/ns-apps.c
+msgid "Recently opened apps"
+msgstr "אפליקציות שפתחת לאחרונה"
+
+#: src/ns-apps.c
+#, c-format
+msgid "See %u app"
+msgid_plural "See all %u apps"
+msgstr[0] "הצגת האפליקציה"
+msgstr[1] "הצגת שתי האפליקציות"
+msgstr[2] "הצגת כל %u האפליקציות"
+
+# android: Settings advanced_section_header (several translations, short)
+#: src/ns-apps.c
+msgid "General"
+msgstr "כללי"
+
+#: src/ns-apps.c
+msgid "Browser, email, music, photos"
+msgstr "דפדפן, אימייל, מוזיקה, תמונות"
+
+# android: Settings filter_apps_all
+#: src/ns-apps.c
+msgid "All apps"
+msgstr "כל האפליקציות"
+
+# android: Framework keyboard_shortcut_group_applications_browser (short)
+#: src/ns-apps.c
+msgid "Browser"
+msgstr "דפדפן"
+
+# android: Settings preview_pager_email_title (several translations, short)
+#: src/ns-apps.c src/ns-pages.c
+msgid "Email"
+msgstr "אימייל"
+
+# android: Framework keyboard_shortcut_group_applications_music (short)
+#: src/ns-apps.c
+msgid "Music"
+msgstr "מוזיקה"
+
+#: src/ns-apps.c
+msgid "Video"
+msgstr "וידאו"
+
+# android: Aperture photos_header (other app, short)
+#: src/ns-apps.c
+msgid "Photos"
+msgstr "תמונות"
+
+#: src/ns-apps.c
+msgid "None chosen"
+msgstr "לא נבחרה אפליקציה"
+
+#: src/ns-apps.c
+msgid "No app installed"
+msgstr "אין אפליקציה מותקנת"
+
+# android: Launcher3 remote_action_failed
+#. TRANSLATORS: %s is BlueZ's error message
+#: src/ns-bt.c
+#, c-format
+msgid "Failed: %s"
+msgstr "הפעולה נכשלה: %s"
+
+#. TRANSLATORS: %s is the Bluetooth device's name ("JBL Flip 5")
+#: src/ns-bt.c
+#, c-format
+msgid "Pair with %s?"
+msgstr "לבצע התאמה עם %s?"
+
+#. TRANSLATORS: the device's name, then the six-digit code
+#: src/ns-bt.c
+#, c-format
+msgid ""
+"Make sure %s shows this code:\n"
+"\n"
+"%06u"
+msgstr ""
+"יש לוודא שבמכשיר %s מוצג הקוד הזה:\n"
+"\n"
+"%06u"
+
+# android: SettingsLib bluetooth_pairing_accept (short)
+#: src/ns-bt.c
+msgid "Pair"
+msgstr "התאמה"
+
+#: src/ns-bt.c
+msgid "Type the PIN shown on the device (often 0000 or 1234)."
+msgstr "יש להקליד את קוד הגישה שמוצג במכשיר (לרוב 0000 או 1234)."
+
+#. TRANSLATORS: the device's name, then the code to type on it
+#: src/ns-bt.c
+#, c-format
+msgid ""
+"Type this code on %s:\n"
+"\n"
+"%s"
+msgstr ""
+"יש להקליד את הקוד הזה במכשיר %s:\n"
+"\n"
+"%s"
+
+# android: Settings proxy_error_dismiss
+#: src/ns-bt.c
+msgid "OK"
+msgstr "אישור"
+
+# android: SettingsLib wifi_status[7] (several translations, short)
+#: src/ns-bt.c
+msgid "Disconnecting…"
+msgstr "מתבצעת התנתקות…"
+
+# android: Settings wifi_status[2] (several translations, short)
+#: src/ns-bt.c src/ns-net.c
+msgid "Connecting…"
+msgstr "מתבצעת התחברות…"
+
+#. TRANSLATORS: %s is BlueZ's error message
+#: src/ns-bt.c
+#, c-format
+msgid "Not paired: %s"
+msgstr "ההתאמה לא בוצעה: %s"
+
+# android: SettingsLib bluetooth_pairing (short)
+#: src/ns-bt.c
+msgid "Pairing…"
+msgstr "ההתאמה מתבצעת…"
+
+# android: Settings storage_menu_rename (several translations, short)
+#: src/ns-bt.c
+msgid "Rename"
+msgstr "שינוי שם"
+
+#: src/ns-bt.c
+msgid "Unpair this device?"
+msgstr "לבטל את ההתאמה למכשיר הזה?"
+
+#: src/ns-bt.c
+msgid "It has to be paired again to connect."
+msgstr "כדי להתחבר אליו שוב, צריך לבצע התאמה מחדש."
+
+#: src/ns-bt.c
+msgid "Unpair"
+msgstr "ביטול ההתאמה"
+
+# android: Settings vpn_disconnect (several translations, short)
+#: src/ns-bt.c src/ns-net.c
+msgid "Disconnect"
+msgstr "ניתוק"
+
+# android: Settings bluetooth_device_context_connect
+#: src/ns-bt.c src/ns-net.c
+msgid "Connect"
+msgstr "התחברות"
+
+# android: Settings wifi_status[5] (several translations, short)
+#: src/ns-bt.c src/ns-net.c
+msgid "Connected"
+msgstr "מחובר"
+
+# android: Settings device_dashboard_title
+#: src/ns-bt.c
+msgid "Device"
+msgstr "מכשיר"
+
+#: src/ns-bt.c
+msgid "Bluetooth address"
+msgstr "כתובת ה-Bluetooth"
+
+#: src/ns-bt.c
+msgid "No Bluetooth adapter"
+msgstr "אין מתאם Bluetooth"
+
+# android: Settings private_space_hide_on_summary (several translations, short)
+#: src/ns-bt.c src/ns-net.c src/ns-pages.c
+msgid "On"
+msgstr "מצב פעיל"
+
+#: src/ns-bt.c
+#, c-format
+msgid "Visible as “%s” to nearby devices while this page is open."
+msgstr "המכשיר גלוי למכשירים בקרבת מקום בשם \"%s\" כל עוד הדף הזה פתוח."
+
+#: src/ns-bt.c
+msgid "This phone is visible to nearby devices while this page is open."
+msgstr "הטלפון גלוי למכשירים בקרבת מקום כל עוד הדף הזה פתוח."
+
+#: src/ns-bt.c
+msgid "This tablet is visible to nearby devices while this page is open."
+msgstr "הטאבלט גלוי למכשירים בקרבת מקום כל עוד הדף הזה פתוח."
+
+# android: Settings bluetooth_key_missing_device_settings
+#: src/ns-bt.c
+msgid "Device settings"
+msgstr "הגדרות המכשיר"
+
+#: src/ns-bt.c
+msgid "Turn on Bluetooth to connect headphones, speakers, watches and more."
+msgstr "יש להפעיל Bluetooth כדי לחבר אוזניות, רמקולים, שעונים ועוד."
+
+# android: SettingsLib adb_paired_devices_title (short)
+#: src/ns-bt.c
+msgid "Paired devices"
+msgstr "מכשירים מותאמים"
+
+# android: Settings bluetooth_preference_found_media_devices
+#: src/ns-bt.c
+msgid "Available devices"
+msgstr "מכשירים זמינים"
+
+# android: Settings bluetooth_device_name
+#: src/ns-bt.c
+msgid "Device name"
+msgstr "שם המכשיר"
+
+#: src/ns-bt.c
+msgid "Shown to Bluetooth devices and on the network."
+msgstr "השם מוצג למכשירי Bluetooth וברשת."
+
+#: src/ns-bt.c
+msgid "Visible to Bluetooth devices"
+msgstr "גלוי למכשירי Bluetooth"
+
+#: src/ns-bt.c
+msgid "Others can find the phone and pair with it"
+msgstr "מכשירים אחרים יכולים למצוא את הטלפון ולבצע איתו התאמה"
+
+#: src/ns-bt.c
+msgid "Others can find the tablet and pair with it"
+msgstr "מכשירים אחרים יכולים למצוא את הטאבלט ולבצע איתו התאמה"
+
+#: src/ns-buttons.c
+msgid "Use double-press"
+msgstr "שימוש בלחיצה כפולה"
+
+#: src/ns-buttons.c
+msgid "Double-press power button to open"
+msgstr "מה נפתח בלחיצה כפולה על לחצן ההפעלה"
+
+#: src/ns-buttons.c
+msgid ""
+"Press the power button twice quickly, with the screen on or off. On a locked "
+"phone, the app opens once you unlock it."
+msgstr ""
+"לוחצים פעמיים במהירות על לחצן ההפעלה, כשהמסך דלוק או כבוי. בטלפון נעול, "
+"האפליקציה נפתחת אחרי ביטול הנעילה."
+
+#: src/ns-buttons.c
+msgid ""
+"Press the power button twice quickly, with the screen on or off. On a locked "
+"tablet, the app opens once you unlock it."
+msgstr ""
+"לוחצים פעמיים במהירות על לחצן ההפעלה, כשהמסך דלוק או כבוי. בטאבלט נעול, "
+"האפליקציה נפתחת אחרי ביטול הנעילה."
+
+#: src/ns-buttons.c
+msgid "Use side button"
+msgstr "שימוש בלחצן הצד"
+
+#: src/ns-buttons.c
+msgid "Press side button to open"
+msgstr "מה נפתח בלחיצה על לחצן הצד"
+
+#: src/ns-buttons.c
+msgid ""
+"Works with the screen on. On a locked phone, an app opens once you unlock it."
+msgstr "פועל כשהמסך דלוק. בטלפון נעול, האפליקציה נפתחת אחרי ביטול הנעילה."
+
+#: src/ns-buttons.c
+msgid ""
+"Works with the screen on. On a locked tablet, an app opens once you unlock "
+"it."
+msgstr "פועל כשהמסך דלוק. בטאבלט נעול, האפליקציה נפתחת אחרי ביטול הנעילה."
+
+#: src/ns-buttons.c
+msgid "On / Recent apps"
+msgstr "מצב פעיל / אפליקציות אחרונות"
+
+#. TRANSLATORS: %s is the app the button opens
+#: src/ns-buttons.c
+#, c-format
+msgid "On / Open %s"
+msgstr "מצב פעיל / פתיחת %s"
+
+# android: Settings action_corner_action_titles[2] (several translations, short)
+#: src/ns-buttons.c
+msgid "Recent apps"
+msgstr "האפליקציות האחרונות"
+
+#: src/ns-buttons.c
+msgid "Hold power button for Vibe"
+msgstr "לחיצה ארוכה על לחצן ההפעלה להפעלת Vibe"
+
+#: src/ns-buttons.c
+msgid ""
+"Hold it to talk to Vibe; it listens until you stop speaking. Power menu: "
+"power and volume up together"
+msgstr ""
+"לוחצים לחיצה ארוכה כדי לדבר עם Vibe, והוא מקשיב עד שמפסיקים לדבר. תפריט "
+"ההפעלה: לחצן ההפעלה ולחצן הגברת עוצמת הקול יחד"
+
+#: src/ns-buttons.c
+msgid ""
+"Off: holding the power button opens the power menu. On a locked phone, Vibe "
+"only answers questions until you unlock it."
+msgstr ""
+"כבוי: לחיצה ארוכה על לחצן ההפעלה פותחת את תפריט ההפעלה. בטלפון נעול, Vibe רק "
+"עונה על שאלות עד לביטול הנעילה."
+
+#: src/ns-buttons.c
+msgid ""
+"Off: holding the power button opens the power menu. On a locked tablet, Vibe "
+"only answers questions until you unlock it."
+msgstr ""
+"כבוי: לחיצה ארוכה על לחצן ההפעלה פותחת את תפריט ההפעלה. בטאבלט נעול, Vibe רק "
+"עונה על שאלות עד לביטול הנעילה."
+
+#: src/ns-caps.c
+msgid "About tablet"
+msgstr "מידע על הטאבלט"
+
+#. TRANSLATORS: %s is a time ("13:20")
+#: src/ns-charge.c
+#, c-format
+msgid "Yesterday %s"
+msgstr "אתמול, %s"
+
+# android: SettingsLib time_unit_just_now (adapted, several translations, short)
+#: src/ns-charge.c
+msgid "just now"
+msgstr "הרגע"
+
+#. TRANSLATORS: minutes ago, abbreviated
+#: src/ns-charge.c
+#, c-format
+msgid "%d min ago"
+msgid_plural "%d min ago"
+msgstr[0] "לפני דקה"
+msgstr[1] "לפני %d דק‘"
+msgstr[2] "לפני %d דק‘"
+
+#. TRANSLATORS: hours and minutes ago, abbreviated; then hours ago
+#: src/ns-charge.c
+#, c-format
+msgid "%d h %d min ago"
+msgstr "לפני %d שע‘ ו-%d דק‘"
+
+#: src/ns-charge.c
+#, c-format
+msgid "%d h ago"
+msgid_plural "%d h ago"
+msgstr[0] "לפני שעה"
+msgstr[1] "לפני שעתיים"
+msgstr[2] "לפני %d שע‘"
+
+#. TRANSLATORS: days and hours ago, abbreviated; then days ago
+#: src/ns-charge.c
+#, c-format
+msgid "%d d %d h ago"
+msgstr "לפני %d י‘ ו-%d שע‘"
+
+#: src/ns-charge.c
+#, c-format
+msgid "%d d ago"
+msgid_plural "%d d ago"
+msgstr[0] "לפני יום"
+msgstr[1] "לפני יומיים"
+msgstr[2] "לפני %d ימים"
+
+# android: Messaging posted_now (other app, short)
+#: src/ns-charge.c
+msgid "Now"
+msgstr "עכשיו"
+
+#. TRANSLATORS: %s is when ("14:05", "Yesterday 14:05", "Tue 14:05")
+#: src/ns-charge.c
+#, c-format
+msgid "Full charge %s"
+msgstr "טעינה מלאה %s"
+
+#. TRANSLATORS: %s is how long ago ("2 h 5 min ago")
+#: src/ns-charge.c
+#, c-format
+msgid "Last full charge: %s"
+msgstr "הטעינה המלאה האחרונה: %s"
+
+#: src/ns-charge.c
+msgid "Not fully charged in the last 24 h"
+msgstr "לא נטענה במלואה ב-24 השעות האחרונות"
+
+#: src/ns-charge.c
+msgid "Charge history appears after some use"
+msgstr "היסטוריית הטעינה תופיע אחרי זמן שימוש מסוים"
+
+#. TRANSLATORS: %s is a refresh rate ("50 Hz")
+#: src/ns-displays.c
+#, c-format
+msgid "%s, interlaced"
+msgstr "%s, שזור"
+
+#: src/ns-displays.c
+msgid "Mirrored"
+msgstr "בשיקוף"
+
+#: src/ns-displays.c
+msgid "Main display"
+msgstr "מסך ראשי"
+
+#. TRANSLATORS: %s is the display server's error message
+#: src/ns-displays.c
+#, c-format
+msgid "Not changed: %s"
+msgstr "לא שונה: %s"
+
+#: src/ns-displays.c
+msgid "Use this display"
+msgstr "שימוש במסך הזה"
+
+#: src/ns-displays.c
+msgid "The only display that is on"
+msgstr "המסך היחיד שפועל"
+
+# android: Settings external_display_resolution_title
+#: src/ns-displays.c
+msgid "Resolution"
+msgstr "רזולוציה"
+
+# android: Settings external_display_refresh_rate_title
+#: src/ns-displays.c
+msgid "Refresh rate"
+msgstr "קצב רענון"
+
+#: src/ns-displays.c
+msgid "Join"
+msgstr "צירוף"
+
+#: src/ns-displays.c
+msgid "A screen of its own on each display"
+msgstr "מסך נפרד בכל תצוגה"
+
+#: src/ns-displays.c
+msgid "Not available: the displays have no resolution in common"
+msgstr "לא זמין: אין למסכים רזולוציה משותפת"
+
+#. TRANSLATORS: %s is the display server's reason
+#: src/ns-displays.c
+#, c-format
+msgid "Not available: %s"
+msgstr "לא זמין: %s"
+
+# android: SystemUI start_mirroring (short)
+#: src/ns-displays.c
+msgid "Mirror"
+msgstr "שיקוף"
+
+#: src/ns-displays.c
+msgid "The same screen on every display"
+msgstr "אותו מסך בכל התצוגות"
+
+#: src/ns-displays.c
+msgid "Screen scale"
+msgstr "קנה מידה של המסך"
+
+# android: Settings screen_zoom_title
+#: src/ns-displays.c
+msgid "Display size"
+msgstr "גודל התצוגה"
+
+#: src/ns-displays.c
+msgid "Displays"
+msgstr "מסכים"
+
+#: src/ns-net.c
+msgid "WPA Enterprise"
+msgstr "WPA Enterprise"
+
+# android: Settings launch_instant_app
+#: src/ns-net.c
+msgctxt "Wi-Fi security"
+msgid "Open"
+msgstr "פתיחה"
+
+#: src/ns-net.c
+msgid "Could not connect"
+msgstr "לא ניתן היה להתחבר"
+
+# android: Settings vpn_connect_to
+#. TRANSLATORS: %s is the Wi-Fi network's name
+#: src/ns-net.c
+#, c-format
+msgid "Connect to %s"
+msgstr "התחברות אל %s"
+
+#: src/ns-net.c
+msgid "Connect to the network"
+msgstr "התחברות לרשת"
+
+#: src/ns-net.c
+msgid "Enter the network's password."
+msgstr "יש להזין את הסיסמה של הרשת."
+
+#: src/ns-net.c
+msgid "Secured"
+msgstr "מאובטחת"
+
+#: src/ns-net.c
+msgid "Needs a password"
+msgstr "נדרשת סיסמה"
+
+# android: SettingsLib wifi_remembered (several translations, short)
+#: src/ns-net.c
+msgid "Saved"
+msgstr "נשמר"
+
+#: src/ns-net.c
+msgid "Could not forget it"
+msgstr "לא ניתן היה להסיר את הרשת"
+
+#: src/ns-net.c
+msgid "Its password is deleted and the phone no longer joins it by itself."
+msgstr "הסיסמה שלה תימחק, והטלפון כבר לא יתחבר אליה באופן אוטומטי."
+
+#: src/ns-net.c
+msgid "Its password is deleted and the tablet no longer joins it by itself."
+msgstr "הסיסמה שלה תימחק, והטאבלט כבר לא יתחבר אליה באופן אוטומטי."
+
+#: src/ns-net.c
+msgid "Forget this network?"
+msgstr "להסיר את הרשת הזו?"
+
+# android: Settings forget (several translations, short)
+#: src/ns-net.c
+msgid "Forget"
+msgstr "הסרה"
+
+#: src/ns-net.c
+msgid "Could not disconnect"
+msgstr "לא ניתן היה להתנתק"
+
+# android: Settings wifi_signal (several translations, short)
+#: src/ns-net.c
+msgid "Signal strength"
+msgstr "עוצמת האות"
+
+#. TRANSLATORS: a Wi-Fi frequency in gigahertz
+#: src/ns-net.c
+#, c-format
+msgid "%.1f GHz"
+msgstr "%.1f GHz"
+
+# android: Settings wifi_frequency
+#: src/ns-net.c
+msgid "Frequency"
+msgstr "תדר"
+
+# android: Settings security_settings_title
+#: src/ns-net.c
+msgid "Security"
+msgstr "אבטחה"
+
+#: src/ns-net.c
+msgid "IP address"
+msgstr "כתובת ה-IP"
+
+#: src/ns-net.c
+msgid "Router"
+msgstr "נתב"
+
+#: src/ns-net.c
+msgid "MAC address"
+msgstr "כתובת MAC"
+
+#: src/ns-net.c
+msgid "Auto reconnect"
+msgstr "התחברות מחדש אוטומטית"
+
+#: src/ns-net.c
+msgid "Join this network when it is in reach"
+msgstr "התחברות לרשת הזו כשהיא בטווח"
+
+# android: Settings wifi_saved_access_points_label
+#: src/ns-net.c
+msgid "Saved networks"
+msgstr "רשתות שנשמרו"
+
+#: src/ns-net.c
+msgid "No saved networks."
+msgstr "אין רשתות שמורות."
+
+#: src/ns-net.c
+msgid "This phone has no Wi-Fi adapter."
+msgstr "בטלפון הזה אין מתאם Wi-Fi."
+
+#: src/ns-net.c
+msgid "This tablet has no Wi-Fi adapter."
+msgstr "בטאבלט הזה אין מתאם Wi-Fi."
+
+#: src/ns-net.c
+msgid "Current network"
+msgstr "הרשת הנוכחית"
+
+#: src/ns-net.c
+msgid "Available networks"
+msgstr "רשתות זמינות"
+
+#: src/ns-net.c
+msgid "Forget, auto reconnect"
+msgstr "הסרה, התחברות מחדש אוטומטית"
+
+# android: Settings wifi_add_network
+#: src/ns-net.c
+msgid "Add network"
+msgstr "הוספת רשת"
+
+#: src/ns-net.c
+msgid "A hidden network, or one not in reach"
+msgstr "רשת מוסתרת, או רשת שאינה בטווח"
+
+#: src/ns-net.c
+msgid "Share the mobile data over Wi-Fi"
+msgstr "שיתוף חבילת הגלישה דרך Wi-Fi"
+
+# android: Settings wifi_proxy_settings[0] (several translations, short)
+#. ---- Joining by hand: a hidden network, or WPA Enterprise (802.1X) ----
+#: src/ns-net.c
+msgctxt "Wi-Fi security"
+msgid "None"
+msgstr "ללא"
+
+#: src/ns-net.c
+msgctxt "Wi-Fi security"
+msgid "WPA/WPA2 Personal"
+msgstr "WPA/WPA2 Personal"
+
+#: src/ns-net.c
+msgctxt "Wi-Fi security"
+msgid "WPA3 Personal"
+msgstr "WPA3 Personal"
+
+#: src/ns-net.c
+msgctxt "Wi-Fi security"
+msgid "WPA/WPA2 Enterprise"
+msgstr "WPA/WPA2 Enterprise"
+
+#: src/ns-net.c
+msgid "System certificates"
+msgstr "אישורי מערכת"
+
+#: src/ns-net.c
+msgid "Choose a file…"
+msgstr "בחירת קובץ…"
+
+#: src/ns-net.c
+msgid "Do not validate"
+msgstr "לא לאמת"
+
+#: src/ns-net.c
+msgid "CA certificate"
+msgstr "אישור CA"
+
+#: src/ns-net.c
+msgid "Your certificate"
+msgstr "אישור משתמש"
+
+#: src/ns-net.c
+msgid "Private key"
+msgstr "מפתח פרטי"
+
+#: src/ns-net.c
+msgid "The network's name is missing"
+msgstr "חסר שם הרשת"
+
+#: src/ns-net.c
+msgid "The password has at least 8 characters"
+msgstr "הסיסמה צריכה להכיל 8 תווים לפחות"
+
+#: src/ns-net.c
+msgid "TLS needs your certificate and its private key"
+msgstr "ל-TLS נדרשים אישור משתמש והמפתח הפרטי שלו"
+
+#: src/ns-net.c
+msgid "Certificate"
+msgstr "אישור"
+
+# android: Settings show_operator_name_title
+#: src/ns-net.c
+msgid "Network name"
+msgstr "שם הרשת"
+
+#: src/ns-net.c
+msgid "Method"
+msgstr "שיטה"
+
+#: src/ns-net.c
+msgid "Inner authentication"
+msgstr "אימות פנימי"
+
+# android: Settings wifi_eap_identity
+#: src/ns-net.c
+msgid "Identity"
+msgstr "זהות"
+
+# android: Settings wifi_eap_anonymous
+#: src/ns-net.c
+msgid "Anonymous identity"
+msgstr "זהות אנונימית"
+
+#: src/ns-net.c
+msgid "Choose a file"
+msgstr "בחירת קובץ"
+
+#: src/ns-net.c
+msgid "Private key password"
+msgstr "הסיסמה של המפתח הפרטי"
+
+# android: Settings cdma_system_select_choices[1] (several translations, short)
+#: src/ns-net.c src/ns-mobile-modes.c
+msgid "Automatic"
+msgstr "אוטומטי"
+
+#: src/ns-net.c
+msgid "2.4 GHz"
+msgstr "2.4 GHz"
+
+#: src/ns-net.c
+msgid "5 GHz"
+msgstr "5 GHz"
+
+#: src/ns-net.c
+msgid "Starting…"
+msgstr "מתבצעת הפעלה…"
+
+#: src/ns-net.c
+msgid "Could not save it"
+msgstr "לא ניתן היה לשמור"
+
+#: src/ns-net.c
+msgid "8 to 63 characters: not changed"
+msgstr "8 עד 63 תווים: לא שונה"
+
+#: src/ns-net.c
+msgid "Use Wi-Fi hotspot"
+msgstr "שימוש בנקודת Wi-Fi לשיתוף אינטרנט"
+
+#: src/ns-net.c
+msgid "This phone's Wi-Fi cannot be an access point."
+msgstr "ה-Wi-Fi של הטלפון הזה לא יכול לשמש כנקודת גישה."
+
+#: src/ns-net.c
+msgid "This tablet's Wi-Fi cannot be an access point."
+msgstr "ה-Wi-Fi של הטאבלט הזה לא יכול לשמש כנקודת גישה."
+
+#: src/ns-net.c
+msgid "Band"
+msgstr "תדר"
+
+#: src/ns-net.c
+msgid ""
+"Other devices use the phone's mobile data. Wi-Fi is off while the hotspot is "
+"on."
+msgstr ""
+"מכשירים אחרים משתמשים בחבילת הגלישה של הטלפון. ה-Wi-Fi כבוי כל עוד נקודת "
+"האינטרנט פועלת."
+
+#: src/ns-net.c
+msgid ""
+"Other devices use the tablet's mobile data. Wi-Fi is off while the hotspot "
+"is on."
+msgstr ""
+"מכשירים אחרים משתמשים בחבילת הגלישה של הטאבלט. ה-Wi-Fi כבוי כל עוד נקודת "
+"האינטרנט פועלת."
+
+#: src/ns-net.c
+msgid "No modem"
+msgstr "אין מודם"
+
+# android: Settings wifi_display_status_in_use
+#: src/ns-net.c
+msgid "In use"
+msgstr "בשימוש"
+
+#: src/ns-net.c
+msgid "Automatic APN"
+msgstr "APN אוטומטי"
+
+#: src/ns-net.c
+msgid "Could not set network mode"
+msgstr "לא ניתן להגדיר את מצב הרשת"
+
+#: src/ns-net.c
+msgid "Applying…"
+msgstr "מתבצעת החלה…"
+
+#: src/ns-net.c
+msgid "Network mode"
+msgstr "מצב רשת"
+
+# android: Settings wifi_peap_phase2_entries_with_sim_auth[2] (several translations, short)
+#: src/ns-net.c
+msgid "SIM"
+msgstr "SIM"
+
+#: src/ns-net.c
+msgid "Inserted"
+msgstr "הוכנס"
+
+#: src/ns-net.c
+msgid "No SIM card"
+msgstr "אין כרטיס SIM"
+
+#: src/ns-net.c
+msgid "Network operator"
+msgstr "מפעיל רשת"
+
+#. TRANSLATORS: the mobile network's generation ("4G") and its signal strength in per cent
+#: src/ns-net.c
+#, c-format
+msgid "%s • %u%% signal"
+msgstr "%s • אות %u%%"
+
+# android: Settings status_operator
+#: src/ns-net.c src/ns-perms.c
+msgid "Network"
+msgstr "רשת"
+
+# android: Settings mobile_network_phone_number_title
+#: src/ns-net.c
+msgid "Phone number"
+msgstr "מספר טלפון"
+
+#: src/ns-net.c
+msgid "Modem"
+msgstr "מודם"
+
+#: src/ns-net.c
+msgid "None found"
+msgstr "לא נמצאו"
+
+# android: Settings internet_source_mobile_data (several translations, short)
+#: src/ns-net.c
+msgid "Mobile data"
+msgstr "חבילת גלישה"
+
+#: src/ns-net.c
+msgid "Ask for the SIM PIN"
+msgstr "בקשת קוד האימות של ה-SIM"
+
+#: src/ns-net.c
+msgid "When the phone starts"
+msgstr "כשהטלפון מופעל"
+
+#: src/ns-net.c
+msgid "When the tablet starts"
+msgstr "כשהטאבלט מופעל"
+
+#: src/ns-net.c
+msgid "Access point names"
+msgstr "שמות של נקודות גישה (APN)"
+
+#: src/ns-net.c
+msgid ""
+"The modem keeps this choice after a restart. If it finds no network, choose "
+"Automatic."
+msgstr ""
+"המודם שומר את הבחירה הזו גם אחרי הפעלה מחדש. אם לא נמצאת רשת, יש לבחור "
+"\"אוטומטי\"."
+
+#: src/ns-net.c
+msgid "SIM and network"
+msgstr "SIM ורשת"
+
+# android: Settings vpn_settings_title
+#: src/ns-net.c
+msgid "VPN"
+msgstr "VPN"
+
+#: src/ns-net.c
+msgid "Wired"
+msgstr "רשת קווית"
+
+#: src/ns-net.c
+msgid "Automatic (configuration URL)"
+msgstr "אוטומטי (כתובת URL להגדרה)"
+
+# android: Settings sim_pin_protection_mode_manual (several translations, short)
+#: src/ns-net.c
+msgid "Manual"
+msgstr "ידני"
+
+#: src/ns-net.c
+msgid "Proxy"
+msgstr "שרת Proxy"
+
+#: src/ns-net.c
+msgid "Configuration URL"
+msgstr "כתובת URL להגדרה"
+
+#: src/ns-net.c
+msgid "HTTP proxy"
+msgstr "שרת Proxy של HTTP"
+
+#: src/ns-net.c
+msgid "HTTP port"
+msgstr "יציאת HTTP"
+
+#: src/ns-net.c
+msgid "HTTPS proxy"
+msgstr "שרת Proxy של HTTPS"
+
+#: src/ns-net.c
+msgid "HTTPS port"
+msgstr "יציאת HTTPS"
+
+#: src/ns-net.c
+msgid "Could not import it"
+msgstr "לא ניתן היה לייבא"
+
+#: src/ns-net.c
+msgid "Imported"
+msgstr "הייבוא הושלם"
+
+#: src/ns-net.c
+msgid "Not a WireGuard file (OpenVPN needs network-manager-openvpn)"
+msgstr "זה לא קובץ WireGuard (בשביל OpenVPN נדרש network-manager-openvpn)"
+
+#: src/ns-net.c
+msgid "Importing…"
+msgstr "מתבצע ייבוא…"
+
+#: src/ns-net.c
+msgid "VPN file"
+msgstr "קובץ VPN"
+
+#: src/ns-net.c
+msgid "No VPN is set up yet."
+msgstr "עדיין לא הוגדר VPN."
+
+#: src/ns-net.c
+msgid "Import VPN file"
+msgstr "ייבוא קובץ VPN"
+
+#: src/ns-net.c
+msgid "WireGuard (.conf) • OpenVPN (.ovpn)"
+msgstr "WireGuard (.conf) • OpenVPN (.ovpn)"
+
+#: src/ns-net.c
+msgid "WireGuard (.conf)"
+msgstr "WireGuard (.conf)"
+
+#: src/ns-net.c
+msgid "Wired and USB"
+msgstr "רשת קווית ו-USB"
+
+#: src/ns-net.c
+msgid "Did not work"
+msgstr "הפעולה לא הצליחה"
+
+# android: Settings proxy_action_text (several translations, short)
+#: src/ns-net.c
+msgid "Done"
+msgstr "סיום"
+
+#: src/ns-net.c
+msgid "Working…"
+msgstr "בתהליך…"
+
+#: src/ns-net.c
+msgid "This is now the default printer"
+msgstr "זו עכשיו מדפסת ברירת המחדל"
+
+#: src/ns-net.c
+msgid "Sent to the printer"
+msgstr "נשלח למדפסת"
+
+#: src/ns-net.c
+msgid "Remove this printer?"
+msgstr "להסיר את המדפסת הזו?"
+
+#: src/ns-net.c
+msgid "Set as default"
+msgstr "הגדרה כברירת מחדל"
+
+#: src/ns-net.c
+msgid "Print a test page"
+msgstr "הדפסת דף ניסיון"
+
+#: src/ns-net.c
+msgid "Remove printer"
+msgstr "הסרת המדפסת"
+
+#: src/ns-net.c
+msgid "On the network"
+msgstr "ברשת"
+
+#: src/ns-net.c
+msgid "Ready"
+msgstr "מוכנה"
+
+# android: Settings print_settings
+#: src/ns-net.c src/ns-pages.c
+msgid "Printing"
+msgstr "הדפסה"
+
+# android: SystemUI quick_settings_work_mode_paused_state (several translations, short)
+#: src/ns-net.c
+msgid "Paused"
+msgstr "בהשהיה"
+
+#. TRANSLATORS: %s is the printer's state ("Ready")
+#: src/ns-net.c
+#, c-format
+msgid "Default • %s"
+msgstr "ברירת מחדל • %s"
+
+#: src/ns-net.c
+msgid "Not a printer address"
+msgstr "זו לא כתובת של מדפסת"
+
+#: src/ns-net.c
+msgid "Add a printer"
+msgstr "הוספת מדפסת"
+
+#: src/ns-net.c
+msgid ""
+"Its address, like printer.local or ipp://192.0.2.20/ipp/print. Network "
+"printers CUPS finds by itself are listed already."
+msgstr ""
+"הכתובת שלה, למשל printer.local או ipp://192.0.2.20/ipp/print. מדפסות רשת "
+"ש-CUPS מוצא בעצמו כבר מופיעות ברשימה."
+
+# android: Settings add (several translations, short)
+#: src/ns-net.c
+msgid "Add"
+msgstr "הוספה"
+
+# android: Settings print_no_printers_found (adapted)
+#: src/ns-net.c
+msgid "No printers found."
+msgstr "לא נמצאו מדפסות."
+
+# android: Settings print_menu_item_add_printer
+#: src/ns-net.c
+msgid "Add printer"
+msgstr "הוספת מדפסת"
+
+#: src/ns-mobile-modes.c
+msgid "CS"
+msgstr "CS"
+
+#: src/ns-mobile-modes.c
+msgid "2G"
+msgstr "2G"
+
+#: src/ns-mobile-modes.c
+msgid "3G"
+msgstr "3G"
+
+#: src/ns-mobile-modes.c
+msgid "4G"
+msgstr "4G"
+
+#: src/ns-mobile-modes.c
+msgid "5G"
+msgstr "5G"
+
+#: src/ns-mobile-modes.c
+msgid "Unknown"
+msgstr "לא ידוע"
+
+#: src/ns-mobile-modes.c
+#, c-format
+msgid "%s only"
+msgstr "%s בלבד"
+
+#: src/ns-mobile-modes.c
+#, c-format
+msgid "%s, prefer %s"
+msgstr "%1$s, עדיפות ל-%2$s"
+
+#: src/ns-pages.c
+msgid "Networks, saved networks"
+msgstr "רשתות, רשתות שמורות"
+
+#: src/ns-pages.c
+msgid "Mobile data, access points"
+msgstr "חבילת גלישה, נקודות גישה"
+
+#: src/ns-pages.c
+msgid "Turn off Wi-Fi, Bluetooth and the mobile network"
+msgstr "השבתה של ה-Wi-Fi, ה-Bluetooth והרשת הסלולרית"
+
+#: src/ns-pages.c
+msgid "Share the mobile data"
+msgstr "שיתוף חבילת הגלישה"
+
+#: src/ns-pages.c
+msgid "VPN, wired, proxy"
+msgstr "VPN, רשת קווית, שרת Proxy"
+
+#. TRANSLATORS: %s is the device name; quote it as the language does
+#: src/ns-pages.c
+#, c-format
+msgid "Visible as “%s” to other devices"
+msgstr "גלוי למכשירים אחרים בשם \"%s\""
+
+# android: Settings connected_device_other_device_title
+#: src/ns-pages.c
+msgid "Other devices"
+msgstr "מכשירים אחרים"
+
+# android: Settings bluetooth_pairing_pref_title
+#: src/ns-pages.c
+msgid "Pair new device"
+msgstr "התאמה של מכשיר חדש"
+
+# android: Settings connected_device_saved_title
+#: src/ns-pages.c
+msgid "Saved devices"
+msgstr "מכשירים שמורים"
+
+# android: Settings previous_connected_see_all (several translations, short)
+#: src/ns-pages.c
+msgid "See all"
+msgstr "צפייה בכל המכשירים"
+
+#: src/ns-pages.c
+msgid "Bluetooth, sharing, printing"
+msgstr "Bluetooth, שיתוף, הדפסה"
+
+#: src/ns-pages.c
+msgid "Bluetooth, sharing"
+msgstr "Bluetooth, שיתוף"
+
+#: src/ns-pages.c
+msgid "Device name, visibility"
+msgstr "שם המכשיר, חשיפה"
+
+# android: Settings wifi_proxy_settings[0] (several translations, short)
+#: src/ns-pages.c
+msgctxt "Night Light schedule"
+msgid "None"
+msgstr "ללא"
+
+# android: Settings night_display_auto_mode_custom
+#: src/ns-pages.c
+msgctxt "Night Light schedule"
+msgid "Turns on at custom time"
+msgstr "בשעה שאני אקבע"
+
+# android: Settings night_display_auto_mode_twilight
+#: src/ns-pages.c
+msgctxt "Night Light schedule"
+msgid "Turns on from sunset to sunrise"
+msgstr "מהשקיעה עד הזריחה"
+
+#: src/ns-pages.c
+msgid "On from sunset to sunrise"
+msgstr "פועלת מהשקיעה עד הזריחה"
+
+#. TRANSLATORS: night light's start and end times
+#: src/ns-pages.c
+#, c-format
+msgid "On from %s to %s"
+msgstr "פועלת מ-%s עד %s"
+
+#. TRANSLATORS: the times of sunset and sunrise where the device is
+#: src/ns-pages.c
+#, c-format
+msgid "From sunset (%s) to sunrise (%s)"
+msgstr "מהשקיעה (%s) עד הזריחה (%s)"
+
+#. TRANSLATORS: %s and %s are the custom start and end times night light keeps to until then
+#: src/ns-pages.c
+#, c-format
+msgid "The phone's location is not known yet: %s to %s until it is"
+msgstr "המיקום של הטלפון עדיין לא ידוע. עד שיהיה ידוע: מ-%s עד %s"
+
+#: src/ns-pages.c
+#, c-format
+msgid "The tablet's location is not known yet: %s to %s until it is"
+msgstr "המיקום של הטאבלט עדיין לא ידוע. עד שיהיה ידוע: מ-%s עד %s"
+
+# android: Settings night_display_text (adapted)
+#: src/ns-pages.c
+msgid ""
+"Night light tints your screen amber. This makes it easier to look at your "
+"screen or read in dim light, and may help you fall asleep more easily."
+msgstr ""
+"תאורת הלילה מעניקה למסך גוון ענבר. כך קל יותר להביט במסך או לקרוא באור "
+"מעומעם, וגם קל יותר להירדם."
+
+#: src/ns-pages.c
+msgid "This screen cannot change its colors."
+msgstr "המסך הזה לא יכול לשנות את הצבעים שלו."
+
+#: src/ns-pages.c
+msgid "Night light is GNOME's settings daemon's, which is not installed."
+msgstr "תאורת הלילה היא חלק משירות ההגדרות של GNOME, שאינו מותקן."
+
+# android: Settings night_light_main_switch_title (adapted)
+#: src/ns-pages.c
+msgid "Use night light"
+msgstr "שימוש בתאורת לילה"
+
+# android: Settings dark_ui_auto_mode_title (several translations, short)
+#: src/ns-pages.c
+msgid "Schedule"
+msgstr "לוח זמנים"
+
+# android: Settings night_display_start_time_title
+#: src/ns-pages.c
+msgid "Start time"
+msgstr "שעת התחלה"
+
+# android: Settings night_display_end_time_title
+#: src/ns-pages.c
+msgid "End time"
+msgstr "שעת סיום"
+
+# android: Settings hdr_brightness_level_title
+#: src/ns-pages.c
+msgid "Intensity"
+msgstr "עוצמה"
+
+# android: Settings auto_brightness_title
+#: src/ns-pages.c
+msgid "Adaptive brightness"
+msgstr "בהירות אוטומטית"
+
+# android: Settings night_display_summary_on_auto_mode_never
+#: src/ns-pages.c
+msgid "Will never turn off automatically"
+msgstr "ללא כיבוי אוטומטי"
+
+# android: Settings night_display_summary_off_auto_mode_never
+#: src/ns-pages.c
+msgid "Will never turn on automatically"
+msgstr "ללא הפעלה אוטומטית"
+
+# android: Settings screen_timeout_entries[0]
+#: src/ns-pages.c
+msgid "15 seconds"
+msgstr "15 שניות"
+
+# android: Settings screen_timeout_entries[1]
+#: src/ns-pages.c
+msgid "30 seconds"
+msgstr "30 שניות"
+
+# android: Settings screen_timeout_entries[2] (several translations, short)
+#: src/ns-pages.c
+msgid "1 minute"
+msgstr "דקה אחת"
+
+# android: Settings screen_timeout_entries[3]
+#: src/ns-pages.c
+msgid "2 minutes"
+msgstr "2 דקות"
+
+# android: Settings screen_timeout_entries[4] (several translations, short)
+#: src/ns-pages.c
+msgid "5 minutes"
+msgstr "5 דקות"
+
+# android: Settings screen_timeout_entries[5] (several translations, short)
+#: src/ns-pages.c
+msgid "10 minutes"
+msgstr "10 דקות"
+
+# android: Settings screen_timeout_entries[6] (several translations, short)
+#: src/ns-pages.c
+msgid "30 minutes"
+msgstr "30 דקות"
+
+# android: Settings switch_to_dock_user_when_docked_timeout_entries[0] (several translations, short)
+#: src/ns-pages.c src/ns-system.c
+msgid "Never"
+msgstr "אף פעם"
+
+#: src/ns-pages.c
+msgid "After 15 seconds of inactivity"
+msgstr "לאחר 15 שניות של חוסר פעילות"
+
+#: src/ns-pages.c
+msgid "After 30 seconds of inactivity"
+msgstr "לאחר 30 שניות של חוסר פעילות"
+
+#: src/ns-pages.c
+msgid "After 1 minute of inactivity"
+msgstr "לאחר דקה אחת של חוסר פעילות"
+
+#: src/ns-pages.c
+msgid "After 2 minutes of inactivity"
+msgstr "לאחר 2 דקות של חוסר פעילות"
+
+#: src/ns-pages.c
+msgid "After 5 minutes of inactivity"
+msgstr "לאחר 5 דקות של חוסר פעילות"
+
+#: src/ns-pages.c
+msgid "After 10 minutes of inactivity"
+msgstr "לאחר 10 דקות של חוסר פעילות"
+
+#: src/ns-pages.c
+msgid "After 30 minutes of inactivity"
+msgstr "לאחר 30 דקות של חוסר פעילות"
+
+#: src/ns-pages.c
+msgid "Show notification icons"
+msgstr "הצגת סמלי ההתראות"
+
+# android: Settings lock_screen_notifs_show_none
+#: src/ns-pages.c
+msgid "Don't show any notifications"
+msgstr "לא להציג אף התראה"
+
+# android: Settings category_name_lock_display
+#: src/ns-pages.c
+msgid "Lock display"
+msgstr "תצוגת מסך נעילה"
+
+#: src/ns-pages.c src/ns-shell.c
+msgid "Always On Display"
+msgstr "תצוגה פעילה תמיד"
+
+#: src/ns-pages.c
+msgid "The time, battery and notifications on a black screen while it is off"
+msgstr "השעה, הסוללה וההתראות על רקע שחור כשהמסך כבוי"
+
+# android: Settings category_name_appearance
+#: src/ns-pages.c
+msgid "Appearance"
+msgstr "מראה"
+
+#: src/ns-pages.c src/ns-privacy.c
+msgid "Font size, display size, bold text"
+msgstr "גודל הגופן, גודל התצוגה, טקסט מודגש"
+
+# android: Settings color_title
+#: src/ns-pages.c
+msgid "Color"
+msgstr "צבע"
+
+# android: Settings category_name_display_controls
+#: src/ns-pages.c
+msgid "Other display controls"
+msgstr "הגדרות תצוגה נוספות"
+
+# android: Settings accelerometer_title
+#: src/ns-pages.c
+msgid "Auto-rotate screen"
+msgstr "סיבוב אוטומטי של המסך"
+
+#: src/ns-pages.c
+msgid "Turn the screen with the phone"
+msgstr "סיבוב המסך יחד עם הטלפון"
+
+#: src/ns-pages.c
+msgid "Turn the screen with the tablet"
+msgstr "סיבוב המסך יחד עם הטאבלט"
+
+# android: Settings tap_to_wake
+#: src/ns-pages.c
+msgid "Tap to wake"
+msgstr "יש ללחוץ כדי להעיר"
+
+#: src/ns-pages.c
+msgid "Wake the screen with a double tap"
+msgstr "הקשה כפולה להערת המסך"
+
+# android: Settings accessibility_text_reading_confirm_dialog_title
+#: src/ns-pages.c
+msgid "Reset display size and text?"
+msgstr "לאפס את גודל התצוגה והטקסט?"
+
+#: src/ns-pages.c
+msgid ""
+"Font size, Display size and Bold text go back to how they were at first."
+msgstr "גודל הגופן, גודל התצוגה והטקסט המודגש יחזרו למצבם המקורי."
+
+# android: Settings reset_bluetooth_wifi_button_text (several translations, short)
+#: src/ns-pages.c
+msgid "Reset"
+msgstr "איפוס"
+
+# android: Settings zen_mode_icon_options_descriptions[39]
+#: src/ns-pages.c src/ns-system.c
+msgid "Clock"
+msgstr "שעון"
+
+# android: Settings zen_mode_messages
+#: src/ns-pages.c
+msgid "Messages"
+msgstr "הודעות"
+
+# android: SettingsLib bluetooth_talkback_phone (short)
+#: src/ns-pages.c src/ns-perms.c
+msgid "Phone"
+msgstr "טלפון"
+
+#: src/ns-pages.c
+msgid "Software"
+msgstr "תוכנות"
+
+# android: Settings preview_pager_message_title
+#: src/ns-pages.c
+msgid "Message"
+msgstr "הודעה"
+
+#: src/ns-pages.c
+msgid "Are we still on for lunch tomorrow?"
+msgstr "ניפגש מחר לארוחת צהריים כמו שקבענו?"
+
+#: src/ns-pages.c
+msgid "Yes! See you at noon by the river."
+msgstr "כן! נתראה בצהריים ליד הנהר."
+
+#: src/ns-pages.c
+msgid "Great, I'll book a table."
+msgstr "מעולה, אני אזמין שולחן."
+
+#: src/ns-pages.c
+msgid "Photos from the weekend"
+msgstr "תמונות מסוף השבוע"
+
+#: src/ns-pages.c
+msgid "Sam · to me"
+msgstr "סאם · אליי"
+
+#: src/ns-pages.c
+msgid ""
+"Hi! Here are the pictures from the hike. The view from the top was worth "
+"every step. Let's do it again next month."
+msgstr ""
+"היי! הנה התמונות מהטיול. הנוף מהפסגה היה שווה כל צעד. נחזור על זה בחודש הבא."
+
+# android: Settings color_contrast_preview
+#: src/ns-pages.c
+msgid "Preview"
+msgstr "תצוגה מקדימה"
+
+# android: Settings preview_pager_previous_button
+#: src/ns-pages.c
+msgid "Previous preview"
+msgstr "התצוגה המקדימה הקודמת"
+
+# android: Settings preview_pager_next_button
+#: src/ns-pages.c
+msgid "Next preview"
+msgstr "התצוגה המקדימה הבאה"
+
+# android: Settings category_title_display_text_size
+#: src/ns-pages.c
+msgid "Size options"
+msgstr "גדלים"
+
+# android: Settings title_font_size
+#: src/ns-pages.c
+msgid "Font size"
+msgstr "גודל הגופן"
+
+# android: Settings category_title_text_style
+#: src/ns-pages.c
+msgid "Style options"
+msgstr "סגנון"
+
+# android: Settings force_bold_text
+#: src/ns-pages.c
+msgid "Bold text"
+msgstr "טקסט מודגש"
+
+# android: Settings reset_network_button_text
+#: src/ns-pages.c
+msgid "Reset settings"
+msgstr "איפוס ההגדרות"
+
+#. TRANSLATORS: a time left on the battery or to a full charge: hours and minutes, then minutes alone
+#: src/ns-pages.c
+#, c-format
+msgid "%d h %d min"
+msgstr "%d שע‘ %d דק‘"
+
+#: src/ns-pages.c
+#, c-format
+msgid "%d min"
+msgstr "%d דק‘"
+
+#. TRANSLATORS: %s is a time ("1 h 20 min")
+#: src/ns-pages.c
+#, c-format
+msgid "Charging • full in %s"
+msgstr "בטעינה • טעינה מלאה בעוד %s"
+
+# android: SettingsLib usb_configuration_titles[0] (several translations, short)
+#: src/ns-pages.c
+msgid "Charging"
+msgstr "בטעינה"
+
+# android: SettingsLib battery_info_status_full_charged (adapted, short)
+#: src/ns-pages.c
+msgid "Fully charged"
+msgstr "טעונה במלואה"
+
+# android: SettingsLib power_remaining_duration_only
+#: src/ns-pages.c
+#, c-format
+msgid "About %s left"
+msgstr "הזמן הנותר: בערך %s"
+
+#: src/ns-pages.c src/ns-system.c
+msgid "On battery"
+msgstr "פועל על סוללה"
+
+#: src/ns-pages.c
+msgid "No battery information"
+msgstr "אין מידע על הסוללה"
+
+#: src/ns-pages.c
+msgid "Technology"
+msgstr "טכנולוגיה"
+
+#: src/ns-pages.c
+msgid "Health"
+msgstr "תקינות"
+
+# android: Settings temperature_preferences_title
+#: src/ns-pages.c
+msgid "Temperature"
+msgstr "טמפרטורה"
+
+#: src/ns-pages.c
+msgid "Voltage"
+msgstr "מתח"
+
+#: src/ns-pages.c
+msgid "Design capacity"
+msgstr "קיבולת מתוכננת"
+
+#: src/ns-pages.c
+msgid "Maximum capacity"
+msgstr "קיבולת מקסימלית"
+
+#: src/ns-pages.c
+msgid "This phone's battery reports none of these."
+msgstr "הסוללה של הטלפון הזה לא מדווחת על אף אחד מהנתונים האלה."
+
+#: src/ns-pages.c
+msgid "This tablet's battery reports none of these."
+msgstr "הסוללה של הטאבלט הזה לא מדווחת על אף אחד מהנתונים האלה."
+
+# android: Settings battery_usage_since_last_full_charge (adapted)
+#: src/ns-pages.c
+msgid "Since last full charge"
+msgstr "מאז הטעינה המלאה האחרונה"
+
+# android: Settings advanced_battery_preference_summary
+#: src/ns-pages.c
+msgid "View usage since last full charge"
+msgstr "נתוני הצריכה מאז הטעינה המלאה האחרונה"
+
+#: src/ns-pages.c src/ns-system.c
+msgid "Dim the screen"
+msgstr "עמעום המסך"
+
+#: src/ns-pages.c
+msgid "Automatic suspend, dim the screen"
+msgstr "השהיה אוטומטית, עמעום המסך"
+
+#: src/ns-pages.c
+msgid "Health, temperature, capacity"
+msgstr "תקינות, טמפרטורה, קיבולת"
+
+#: src/ns-pages.c
+msgid "Remaining battery life is approximate and may change based on usage"
+msgstr "משך חיי הסוללה הנותר משוער ועשוי להשתנות בהתאם לשימוש"
+
+#: src/ns-pages.c
+msgid "Teal"
+msgstr "טורקיז"
+
+# android: Settings color_picker[1]
+#: src/ns-pages.c
+msgid "Blue"
+msgstr "כחול"
+
+# android: Settings color_picker[2]
+#: src/ns-pages.c
+msgid "Green"
+msgstr "ירוק"
+
+# android: Settings color_yellow
+#: src/ns-pages.c
+msgid "Yellow"
+msgstr "צהוב"
+
+# android: Settings color_picker[5]
+#: src/ns-pages.c
+msgid "Orange"
+msgstr "כתום"
+
+# android: Settings color_red
+#: src/ns-pages.c
+msgid "Red"
+msgstr "אדום"
+
+# android: Settings color_picker[4]
+#: src/ns-pages.c
+msgid "Pink"
+msgstr "ורוד"
+
+# android: Settings color_picker[3]
+#: src/ns-pages.c
+msgid "Purple"
+msgstr "סגול"
+
+#: src/ns-pages.c
+msgid "Slate"
+msgstr "אפור כחלחל"
+
+#: src/ns-pages.c
+msgid "Parallax wallpaper"
+msgstr "טפט פרלקסה"
+
+#: src/ns-pages.c
+msgid ""
+"Layers that move as you tilt the phone. Off picks a still picture instead."
+msgstr ""
+"שכבות שזזות כשמטים את הטלפון. כשהאפשרות כבויה, נבחרת במקומן תמונה סטטית."
+
+#: src/ns-pages.c
+msgid ""
+"Layers that move as you tilt the tablet. Off picks a still picture instead."
+msgstr ""
+"שכבות שזזות כשמטים את הטאבלט. כשהאפשרות כבויה, נבחרת במקומן תמונה סטטית."
+
+# android: Messaging notification_picture (other app, short)
+#: src/ns-pages.c
+msgid "Picture"
+msgstr "תמונה"
+
+# android: DeskClock clock_style (other app, short)
+#: src/ns-pages.c
+msgid "Style"
+msgstr "סגנון"
+
+#: src/ns-pages.c
+msgid "Grid, icon size, icon pack"
+msgstr "רשת, גודל הסמלים, חבילת סמלים"
+
+#: src/ns-pages.c
+msgid "Pack / system"
+msgstr "חבילה / מערכת"
+
+#: src/ns-pages.c
+msgid "Circle"
+msgstr "עיגול"
+
+#: src/ns-pages.c
+msgid "Squircle"
+msgstr "סקווירקל"
+
+#: src/ns-pages.c
+msgid "Rounded square"
+msgstr "ריבוע מעוגל"
+
+# android: Launcher3 square_shape_title (short)
+#: src/ns-pages.c
+msgid "Square"
+msgstr "ריבוע"
+
+#: src/ns-pages.c
+msgid "Teardrop"
+msgstr "טיפה"
+
+#: src/ns-pages.c
+msgid "Cupertino"
+msgstr "קופרטינו"
+
+#: src/ns-pages.c
+msgid "Cylinder"
+msgstr "גליל"
+
+#: src/ns-pages.c
+msgid "Egg"
+msgstr "ביצה"
+
+#: src/ns-pages.c
+msgid "Octagon"
+msgstr "מתומן"
+
+#: src/ns-pages.c
+msgid "Hexagon"
+msgstr "משושה"
+
+#: src/ns-pages.c
+msgid "Diamond"
+msgstr "מעוין"
+
+#: src/ns-pages.c
+msgid "4 columns"
+msgstr "4 עמודות"
+
+#: src/ns-pages.c
+msgid "5 columns"
+msgstr "5 עמודות"
+
+#: src/ns-pages.c
+#, c-format
+msgid "%d column"
+msgid_plural "%d columns"
+msgstr[0] "עמודה אחת"
+msgstr[1] "%d עמודות"
+msgstr[2] "%d עמודות"
+
+# android: Settings enabled_locales_keyboard_layout
+#: src/ns-pages.c
+msgid "Layout"
+msgstr "פריסה"
+
+#: src/ns-pages.c
+msgid "Home screen grid"
+msgstr "רשת מסך הבית"
+
+#: src/ns-pages.c
+msgid "Home screen icon size"
+msgstr "גודל הסמלים במסך הבית"
+
+#: src/ns-pages.c
+msgid "App names"
+msgstr "שמות האפליקציות"
+
+#: src/ns-pages.c
+msgid "Under the home screen's icons"
+msgstr "מתחת לסמלים במסך הבית"
+
+#: src/ns-pages.c
+msgid "App drawer grid"
+msgstr "רשת רשימת האפליקציות"
+
+#: src/ns-pages.c
+msgid "App drawer icon size"
+msgstr "גודל הסמלים ברשימת האפליקציות"
+
+#: src/ns-pages.c
+msgid "Search bar in the app drawer"
+msgstr "סרגל חיפוש ברשימת האפליקציות"
+
+#: src/ns-pages.c
+msgid "None (theme icons)"
+msgstr "ללא (סמלי העיצוב)"
+
+#: src/ns-pages.c
+msgid "Icons"
+msgstr "סמלים"
+
+#: src/ns-pages.c
+msgid "Icon pack"
+msgstr "חבילת סמלים"
+
+#: src/ns-pages.c
+msgid "Icon shape"
+msgstr "צורת הסמל"
+
+#: src/ns-pages.c
+msgid "Wrap unthemed icons"
+msgstr "מסגור סמלים שאינם בחבילה"
+
+#: src/ns-pages.c
+msgid "Icons the pack does not cover get its background"
+msgstr "סמלים שהחבילה לא כוללת מקבלים את הרקע שלה"
+
+#: src/ns-pages.c
+msgid "Shape legacy icons"
+msgstr "צורה לסמלים ישנים"
+
+#: src/ns-pages.c
+msgid "Icons without pack art on a shaped background"
+msgstr "סמלים בלי איור מהחבילה מוצגים על רקע בצורה שנבחרה"
+
+#: src/ns-pages.c
+msgid "Language, formats"
+msgstr "שפה, פורמטים"
+
+#: src/ns-pages.c
+msgid "On-screen keyboard, layouts"
+msgstr "מקלדת וירטואלית, פריסות"
+
+#: src/ns-pages.c
+msgid "Power button, side button"
+msgstr "לחצן ההפעלה, לחצן הצד"
+
+#: src/ns-pages.c
+msgid "Pointer speed, hardware keyboard"
+msgstr "מהירות המצביע, מקלדת פיזית"
+
+#: src/ns-pages.c
+msgid "Automatic time, time zone"
+msgstr "שעה אוטומטית, אזור זמן"
+
+# android: Settings system_update_settings_list_item_title
+#: src/ns-pages.c
+msgid "System updates"
+msgstr "עדכוני מערכת"
+
+#: src/ns-pages.c
+msgid "Download and install"
+msgstr "הורדה והתקנה"
+
+#: src/ns-pages.c
+msgid "Your account, password"
+msgstr "החשבון שלך, סיסמה"
+
+#: src/ns-pages.c
+msgid "Operating system"
+msgstr "מערכת הפעלה"
+
+# android: Settings process_stats_os_kernel
+#: src/ns-pages.c src/ns-system.c
+msgid "Kernel"
+msgstr "ליבה"
+
+# android: Settings memory_settings_title
+#: src/ns-pages.c
+msgid "Memory"
+msgstr "זיכרון"
+
+#. TRANSLATORS: storage, the space free of the whole ("12.3 GB free of 64 GB")
+#: src/ns-pages.c
+#, c-format
+msgid "%s free of %s"
+msgstr "%s פנויים מתוך %s"
+
+# android: Settings storage_settings
+#: src/ns-pages.c
+msgid "Storage"
+msgstr "אחסון"
+
+#: src/ns-pages.c
+#, c-format
+msgid "%u core"
+msgid_plural "%u cores"
+msgstr[0] "ליבה אחת"
+msgstr[1] "%u ליבות"
+msgstr[2] "%u ליבות"
+
+#: src/ns-pages.c
+msgid "Processor"
+msgstr "מעבד"
+
+# android: Settings autofill_logging_level_entries[0] (several translations, short)
+#. TRANSLATORS: the card that turns the parallax wallpaper off, beside the wallpapers' own cards; it names the choice
+#. under a picture a third of the screen wide, so a short word ("None" says it as well as "Off")
+#: src/ns-parallax.c
+msgctxt "parallax wallpaper"
+msgid "Off"
+msgstr "כבוי"
+
+#: src/ns-pattern.c
+msgid "Use the PIN pad"
+msgstr "שימוש בלוח המקשים"
+
+# android: SystemUI biometric_dialog_use_password (short)
+#: src/ns-pattern.c
+msgid "Use password"
+msgstr "שימוש בסיסמה"
+
+#: src/ns-pattern.c
+msgid "Draw your current pattern."
+msgstr "יש לצייר את קו ביטול הנעילה הנוכחי."
+
+#: src/ns-pattern.c
+msgid "Enter your current password."
+msgstr "יש להזין את הסיסמה הנוכחית."
+
+#: src/ns-pattern.c
+msgid "Enter your current PIN."
+msgstr "יש להזין את קוד האימות הנוכחי."
+
+# android: Settings security_settings_remoteauth_enroll_introduction_agree
+#: src/ns-pattern.c
+msgid "Continue"
+msgstr "המשך"
+
+#: src/ns-pattern.c
+msgid "Enter a new PIN of at least 4 digits. It becomes your password."
+msgstr "יש להזין קוד אימות חדש בן 4 ספרות לפחות. הוא יהפוך לסיסמה שלך."
+
+#: src/ns-pattern.c
+msgid ""
+"Draw your unlock pattern. It becomes your password: connect at least 4 dots."
+msgstr ""
+"יש לצייר קו ביטול נעילה. הוא יהפוך לסיסמה שלך: צריך לחבר 4 נקודות לפחות."
+
+#: src/ns-pattern.c
+msgid "Enter the PIN again to confirm."
+msgstr "יש להזין שוב את קוד האימות כדי לאשר."
+
+#: src/ns-pattern.c
+msgid "Draw the pattern again to confirm."
+msgstr "יש לצייר שוב את קו ביטול הנעילה כדי לאשר."
+
+# android: Settings security_settings_remoteauth_enroll_enrolling_agree
+#: src/ns-pattern.c
+msgid "Confirm"
+msgstr "אישור"
+
+#: src/ns-pattern.c
+msgid "Connect at least 4 dots. Try again."
+msgstr "צריך לחבר 4 נקודות לפחות. יש לנסות שוב."
+
+#: src/ns-pattern.c
+msgid "That was a different pattern. Try again."
+msgstr "זה היה קו ביטול נעילה אחר. יש לנסות שוב."
+
+#: src/ns-pattern.c
+msgid "Pattern recorded."
+msgstr "קו ביטול הנעילה נשמר."
+
+#: src/ns-pattern.c
+msgid "Pattern confirmed."
+msgstr "קו ביטול הנעילה אושר."
+
+#: src/ns-pattern.c
+msgid "Moving the keyring to the new password…"
+msgstr "מחזיק המפתחות מועבר לסיסמה החדשה…"
+
+#: src/ns-pattern.c
+msgid "The current one was not accepted: nothing changed."
+msgstr "הפרטים הנוכחיים לא התקבלו: לא בוצע שינוי."
+
+#: src/ns-pattern.c
+msgid "Only the person using the phone can change it: nothing changed."
+msgstr "רק מי שמשתמש בטלפון יכול לשנות את זה: לא בוצע שינוי."
+
+#: src/ns-pattern.c
+msgid "Only the person using the tablet can change it: nothing changed."
+msgstr "רק מי שמשתמש בטאבלט יכול לשנות את זה: לא בוצע שינוי."
+
+#: src/ns-pattern.c
+msgid "The password was not changed. Try again."
+msgstr "הסיסמה לא שונתה. יש לנסות שוב."
+
+#: src/ns-pattern.c
+msgid "pkexec is not installed: the password was not changed."
+msgstr "pkexec לא מותקן: הסיסמה לא שונתה."
+
+#: src/ns-pattern.c
+msgid "That is not your current pattern. Try again."
+msgstr "זה לא קו ביטול הנעילה הנוכחי. יש לנסות שוב."
+
+#: src/ns-pattern.c
+msgid "That is not your current password."
+msgstr "זו לא הסיסמה הנוכחית."
+
+#: src/ns-pattern.c
+msgid "That is not your current PIN."
+msgstr "זה לא קוד האימות הנוכחי."
+
+# android: Framework lockscreen_glogin_checking_password (several translations, short)
+#: src/ns-pattern.c
+msgid "Checking…"
+msgstr "בבדיקה…"
+
+#: src/ns-pattern.c
+msgid "That was a different PIN. Try again."
+msgstr "זה היה קוד אימות אחר. יש לנסות שוב."
+
+#: src/ns-pattern.c
+msgid "Setting the PIN as your password…"
+msgstr "קוד האימות מוגדר כסיסמה שלך…"
+
+#: src/ns-pattern.c
+msgid "Setting the pattern as your password…"
+msgstr "קו ביטול הנעילה מוגדר כסיסמה שלך…"
+
+#. a page of its own that does not scroll: a scrolling page would take the stroke that draws a pattern
+#: src/ns-pattern.c
+msgid "Set PIN"
+msgstr "הגדרת קוד אימות"
+
+#: src/ns-pattern.c
+msgid "Set pattern"
+msgstr "הגדרת קו ביטול נעילה"
+
+# android: Settings app_ops_labels[26]
+#: src/ns-perms.c
+msgid "Camera"
+msgstr "מצלמה"
+
+# android: Framework permgrouplab_microphone (short)
+#: src/ns-perms.c src/ns-sound.c
+msgid "Microphone"
+msgstr "מיקרופון"
+
+# android: Settings sms_preference_title
+#: src/ns-perms.c
+msgid "SMS"
+msgstr "SMS"
+
+#: src/ns-perms.c
+msgid "Files and media"
+msgstr "קבצים ומדיה"
+
+# android: Framework permlab_runInBackground (adapted)
+#: src/ns-perms.c
+msgid "Run in the background"
+msgstr "פעולה ברקע"
+
+#: src/ns-perms.c
+msgid "Ask every time"
+msgstr "לשאול בכל פעם"
+
+# android: Settings notification_listener_not_allowed (several translations, short)
+#: src/ns-perms.c
+msgid "Not allowed"
+msgstr "אין הרשאה"
+
+#. a permission's choices, in Android's order, and the grant each one writes
+#: src/ns-perms.c
+msgid "Allow"
+msgstr "אישור"
+
+# android: Settings request_manage_credentials_dont_allow (several translations, short)
+#: src/ns-perms.c
+msgid "Don't allow"
+msgstr "אין אישור"
+
+# android: Settings audio_sharing_share_dialog_subtitle (several translations)
+#. TRANSLATORS: the last two of a list of permissions ("Camera and Microphone")
+#: src/ns-perms.c
+#, c-format
+msgid "%s and %s"
+msgstr "%s וגם %s"
+
+# android: Settings app_names_concatenation_template_2 (several translations)
+#. TRANSLATORS: a permission, then the rest of the list ("Location, Camera and Microphone")
+#: src/ns-perms.c
+#, c-format
+msgid "%s, %s"
+msgstr "%s, %s"
+
+#: src/ns-perms.c
+msgid "No permissions allowed"
+msgstr "לא ניתנו הרשאות"
+
+# android: Settings runtime_permissions_summary_no_permissions_requested
+#: src/ns-perms.c
+msgid "No permissions requested"
+msgstr "לא התקבלו בקשות להרשאות"
+
+#: src/ns-perms.c
+msgid "App permissions"
+msgstr "הרשאות לאפליקציות"
+
+#: src/ns-perms.c
+msgid "This app asks for no permissions."
+msgstr "האפליקציה הזו לא מבקשת הרשאות."
+
+#: src/ns-perms.c
+msgid ""
+"Taking a permission away stops the app. What an app does not ask for, it "
+"never gets."
+msgstr ""
+"ביטול של הרשאה עוצר את האפליקציה. אפליקציה אף פעם לא מקבלת משהו שהיא לא "
+"ביקשה."
+
+# android: Settings permissions_label
+#. not in a sandbox: nothing here keeps it from anything the user's account may do
+#. Off, no app gets the camera or the microphone, VibeOS's own included: the shell hands the switches to WirePlumber,
+#. * which hides them from every PipeWire client (vibeos-sandbox's sandbox-access.lua), the camera portal refuses,
+#. * Camera keeps to it itself, and the status bar shows that they are off
+#: src/ns-perms.c src/ns-privacy.c
+msgid "Permissions"
+msgstr "הרשאות"
+
+#: src/ns-perms.c
+msgid "Not sandboxed: full access"
+msgstr "ללא ארגז חול: גישה מלאה"
+
+#: src/ns-privacy.c
+msgid "Forever"
+msgstr "לתמיד"
+
+# android: Settings menu_duration_1d
+#: src/ns-privacy.c
+msgid "1 day"
+msgstr "יום אחד"
+
+# android: Etar seven_days (other app, short)
+#: src/ns-privacy.c
+msgid "7 days"
+msgstr "7 ימים"
+
+#: src/ns-privacy.c
+msgid "30 days"
+msgstr "30 ימים"
+
+#: src/ns-privacy.c
+msgid "14 days"
+msgstr "14 ימים"
+
+#: src/ns-privacy.c
+msgid "Screen lock type, notifications"
+msgstr "סוג נעילת המסך, התראות"
+
+#: src/ns-privacy.c src/ns-system.c
+msgid "Your account"
+msgstr "החשבון שלך"
+
+#: src/ns-privacy.c
+msgid "Name, password"
+msgstr "שם, סיסמה"
+
+# android: Settings camera_toggle_title
+#: src/ns-privacy.c
+msgid "Camera access"
+msgstr "גישה למצלמה"
+
+#: src/ns-privacy.c
+msgid "For all apps and services"
+msgstr "לכל האפליקציות והשירותים"
+
+# android: Settings mic_toggle_title
+#: src/ns-privacy.c
+msgid "Microphone access"
+msgstr "גישה למיקרופון"
+
+# android: SystemUI manage_notifications_history_text (short)
+#: src/ns-privacy.c
+msgid "History"
+msgstr "היסטוריה"
+
+#: src/ns-privacy.c
+msgid "Remember recent files"
+msgstr "שמירת הקבצים האחרונים"
+
+#: src/ns-privacy.c
+msgid "Apps show what you opened lately"
+msgstr "אפליקציות מציגות מה נפתח לאחרונה"
+
+#: src/ns-privacy.c
+msgid "Keep the list for"
+msgstr "שמירת הרשימה למשך"
+
+#: src/ns-privacy.c
+msgid "Clean up"
+msgstr "ניקוי"
+
+#: src/ns-privacy.c
+msgid "Empty the trash"
+msgstr "ריקון האשפה"
+
+#: src/ns-privacy.c
+msgid "Delete old files from it automatically"
+msgstr "מחיקה אוטומטית של קבצים ישנים מהאשפה"
+
+#: src/ns-privacy.c
+msgid "Delete temporary files"
+msgstr "מחיקת קבצים זמניים"
+
+#: src/ns-privacy.c
+msgid "Old ones, automatically"
+msgstr "קבצים ישנים, באופן אוטומטי"
+
+#: src/ns-privacy.c
+msgid "Older than"
+msgstr "ישנים יותר מ-"
+
+#: src/ns-privacy.c
+msgid "Country"
+msgstr "מדינה"
+
+# android: Contacts postal_city (other app, short)
+#: src/ns-privacy.c
+msgid "City"
+msgstr "עיר"
+
+#: src/ns-privacy.c
+msgid "Neighbourhood"
+msgstr "שכונה"
+
+# android: Contacts postal_street (other app, short)
+#: src/ns-privacy.c
+msgid "Street"
+msgstr "רחוב"
+
+#: src/ns-privacy.c
+msgid "Exact"
+msgstr "מדויק"
+
+# android: Settings location_settings_primary_switch_title
+#: src/ns-privacy.c
+msgid "Use location"
+msgstr "שימוש במיקום"
+
+#: src/ns-privacy.c
+msgid "Apps may ask where the phone is"
+msgstr "אפליקציות יכולות לבקש את מיקום הטלפון"
+
+#: src/ns-privacy.c
+msgid "Apps may ask where the tablet is"
+msgstr "אפליקציות יכולות לבקש את מיקום הטאבלט"
+
+#: src/ns-privacy.c
+msgid "Accuracy"
+msgstr "רמת דיוק"
+
+# android: Settings manage_agent_app_function_access_settings_title
+#: src/ns-privacy.c
+msgid "App access"
+msgstr "גישה לאפליקציות"
+
+#: src/ns-privacy.c
+msgid "No app has asked for the location yet."
+msgstr "עדיין אף אפליקציה לא ביקשה את המיקום."
+
+# android: Settings captioning_typeface_selector_titles[0] (several translations, short)
+#: src/ns-privacy.c
+msgctxt "pointer size"
+msgid "Default"
+msgstr "ברירת מחדל"
+
+# android: Settings captioning_font_size_selector_titles[2] (several translations, short)
+#: src/ns-privacy.c
+msgctxt "pointer size"
+msgid "Medium"
+msgstr "בינוני"
+
+# android: Settings captioning_font_size_selector_titles[3]
+#: src/ns-privacy.c
+msgctxt "pointer size"
+msgid "Large"
+msgstr "גדול"
+
+# android: SettingsLib screen_zoom_summary_larger (short)
+#: src/ns-privacy.c
+msgctxt "pointer size"
+msgid "Larger"
+msgstr "יותר גדול"
+
+# android: SettingsLib screen_zoom_summary_largest (short)
+#: src/ns-privacy.c
+msgctxt "pointer size"
+msgid "Largest"
+msgstr "הכי גדול"
+
+#. No "High contrast in bright light" (Phosh's automatic-high-contrast): nothing switches it by the light now
+#: src/ns-privacy.c
+msgid "Vision"
+msgstr "ראייה"
+
+#: src/ns-privacy.c
+msgid "Stronger colours and outlines"
+msgstr "צבעים וקווי מתאר חזקים יותר"
+
+#: src/ns-privacy.c
+msgid "Less movement on screen"
+msgstr "פחות תנועה במסך"
+
+#: src/ns-privacy.c
+msgid "Pointer size"
+msgstr "גודל הסמן"
+
+#: src/ns-privacy.c
+msgid "Orca reads out what is on screen"
+msgstr "Orca מקריא את מה שמוצג במסך"
+
+# android: Settings interaction_category_title
+#: src/ns-privacy.c
+msgid "Interaction"
+msgstr "אינטראקציה"
+
+#: src/ns-privacy.c src/ns-shell.c
+msgid "Show on-screen keyboard"
+msgstr "הצגת המקלדת הווירטואלית"
+
+#: src/ns-privacy.c src/ns-shell.c
+msgid "Also while a hardware keyboard or a mouse is used"
+msgstr "גם כשמשתמשים במקלדת פיזית או בעכבר"
+
+#: src/ns-privacy.c src/ns-system.c
+msgid "Hardware keyboard"
+msgstr "מקלדת פיזית"
+
+#: src/ns-privacy.c
+msgid "Shift, Ctrl and Alt stay pressed until the next key"
+msgstr "המקשים Shift, Ctrl ו-Alt נשארים לחוצים עד המקש הבא"
+
+# android: Settings slow_keys
+#: src/ns-privacy.c
+msgid "Slow keys"
+msgstr "האטת המקשים"
+
+#: src/ns-privacy.c
+msgid "A key counts only when held a moment"
+msgstr "מקש נספר רק אם מחזיקים אותו לרגע"
+
+# android: Settings bounce_keys
+#: src/ns-privacy.c
+msgid "Bounce keys"
+msgstr "סינון הקשות חוזרות"
+
+#: src/ns-privacy.c
+msgid "A key pressed again at once counts once"
+msgstr "מקש שנלחץ שוב מיד נספר פעם אחת"
+
+# android: Settings unlock_set_unlock_none_title
+#. ---- the lock type ----
+#: src/ns-shell.c
+msgid "Swipe"
+msgstr "החלקה"
+
+# android: Settings unlock_set_unlock_pattern_title
+#: src/ns-shell.c
+msgid "Pattern"
+msgstr "קו פתיחת נעילה"
+
+# android: Settings unlock_set_unlock_pin_title
+#: src/ns-shell.c
+msgid "PIN"
+msgstr "קוד אימות"
+
+#: src/ns-shell.c
+msgid "Change pattern"
+msgstr "שינוי קו ביטול הנעילה"
+
+#: src/ns-shell.c
+msgid "Change PIN"
+msgstr "שינוי קוד האימות"
+
+#: src/ns-shell.c
+msgid "Screen lock type"
+msgstr "סוג נעילת המסך"
+
+#: src/ns-shell.c
+msgid "It is also your password"
+msgstr "זו גם הסיסמה שלך"
+
+#: src/ns-shell.c
+msgid ""
+"Swipe unlocks without a password. Pattern and PIN unlock with your password: "
+"a pattern or PIN set here becomes your password (also for sudo, SSH and the "
+"console)."
+msgstr ""
+"החלקה מבטלת את הנעילה בלי סיסמה. קו ביטול נעילה וקוד אימות מבטלים את הנעילה "
+"עם הסיסמה שלך: קו או קוד שמוגדרים כאן הופכים לסיסמה שלך (גם ל-sudo, ל-SSH "
+"ולמסוף)."
+
+#: src/ns-shell.c
+msgid "On the lock screen"
+msgstr "במסך הנעילה"
+
+#: src/ns-shell.c
+msgid "The time, the date and notifications while the screen is off"
+msgstr "השעה, התאריך וההתראות כשהמסך כבוי"
+
+#: src/ns-shell.c
+msgid "Add a layout"
+msgstr "הוספת פריסה"
+
+#: src/ns-shell.c
+msgid "Used first"
+msgstr "בעדיפות ראשונה"
+
+# android: Settings keyboard_layout_picker_category_title
+#: src/ns-shell.c
+msgid "Layouts"
+msgstr "פריסות"
+
+#: src/ns-shell.c
+msgid "VibeOS keyboard"
+msgstr "מקלדת VibeOS"
+
+#: src/ns-shell.c
+msgid "GNOME keyboard"
+msgstr "מקלדת GNOME"
+
+#: src/ns-shell.c
+msgid "On-screen keyboard"
+msgstr "מקלדת וירטואלית"
+
+# android: LatinIME settings_screen_correction (short)
+#: src/ns-shell.c
+msgid "Text correction"
+msgstr "תיקון טקסט"
+
+# android: LatinIME auto_correction_summary
+#: src/ns-shell.c
+msgid "Spacebar and punctuation automatically correct mistyped words"
+msgstr "מקש הרווח ופיסוק מתקנים אוטומטית שגיאות הקלדה"
+
+#: src/ns-shell.c
+msgid "Show correction suggestions"
+msgstr "הצגת הצעות לתיקונים"
+
+#: src/ns-shell.c
+msgid "Display suggested words while typing"
+msgstr "הצגת הצעות למילים בזמן ההקלדה"
+
+# android: LatinIME bigram_prediction (short)
+#: src/ns-shell.c
+msgid "Next-word suggestions"
+msgstr "הצעות למילה הבאה"
+
+#: src/ns-shell.c
+msgid "Use previous word in making suggestions"
+msgstr "שימוש במילה הקודמת לצורך הצעות"
+
+#: src/ns-shell.c
+msgid "Typing on the touchscreen opens the on-screen keyboard either way."
+msgstr "הקלדה במסך המגע פותחת את המקלדת הווירטואלית בכל מקרה."
+
+# android: Settings media_output_title_without_playing
+#: src/ns-sound.c
+msgid "Audio will play on"
+msgstr "איפה האודיו יושמע"
+
+# android: Settings wifi_proxy_settings[0] (several translations, short)
+#: src/ns-sound.c
+msgctxt "no sound"
+msgid "None"
+msgstr "ללא"
+
+# android: Settings notification_channel_sound_title
+#: src/ns-sound.c
+msgid "Sound"
+msgstr "צליל"
+
+# android: Settings app_ops_labels[3]
+#: src/ns-sound.c
+msgid "Vibrate"
+msgstr "רטט"
+
+# android: Settings prevent_ringing_option_mute (several translations, short)
+#: src/ns-sound.c
+msgid "Mute"
+msgstr "השתקה"
+
+# android: Settings app_ops_labels[36]
+#: src/ns-sound.c
+msgid "Media volume"
+msgstr "עוצמת קול של מדיה"
+
+# android: Settings app_ops_labels[35] (several translations, short)
+#: src/ns-sound.c
+msgid "Ring volume"
+msgstr "עוצמת קול של צלצול"
+
+# android: Settings app_ops_labels[37] (several translations, short)
+#: src/ns-sound.c
+msgid "Alarm volume"
+msgstr "עוצמת הקול של השעון המעורר"
+
+#: src/ns-sound.c
+msgid "Sound mode"
+msgstr "מצב צליל"
+
+#: src/ns-sound.c
+msgid "Vibration intensity"
+msgstr "עוצמת הרטט"
+
+#: src/ns-sound.c
+msgid "Vibrate while ringing"
+msgstr "רטט בזמן צלצול"
+
+#: src/ns-sound.c
+msgid "Calls vibrate as well as ring in Sound mode"
+msgstr "במצב צליל, שיחות מפעילות גם רטט וגם צלצול"
+
+# android: Settings sound_patterns_category_title
+#: src/ns-sound.c
+msgid "Sound patterns"
+msgstr "דפוסי צלילים"
+
+# android: Settings ringtone_title (several translations, short)
+#: src/ns-sound.c
+msgid "Phone ringtone"
+msgstr "הרינגטון של הטלפון"
+
+# android: Settings alarm_ringtone_title (several translations)
+#: src/ns-sound.c
+msgid "Default alarm sound"
+msgstr "צליל ברירת המחדל לשעון מעורר"
+
+#: src/ns-sound.c
+msgid "System sounds"
+msgstr "צלילי מערכת"
+
+# android: Settings dial_pad_tones_title
+#: src/ns-sound.c
+msgid "Dial pad tones"
+msgstr "צלילים של לוח החיוג"
+
+#: src/ns-sound.c
+msgid "Keyboard sounds"
+msgstr "צלילי מקלדת"
+
+#: src/ns-sound.c
+msgid "Volume change sound"
+msgstr "צליל בשינוי עוצמת הקול"
+
+#: src/ns-sound.c
+msgid "Louder than 100%"
+msgstr "עוצמה מעל 100%"
+
+#: src/ns-sound.c
+msgid "Can distort the sound"
+msgstr "עלול לעוות את הצליל"
+
+# android: Settings app_locale_preference_title
+#: src/ns-system.c
+msgid "Language"
+msgstr "שפה"
+
+#: src/ns-system.c
+msgid "System default (English)"
+msgstr "ברירת המחדל של המערכת (אנגלית)"
+
+#: src/ns-system.c
+msgid "Same as the language"
+msgstr "כמו השפה"
+
+#: src/ns-system.c
+msgid "Formats"
+msgstr "פורמטים"
+
+#: src/ns-system.c
+msgid "Apps that were already open change language after a restart."
+msgstr "אפליקציות שכבר היו פתוחות יחליפו שפה אחרי הפעלה מחדש."
+
+#: src/ns-system.c
+msgid "Restart now"
+msgstr "הפעלה מחדש עכשיו"
+
+# android: Settings date_time_set_timezone_title
+#: src/ns-system.c
+msgid "Time zone"
+msgstr "אזור זמן"
+
+# android: Settings date_time_auto
+#: src/ns-system.c
+msgid "Automatic date and time"
+msgstr "תאריך ושעה אוטומטיים"
+
+#: src/ns-system.c
+msgid "From the network"
+msgstr "מהרשת"
+
+# android: Settings zone_auto_title
+#: src/ns-system.c
+msgid "Automatic time zone"
+msgstr "אזור זמן אוטומטי"
+
+#: src/ns-system.c
+msgid "From the phone's location"
+msgstr "לפי מיקום הטלפון"
+
+#: src/ns-system.c
+msgid "From the tablet's location"
+msgstr "לפי מיקום הטאבלט"
+
+#. clock-format is read by the status bar and the lock screen (statusbar.js, keyguard.js) and by the apps.
+#. * No weekday, date or seconds switches (clock-show-*): the status bar shows the time alone.
+#: src/ns-system.c
+msgid "24-hour time"
+msgstr "פורמט של 24 שעות"
+
+#: src/ns-system.c
+msgid "13:00 rather than 1:00 PM"
+msgstr "13:00 במקום 1:00 PM"
+
+#: src/ns-system.c
+msgid "Your name"
+msgstr "השם שלך"
+
+# android: Settings save (several translations, short)
+#: src/ns-system.c src/ns-ui.c
+msgid "Save"
+msgstr "שמירה"
+
+# android: Settings apn_not_set_for_mvno (several translations, short)
+#: src/ns-system.c src/ns-ui.c
+msgid "Not set"
+msgstr "לא הוגדר"
+
+#: src/ns-system.c
+msgid "Administrator"
+msgstr "מנהל מערכת"
+
+# android: Settings external_display_standard_rotation
+#: src/ns-system.c
+msgid "Standard"
+msgstr "רגיל"
+
+#: src/ns-system.c
+msgid "Account type"
+msgstr "סוג החשבון"
+
+#: src/ns-system.c
+msgid "Screen lock and password"
+msgstr "נעילת מסך וסיסמה"
+
+#: src/ns-system.c
+msgid "A pattern or PIN is also your password"
+msgstr "קו ביטול נעילה או קוד אימות הם גם הסיסמה שלך"
+
+# android: Settings storage_other_users
+#: src/ns-system.c
+msgid "Other users"
+msgstr "משתמשים אחרים"
+
+# android: Settings switch_to_dock_user_when_docked_timeout_entries[2]
+#: src/ns-system.c
+msgid "After 5 minutes"
+msgstr "לאחר 5 דקות"
+
+#: src/ns-system.c
+msgid "After 10 minutes"
+msgstr "לאחר 10 דקות"
+
+#: src/ns-system.c
+msgid "After 15 minutes"
+msgstr "לאחר 15 דקות"
+
+#: src/ns-system.c
+msgid "After 30 minutes"
+msgstr "לאחר 30 דקות"
+
+#: src/ns-system.c
+msgid "After 1 hour"
+msgstr "לאחר שעה"
+
+#: src/ns-system.c
+msgid "Automatic suspend"
+msgstr "השהיה אוטומטית"
+
+#: src/ns-system.c
+msgid "Plugged in"
+msgstr "בחיבור לחשמל"
+
+#: src/ns-system.c
+msgid ""
+"Suspend saves the most power, but calls, messages and alarms can be missed "
+"while the phone sleeps."
+msgstr ""
+"השהיה חוסכת הכי הרבה חשמל, אבל שיחות, הודעות ושעונים מעוררים עלולים להתפספס "
+"בזמן שהטלפון במצב שינה."
+
+#: src/ns-system.c
+msgid ""
+"Suspend saves the most power, but calls, messages and alarms can be missed "
+"while the tablet sleeps."
+msgstr ""
+"השהיה חוסכת הכי הרבה חשמל, אבל שיחות, הודעות ושעונים מעוררים עלולים להתפספס "
+"בזמן שהטאבלט במצב שינה."
+
+#: src/ns-system.c
+msgid "Before it turns off"
+msgstr "לפני הכיבוי"
+
+#: src/ns-system.c
+msgid "Power saving on low battery"
+msgstr "חיסכון בחשמל כשהסוללה חלשה"
+
+#: src/ns-system.c
+msgid "This phone sleeps as soon as its screen is off."
+msgstr "הטלפון הזה נכנס למצב שינה מיד כשהמסך נכבה."
+
+#: src/ns-system.c
+msgid "This tablet sleeps as soon as its screen is off."
+msgstr "הטאבלט הזה נכנס למצב שינה מיד כשהמסך נכבה."
+
+#: src/ns-system.c
+msgid "Set as wallpaper"
+msgstr "הגדרה כטפט"
+
+#: src/ns-system.c
+msgid "On the home screen and the lock screen"
+msgstr "במסך הבית ובמסך הנעילה"
+
+# android: Settings data_usage_cycle_editor_positive (several translations, short)
+#: src/ns-system.c
+msgid "Set"
+msgstr "הגדרה"
+
+#: src/ns-system.c
+msgid "Pictures"
+msgstr "תמונות"
+
+#: src/ns-system.c
+msgid "Choose from your pictures"
+msgstr "בחירה מהתמונות שלך"
+
+#: src/ns-system.c
+msgid "Kernel build"
+msgstr "גרסת build של הליבה"
+
+#: src/ns-system.c
+msgid "Pointer speed"
+msgstr "מהירות המצביע"
+
+# android: Settings accessibility_long_press_timeout_option_short (several translations, short)
+#: src/ns-system.c
+msgctxt "key repeat delay"
+msgid "Short"
+msgstr "קצרה"
+
+#: src/ns-system.c
+msgctxt "key repeat delay"
+msgid "Medium"
+msgstr "בינונית"
+
+#: src/ns-system.c
+msgctxt "key repeat delay"
+msgid "Long"
+msgstr "ארוכה"
+
+#: src/ns-system.c
+msgctxt "key repeat speed"
+msgid "Fast"
+msgstr "מהירה"
+
+#: src/ns-system.c
+msgctxt "key repeat speed"
+msgid "Medium"
+msgstr "בינונית"
+
+#: src/ns-system.c
+msgctxt "key repeat speed"
+msgid "Slow"
+msgstr "איטית"
+
+# android: Settings mouse_settings
+#: src/ns-system.c
+msgid "Mouse"
+msgstr "עכבר"
+
+#: src/ns-system.c
+msgid "Natural scrolling"
+msgstr "גלילה טבעית"
+
+#: src/ns-system.c
+msgid "The content moves with the wheel, like a touchscreen"
+msgstr "התוכן זז עם הגלגלת, כמו במסך מגע"
+
+#: src/ns-system.c
+msgid "Left-handed"
+msgstr "מצב שמאלי"
+
+#: src/ns-system.c
+msgid "The right button is the main one"
+msgstr "הלחצן הימני הוא הלחצן הראשי"
+
+# android: Settings trackpad_settings
+#: src/ns-system.c
+msgid "Touchpad"
+msgstr "לוח מגע"
+
+#: src/ns-system.c
+msgid "Tap to click"
+msgstr "הקשה במקום לחיצה"
+
+#: src/ns-system.c
+msgid "A tap counts as a click"
+msgstr "הקשה נחשבת ללחיצה"
+
+#: src/ns-system.c
+msgid "The content moves with your fingers"
+msgstr "התוכן זז עם האצבעות"
+
+# android: Settings keyboard_repeat_keys_title (adapted)
+#: src/ns-system.c
+msgid "Repeat keys"
+msgstr "חזרה על מקשים"
+
+#: src/ns-system.c
+msgid "A held key types again and again"
+msgstr "מקש שמחזיקים לחוץ מוקלד שוב ושוב"
+
+#: src/ns-system.c
+msgid "Delay before repeating"
+msgstr "השהיה לפני חזרה"
+
+#: src/ns-system.c
+msgid "Repeat speed"
+msgstr "מהירות החזרה"
+
+#: src/ns-system.c
+msgid "For a Bluetooth or USB mouse, touchpad or keyboard."
+msgstr "לעכבר, ללוח מגע או למקלדת ב-Bluetooth או ב-USB."
+
+# android: Framework hearing_device_status_loading (short)
+#: src/ns-ui.c
+msgid "Loading"
+msgstr "בטעינה"
+
+#: src/ns-ui.c
+msgid "Less"
+msgstr "פחות"
+
+# android: Settings security_settings_face_enroll_introduction_more
+#: src/ns-ui.c
+msgid "More"
+msgstr "עוד"
+
+#. TRANSLATORS: the − and + buttons' names for a screen reader; %s is the setting ("Font size")
+#: src/ns-ui.c
+#, c-format
+msgid "%s smaller"
+msgstr "%s: הקטנה"
+
+#. TRANSLATORS: %s is the setting ("Font size")
+#: src/ns-ui.c
+#, c-format
+msgid "%s larger"
+msgstr "%s: הגדלה"

@@ -1,0 +1,193 @@
+# Hebrew translations of vibeos-calculator.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-calculator\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Hebrew\n"
+"Language: he\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
+
+# android: ExactCalculator app_name
+#: data/vibeos.Calculator.desktop.in src/calc-window.c
+msgid "Calculator"
+msgstr "מחשבון"
+
+#: data/vibeos.Calculator.desktop.in
+msgid "Exact arithmetic, with its history"
+msgstr "חשבון מדויק, עם היסטוריה"
+
+#: data/vibeos.Calculator.desktop.in
+msgid "Calculator;Math;Arithmetic;"
+msgstr "מחשבון;חשבון;מתמטיקה;Calculator;Math;Arithmetic;"
+
+# android: Framework action_menu_overflow_description (several translations, short)
+#: src/calc-display.c src/calc-history.c
+msgid "More options"
+msgstr "אפשרויות נוספות"
+
+# android: DocumentsUI search_last_modified_1_day (other app, short)
+#: src/calc-history.c
+msgid "Today"
+msgstr "היום"
+
+# android: DocumentsUI search_last_modified_2_days (other app, short)
+#: src/calc-history.c
+msgid "Yesterday"
+msgstr "אתמול"
+
+# android: DeskClock alarm_tomorrow (other app, short)
+#: src/calc-history.c
+msgid "Tomorrow"
+msgstr "מחר"
+
+#: src/calc-history.c
+#, c-format
+msgid "%d day ago"
+msgid_plural "%d days ago"
+msgstr[0] "לפני יום"
+msgstr[1] "לפני יומיים"
+msgstr[2] "לפני %d ימים"
+
+#: src/calc-history.c
+#, c-format
+msgid "In %d day"
+msgid_plural "In %d days"
+msgstr[0] "בעוד יום"
+msgstr[1] "בעוד יומיים"
+msgstr[2] "בעוד %d ימים"
+
+# android: ExactCalculator no_history
+#: src/calc-history.c
+msgid "No History"
+msgstr "אין היסטוריה"
+
+# android: ExactCalculator menu_history
+#: src/calc-history.c src/calc-window.c
+msgid "History"
+msgstr "היסטוריה"
+
+# android: Framework input_method_nav_back_button_desc (several translations, short)
+#. the shell's back gesture clicks a button named Back
+#: src/calc-history.c src/calc-licenses.c
+msgid "Back"
+msgstr "חזרה"
+
+# android: ExactCalculator menu_licenses
+#: src/calc-licenses.c src/calc-window.c
+msgid "Open source licenses"
+msgstr "רישיונות קוד פתוח"
+
+# android: Framework review_notification_settings_dismiss (several translations, short)
+#: src/calc-window.c
+msgid "Dismiss"
+msgstr "סגירה"
+
+# android: ExactCalculator text_copied_toast (several translations, short)
+#: src/calc-window.c
+msgid "Text copied"
+msgstr "הטקסט הועתק"
+
+# android: Framework copy (several translations, short)
+#: src/calc-window.c
+msgid "Copy"
+msgstr "העתקה"
+
+# android: Framework paste (short)
+#: src/calc-window.c
+msgid "Paste"
+msgstr "הדבקה"
+
+# android: ExactCalculator cancelled
+#: src/calc-window.c
+msgid "Computation cancelled."
+msgstr "החישוב בוטל."
+
+# android: ExactCalculator dialog_timeout
+#: src/calc-window.c
+msgid "Timeout"
+msgstr "זמן קצוב לתפוגה"
+
+# android: ExactCalculator timeout
+#: src/calc-window.c
+msgid "Value may be infinite or undefined."
+msgstr "ייתכן שהערך הוא אינסופי או לא מוגדר."
+
+#: src/calc-window.c
+msgid "Use longer timeouts"
+msgstr "הארכת הזמן הקצוב"
+
+# android: ExactCalculator dialog_clear
+#. the history's Clear: the message, no title
+#: src/calc-window.c
+msgid "Clear history and memory?"
+msgstr "לנקות את ההיסטוריה והזיכרון?"
+
+# android: Settings proxy_clear_text (other app, several translations, short)
+#: src/calc-window.c
+msgid "Clear"
+msgstr "ניקוי"
+
+# android: ExactCalculator exact
+#: src/calc-window.c
+msgid "(exact)"
+msgstr "(מדויק)"
+
+# android: ExactCalculator approximate
+#: src/calc-window.c
+msgid "(±1 in last digit)"
+msgstr "(±1 בספרה האחרונה)"
+
+# android: ExactCalculator menu_leading
+#: src/calc-window.c
+msgid "Answer with leading digits"
+msgstr "תשובה עם ספרות מובילות"
+
+# android: ExactCalculator menu_fraction
+#: src/calc-window.c
+msgid "Answer as fraction"
+msgstr "תשובה בצורת שבר"
+
+#: src/calc-window.c
+msgid "The exact real arithmetic is Hans-J. Boehm's constructive reals (com.hp.creals, as Android's Calculator uses them): copyright 1999 Silicon Graphics, Inc., 2001-2004 Hewlett-Packard Development Company, L.P., under its own permissive licence (Open source licenses in the ⋮ menu)."
+msgstr "החשבון הממשי המדויק מבוסס על המספרים הממשיים הקונסטרוקטיביים של Hans-J. Boehm (com.hp.creals, כמו במחשבון של Android): זכויות יוצרים 1999 Silicon Graphics, Inc., 2001-2004 Hewlett-Packard Development Company, L.P., במסגרת רישיון מתירני משלו (רישיונות קוד פתוח בתפריט ⋮)."
+
+#: src/calc-window.c
+msgid "About"
+msgstr "מידע על האפליקציה"
+
+#: src/calc-window.c
+msgid "delete"
+msgstr "מחיקה"
+
+# android: ExactCalculator error_syntax
+#: src/evaluator.c
+msgid "Bad expression"
+msgstr "ביטוי שגוי"
+
+# android: ExactCalculator error_zero_divide
+#: src/evaluator.c
+msgid "Can't divide by 0"
+msgstr "אי אפשר לחלק ב-0"
+
+# android: ExactCalculator error_overflow
+#: src/evaluator.c
+msgid "Infinite?"
+msgstr "אינסופי?"
+
+# android: ExactCalculator error_aborted
+#: src/evaluator.c
+msgid "Aborted"
+msgstr "בוטל"
+
+# android: ExactCalculator error_nan
+#: src/evaluator.c
+msgid "Not a number"
+msgstr "אינו מספר"
