@@ -215,6 +215,7 @@ on_destroy (GtkWidget *win, Navi *n)
   g_clear_pointer (&n->alerts, navi_alerts_free);
   navi_settings_flush (n->settings);
   navi_position_stop (n->position);
+  navi_window_stop_compass (n);
   if (the_navi == n)
     the_navi = NULL;
 }
@@ -304,6 +305,7 @@ activate (GtkApplication *app, gpointer data)
     navi_position_set_last_known (n->position, n->settings->last_lat, n->settings->last_lng);
   if (!opts.have_from)
     navi_position_start (n->position);
+  navi_window_start_compass (n);
   if (opts.have_to || opts.search)
     g_timeout_add (1500, start_test_drive, n);
   /* a planned drive's reminder again, in case a reboot took it */

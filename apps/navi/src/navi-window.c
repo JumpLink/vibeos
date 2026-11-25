@@ -281,6 +281,23 @@ advance_car (Navi *n, gint64 now, double dt)
   }
   n->car_speed = speed;
   n->car_known = TRUE;
+
+  /* the arrow: standing (or creeping, GPS's course is noise then) off a route, the compass turns it; moving, or along
+   * a route (the route knows the way; a phone mount's magnet would not), it is the car's heading */
+  double want = 0;
+  gboolean compass = !(route && p->on_route) &&
+                     navi_heading_pick (speed, n->fix.heading, 1.5, n->have_compass, n->compass_heading, &want) ==
+                       NAVI_HEADING_COMPASS;
+  if (compass) {
+    if (!n->arrow_compass)
+      n->arrow_rate = 0;
+    n->arrow_heading = fmod (navi_smooth_angle (n->arrow_heading, want, &n->arrow_rate, HEADING_SMOOTH_S, dt) + 360,
+                             360);
+  } else {
+    n->arrow_heading = n->car_heading;
+    n->arrow_rate = 0;
+  }
+  n->arrow_compass = compass;
 }
 
 /* The route ahead of the car is drawn in full colour from the car on; the whole route lies under it, a little
@@ -319,7 +336,9 @@ camera_frame (Navi *n, gint64 now, double dt)
   n->pitch += (pitch - n->pitch) * (1 - exp (-dt / 0.25));
   if (fabs (n->pitch - pitch) < 0.05)
     n->pitch = pitch;
-  double bearing = heading_up (n) ? n->car_heading : 0;
+  /* heading-up while driving and standing off the route: the way the phone points */
+  double bearing = !heading_up (n) ? 0 : n->mode == NAVI_MODE_DRIVE && n->arrow_compass ? n->arrow_heading
+                                                                                        : n->car_heading;
   if (n->cam == NAVI_CAM_FOLLOW && n->car_known) {
     NaviCamera cam = { n->car_lat, n->car_lng, n->zoom, bearing, n->pitch };
     navi_map_jump_to (n->map, &cam);
@@ -356,7 +375,8 @@ frame_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
 
   /* the clock keeps running while anything moves; a car standing still in browse lets it rest */
   gboolean moving = n->mode == NAVI_MODE_DRIVE || n->cam == NAVI_CAM_RECENTER || n->car_speed > 0.2 ||
-                    fabs (n->zoom_rate) > 0.002 || fabs (n->heading_rate) > 0.05 ||
+                    fabs (n->zoom_rate) > 0.002 || fabs (n->heading_rate) > 0.05 || fabs (n->arrow_rate) > 0.05 ||
+                    (n->arrow_compass && fabs (remainder (n->compass_heading - n->arrow_heading, 360)) > 0.5) ||
                     fabs (n->pitch - target_pitch (n)) > 0.05;
   if (moving)
     return G_SOURCE_CONTINUE;
@@ -504,8 +524,8 @@ draw_car (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
   navi_map_get_camera (n->map, &cam);
   if (!isnan (cam.pitch))
     pitch = cam.pitch;
-  if (n->cam != NAVI_CAM_FOLLOW || !heading_up (n))
-    rotation = remainder (n->car_heading - (isnan (cam.bearing) ? 0 : cam.bearing), 360);
+  if (n->arrow_compass || n->cam != NAVI_CAM_FOLLOW || !heading_up (n))
+    rotation = remainder (n->arrow_heading - (isnan (cam.bearing) ? 0 : cam.bearing), 360);
   navi_draw_car (cr, MIN (w, h), rotation, 0.55 + 0.45 * cos (pitch * G_PI / 180), n->night);
 }
 
@@ -585,7 +605,7 @@ static void
 on_camera_changed (NaviMap *map, Navi *n)
 {
   gtk_widget_queue_allocate (n->map_overlay);
-  if (n->cam != NAVI_CAM_FOLLOW || !heading_up (n))
+  if (n->arrow_compass || n->cam != NAVI_CAM_FOLLOW || !heading_up (n))
     gtk_widget_queue_draw (n->car);
   NaviCamera cam;
   navi_map_get_camera (map, &cam);
@@ -1665,6 +1685,77 @@ on_tap (GtkGestureClick *gesture, int n_press, double x, double y, Navi *n)
 }
 
 /* ---- building ---- */
+
+/* ---- the compass ---- */
+
+/* claimed while the window is on screen (shown, not suspended), and told how the screen is turned */
+static void
+compass_sync (Navi *n)
+{
+  GtkWidget *win = GTK_WIDGET (n->win);
+  navi_compass_set_landscape (n->compass, gtk_widget_get_width (win) > gtk_widget_get_height (win));
+  navi_compass_set_active (n->compass, gtk_widget_get_mapped (win) && !gtk_window_is_suspended (GTK_WINDOW (n->win)));
+}
+
+static void
+on_compass (NaviCompass *compass, Navi *n)
+{
+  n->have_compass = navi_compass_get_heading (compass, &n->compass_heading);
+  ensure_tick (n);
+}
+
+static void
+on_surface_layout (GdkSurface *surface, int width, int height, Navi *n)
+{
+  navi_compass_set_landscape (n->compass, width > height);
+}
+
+static void
+on_win_mapped (GtkWidget *win, Navi *n)
+{
+  GdkSurface *surface = gtk_native_get_surface (GTK_NATIVE (win));
+  if (surface && !g_object_get_data (G_OBJECT (surface), "navi-compass-layout")) {
+    g_object_set_data (G_OBJECT (surface), "navi-compass-layout", n);
+    g_signal_connect (surface, "layout", G_CALLBACK (on_surface_layout), n);
+  }
+  compass_sync (n);
+}
+
+static void
+on_win_suspended (GObject *win, GParamSpec *pspec, Navi *n)
+{
+  compass_sync (n);
+}
+
+void
+navi_window_start_compass (Navi *n)
+{
+  n->compass = navi_compass_new ();
+  g_signal_connect (n->compass, "changed", G_CALLBACK (on_compass), n);
+  g_signal_connect (n->win, "map", G_CALLBACK (on_win_mapped), n);
+  g_signal_connect_swapped (n->win, "unmap", G_CALLBACK (compass_sync), n);
+  g_signal_connect (n->win, "notify::suspended", G_CALLBACK (on_win_suspended), n);
+  if (gtk_widget_get_mapped (GTK_WIDGET (n->win)))
+    on_win_mapped (GTK_WIDGET (n->win), n);
+}
+
+void
+navi_window_stop_compass (Navi *n)
+{
+  if (!n->compass)
+    return;
+  g_signal_handlers_disconnect_by_func (n->win, on_win_mapped, n);
+  g_signal_handlers_disconnect_by_func (n->win, compass_sync, n);
+  g_signal_handlers_disconnect_by_func (n->win, on_win_suspended, n);
+  GdkSurface *surface = gtk_native_get_surface (GTK_NATIVE (n->win));
+  if (surface && g_object_get_data (G_OBJECT (surface), "navi-compass-layout")) {
+    g_signal_handlers_disconnect_by_func (surface, on_surface_layout, n);
+    g_object_set_data (G_OBJECT (surface), "navi-compass-layout", NULL);
+  }
+  navi_compass_set_active (n->compass, FALSE);
+  g_clear_object (&n->compass);
+  n->have_compass = n->arrow_compass = FALSE;
+}
 
 void
 navi_window_build_map (Navi *n)

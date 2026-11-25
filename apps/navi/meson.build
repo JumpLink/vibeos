@@ -68,6 +68,7 @@ locale_inc = include_directories('../../libvibeos')
 core = static_library('navi-core',
   'src/navi-geo.c', 'src/navi-route.c', 'src/navi-guidance.c', 'src/navi-mvt.c', 'src/navi-search.c',
   'src/navi-search-photon.c', 'src/navi-poi.c', 'src/navi-roadinfo.c', 'src/navi-cameras.c', 'src/navi-position.c', 'src/navi-sun.c',
+  'src/navi-compass.c',
   c_args: get_option('debug_privacy') ? ['-DNAVI_DEBUG'] : [],
   include_directories: locale_inc,
   dependencies: core_deps)
@@ -77,6 +78,10 @@ core_dep = declare_dependency(link_with: core, include_directories: include_dire
 test('navi', executable('test-navi', 'tests/test-navi.c', '../../libvibeos/vibeos-locale.c', dependencies: core_dep),
      env: ['G_TEST_SRCDIR=' + meson.current_source_dir() / 'tests', 'G_TEST_BUILDDIR=' + meson.current_build_dir(),
            'LANG=C.UTF-8', 'LANGUAGE=', 'LC_ALL=', 'LC_TIME=', 'LC_MESSAGES='])
+
+# the compass as Navi reads it, without Navi's window: claims iio-sensor-proxy's compass, prints the heading for a few
+# seconds and releases it (tests/navi-compass-probe.c)
+executable('navi-compass-probe', 'tests/navi-compass-probe.c', dependencies: core_dep)
 
 # the map's styles, day and night, made from the generator with the server's tile and glyph URLs
 python = find_program('python3')

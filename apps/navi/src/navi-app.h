@@ -22,6 +22,7 @@
 #include <gtk/gtk.h>
 #include <vibeos.h>
 
+#include "navi-compass.h"
 #include "navi-geo.h"
 #include "navi-guidance.h"
 #include "navi-map.h"
@@ -78,6 +79,10 @@ typedef struct {
 
   /* what is drawn: the car where it is in this frame (between fixes, ahead along the route), and its heading */
   double car_lat, car_lng, car_heading, heading_rate;
+  /* the arrow: the car's heading, but the compass's while it stands off a route (navi-compass.h) */
+  NaviCompass *compass;
+  gboolean have_compass, arrow_compass;
+  double compass_heading, arrow_heading, arrow_rate;
   double car_s;             /* along the route, while driving */
   double car_speed;         /* m/s */
   double fix_s;
@@ -133,6 +138,9 @@ typedef struct {
 
 /* navi-window.c */
 void navi_window_build_map (Navi *navi);
+/* the compass for the arrow (navi-compass.h): claimed while the window is on screen, from start to stop */
+void navi_window_start_compass (Navi *navi);
+void navi_window_stop_compass (Navi *navi);
 void navi_window_set_mode (Navi *navi, NaviMode mode);
 /* the place's card, the camera on it */
 void navi_show_place (Navi *navi, const NaviPlace *place);

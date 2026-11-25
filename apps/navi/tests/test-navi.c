@@ -1,6 +1,7 @@
 /* Tests of Navi's logic: paths, Valhalla's answer, the guidance along a route and its prompts, the tile reader,
  * the search's folding and Photon's answer, the sun. No GTK, no network: the route is a saved answer (Bahnhof Zoo
  * to Potsdamer Platz in Berlin) and the drive is made-up fixes along it. */
+#include "navi-compass.h"
 #include "navi-geo.h"
 #include "navi-guidance.h"
 #include "navi-mvt.h"
@@ -679,6 +680,48 @@ test_poi_groups (void)
   g_assert_cmpstr (p->category, ==, "fuel");
 }
 
+/* the compass's arithmetic: the screen's turn, the heading across north, and when the compass turns the arrow */
+static void
+test_compass (void)
+{
+  g_assert_cmpint (navi_compass_screen_turn (FALSE, "normal"), ==, 0);
+  g_assert_cmpint (navi_compass_screen_turn (FALSE, "bottom-up"), ==, 0);
+  g_assert_cmpint (navi_compass_screen_turn (FALSE, NULL), ==, 0);
+  g_assert_cmpint (navi_compass_screen_turn (TRUE, "right-up"), ==, 90);
+  g_assert_cmpint (navi_compass_screen_turn (TRUE, "left-up"), ==, 270);
+  g_assert_cmpint (navi_compass_screen_turn (TRUE, "normal"), ==, 0);
+  g_assert_cmpint (navi_compass_screen_turn (TRUE, "bottom-up"), ==, 180);
+  g_assert_cmpint (navi_compass_screen_turn (TRUE, "undefined"), ==, -1);
+  g_assert_cmpint (navi_compass_screen_turn (TRUE, NULL), ==, -1);
+
+  /* the device's top at 24.9: its right edge (right-up) at 114.9, its left edge (left-up) at 294.9 */
+  g_assert_cmpfloat_with_epsilon (navi_compass_screen_heading (24.9, 0), 24.9, 1e-9);
+  g_assert_cmpfloat_with_epsilon (navi_compass_screen_heading (24.9, 90), 114.9, 1e-9);
+  g_assert_cmpfloat_with_epsilon (navi_compass_screen_heading (24.9, 270), 294.9, 1e-9);
+  g_assert_cmpfloat_with_epsilon (navi_compass_screen_heading (350, 90), 80, 1e-9);
+  g_assert_cmpfloat_with_epsilon (navi_compass_screen_heading (360, 0), 0, 1e-9);
+
+  double h = -1;
+  /* moving: GPS's course, the compass aside */
+  g_assert_cmpint (navi_heading_pick (12, 87, 1.5, TRUE, 10, &h), ==, NAVI_HEADING_COURSE);
+  g_assert_cmpfloat (h, ==, 87);
+  /* standing or creeping: the compass */
+  g_assert_cmpint (navi_heading_pick (0, -1, 1.5, TRUE, 10, &h), ==, NAVI_HEADING_COMPASS);
+  g_assert_cmpfloat (h, ==, 10);
+  g_assert_cmpint (navi_heading_pick (1.2, 200, 1.5, TRUE, 10, &h), ==, NAVI_HEADING_COMPASS);
+  g_assert_cmpfloat (h, ==, 10);
+  /* moving without a course (GeoClue had none): the compass */
+  g_assert_cmpint (navi_heading_pick (8, -1, 1.5, TRUE, 10, &h), ==, NAVI_HEADING_COMPASS);
+  /* neither */
+  g_assert_cmpint (navi_heading_pick (0, -1, 1.5, FALSE, 0, &h), ==, NAVI_HEADING_NONE);
+
+  /* the arrow's turn toward the compass goes the short way across north */
+  double rate = 0, a = 350;
+  for (int i = 0; i < 120; i++)
+    a = fmod (navi_smooth_angle (a, 10, &rate, 0.6, 1.0 / 60) + 360, 360);
+  g_assert_cmpfloat (fabs (remainder (a - 10, 360)), <, 1);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -689,6 +732,7 @@ main (int argc, char **argv)
   g_unsetenv ("LC_NUMERIC");
   g_test_init (&argc, &argv, NULL);
   g_test_add_func ("/navi/geo", test_geo);
+  g_test_add_func ("/navi/compass", test_compass);
   g_test_add_func ("/navi/route/parse", test_route_parse);
   g_test_add_func ("/navi/route/errors", test_route_errors);
   g_test_add_func ("/navi/route/lanes-and-side", test_lanes_and_side);
