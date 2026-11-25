@@ -1,14 +1,17 @@
 /* VibeOS Launcher 2: the home screen as a Wayland client drawn with Vulkan or OpenGL ES (gfx.h): the parallax
  * wallpaper zoomed ×1.10, the workspace and dock, and the app drawer sheet whose depth zooms the wallpaper out, shrinks
  * the home to 0.97 and blurs both behind it. */
+#include <errno.h>
 #include <glib.h>
 #include <glib-unix.h>
+#include <glib/gstdio.h>
 #include <linux/input-event-codes.h>
 #include <locale.h>
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "image.h"
 #include "vibeos.h"
@@ -246,13 +249,12 @@ wallpaper_load (void)
     g_free (file);
     file = picture;
   }
-  g_autofree char *dir = file ? g_path_get_dirname (file) : NULL;
-  g_autofree char *json = dir ? g_build_filename (dir, "parallax.json", NULL) : NULL;
+  g_autofree char *dir = file ? parallax_set_of (file) : NULL;
   g_autofree char *set = g_settings_get_string (N.settings, "wallpaper-parallax");
   Parallax *p = NULL;
   if (env)
     p = parallax_new (env, wake, NULL);
-  else if (json && g_file_test (json, G_FILE_TEST_EXISTS))
+  else if (dir)
     p = parallax_new (dir, wake, NULL);
   else if (file)
     p = parallax_new_image (file);
@@ -930,9 +932,42 @@ on_signal (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
+/* vibeos-launcher --rest-picture FILE W H DENSITY OUT: the wallpaper FILE as the home shows it at rest on a W × H px
+ * screen of DENSITY px per dp (parallax_rest_picture ()), written to OUT as a JPEG, whole or not at all. The lock
+ * screen shows it (the vibeos extension's keyguard.js), so that unlocking into the home moves nothing. */
+static int
+rest_picture (int argc, char **argv)
+{
+  if (argc != 7) {
+    g_printerr ("usage: %s --rest-picture FILE W H DENSITY OUT\n", argv[0]);
+    return 2;
+  }
+  int w = atoi (argv[3]), h = atoi (argv[4]);
+  double density = g_ascii_strtod (argv[5], NULL);
+  if (w <= 0 || h <= 0 || w > 16384 || h > 16384 || !(density > 0)) {
+    g_printerr ("%s: not a screen: %s x %s at %s\n", argv[0], argv[3], argv[4], argv[5]);
+    return 2;
+  }
+  g_autoptr (GdkPixbuf) pb = parallax_rest_picture (argv[2], w, h, density, WALLPAPER_ZOOM);
+  if (!pb) {
+    g_printerr ("%s: no picture in %s\n", argv[0], argv[2]);
+    return 1;
+  }
+  g_autofree char *tmp = g_strdup_printf ("%s.%d.part", argv[6], (int) getpid ());
+  g_autoptr (GError) error = NULL;
+  if (!gdk_pixbuf_save (pb, tmp, "jpeg", &error, "quality", "95", NULL) || g_rename (tmp, argv[6]) != 0) {
+    g_printerr ("%s: %s: %s\n", argv[0], argv[6], error ? error->message : g_strerror (errno));
+    g_unlink (tmp);
+    return 1;
+  }
+  return 0;
+}
+
 int
 main (int argc, char **argv)
 {
+  if (argc > 1 && !strcmp (argv[1], "--rest-picture"))
+    return rest_picture (argc, argv);
   setlocale (LC_ALL, "");
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");

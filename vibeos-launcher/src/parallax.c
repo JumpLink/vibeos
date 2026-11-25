@@ -714,8 +714,9 @@ layer_pieces (GdkPixbuf *pb)
                       gdk_pixbuf_get_rowstride (pb), PIECE_TILE);
 }
 
-Parallax *
-parallax_new (const char *dir, void (*wake) (void *data), void *data)
+/* a set's parallax.json: its layers, without a sensor */
+static Parallax *
+parallax_read (const char *dir)
 {
   g_autofree char *json = g_build_filename (dir, "parallax.json", NULL);
   g_autoptr (JsonParser) parser = json_parser_new ();
@@ -728,8 +729,6 @@ parallax_new (const char *dir, void (*wake) (void *data), void *data)
   Parallax *p = g_new0 (Parallax, 1);
   p->dir = g_strdup (dir);
   p->zoom = 1;
-  p->wake = wake;
-  p->wake_data = data;
   p->layers = g_ptr_array_new_with_free_func (layer_free);
   p->range = json_object_has_member (o, "range") ? json_object_get_double_member (o, "range") : 30;
   p->tilt = json_object_has_member (o, "tilt") ? json_object_get_double_member (o, "tilt") : 0.2;
@@ -741,8 +740,27 @@ parallax_new (const char *dir, void (*wake) (void *data), void *data)
     p->depth_max = MAX (p->depth_max, fabs (l->depth));
     g_ptr_array_add (p->layers, l);
   }
+  return p;
+}
+
+Parallax *
+parallax_new (const char *dir, void (*wake) (void *data), void *data)
+{
+  Parallax *p = parallax_read (dir);
+  if (!p)
+    return NULL;
+  p->wake = wake;
+  p->wake_data = data;
   find_accel (p);
   return p;
+}
+
+char *
+parallax_set_of (const char *file)
+{
+  g_autofree char *dir = g_path_get_dirname (file);
+  g_autofree char *json = g_build_filename (dir, "parallax.json", NULL);
+  return g_file_test (json, G_FILE_TEST_EXISTS) ? g_steal_pointer (&dir) : NULL;
 }
 
 Parallax *
@@ -787,6 +805,38 @@ layer_size (Parallax *p, Layer *l, int w, int h, int *bw, int *bh)
   l->margin = ceilf ((float) (p->range * fabs (l->depth) * p->scale));
   *bw = w + 2 * (int) l->margin;
   *bh = h + 2 * (int) l->margin;
+}
+
+GdkPixbuf *
+parallax_rest_picture (const char *file, int w, int h, double scale, float zoom)
+{
+  if (w <= 0 || h <= 0 || zoom < 1)
+    return NULL;
+  g_autofree char *dir = parallax_set_of (file);
+  Parallax *p = dir ? parallax_read (dir) : parallax_new_image (file);
+  if (!p)
+    return NULL;
+  p->scale = scale;
+  GdkPixbuf *out = gdk_pixbuf_new (GDK_COLORSPACE_RGB, FALSE, 8, w, h);
+  gdk_pixbuf_fill (out, 0x000000ff);
+  guint drawn = 0;
+  for (guint i = 0; i < p->layers->len; i++) {
+    Layer *l = p->layers->pdata[i];
+    int bw, bh;
+    layer_size (p, l, w, h, &bw, &bh);
+    g_autoptr (GdkPixbuf) pb = image_load (l->file, bw, bh, TRUE);
+    if (!pb)
+      continue;
+    /* where draw_layers () puts it with the tilt centred, (-margin, -margin), then parallax_prepare ()'s zoom about
+     * the screen's centre; the back layer over black, as its opaque quad draws its premultiplied pixels */
+    double x = w / 2.0 - zoom * (w / 2.0 + l->margin), y = h / 2.0 - zoom * (h / 2.0 + l->margin);
+    gdk_pixbuf_composite (pb, out, 0, 0, w, h, x, y, zoom, zoom, GDK_INTERP_BILINEAR, 255);
+    drawn++;
+  }
+  parallax_free (p);
+  if (!drawn)
+    g_clear_object (&out);
+  return out;
 }
 
 typedef struct {

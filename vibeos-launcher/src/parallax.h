@@ -3,6 +3,7 @@
  * rest position so the picture sits centred however the phone is held. */
 #pragma once
 
+#include <gdk-pixbuf/gdk-pixbuf.h>
 #include <stdbool.h>
 
 typedef struct Parallax Parallax;
@@ -11,6 +12,14 @@ typedef struct Parallax Parallax;
 Parallax *parallax_new    (const char *dir, void (*wake) (void *data), void *data);
 /* a still picture: one layer that never moves, and no sensor */
 Parallax *parallax_new_image (const char *file);
+/* the parallax set a wallpaper `file` is the picture of: its folder when that holds a parallax.json (the set at rest,
+ * for the panel and the lock screen), else NULL (a still picture) */
+char     *parallax_set_of (const char *file);
+/* The wallpaper `file` as the home shows it at rest on a w × h screen of `scale` px per dp, zoomed by `zoom` about
+ * the screen's centre (the home's WALLPAPER_ZOOM): its set's layers when it is a set's picture, with the tilt
+ * centred, else the picture covering the screen. Composed on the CPU, for the lock screen (vibeos-launcher
+ * --rest-picture), so that unlocking into the home moves nothing. NULL when nothing in it could be read. */
+GdkPixbuf *parallax_rest_picture (const char *file, int w, int h, double scale, float zoom);
 void      parallax_free   (Parallax *p);
 void      parallax_resize (Parallax *p, int w, int h, double scale);
 /* who is called when the picture changes by itself (the tilt moved a layer a px, a turned screen's layers decoded):
