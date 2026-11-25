@@ -172,7 +172,8 @@ class Test:
 
 def run(t):
     # --- coming
-    t.wait('the modem is there', lambda: t.prop('Available'))
+    # the first wait takes in the service's own start, which an emulated build machine can make take long
+    t.wait('the modem is there', lambda: t.prop('Available'), timeout=60)
     t.wait('its country is the network\'s', lambda: t.prop('Country') == 'DE')
     # what came while the service was not running is taken at start, and off the modem
     bob = t.wait('a message waiting on the modem is kept', lambda: t.conversation_of(BOB))
