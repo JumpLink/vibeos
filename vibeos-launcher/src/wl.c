@@ -18,6 +18,26 @@
 #include "text-input-unstable-v3-client-protocol.h"
 
 #define POINTER_ID 1000
+/* the self-heal's wait after a configure before it acts: the shell fits the window first (home.js _fitWindow) */
+#define HEAL_DELAY_MS 500
+
+/* An output as the compositor last described it (its done): its current mode and transform. The launcher is not drawn
+ * turned (the compositor turns it), but its size has to be the output's turned one. */
+typedef struct {
+  struct Wl        *wl;
+  struct wl_output *output;
+  guint32           name;                      /* the registry's */
+  int32_t           mode_w, mode_h, transform;
+  int32_t           next_w, next_h, next_transform;
+  bool              done;
+} WlOutput;
+
+/* the self-heal (see heal_check) */
+typedef enum {
+  HEAL_IDLE,
+  HEAL_ASKED,                /* asked for fullscreen again */
+  HEAL_GAVE_UP,              /* asked once and still wrong: not again until the output or the size changes */
+} HealState;
 
 struct Wl {
   const WlCallbacks *cb;
@@ -49,6 +69,13 @@ struct Wl {
   int                logical_w, logical_h;     /* from the last configure */
   int                pending_w, pending_h;
   bool               pending_suspended, suspended;
+  bool               pending_fullscreen, fullscreen;
+  bool               windowed;                 /* VIBEOS_WINDOWED: not fullscreen, nothing to heal */
+  GPtrArray         *outputs;                  /* WlOutput */
+  struct wl_output  *entered;                  /* the output the surface last entered */
+  HealState          heal;
+  bool               heal_unset;               /* asked unset + set: the next configure, out of fullscreen, is unused */
+  guint              heal_id;                  /* the check HEAL_DELAY_MS after a configure or an output change */
   double             scale;                    /* fractional (n/120) or the integer buffer scale */
   int                buffer_scale;
   int                transform;                /* the output's, as the compositor would like buffers (wl_output) */
@@ -151,8 +178,20 @@ frac_preferred (void *data, struct wp_fractional_scale_v1 *f, uint32_t scale)
 
 static const struct wp_fractional_scale_v1_listener frac_listener = { frac_preferred };
 
-static void surface_enter (void *data, struct wl_surface *s, struct wl_output *o) {}
-static void surface_leave (void *data, struct wl_surface *s, struct wl_output *o) {}
+static void
+surface_enter (void *data, struct wl_surface *s, struct wl_output *o)
+{
+  Wl *wl = data;
+  wl->entered = o;
+}
+
+static void
+surface_leave (void *data, struct wl_surface *s, struct wl_output *o)
+{
+  Wl *wl = data;
+  if (wl->entered == o)
+    wl->entered = NULL;
+}
 
 static void
 surface_preferred_scale (void *data, struct wl_surface *s, int32_t factor)
@@ -176,6 +215,7 @@ surface_preferred_transform (void *data, struct wl_surface *s, uint32_t t)
   Wl *wl = data;
   if (wl->transform == (int) t)
     return;
+  g_message ("wl: preferred transform %d -> %u", wl->transform, t);
   wl->transform = t;
   wl_schedule (wl);
 }
@@ -201,10 +241,13 @@ toplevel_configure (void *data, struct xdg_toplevel *t, int32_t w, int32_t h, st
   wl->pending_w = w;
   wl->pending_h = h;
   wl->pending_suspended = false;
+  wl->pending_fullscreen = false;
   uint32_t *state;
   wl_array_for_each (state, states) {
     if (*state == XDG_TOPLEVEL_STATE_SUSPENDED)
       wl->pending_suspended = true;
+    else if (*state == XDG_TOPLEVEL_STATE_FULLSCREEN)
+      wl->pending_fullscreen = true;
   }
 }
 
@@ -223,20 +266,131 @@ static const struct xdg_toplevel_listener toplevel_listener = {
   toplevel_configure, toplevel_close, toplevel_bounds, toplevel_caps,
 };
 
-static void
-xdg_configure (void *data, struct xdg_surface *s, uint32_t serial)
+/* The output the window is on, as it lies now (its mode turned by its transform: 90 and 270, flipped or not, swap the
+ * sides); false while that is not known */
+static bool
+output_size (Wl *wl, int *w, int *h, int *transform)
 {
-  Wl *wl = data;
-  xdg_surface_ack_configure (s, serial);
-  if (wl->pending_w > 0 && wl->pending_h > 0) {
-    wl->logical_w = wl->pending_w;
-    wl->logical_h = wl->pending_h;
+  WlOutput *found = NULL;
+  for (guint i = 0; i < wl->outputs->len; i++) {
+    WlOutput *o = g_ptr_array_index (wl->outputs, i);
+    if (o->output == wl->entered)
+      found = o;
+  }
+  if (!found && wl->outputs->len == 1)
+    found = g_ptr_array_index (wl->outputs, 0);
+  if (!found || !found->done || found->mode_w <= 0 || found->mode_h <= 0)
+    return false;
+  bool turned = found->transform & 1;
+  *w = turned ? found->mode_h : found->mode_w;
+  *h = turned ? found->mode_w : found->mode_h;
+  *transform = found->transform;
+  return true;
+}
+
+/* 1 landscape, -1 portrait, 0 square or unknown */
+static int
+shape (int w, int h)
+{
+  return w > h ? 1 : h > w ? -1 : 0;
+}
+
+static const char *
+shape_name (int w, int h)
+{
+  int s = shape (w, h);
+  return s > 0 ? "landscape" : s < 0 ? "portrait" : "square";
+}
+
+static void
+use_size (Wl *wl, int w, int h)
+{
+  if (w > 0 && h > 0) {
+    wl->logical_w = w;
+    wl->logical_h = h;
   } else if (!wl->logical_w) {
     wl->logical_w = 360;       /* the compositor leaves it to us; a phone's width */
     wl->logical_h = 760;
   }
-  wl->configured = true;
   apply_size (wl);
+}
+
+/* the window's size the wrong way round for its output (portrait on a landscape one, or the other way round): fills
+ * in the output's size and transform */
+static bool
+mismatched (Wl *wl, int *ow, int *oh, int *ot)
+{
+  if (wl->windowed || !wl->fullscreen || !output_size (wl, ow, oh, ot))
+    return false;
+  int want = shape (wl->logical_w, wl->logical_h), have = shape (*ow, *oh);
+  return want && have && want != have;
+}
+
+/* The self-heal, a fallback: a fullscreen window's size is its output's, turned as the output is. The shell fits the
+ * window when it is seen again and after every change of the screen (home.js _fitWindow: mutter tells a window seen
+ * again the size it last sent it, which can be from before a turn and back while it was covered; the Xiaomi Pad 5's
+ * home was drawn portrait on its landscape panel, 2026-11-25). If the size is still the wrong way round
+ * HEAL_DELAY_MS after a configure (or after a turn of the output that left it so), the launcher asks to be fullscreen
+ * again; the size is used as it comes meanwhile. Asking only set_fullscreen changes nothing in mutter (the window is
+ * fullscreen already: no new configure), so it asks unset and set in one go: mutter answers with the window's size out
+ * of fullscreen, which is not used, then its fullscreen size, the output's own. Once per mismatch: if the size is
+ * still wrong after that, nothing is asked again until a configure fits the output or the output changes. */
+static gboolean
+heal_check (gpointer data)
+{
+  Wl *wl = data;
+  int ow = 0, oh = 0, ot = 0;
+  wl->heal_id = 0;
+  if (!mismatched (wl, &ow, &oh, &ot))
+    return G_SOURCE_REMOVE;
+  switch (wl->heal) {
+  case HEAL_IDLE:
+    g_message ("wl: %dx%d (%s) on a %s output (%dx%d, transform %d) still, %d ms on: asking for fullscreen again",
+               wl->logical_w, wl->logical_h, shape_name (wl->logical_w, wl->logical_h), shape_name (ow, oh),
+               ow, oh, ot, HEAL_DELAY_MS);
+    xdg_toplevel_unset_fullscreen (wl->toplevel);
+    xdg_toplevel_set_fullscreen (wl->toplevel, NULL);
+    wl_display_flush (wl->display);
+    wl->heal = HEAL_ASKED;
+    wl->heal_unset = true;
+    break;
+  case HEAL_ASKED:
+    g_message ("wl: still %dx%d (%s) after asking for fullscreen again: not asking again until the output or the size "
+               "changes", wl->logical_w, wl->logical_h, shape_name (wl->logical_w, wl->logical_h));
+    wl->heal = HEAL_GAVE_UP;
+    break;
+  case HEAL_GAVE_UP:
+    break;
+  }
+  return G_SOURCE_REMOVE;
+}
+
+static void
+xdg_configure (void *data, struct xdg_surface *s, uint32_t serial)
+{
+  Wl *wl = data;
+  int ow = 0, oh = 0, ot = 0;
+  xdg_surface_ack_configure (s, serial);
+  char output[64] = "not known yet";
+  if (output_size (wl, &ow, &oh, &ot))
+    g_snprintf (output, sizeof output, "%dx%d (transform %d)", ow, oh, ot);
+  g_message ("wl: configure %dx%d%s%s; output %s", wl->pending_w, wl->pending_h,
+             wl->pending_fullscreen ? " fullscreen" : "", wl->pending_suspended ? " suspended" : "", output);
+  /* the unset half of the self-heal's request: its fullscreen configure follows */
+  bool skip = wl->heal_unset && !wl->pending_fullscreen;
+  wl->heal_unset = false;
+  wl->configured = true;
+  if (!skip) {
+    wl->fullscreen = wl->pending_fullscreen;
+    use_size (wl, wl->pending_w, wl->pending_h);
+    g_clear_handle_id (&wl->heal_id, g_source_remove);
+    if (mismatched (wl, &ow, &oh, &ot)) {
+      wl->heal_id = g_timeout_add (HEAL_DELAY_MS, heal_check, wl);
+    } else if (wl->heal != HEAL_IDLE && wl->fullscreen) {
+      g_message ("wl: the configured size fits the output again");
+      wl->heal = HEAL_IDLE;
+    }
+  }
   if (wl->pending_suspended != wl->suspended) {
     wl->suspended = wl->pending_suspended;
     if (wl->cb->suspended)
@@ -523,16 +677,55 @@ static void seat_name (void *data, struct wl_seat *seat, const char *name) {}
 
 static const struct wl_seat_listener seat_listener = { seat_caps, seat_name };
 
-static void output_geometry (void *data, struct wl_output *o, int32_t x, int32_t y, int32_t pw, int32_t ph,
-                             int32_t subpixel, const char *make, const char *model, int32_t transform) {}
-static void output_mode (void *data, struct wl_output *o, uint32_t flags, int32_t w, int32_t h, int32_t refresh) {}
-static void output_done (void *data, struct wl_output *o) {}
+static void
+output_geometry (void *data, struct wl_output *o, int32_t x, int32_t y, int32_t pw, int32_t ph, int32_t subpixel,
+                 const char *make, const char *model, int32_t transform)
+{
+  WlOutput *out = data;
+  out->next_transform = transform;
+}
+
+static void
+output_mode (void *data, struct wl_output *o, uint32_t flags, int32_t w, int32_t h, int32_t refresh)
+{
+  WlOutput *out = data;
+  if (!(flags & WL_OUTPUT_MODE_CURRENT))
+    return;
+  out->next_w = w;
+  out->next_h = h;
+}
+
+/* a turned or changed output: the self-heal may ask again, and checks HEAL_DELAY_MS on if the window's size is the
+ * wrong way round for it now (the configure the shell sends after a turn restarts the wait, so it goes first) */
+static void
+output_done (void *data, struct wl_output *o)
+{
+  WlOutput *out = data;
+  Wl *wl = out->wl;
+  bool changed = out->done && (out->mode_w != out->next_w || out->mode_h != out->next_h ||
+                               out->transform != out->next_transform);
+  out->mode_w = out->next_w;
+  out->mode_h = out->next_h;
+  out->transform = out->next_transform;
+  out->done = true;
+  if (!changed)
+    return;
+  g_message ("wl: an output now %dx%d (transform %d); the window %dx%d", out->mode_w, out->mode_h, out->transform,
+             wl->logical_w, wl->logical_h);
+  if (wl->heal == HEAL_GAVE_UP)
+    wl->heal = HEAL_IDLE;
+  int ow = 0, oh = 0, ot = 0;
+  if (wl->configured && mismatched (wl, &ow, &oh, &ot)) {
+    g_clear_handle_id (&wl->heal_id, g_source_remove);
+    wl->heal_id = g_timeout_add (HEAL_DELAY_MS, heal_check, wl);
+  }
+}
 
 static void
 output_scale (void *data, struct wl_output *o, int32_t factor)
 {
-  Wl *wl = data;
-  wl->output_scale = MAX (wl->output_scale, factor);
+  WlOutput *out = data;
+  out->wl->output_scale = MAX (out->wl->output_scale, factor);
 }
 
 static void output_name (void *data, struct wl_output *o, const char *name) {}
@@ -710,8 +903,12 @@ registry_global (void *data, struct wl_registry *r, uint32_t name, const char *i
   } else if (!strcmp (iface, wp_fractional_scale_manager_v1_interface.name)) {
     wl->frac_mgr = wl_registry_bind (r, name, &wp_fractional_scale_manager_v1_interface, 1);
   } else if (!strcmp (iface, wl_output_interface.name) && version >= 2) {
-    struct wl_output *o = wl_registry_bind (r, name, &wl_output_interface, MIN (version, 4));
-    wl_output_add_listener (o, &output_listener, wl);
+    WlOutput *out = g_new0 (WlOutput, 1);
+    out->wl = wl;
+    out->name = name;
+    out->output = wl_registry_bind (r, name, &wl_output_interface, MIN (version, 4));
+    wl_output_add_listener (out->output, &output_listener, out);
+    g_ptr_array_add (wl->outputs, out);
   } else if (!strcmp (iface, wp_presentation_interface.name)) {
     wl->presentation = wl_registry_bind (r, name, &wp_presentation_interface, 1);
   } else if (!strcmp (iface, zwp_text_input_manager_v3_interface.name)) {
@@ -721,7 +918,32 @@ registry_global (void *data, struct wl_registry *r, uint32_t name, const char *i
   }
 }
 
-static void registry_remove (void *data, struct wl_registry *r, uint32_t name) {}
+static void
+output_free (gpointer data)
+{
+  WlOutput *out = data;
+  if (wl_output_get_version (out->output) >= WL_OUTPUT_RELEASE_SINCE_VERSION)
+    wl_output_release (out->output);
+  else
+    wl_output_destroy (out->output);
+  g_free (out);
+}
+
+/* an output unplugged (a TV) */
+static void
+registry_remove (void *data, struct wl_registry *r, uint32_t name)
+{
+  Wl *wl = data;
+  for (guint i = 0; i < wl->outputs->len; i++) {
+    WlOutput *out = g_ptr_array_index (wl->outputs, i);
+    if (out->name != name)
+      continue;
+    if (wl->entered == out->output)
+      wl->entered = NULL;
+    g_ptr_array_remove_index (wl->outputs, i);
+    return;
+  }
+}
 
 static const struct wl_registry_listener registry_listener = { registry_global, registry_remove };
 
@@ -800,10 +1022,13 @@ wl_open (const char *app_id, const WlCallbacks *cb, gpointer data)
   wl->scale = 1;
   wl->buffer_scale = 1;
   wl->refresh = 16666667;
+  wl->outputs = g_ptr_array_new_with_free_func (output_free);
+  wl->windowed = g_getenv ("VIBEOS_WINDOWED") != NULL;
   wl->xkb = xkb_context_new (XKB_CONTEXT_NO_FLAGS);
   wl->display = wl_display_connect (NULL);
   if (!wl->display) {
     g_warning ("wayland: no compositor");
+    g_ptr_array_unref (wl->outputs);
     g_free (wl);
     return NULL;
   }
@@ -833,7 +1058,7 @@ wl_open (const char *app_id, const WlCallbacks *cb, gpointer data)
   xdg_toplevel_add_listener (wl->toplevel, &toplevel_listener, wl);
   xdg_toplevel_set_app_id (wl->toplevel, app_id);
   xdg_toplevel_set_title (wl->toplevel, _("Home"));
-  if (!g_getenv ("VIBEOS_WINDOWED"))
+  if (!wl->windowed)
     xdg_toplevel_set_fullscreen (wl->toplevel, NULL);
   wl_surface_commit (wl->surface);
   wl_display_roundtrip (wl->display);        /* the first configure, and the scale with it */
@@ -879,6 +1104,7 @@ wl_close (Wl *wl)
 {
   if (wl->idle_id)
     g_source_remove (wl->idle_id);
+  g_clear_handle_id (&wl->heal_id, g_source_remove);
   if (wl->source) {
     g_source_destroy (wl->source);
     g_source_unref (wl->source);
@@ -898,6 +1124,7 @@ wl_close (Wl *wl)
     wp_fractional_scale_v1_destroy (wl->frac);
   if (wl->viewport)
     wp_viewport_destroy (wl->viewport);
+  g_ptr_array_unref (wl->outputs);
   xdg_toplevel_destroy (wl->toplevel);
   xdg_surface_destroy (wl->xdg_surface);
   wl_surface_destroy (wl->surface);
