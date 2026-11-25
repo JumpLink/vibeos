@@ -1,6 +1,6 @@
 #!/bin/sh
-# build-device.sh DEVICE: one device's half of VibeOS 0.1.3 (s10e, poco, s5e, s20), into OUT/DEVICE/:
-#   vibeos-device-DEVICE_0.1.3_arm64.deb  the device layer as a package: the kernel's modules, ALL the device's
+# build-device.sh DEVICE: one device's half of VibeOS (s10e, poco, s5e, s20), into OUT/DEVICE/:
+#   vibeos-device-DEVICE_V_arm64.deb    the device layer as a package (V below): the kernel's modules, ALL the device's
 #                                         firmware, its units, udev/modprobe/UCM/sensor/GPU settings, its splash;
 #                                         the kernel too where it lives in the root file system (S10e: /boot/s10e)
 #   debs/                                 that package, plus the system packages the device runs in its own build
@@ -24,11 +24,17 @@ FORBID="gsm2sip waydroid ${FORBID_EXTRA:-}"	# never in an image: these package a
 OUT=${TEST_OUT:-$O/$DEV}	# TEST_OUT, TEST_W: a test build elsewhere, without the downloaded packages
 W=${TEST_W:-$O/work/device-$DEV}
 L=$O/logs/device-$DEV-$(date +%Y%m%d-%H%M%S); mkdir -p "$L"
-V=0.1.3
+# V: the release of the system image this goes with (SYSIMG's /etc/vibeos/system-image, VERSION=1:X.Y.Z, read with
+# debugfs: the system the zips' lanes run it with, whose packaged files SYSFILES lists), or DEVICE_VERSION
+SYSIMG=${SYSIMG:-$O/system/rootfs.img}
+SV=$("$(command -v debugfs || echo /sbin/debugfs)" -R "cat /etc/vibeos/system-image" "$SYSIMG" 2>/dev/null | sed -n 's/^VERSION=1:\([0-9][0-9.]*\)$/\1/p')
+V=${DEVICE_VERSION:-$SV}
+echo "$V" | grep -Eq '^[0-9]+(\.[0-9]+)+(\+[0-9]+)?$' ||
+	{ echo "no version: $SYSIMG has no VERSION=1:X.Y.Z in /etc/vibeos/system-image (or set DEVICE_VERSION)" >&2; exit 1; }
 # 0.1.3+1 (2026-11-23): the S10e's and the S5e's initramfs always start Mobian, the oneshots ahead of gdm get start
 # timeouts, and the POCO's package lost the restart into recovery and Android and checks its root with fsck -y.
 # Above the archive's 0.1.3, whose POCO package would bring that restart back (every restart into recovery)
-case $DEV in s10e|s5e|poco) V=0.1.3+1 ;; esac
+[ "$V" != 0.1.3 ] || case $DEV in s10e|s5e|poco) V=0.1.3+1 ;; esac
 P=$W/pkg
 log() { echo "build-device $DEV: $*" | tee -a "$L/build.txt"; }
 [ ! -e "$OUT" ] || { echo "$OUT exists: move it aside first" >&2; exit 1; }

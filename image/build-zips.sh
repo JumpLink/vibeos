@@ -1,8 +1,9 @@
 #!/bin/sh
-# build-zips.sh system|s10e|poco|s5e: the LineageOS recovery zips of VibeOS 0.1.3, from the built pieces:
+# build-zips.sh system|s10e|poco|s5e: the LineageOS recovery zips of VibeOS, from the built pieces:
 #   system  OUT/system/vibeos-system-VERSION-arm64.zip: rootfs.img (OUT/system/rootfs.img) + the generic installer;
 #           VERSION is the one the image says (/etc/vibeos/system-image)
-#   DEVICE  OUT/DEVICE/vibeos-device-DEVICE-0.1.3.zip: payload.tar, debs/, the boot pieces + the device installer
+#   DEVICE  OUT/DEVICE/vibeos-device-DEVICE-VERSION.zip: payload.tar, debs/, the boot pieces + the device installer;
+#           VERSION is the device package's (build-device.sh: the system image's), less a "+N" rebuild suffix
 # Every file the installers write is listed with its size and sha256 in the zip's sums; the installers read each
 # one back against it. Stored (zip -0) for the big images: recovery streams them to the device.
 set -eu
@@ -70,6 +71,10 @@ system)
 s10e|poco|s5e)
 	D=${DEV_DIR:-$O/$WHAT}
 	[ -s "$D/payload.tar" ] || { echo "no $D/payload.tar: build-device.sh $WHAT first" >&2; exit 1; }
+	set -- "$D"/debs/vibeos-device-${WHAT}_*_arm64.deb
+	[ $# = 1 ] && [ -f "$1" ] || { echo "not one vibeos-device-$WHAT package in $D/debs" >&2; exit 1; }
+	V=$(dpkg-deb -f "$1" Version); V=${V#*:}; V=${V%%+*}
+	echo "$V" | grep -Eq '^[0-9]+(\.[0-9]+)+$' || { echo "vibeos-device-$WHAT's version '$V'" >&2; exit 1; }
 	sed "s/@DEV@/$WHAT/" "$Z/device-install.sh" > "$W/install.sh"
 	cp "$D/payload.tar" "$W/payload.tar"; cp -r "$D/debs" "$W/debs"
 	{ sum payload "$W/payload.tar"; for f in "$W"/debs/*.deb; do echo "deb $(basename "$f") $(sha256sum < "$f" | cut -d' ' -f1)"; done; } > "$W/device-sums.txt"
@@ -115,15 +120,15 @@ package_extract_file("keepmisc", "/tmp/vibeos-km");'
 		DONE='ui_print("Reboot system now starts Linux; the boot menu also offers Android.");'
 		BOOTF="recovery.img extents keepmisc dmlinear" ;;
 	esac
-	python3 -I - "$Z/device/updater-script.in" "$W/META-INF/com/google/android/updater-script" "$NAME" "$CODES" "$ASSERT" "$TOOLS" "$BOOTFILES" "$DONE" <<'EOF'
+	python3 -I - "$Z/device/updater-script.in" "$W/META-INF/com/google/android/updater-script" "$NAME" "$CODES" "$ASSERT" "$TOOLS" "$BOOTFILES" "$DONE" "$V" <<'EOF'
 import sys
-src,dst,name,codes,a,tools,bootf,done=sys.argv[1:]
+src,dst,name,codes,a,tools,bootf,done,ver=sys.argv[1:]
 s=open(src).read()
-for k,v in (("@NAME@",name),("@CODES@",codes),("@ASSERT@",a),("@TOOLS@",tools),("@BOOTFILES@",bootf),("@DONE@",done)):
+for k,v in (("@NAME@",name),("@CODES@",codes),("@ASSERT@",a),("@TOOLS@",tools),("@BOOTFILES@",bootf),("@DONE@",done),("@VERSION@",ver)):
     assert k in s,k; s=s.replace(k,v)
 open(dst,'w').write(s)
 EOF
-	OUTZ=$D/vibeos-device-$WHAT-0.1.3.zip
+	OUTZ=$D/vibeos-device-$WHAT-$V.zip
 	FILES="META-INF vibeos-lib.sh install.sh device-sums.txt payload.tar debs $BOOTF"
 	;;
 *) echo "unknown $WHAT" >&2; exit 1 ;;

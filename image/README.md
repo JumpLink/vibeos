@@ -157,6 +157,8 @@ Its inputs are device stages of our own phones (a kernel build and its modules, 
 vendor and modem partitions, U-Boot builds, the device's units and settings), named in `local.conf.example`. They are
 not in this repository, so the script is a record of how those zips are put together rather than something to run
 elsewhere. The S20 FE has no device zip: it installs from a PC over its rescue shell (`s20-install-from-pc.sh`).
+A device zip has the version of the system image it is built against (`SYSIMG`'s `/etc/vibeos/system-image`;
+`DEVICE_VERSION` overrides it).
 
 **The same for the apt archive**: `image/build-apt-device.sh s10e|s5e|poco DEVDIR OUTDIR` splits the folder's
 `vibeos-device-DEVICE` (version 0.1.3+1 in the 0.1.3 zips, no epoch) into `vibeos-device-DEVICE` 1:0.1.4 (firmware,

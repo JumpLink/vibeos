@@ -1,4 +1,4 @@
-ui_print("VibeOS 0.1.3 for the @NAME@: kernel, firmware, device settings.");
+ui_print("VibeOS @VERSION@ for the @NAME@: kernel, firmware, device settings.");
 assert(@ASSERT@ ||
        abort("This package is for the @NAME@ (@CODES@); this device is " + getprop("ro.product.device") + "."););
 show_progress(1.000000, 0);
