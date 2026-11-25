@@ -3,6 +3,12 @@
 # draws its first frame within $START_LIMIT seconds (2) of the exec, and the app still answers on D-Bus, from its main
 # loop, $START_ALIVE seconds (14) after it, once the waits it bounds with a timeout have run out.
 #
+# The Video Player also plays a short film (made with ffmpeg; $START_CLIP instead) under a PipeWire and WirePlumber of
+# its own, and must have played 3 s of it within $START_PLAY_LIMIT seconds (5) of its window showing:
+#  - video-nosink: PipeWire has no output at all; the film plays without sound (mpv's ao "null");
+#  - video-sound: PipeWire has an output (a null sink that takes the sound at its pace) and one /dev/video node that
+#    refuses to open (EACCES), which once kept WirePlumber from linking anything; the film plays with sound.
+#
 # Run as root, where the apps are installed (a device after the packages, or anywhere they are in /usr/bin). Each app
 # runs as nobody, in network, mount and PID namespaces of its own, with
 #  - no network (loopback only) and no system bus,
@@ -14,14 +20,19 @@
 #
 # Usage: vibeos-start-test [NAME...]   (NAMEs from the list below; all of them by default)
 # START_SHIM: the preload that reports the times, start-shim.so (from start-shim.c) next to this script by default
+# START_KEEP=1: the apps' logs and reports are kept (the directory is named at the end); START_ENV: more of the apps'
+# environment, NAME=VALUE separated by spaces (VIBEOS_VIDEO_LOG=v)
+# START_PATH, START_LIBRARY_PATH: for a build not installed, a directory with its programs (before /usr/bin) and one
+# with its libraries
 set -u
 
 LIMIT=${START_LIMIT:-2}
 ALIVE=${START_ALIVE:-14}
+PLAY_LIMIT=${START_PLAY_LIMIT:-5}
 SHIM=${START_SHIM:-$(dirname "$(readlink -f "$0")")/start-shim.so}
 
-# NAME|command line|application ID|what is checked: "window" (the first frame) or "bus" (the application on the bus,
-# for a start that shows no window)
+# NAME|command line|application ID|what is checked: "window" (the first frame), "bus" (the application on the bus,
+# for a start that shows no window), "play-nosink" or "play-sound" (the film, see above; @CLIP@ is its path)
 APPS='browser|vibeos-browser|vibeos.Browser|window
 calculator|vibeos-calculator|vibeos.Calculator|window
 calendar|vibeos-calendar|vibeos.Calendar|window
@@ -41,21 +52,35 @@ settings|vibeos-settings|vibeos.Settings|window
 software|vibeos-software|vibeos.Software|window
 terminal|vibeos-terminal|vibeos.Terminal|window
 video|vibeos-video|vibeos.Video|window
+video-nosink|vibeos-video @CLIP@|vibeos.Video|play-nosink
+video-sound|vibeos-video @CLIP@|vibeos.Video|play-sound
 weather|vibeos-weather|vibeos.Weather|window'
 
 [ "$(id -u)" = 0 ] || { echo "vibeos-start-test: run it as root (it makes namespaces and a /dev)" >&2; exit 2; }
 [ -r "$SHIM" ] || { echo "vibeos-start-test: no $SHIM (build it from start-shim.c)" >&2; exit 2; }
-for tool in unshare setpriv dbus-daemon gtk4-broadwayd busctl; do
+for tool in unshare setpriv dbus-daemon gtk4-broadwayd busctl pipewire wireplumber; do
 	command -v $tool > /dev/null || { echo "vibeos-start-test: $tool is missing" >&2; exit 2; }
 done
 
 W=$(mktemp -d /tmp/vibeos-start-test.XXXXXX) || exit 2
-trap 'rm -rf "$W"' EXIT
+if [ -n "${START_KEEP:-}" ]; then
+	trap 'echo "kept: $W"' EXIT
+else
+	trap 'rm -rf "$W"' EXIT
+fi
 cp "$SHIM" "$W/start-shim.so"
 chmod 755 "$W" "$W/start-shim.so"
 # the plugin scanner GStreamer runs to fill its registry, which never answers
 printf '#!/bin/sh\nexec sleep 100000\n' > "$W/gst-plugin-scanner"
 chmod 755 "$W/gst-plugin-scanner"
+# the film: 12 s of a test picture and a tone
+CLIP=${START_CLIP:-}
+if [ -z "$CLIP" ] && command -v ffmpeg > /dev/null; then
+	CLIP=$W/clip.mkv
+	ffmpeg -loglevel error -f lavfi -i testsrc2=size=640x360:rate=30:duration=12 -f lavfi -i sine=frequency=440:duration=12 \
+		-c:v mpeg4 -q:v 5 -c:a mp2 "$CLIP" < /dev/null || CLIP=
+	[ -n "$CLIP" ] && chmod 644 "$CLIP"
+fi
 
 # inside the namespaces, as root: loopback up, a /dev with only what any program needs, the system bus and the users'
 # runtime directories (PipeWire's, PulseAudio's and Wayland's sockets) hidden; then the rest as nobody
@@ -66,6 +91,8 @@ mount -t tmpfs -o mode=755,nosuid tmpfs /dev
 for n in null:1:3 zero:1:5 full:1:7 random:1:8 urandom:1:9 tty:5:0; do
 	mknod -m 666 /dev/${n%%:*} c $(echo $n | cut -d: -f2) $(echo $n | cut -d: -f3)
 done
+# one video node that refuses to open, as a codec's whose firmware may not load
+[ "$3" = play-sound ] && mknod -m 000 /dev/video0 c 81 0
 mkdir /dev/pts /dev/shm
 mount -t devpts -o newinstance,ptmxmode=0666,mode=620 devpts /dev/pts
 ln -s pts/ptmx /dev/ptmx
@@ -84,17 +111,35 @@ shift 4
 cd "$T"
 mkdir -p home run config data cache
 chmod 700 run
-set -- env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin HOME="$T/home" LANG=C.UTF-8 XDG_RUNTIME_DIR="$T/run" \
+set -- env -i PATH="${START_PATH:+$START_PATH:}/usr/bin:/bin:/usr/sbin:/sbin" LD_LIBRARY_PATH="${START_LIBRARY_PATH:-}" \
+	HOME="$T/home" LANG=C.UTF-8 XDG_RUNTIME_DIR="$T/run" \
 	XDG_CONFIG_HOME="$T/config" XDG_DATA_HOME="$T/data" XDG_CACHE_HOME="$T/cache" \
 	DBUS_SESSION_BUS_ADDRESS="unix:path=$T/run/bus" DBUS_SYSTEM_BUS_ADDRESS="unix:path=$T/run/no-system-bus" \
 	GDK_BACKEND=broadway BROADWAY_DISPLAY=:5 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory NO_AT_BRIDGE=1 GTK_A11Y=none \
 	GST_REGISTRY_1_0="$T/gst-registry.bin" GST_REGISTRY="$T/gst-registry.bin" \
-	GST_PLUGIN_SCANNER_1_0="$T/../gst-plugin-scanner" GST_PLUGIN_SCANNER="$T/../gst-plugin-scanner" "$@"
+	GST_PLUGIN_SCANNER_1_0="$T/../gst-plugin-scanner" GST_PLUGIN_SCANNER="$T/../gst-plugin-scanner" ${START_ENV:-} "$@"
 # the services the app starts on its bus get the same surroundings, without the report
 "$@" dbus-daemon --session --address="unix:path=$T/run/bus" --nofork --nopidfile > "$T/bus.log" 2>&1 &
 "$@" gtk4-broadwayd --unixsocket="$T/run/broadway-http" :5 > "$T/broadway.log" 2>&1 &
 i=0
 while [ $i -lt 50 ] && { [ ! -S "$T/run/bus" ] || [ ! -S "$T/run/broadway6.socket" ]; }; do sleep 0.1; i=$((i + 1)); done
+# a film's cases: PipeWire and WirePlumber as installed, with no sound card (the sound devices are not in /dev); for
+# video-sound an output that takes the sound at its pace, a null sink as a real one
+case $mode in play-*)
+	mkdir -p config/pipewire/pipewire.conf.d
+	[ $mode = play-sound ] && cat > config/pipewire/pipewire.conf.d/50-output.conf <<'CONF'
+context.objects = [
+  { factory = adapter
+    args = { factory.name = support.null-audio-sink node.name = "test-output" node.description = "Test output"
+             media.class = "Audio/Sink" audio.position = [ FL FR ] } }
+]
+CONF
+	"$@" pipewire > "$T/pipewire.log" 2>&1 &
+	i=0
+	while [ $i -lt 50 ] && [ ! -S "$T/run/pipewire-0" ]; do sleep 0.1; i=$((i + 1)); done
+	"$@" wireplumber > "$T/wireplumber.log" 2>&1 &
+	sleep 1 ;;
+esac
 "$@" LD_PRELOAD="$T/../start-shim.so" VIBEOS_START_REPORT="$T/report" $APP_COMMAND > "$T/app.log" 2>&1 &
 app=$!
 i=0
@@ -119,6 +164,8 @@ echo "$APPS" | while IFS='|' read -r name command id mode; do
 	if [ $# -gt 0 ]; then
 		case " $* " in *" $name "*) ;; *) continue ;; esac
 	fi
+	case $mode in play-*) [ -n "$CLIP" ] || { printf '%-16s no film (no ffmpeg; START_CLIP)\n' "$name"; continue; } ;; esac
+	command=$(echo "$command" | sed "s|@CLIP@|$CLIP|")
 	T=$W/$name
 	mkdir -p "$T"
 	chown 65534:65534 "$T"
@@ -126,14 +173,25 @@ echo "$APPS" | while IFS='|' read -r name command id mode; do
 		sh "$W/inside" "$T" "$id" "$mode" "$ALIVE" > "$T/inside.log" 2>&1
 	run=$(value "$T/report" run) map=$(value "$T/report" map) frame=$(value "$T/report" frame)
 	alive=$(value "$T/report" alive) ended=$(value "$T/report" exit)
+	play=$(value "$T/report" play3) ao=$(value "$T/report" ao)
 	if [ "$mode" = bus ]; then shown=$run; else shown=$frame; fi
-	if [ -n "$shown" ] && [ "$alive" = yes ] && awk "BEGIN { exit !($shown <= $LIMIT) }"; then
+	# a film: played 3 s within PLAY_LIMIT of the window showing, silent with no output, with sound with one
+	played=yes
+	case $mode in play-*)
+		if [ -z "$play" ] || [ -z "$frame" ] || ! awk "BEGIN { exit !($play - $frame <= $PLAY_LIMIT) }"; then played=no
+		elif [ $mode = play-nosink ] && [ "$ao" != null ]; then played=no
+		elif [ $mode = play-sound ] && [ "$ao" = null ]; then played=no
+		fi ;;
+	esac
+	if [ -n "$shown" ] && [ "$alive" = yes ] && [ $played = yes ] && awk "BEGIN { exit !($shown <= $LIMIT) }"; then
 		result=ok
+		[ -n "$play" ] && result="ok (3 s played at ${play} s, sound: $ao)"
 	else
 		result="FAIL"
-		[ -z "$shown" ] && result="$result (no ${mode})"
+		[ -z "$shown" ] && result="$result (no ${mode%%-*})"
 		[ -n "$shown" ] && awk "BEGIN { exit !($shown > $LIMIT) }" && result="$result (over ${LIMIT} s)"
 		[ "$alive" = yes ] || result="$result (not answering after ${ALIVE} s)"
+		[ $played = yes ] || result="$result (3 s played at ${play:-never}, sound: ${ao:-?})"
 		[ -n "$ended" ] && result="$result (ended: $ended)"
 		echo "--- $name: the end of its output" >> "$W/failed"
 		tail -5 "$T/app.log" >> "$W/failed"

@@ -1,6 +1,7 @@
 /* Preloaded into an app by vibeos-start-test: writes to $VIBEOS_START_REPORT how many seconds after the program's
  * exec its GtkApplication ran ("run"), its first window was mapped ("map") and that window drew its first frame
- * ("frame"). Built with: cc -O2 -shared -fPIC -o start-shim.so start-shim.c $(pkg-config --cflags --libs gtk4) -ldl */
+ * ("frame"); in a player that uses libmpv, when the film had played 3 s ("play3", looked at every 100 ms) and the
+ * sound output mpv had then ("ao": pipewire, null…). Built with: cc -O2 -shared -fPIC -o start-shim.so start-shim.c $(pkg-config --cflags --libs gtk4) -ldl */
 #define _GNU_SOURCE
 #include <dlfcn.h>
 #include <gtk/gtk.h>
@@ -43,6 +44,38 @@ report (const char *what)
     return;
   fprintf (f, "%s %.3f\n", what, since_exec ());
   fclose (f);
+}
+
+typedef struct mpv_handle mpv_handle;
+
+static gboolean
+watch_play (gpointer data)
+{
+  int (*get) (mpv_handle *, const char *, int, void *) = dlsym (RTLD_DEFAULT, "mpv_get_property");
+  char *(*get_string) (mpv_handle *, const char *) = dlsym (RTLD_DEFAULT, "mpv_get_property_string");
+  double pos = 0;
+  /* 5: MPV_FORMAT_DOUBLE */
+  if (!get || get (data, "time-pos", 5, &pos) < 0 || pos < 3)
+    return G_SOURCE_CONTINUE;
+  report ("play3");
+  char *ao = get_string ? get_string (data, "current-ao") : NULL;
+  const char *path = g_getenv ("VIBEOS_START_REPORT");
+  FILE *f = path ? fopen (path, "a") : NULL;
+  if (f) {
+    fprintf (f, "ao %s\n", ao ? ao : "none");
+    fclose (f);
+  }
+  return G_SOURCE_REMOVE;
+}
+
+mpv_handle *
+mpv_create (void)
+{
+  mpv_handle *(*create) (void) = dlsym (RTLD_NEXT, "mpv_create");
+  mpv_handle *handle = create ();
+  if (handle)
+    g_timeout_add (100, watch_play, handle);
+  return handle;
 }
 
 static gboolean
