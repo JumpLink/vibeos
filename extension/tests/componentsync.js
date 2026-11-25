@@ -86,7 +86,17 @@ function fakeBus(owner, comms = {}) {
     };
     return bus;
 }
-const load = async name => name === 'keyring' ? Keyring : Component;
+// every instance made, whoever made it: one the manager's record lost is still on, and no sweep reaches it
+let instances = [];
+const load = async name => {
+    const Base = name === 'keyring' ? Keyring : Component;
+    return class extends Base {
+        constructor() {
+            super();
+            instances.push([name, this]);
+        }
+    };
+};
 
 // ui/components.js's ComponentManager, its imports held until release() (or each one, in the order given)
 class Manager {
@@ -162,6 +172,7 @@ const check = (what, ok) => {
 
 async function run(name, withSync, reverse) {
     prompterOwner = null;
+    instances = [];
     const mode = new Mode();
     const manager = new Manager(mode);
     const sync = withSync ? new ComponentSync(manager, mode, load, fakeBus()) : null;
@@ -180,6 +191,10 @@ async function run(name, withSync, reverse) {
     check(`${name}: locked, the keyring off`, !keyringOn);
     check(`${name}: locked, the shell's prompter on the bus`, prompterOwner === manager._allComponents.keyring);
     check(`${name}: locked, the automounter off`, !automountOn);
+    const names = instances.map(([n]) => n);
+    check(`${name}: each component made once`, names.length === new Set(names).size);
+    check(`${name}: locked, no instance of the user mode's components on`,
+        !instances.some(([n, c]) => !LOCKED.includes(n) && c.enabled));
     check(`${name}: locked, the record is the mode's`,
         JSON.stringify(manager._enabledComponents) === JSON.stringify(LOCKED));
     // unlocked: the user mode's components on again

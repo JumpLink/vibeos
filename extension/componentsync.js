@@ -74,16 +74,26 @@ export class ComponentSync {
             configurable: true,
             enumerable: true,
             get: () => this._enabled,
-            set: value => {
+            set: written => {
+                // an update that started under another mode, finishing during a round: its record is stale, and
+                // what the round has turned off since is off, not on. The round runs once more with the rest
+                const want = this._wanted();
+                const stale = !!this._running && JSON.stringify(written) !== JSON.stringify(want);
+                const value = stale ? written.filter(name => want.includes(name) || !this._off.has(name)) : written;
                 // ones the manager turned off itself, and ones it may have turned on, change what is off
                 this._enabled.filter(name => !value.includes(name)).forEach(name => this._off.add(name));
                 value.forEach(name => this._off.delete(name));
                 this._enabled = value;
                 if (!this._running)
                     this._sync().catch(logError);
+                else if (stale)
+                    this._again = true;
             },
         });
-        this._sync().catch(logError);
+        // the shell's first update still loading (nothing recorded yet): a round now would make every component a
+        // second time and lose the first, still-on instance. That update's record starts the round instead
+        if (this._enabled.length || !this._wanted().length)
+            this._sync().catch(logError);
     }
 
     _wanted() {
