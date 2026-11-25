@@ -2,8 +2,9 @@
 # setup-test.sh DEVICE [DEVDIR]: the first boot's vibeos-device-setup, run for real on a copy of the system image
 # with DEVICE's payload.tar unpacked into it and its debs in /var/lib/vibeos/device/debs, as the device zip leaves
 # them: in a chroot (qemu-user), offline, NOREBOOT=1. Checks that every deb installs, that nothing was removed or
-# downloaded, the holds, the device's name, and that no initramfs was made (the POCO's modem dies with one built
-# here). Works on a copy in work/test; the system image itself is only read.
+# downloaded, the holds (none on the device package or on VibeOS's builds, +vibeosN), the device's name, and that no
+# initramfs was made (the POCO's modem dies with one built here). Works on a copy in work/test; the system image
+# itself is only read.
 # OLD=DIR: an upgrade, as when a device zip is sideloaded alone onto a phone already on VibeOS: DIR's device folder
 # (an earlier build) is set up first, as its own first boot did it, then DEVDIR's payload and debs go in as its zip
 # puts them, and the setup runs for real but for the restart (a systemctl wrapper records it): the new versions
@@ -259,6 +260,17 @@ ok "$(ls "$D"/debs/*.deb | wc -l) packages checked"
 GONE=$(awk '{print $2}' "$W/pkgs-before.txt" | while read -r p; do grep -q " $p " "$W/pkgs-after.txt" || echo "$p"; done)
 [ -z "$GONE" ] && ok "nothing removed" || bad "removed: $GONE"
 grep -q "^hi" "$W/pkgs-after.txt" && ok "held: $(grep '^hi' "$W/pkgs-after.txt" | cut -d' ' -f3 | tr '\n' ' ')"
+# the holds: every package of debs/ held but the device package and VibeOS's builds of system packages (+vibeosN),
+# which the VibeOS archive updates; with OLD, a hold its setup left on such a package is gone
+n=0
+for f in "$D"/debs/*.deb; do
+	p=$(dpkg-deb -f "$f" Package) v=$(dpkg-deb -f "$f" Version)
+	case $p=$v in vibeos-device-*|*+vibeos[0-9]*) w=ii ;; *) w=hi ;; esac
+	awk -v p="$p" -v w="$w" '$1 == w && ($2 == p || $2 == p ":arm64") {f = 1} END {exit !f}' "$W/pkgs-after.txt" ||
+		{ bad "$p $v: $(awk -v p="$p" '$2 == p || $2 == p ":arm64" {print $1}' "$W/pkgs-after.txt"), not $w"; n=1; }
+done
+[ $n = 0 ] && ok "holds: every package of debs/ but vibeos-device-$DEV and VibeOS's builds ($(for f in "$D"/debs/*.deb; do
+	case $(dpkg-deb -f "$f" Version) in *+vibeos[0-9]*) dpkg-deb -f "$f" Package ;; esac; done | tr '\n' ' ' | sed 's/ $//'))"
 [ "$(cat "$M/etc/hostname")" != vibeos ] && ok "hostname $(cat "$M/etc/hostname")" || bad "hostname still vibeos"
 ls "$M/var/lib/initramfs-tools" > /dev/null 2>&1 && bad "an initramfs-tools state appeared: $(ls "$M/var/lib/initramfs-tools")" || ok "no initramfs state"
 ls "$M"/boot/initrd.img-* > /dev/null 2>&1 && bad "an initrd in /boot: update-initramfs would rebuild it on the device" || ok "no initrd in /boot (update-initramfs has nothing to rebuild)"

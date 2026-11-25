@@ -7,7 +7,8 @@
 #      nothing may be removed; otherwise nothing is installed and the files the zip unpacked keep working as they are
 #   2. dpkg -i, all at once; service starts from maintainer scripts held back (policy-rc.d)
 #   3. the system packages a device replaces are held, so an upgrade from the Debian archive keeps the device's
-#      builds; the device package itself is not (its kernel updates come with it)
+#      builds; the device package itself is not (its kernel updates come with it), nor a VibeOS build of a system
+#      package (a version with +vibeosN), which the VibeOS archive updates: a hold an earlier setup left on it goes
 #   4. one reboot, so the units its maintainer script enabled start
 # /var/lib/vibeos/device/result says "ok" or "failed: why"; the log is /var/log/vibeos-device-setup.log. The debs
 # move to /var/lib/vibeos/device/installed after a clean install and stay otherwise, to retry:
@@ -26,12 +27,13 @@ run() {
 	set -- ./*.deb
 	[ -e "$1" ] || exit 0
 	log "$(date '+%F %T'): $(ls ./*.deb | wc -l) packages in $D/debs"
-	ALL= HOLD=
+	ALL= HOLD= FREE=
 	for f; do
 		p=$(dpkg-deb -f "$f" Package) || fail "$f is not a Debian package"
+		v=$(dpkg-deb -f "$f" Version)
 		ALL="$ALL $p"
-		case $p in vibeos-device-*) ;; *) HOLD="$HOLD $p" ;; esac
-		log "  $p $(dpkg-deb -f "$f" Version)"
+		case $p=$v in vibeos-device-*) ;; *+vibeos[0-9]*) FREE="$FREE $p" ;; *) HOLD="$HOLD $p" ;; esac
+		log "  $p $v"
 	done
 	# the device's builds may be older than the system's (the POCO's libcamera) and replace held packages
 	apt-get -s -q --no-install-recommends --allow-downgrades --allow-change-held-packages install "$@" > $D/plan.txt 2>&1 || {
@@ -60,8 +62,9 @@ run() {
 	done
 	[ -z "$bad" ] || fail "not installed:$bad (dpkg -i exit $rc)"
 	[ -z "$HOLD" ] || apt-mark hold $HOLD > /dev/null || log "could not hold:$HOLD"
+	[ -z "$FREE" ] || apt-mark unhold $FREE > /dev/null || log "could not unhold:$FREE"
 	mkdir -p $D/installed && mv ./*.deb $D/installed/
-	log "installed:$ALL${HOLD:+ (held:$HOLD)}"
+	log "installed:$ALL${HOLD:+ (held:$HOLD)}${FREE:+ (not held, VibeOS's builds:$FREE)}"
 	echo ok > $D/result
 	sync
 	[ -n "${NOREBOOT:-}" ] || { log "rebooting once"; systemctl --no-block reboot; }
