@@ -1,20 +1,28 @@
 -- VibeOS: calls on the earpiece, as on Android.
 --
 -- A sound card whose UCM verb has an earpiece next to its loudspeaker on one PCM gets them as separate profiles
--- (PipeWire's ACP splits devices that share a PCM): "HiFi (Mic1, Speaker)" and "HiFi (Earpiece, Mic1)". While an app
--- plays a call (an output stream with media.role "Communication", or PulseAudio's "phone"), this picks the profile
--- with the earpiece in place of the loudspeaker, the microphones as they were; when the last one ends, WirePlumber's
--- own choice comes back (the stored profile, else the best one). An app's loudspeaker button plays without the role.
+-- (PipeWire's ACP splits devices that share a PCM): "HiFi (Mic1, Speaker)" and "HiFi (Earpiece, Mic1)".
+--
+-- An app is in a call when it plays a stream with media.role "Communication" (PulseAudio's "phone" arrives as that)
+-- AND records at the same time. The role alone is not enough: the dialer rings and plays its keypad tones with it,
+-- and those belong on the loudspeaker; recording alone is not enough either: Vibe and Dictate speak while they
+-- listen. Modem calls are not ours: WirePlumber's find-calling-profile picks their Voice Call profile first.
+--
+-- When the first call starts, the profile with the earpiece in place of the loudspeaker is picked, once. While calls
+-- last the profile is never chosen again: whatever plays then (the earpiece, or the loudspeaker the user switched
+-- to) stays through new streams and route changes. An app's Speaker button plays without the role, which ends the
+-- call here, so the stored profile comes back; its Earpiece button plays with it again. When the last call ends,
+-- WirePlumber's own choice comes back (the stored profile, else the best one). Nothing is stored (save = false).
 --
 -- Only devices that ask for it: device property "vibeos.communication-device", the UCM device to play calls on
--- ("Earpiece"), set by the device's monitor.alsa.rules. A modem call's profile (find-calling-profile) always wins.
--- The profile is applied as WirePlumber applies any it selects (save = false): what the user chose stays stored.
+-- ("Earpiece"), set by the device's monitor.alsa.rules.
 
 cutils = require ("common-utils")
 log = Log.open_topic ("s-device")
 
 local ROLES = { communication = true, phone = true }
-local active = false
+local calling = false        -- an app is in a call
+local starting = {}          -- device id -> true: the call just started, pick the earpiece at the next selection
 
 -- type "pw": a rule's property is in the device's own properties, never in its registry global's (a constraint
 -- without a type matches the global's few keys, and so no device at all)
@@ -26,43 +34,99 @@ local alsa_devs_om = ObjectManager {
   }
 }
 
-local streams_om = ObjectManager {
+local clients_om = ObjectManager {
   Interest {
-    type = "node",
-    Constraint { "media.class", "matches", "Stream/Output/Audio*" },
+    type = "client",
   }
 }
 
-local function is_call (node)
-  local role = node.properties ["media.role"]
-  return role ~= nil and ROLES [role:lower ()] == true
+local streams_om = ObjectManager {
+  Interest {
+    type = "node",
+    Constraint { "media.class", "matches", "Stream/*" },
+  }
+}
+
+-- the app a stream belongs to, the same whether it plays over PulseAudio and records over PipeWire (as a sandboxed
+-- app does): the two are different clients with different application.names ("python3" and "python3.14"),
+-- and a stream made by pipewiresrc has no application.name of its own at all. The sandbox's app id is on both
+-- clients (pipewire-pulse sets it for each PulseAudio client); outside the sandbox the process id each reports.
+local function app_of (node)
+  local id = tonumber (node.properties ["client.id"])
+  if not id then
+    return nil
+  end
+  for client in clients_om:iterate () do
+    if client ["bound-id"] == id then
+      local props = client.properties
+      local app_id = props ["pipewire.access.portal.app_id"]
+      if app_id ~= nil and app_id ~= "" then
+        return app_id
+      end
+      local pid = props ["application.process.id"]
+      return pid and ("process " .. pid) or nil
+    end
+  end
+  return nil
+end
+
+local function in_call ()
+  local plays, records = {}, {}
+  for node in streams_om:iterate () do
+    local props = node.properties
+    local app = app_of (node)
+    local class = props ["media.class"] or ""
+    local role = props ["media.role"]
+    if app and class:find ("^Stream/Output/Audio") and role and ROLES [role:lower ()] then
+      plays [app] = true
+    elseif app and class:find ("^Stream/Input/Audio") then
+      records [app] = true
+    end
+  end
+  for app in pairs (plays) do
+    if records [app] then
+      return true, app
+    end
+  end
+  return false, nil
 end
 
 local function reselect ()
-  local now = false
-  for node in streams_om:iterate () do
-    if is_call (node) then
-      now = true
-      break
-    end
-  end
-  if now == active then
+  local now, app = in_call ()
+  if now == calling then
     return
   end
-  active = now
-  log:info (string.format ("a call stream %s: the profiles are chosen again", active and "plays" or "ended"))
+  calling = now
+  log:info (string.format ("%s: the profiles are chosen again", now and (app .. " is in a call") or "the calls ended"))
   local source = Plugin.find ("standard-event-source")
   if not source then
     log:warning ("no standard-event-source: the profiles stay as they are")
     return
   end
   for device in alsa_devs_om:iterate () do
+    starting [device ["bound-id"]] = now or nil
     source:call ("push-event", "select-profile", device, nil)
   end
 end
 
-streams_om:connect ("object-added", function (_, node) reselect () end)
-streams_om:connect ("object-removed", function (_, node) reselect () end)
+-- Looked at once the streams have settled: pulsesink makes a short-lived stream of its own before the one it plays
+-- on, and an app's Speaker button replaces its stream with one without the role. Taken one by one, each of these
+-- would switch the card's profile there and back (and the sink with it) within a tenth of a second.
+local generation = 0
+local function settle ()
+  generation = generation + 1
+  local mine = generation
+  Core.timeout_add (300, function ()
+    if mine == generation then
+      reselect ()
+    end
+    return false
+  end)
+end
+
+clients_om:connect ("object-added", function (_, client) settle () end)
+streams_om:connect ("object-added", function (_, node) settle () end)
+streams_om:connect ("object-removed", function (_, node) settle () end)
 
 -- "HiFi (Mic1, Speaker)" -> "HiFi", { Mic1 = true, Speaker = true }
 local function parse (name)
@@ -91,6 +155,48 @@ local function usable (verb)
   return verb ~= nil and not verb:find ("^Voice Call")
 end
 
+-- the profile to start a call on: the active one's (or, under a modem call's verb, the best other one's) with `want`
+-- in place of the loudspeaker, the microphones as they were
+local function call_profile (device, want, profiles, active)
+  local outputs = {}
+  for p in device:iterate_params ("EnumRoute") do
+    local route = cutils.parseParam (p, "EnumRoute")
+    if route and route.direction == "Output" then
+      local dev = (route.name or ""):match ("^%[Out%] (.+)$")
+      if dev then outputs [dev] = true end
+    end
+  end
+  local base_verb, base_set = nil, nil
+  if active then
+    base_verb, base_set = parse (active.name)
+  end
+  if not usable (base_verb) then
+    base_verb, base_set = nil, nil
+    local best = nil
+    for _, profile in ipairs (profiles) do
+      local verb, set = parse (profile.name)
+      if usable (verb) and profile.available ~= "no" and (not best or profile.priority > best.priority) then
+        best, base_verb, base_set = profile, verb, set
+      end
+    end
+  end
+  if not base_verb then
+    return nil
+  end
+  local target = { [want] = true }
+  for dev in pairs (base_set) do
+    if not outputs [dev] then target [dev] = true end
+  end
+  for _, profile in ipairs (profiles) do
+    local verb, set = parse (profile.name)
+    if verb == base_verb and set and same (set, target) and profile.available ~= "no" then
+      return profile
+    end
+  end
+  log:info (device, string.format ("a call plays, but %s has no '%s' profile", base_verb, want))
+  return nil
+end
+
 SimpleEventHook {
   name = "device/find-communication-profile",
   after = "device/find-calling-profile",
@@ -101,7 +207,7 @@ SimpleEventHook {
     },
   },
   execute = function (event)
-    if not active or event:get_data ("selected-profile") then
+    if not calling or event:get_data ("selected-profile") then
       return
     end
     local device = event:get_subject ()
@@ -110,56 +216,35 @@ SimpleEventHook {
       return
     end
 
-    -- the UCM devices that play: the loudspeaker among them gives way to `want`
-    local outputs = {}
-    for p in device:iterate_params ("EnumRoute") do
-      local route = cutils.parseParam (p, "EnumRoute")
-      if route and route.direction == "Output" then
-        local dev = (route.name or ""):match ("^%[Out%] (.+)$")
-        if dev then outputs [dev] = true end
-      end
-    end
-
-    -- what plays now, unless that is a modem call's verb: then the best other one
-    local base_verb, base_set
-    for p in device:iterate_params ("Profile") do
-      local profile = cutils.parseParam (p, "Profile")
-      if profile then
-        base_verb, base_set = parse (profile.name)
-      end
-    end
     local profiles = {}
     for p in device:iterate_params ("EnumProfile") do
       local profile = cutils.parseParam (p, "EnumProfile")
       if profile then table.insert (profiles, profile) end
     end
-    if not usable (base_verb) then
-      base_verb, base_set = nil, nil
-      local best = nil
-      for _, profile in ipairs (profiles) do
-        local verb, set = parse (profile.name)
-        if usable (verb) and profile.available ~= "no" and (not best or profile.priority > best.priority) then
-          best, base_verb, base_set = profile, verb, set
+    local active = nil
+    for p in device:iterate_params ("Profile") do
+      local profile = cutils.parseParam (p, "Profile")
+      if profile then
+        for _, e in ipairs (profiles) do
+          if e.index == profile.index then active = e end
         end
       end
     end
-    if not base_verb then
-      return
-    end
 
-    local target = { [want] = true }
-    for dev in pairs (base_set) do
-      if not outputs [dev] then target [dev] = true end
-    end
-    for _, profile in ipairs (profiles) do
-      local verb, set = parse (profile.name)
-      if verb == base_verb and set and same (set, target) and profile.available ~= "no" then
-        log:info (device, string.format ("a call plays: profile '%s' (%d)", profile.name, profile.index))
+    local id = device ["bound-id"]
+    if starting [id] then
+      starting [id] = nil
+      local profile = call_profile (device, want, profiles, active)
+      if profile then
+        log:info (device, string.format ("a call starts: profile '%s' (%d)", profile.name, profile.index))
         event:set_data ("selected-profile", profile)
         return
       end
     end
-    log:info (device, string.format ("a call plays, but %s has no '%s' profile", base_verb, want))
+    -- during the call: what plays now stays, whoever chose it (this hook at the start, or the user since)
+    if active then
+      event:set_data ("selected-profile", active)
+    end
   end
 }:register ()
 
@@ -235,4 +320,5 @@ SimpleEventHook {
 }:register ()
 
 alsa_devs_om:activate ()
+clients_om:activate ()
 streams_om:activate ()
