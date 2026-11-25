@@ -15,11 +15,10 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n==2 ? 1 : 2);\n"
 
-# android: Messaging app_name (several translations, short)
 #. About: VibeOS's About sheet, as every VibeOS app has it
 #: data/vibeos.Messaging.desktop.in src/messaging-window.c
 msgid "Messaging"
-msgstr "העברת הודעות"
+msgstr "הודעות"
 
 #: data/vibeos.Messaging.desktop.in
 msgid "Send and receive text messages"
