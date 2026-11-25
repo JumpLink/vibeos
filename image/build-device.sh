@@ -151,11 +151,12 @@ s10e)
 	# modules_install tree, in place of the stage's 7.2.15-s10e modules. updates/hci_uart.ko is hci_uart with
 	# linux-beyond0lte's hci_bcm commit, so the BCM4375 keeps its links through a system sleep
 	# (HCI_UART_NO_SUSPEND_NOTIFIER): S10E_HCI_UART, the module tested on the S10e on 11-25 (the S10e kit's
-	# bt/no-suspend-notifier, built against that kernel).
+	# bt/no-suspend-notifier, built against that kernel), rebuilt with KCFLAGS=-fmacro-prefix-map=<kernel source>/=
+	# so that no build-host path is in its strings (the same code; tested on the S10e again, 11-25 22:42).
 	KVER=7.2.15-s10e-2
 	[ "$(sha256sum < "${S10E_IMAGE:?set S10E_IMAGE}" | cut -c1-16)" = 46a3099969c5f67a ] ||
 		{ echo "$S10E_IMAGE: not the Image of kernel #58" >&2; exit 1; }
-	[ "$(sha256sum < "${S10E_HCI_UART:?set S10E_HCI_UART}" | cut -c1-16)" = 3bbe9ee31b2e518e ] ||
+	[ "$(sha256sum < "${S10E_HCI_UART:?set S10E_HCI_UART}" | cut -c1-16)" = 24a6b8fb68e644c2 ] ||
 		{ echo "$S10E_HCI_UART: not the hci_uart.ko of 11-25" >&2; exit 1; }
 	[ "$(/usr/sbin/modinfo -F vermagic "$S10E_HCI_UART" | cut -d' ' -f1)" = $KVER ] || { echo "$S10E_HCI_UART: not for $KVER" >&2; exit 1; }
 	rm -rf "${P:?}/usr/lib/modules"
