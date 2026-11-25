@@ -79,7 +79,17 @@ done
 for p in gir1.2-mutter-51 libmutter-51-0 mutter-common mutter-common-bin; do
 	cp "$MUTTER"/${p}_51.0-3+gp1_*.deb "$P/"
 done
-cp "$SPEECH"/vibeos-dictate-*_*-1_*.deb "$P/"
+# the speech packages: every vibeos-dictate-* .deb in SPEECH, whatever its revision, but only one of each
+# package (two versions of one package there is an error, not a choice)
+SP=
+for f in "$SPEECH"/vibeos-dictate-*.deb; do
+	[ -f "$f" ] || continue
+	p=$(dpkg-deb -f "$f" Package)
+	case " $SP " in *" $p "*) echo "$SPEECH: more than one $p .deb" >&2; exit 1 ;; esac
+	SP="$SP $p"
+	cp "$f" "$P/"
+done
+[ -n "$SP" ] || { echo "$SPEECH: no vibeos-dictate-* .deb" >&2; exit 1; }
 [ -z "$ART" ] || for p in vibeos-iconpack-h2o vibeos-iconpack-oneui vibeos-parallax-sets; do cp "$ART"/${p}_0.1.0_all.deb "$P/"; done
 # no development builds (0.1.3~next*, relaxed pins) and nothing that is not ours
 for f in "$P"/*.deb; do
