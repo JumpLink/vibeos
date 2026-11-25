@@ -45,6 +45,11 @@ vibeos (1:0.1.5) unstable; urgency=medium
     press after an install or an update measures it, says "Preparing
     video…" and then records; until then Video previews at the photo size
     and Camera's video quality settings stay hidden.
+  * A keyring password prompt raised while the lock screen is up is
+    cancelled, as on GNOME's own lock screen, instead of opening a dialog
+    behind the lock that took every touch; after the unlock the app can
+    ask again. While the phone is locked, removable media are mounted
+    only at the unlock.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
