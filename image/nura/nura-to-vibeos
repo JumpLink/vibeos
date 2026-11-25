@@ -336,7 +336,7 @@ def modem_wake_hook(P):
     IPCRTR wakeup, off by default, and keeps WLAN's QMI traffic through the modem from aborting the suspend"""
     rel = 'usr/lib/systemd/system-sleep/50-modem-wake-settle'
     os.makedirs(os.path.dirname(os.path.join(P, rel)), exist_ok=True)
-    shutil.copyfile(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'files', 'modem-wake-settle'),
+    shutil.copyfile(os.path.join(HERE, 'files', 'modem-wake-settle'),
                     os.path.join(P, rel))
     os.chmod(os.path.join(P, rel), 0o755)
 
