@@ -1219,7 +1219,7 @@ mode_set (GObject *src, GAsyncResult *res, gpointer data)
   g_autoptr (GVariant) reply = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, &err);
   if (reply) {
     g_object_set_data (G_OBJECT (set->row), "ns-mode-index", GUINT_TO_POINTER (set->index));
-    ns_row_set_subtitle (set->row, NULL);
+    ns_row_pick_select (set->row, set->index);
   } else {
     ns_row_pick_select (set->row, set->previous);
     row_error (set->row, _("Could not set network mode"), err);
@@ -1377,7 +1377,7 @@ ns_page_mobile (GtkWidget *row, gpointer data)
   ns_group_set_visible (m->apns, FALSE);
   m->modes = ns_group (c, NULL);
   ns_group_set_visible (m->modes, FALSE);
-  m->mode_note = ns_note (c, _("The selected modes also apply to mobile data."));
+  m->mode_note = ns_note (c, _("The modem keeps this choice after a restart. If it finds no network, choose Automatic."));
   gtk_widget_set_visible (m->mode_note, FALSE);
   m->info = ns_group (c, _("SIM and network"));
   ns_group_set_visible (m->info, FALSE);

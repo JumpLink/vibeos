@@ -2223,7 +2223,9 @@ msgid "Access point names"
 msgstr "Nomi punti di accesso"
 
 #: src/ns-net.c
-msgid "The selected modes also apply to mobile data."
+msgid ""
+"The modem keeps this choice after a restart. If it finds no network, choose "
+"Automatic."
 msgstr ""
 
 #: src/ns-net.c

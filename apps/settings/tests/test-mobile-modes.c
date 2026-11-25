@@ -67,7 +67,7 @@ test_unknown_current (void)
   NsMobileModes *m = parse ("[(uint32 2, uint32 0), (uint32 4, uint32 0)]", current);
   const char *labels[] = { "2G only", "3G only", NULL };
   assert_labels (m, labels);
-  g_assert_cmpuint (ns_mobile_modes_current (m, current), ==, 0);
+  g_assert_cmpuint (ns_mobile_modes_current (m, current), ==, NS_MOBILE_MODE_NONE);
   ns_mobile_modes_free (m);
 }
 
@@ -90,11 +90,53 @@ test_fajita (void)
   NsMobileModes *m = parse ("[(uint32 2, uint32 0), (uint32 4, uint32 0), (uint32 6, uint32 4), "
                             "(uint32 6, uint32 2), (uint32 10, uint32 8), (uint32 10, uint32 2), "
                             "(uint32 12, uint32 8), (uint32 12, uint32 4), (uint32 14, uint32 8)]", current);
-  const char *labels[] = { "2G only", "3G only", "2G/3G, prefer 3G", "2G/3G, prefer 2G",
+  const char *labels[] = { "Automatic", "2G only", "3G only", "2G/3G, prefer 3G", "2G/3G, prefer 2G",
                            "2G/4G, prefer 4G", "2G/4G, prefer 2G", "3G/4G, prefer 4G",
-                           "3G/4G, prefer 3G", "Automatic", NULL };
+                           "3G/4G, prefer 3G", NULL };
   assert_labels (m, labels);
-  g_assert_cmpuint (ns_mobile_modes_current (m, current), ==, 8);
+  g_assert_cmpuint (ns_mobile_modes_current (m, current), ==, 0);
+  ns_mobile_modes_free (m);
+}
+
+/* the POCO X3 NFC (qcom-soc plugin, ModemManager 1.24.2-2+surya8), as mmcli lists it */
+static void
+test_surya (void)
+{
+  g_autoptr (GVariant) current = g_variant_new_parsed ("(uint32 14, uint32 8)");
+  NsMobileModes *m = parse ("[(uint32 2, uint32 0), (uint32 4, uint32 0), (uint32 8, uint32 0), "
+                            "(uint32 6, uint32 4), (uint32 6, uint32 2), (uint32 10, uint32 8), "
+                            "(uint32 10, uint32 2), (uint32 12, uint32 8), (uint32 12, uint32 4), "
+                            "(uint32 14, uint32 8), (uint32 14, uint32 4), (uint32 14, uint32 2)]", current);
+  const char *labels[] = { "Automatic", "2G only", "3G only", "4G only", "2G/3G, prefer 3G", "2G/3G, prefer 2G",
+                           "2G/4G, prefer 4G", "2G/4G, prefer 2G", "3G/4G, prefer 4G", "3G/4G, prefer 3G",
+                           "2G/3G/4G, prefer 3G", "2G/3G/4G, prefer 2G", NULL };
+  assert_labels (m, labels);
+  g_assert_cmpuint (ns_mobile_modes_current (m, current), ==, 0);
+  NsMobileMode *mode = g_ptr_array_index (m, 0);
+  g_assert_cmpuint (mode->allowed, ==, 14);
+  g_assert_cmpuint (mode->preferred, ==, 8);
+  ns_mobile_modes_free (m);
+}
+
+/* the full set with and without a preference: one Automatic, the other named */
+static void
+test_one_automatic (void)
+{
+  g_autoptr (GVariant) current = g_variant_new_parsed ("(uint32 14, uint32 8)");
+  NsMobileModes *m = parse ("[(uint32 2, uint32 0), (uint32 14, uint32 0), (uint32 14, uint32 8)]", current);
+  const char *labels[] = { "Automatic", "2G only", "2G/3G/4G, prefer 4G", NULL };
+  assert_labels (m, labels);
+  g_assert_cmpuint (ns_mobile_modes_current (m, current), ==, 2);
+  ns_mobile_modes_free (m);
+}
+
+/* the S10e (generic plugin): one combination, nothing to choose; Settings hides the row */
+static void
+test_single (void)
+{
+  g_autoptr (GVariant) current = g_variant_new_parsed ("(uint32 8, uint32 0)");
+  NsMobileModes *m = parse ("[(uint32 8, uint32 0)]", current);
+  g_assert_cmpuint (m->len, ==, 1);
   ns_mobile_modes_free (m);
 }
 
@@ -127,6 +169,9 @@ main (int argc, char **argv)
   g_test_add_func ("/mobile-modes/unknown-current", test_unknown_current);
   g_test_add_func ("/mobile-modes/preferred-automatic", test_preferred_automatic);
   g_test_add_func ("/mobile-modes/fajita", test_fajita);
+  g_test_add_func ("/mobile-modes/surya", test_surya);
+  g_test_add_func ("/mobile-modes/one-automatic", test_one_automatic);
+  g_test_add_func ("/mobile-modes/single", test_single);
   g_test_add_func ("/mobile-modes/any", test_any);
   g_test_add_func ("/mobile-modes/wrong-type", test_wrong_type);
   return g_test_run ();

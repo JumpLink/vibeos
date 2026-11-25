@@ -1,11 +1,13 @@
 /* ModemManager's network modes: SupportedModes/CurrentModes as a(uu)/(uu), and the argument of SetCurrentModes.
- * The list keeps the modem's order, drops invalid or duplicate pairs and gives each a label for Settings. GLib only,
- * so the tests use the same interface as the page. */
+ * The list keeps the modem's order with Automatic first, drops invalid or duplicate pairs and gives each a label for
+ * Settings. GLib only, so the tests use the same interface as the page. */
 #pragma once
 
 #include <gio/gio.h>
 
 #define NS_MOBILE_MODES_TYPE "a(uu)"
+/* what ns_mobile_modes_current answers when the modem's current pair is not one it offers */
+#define NS_MOBILE_MODE_NONE G_MAXUINT
 
 typedef struct {
   guint32 allowed, preferred;

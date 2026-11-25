@@ -2222,8 +2222,12 @@ msgid "Access point names"
 msgstr "Zugangspunkte (APNs)"
 
 #: src/ns-net.c
-msgid "The selected modes also apply to mobile data."
-msgstr "Die ausgewählten Modi gelten auch für mobile Daten."
+msgid ""
+"The modem keeps this choice after a restart. If it finds no network, choose "
+"Automatic."
+msgstr ""
+"Das Modem behält diese Wahl auch nach einem Neustart. Findet es kein Netz, "
+"wähle „Automatisch“."
 
 #: src/ns-net.c
 msgid "SIM and network"

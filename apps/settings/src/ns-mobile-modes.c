@@ -1,6 +1,7 @@
 /* ModemManager's network modes (see ns-mobile-modes.h). MMModemMode is a bitmask, not the AccessTechnologies
  * bitmask: CS=1, 2G=2, 3G=4, 4G=8, 5G=16. SupportedModes is an array of allowed/preferred pairs; keeping its
- * order and filtering invalid pairs means Settings only offers combinations the modem said it can use. */
+ * order (Automatic first) and filtering invalid pairs means Settings only offers combinations the modem said it can
+ * use. */
 #include "ns-mobile-modes.h"
 
 #include <glib/gi18n.h>
@@ -86,11 +87,17 @@ highest_mode (guint32 mask)
   return highest;
 }
 
-static char *
-mode_label (guint32 allowed, guint32 preferred, guint32 automatic)
+static gboolean
+is_automatic (guint32 allowed, guint32 preferred, guint32 automatic)
 {
-  if (allowed == G_MAXUINT32 ||
-      (n_modes (allowed) > 1 && allowed == automatic && (!preferred || preferred == highest_mode (allowed))))
+  return allowed == G_MAXUINT32 ||
+         (n_modes (allowed) > 1 && allowed == automatic && (!preferred || preferred == highest_mode (allowed)));
+}
+
+static char *
+mode_label (guint32 allowed, guint32 preferred, gboolean automatic)
+{
+  if (automatic)
     return g_strdup (_("Automatic"));
   g_autofree char *names = mode_names (allowed);
   if (n_modes (allowed) == 1 && !preferred)
@@ -126,6 +133,7 @@ ns_mobile_modes_new (GVariant *supported, GVariant *current, GError **error)
     automatic = 0;
 
   NsMobileModes *m = g_ptr_array_new_with_free_func ((GDestroyNotify) mode_free);
+  gboolean have_automatic = FALSE;
   g_variant_iter_init (&it, supported);
   while (g_variant_iter_next (&it, "(uu)", &allowed, &preferred)) {
     if (!valid (allowed, preferred))
@@ -143,8 +151,16 @@ ns_mobile_modes_new (GVariant *supported, GVariant *current, GError **error)
     NsMobileMode *mode = g_new0 (NsMobileMode, 1);
     mode->allowed = allowed;
     mode->preferred = preferred;
-    mode->label = mode_label (allowed, preferred, automatic);
-    g_ptr_array_add (m, mode);
+    /* Automatic first: a Qualcomm modem lists it after every single mode and pair (ninth of nine on the OnePlus
+     * 6T, tenth of twelve on the POCO X3 NFC), and it is the choice to go back to */
+    gboolean automatic_here = !have_automatic && is_automatic (allowed, preferred, automatic);
+    mode->label = mode_label (allowed, preferred, automatic_here);
+    if (automatic_here) {
+      g_ptr_array_insert (m, 0, mode);
+      have_automatic = TRUE;
+    } else {
+      g_ptr_array_add (m, mode);
+    }
   }
   return m;
 }
@@ -170,7 +186,8 @@ ns_mobile_modes_current (NsMobileModes *m, GVariant *current)
     if (mode->allowed == allowed && mode->preferred == preferred)
       return i;
   }
-  return 0;
+  /* not one the modem offers (or not loaded yet): no entry is marked, rather than the first one claimed */
+  return NS_MOBILE_MODE_NONE;
 }
 
 GVariant *
