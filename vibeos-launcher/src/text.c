@@ -11,6 +11,8 @@
 #include <hb.h>
 #include <math.h>
 #include <string.h>
+#include <unicode/ubidi.h>
+#include <unicode/uchar.h>
 
 #define ATLAS     2048
 #define SUBPIXELS 4            /* horizontal glyph positions per pixel */
@@ -46,12 +48,13 @@ struct TextLayout {
   float   width, line_h;
 };
 
-/* A shaped glyph before the lines are broken */
+/* A shaped glyph before the lines are broken, in the string's order (a right-to-left run's too) */
 typedef struct {
   int    face;
   guint  gid;
   float  advance, dx, dy;      /* pixels */
   guint  cluster;              /* byte offset in the string */
+  guint8 level;                /* its bidi embedding level: odd is right to left */
 } Shaped;
 
 static struct {
@@ -246,43 +249,95 @@ face_for (TextFont *f, gunichar c, int current)
 }
 
 static void
-shape_run (TextFont *f, int face, const char *utf8, int len, int start, int run_len, GArray *out)
+shape_run (TextFont *f, int face, guint8 level, const char *utf8, int len, int start, int run_len, GArray *out)
 {
   Face *fc = face_get (f, face);
   if (!fc)
     return;
   hb_buffer_t *buf = hb_buffer_create ();
   hb_buffer_add_utf8 (buf, utf8, len, start, run_len);
+  hb_buffer_set_direction (buf, level & 1 ? HB_DIRECTION_RTL : HB_DIRECTION_LTR);
   hb_buffer_guess_segment_properties (buf);
   hb_shape (fc->hb, buf, NULL, 0);
   unsigned n;
   hb_glyph_info_t *info = hb_buffer_get_glyph_infos (buf, &n);
   hb_glyph_position_t *pos = hb_buffer_get_glyph_positions (buf, &n);
-  for (unsigned i = 0; i < n; i++) {
+  /* HarfBuzz gives a right-to-left run's glyphs in the order they are drawn: taken back into the string's, for the
+   * lines to break in it, and put in the drawing order again line by line (text_layout) */
+  for (unsigned k = 0; k < n; k++) {
+    unsigned i = level & 1 ? n - 1 - k : k;
     Shaped s = { face, info[i].codepoint, pos[i].x_advance / 64.f, pos[i].x_offset / 64.f, pos[i].y_offset / 64.f,
-                 info[i].cluster };
+                 info[i].cluster, level };
     g_array_append_val (out, s);
   }
   hb_buffer_destroy (buf);
 }
 
+/* The Unicode bidi algorithm's level for each byte of `utf8` (a character's on all of its bytes), and the paragraph's
+ * (`*para`): its first strong character's direction, left to right when it has none, as Android's TextView does by
+ * default. NULL when the whole string is left to right, as nearly every string is. */
+static guint8 *
+bidi_levels (const char *utf8, int len, guint8 *para)
+{
+  *para = 0;
+  gboolean rtl = FALSE;
+  for (const char *p = utf8; *p && !rtl; p = g_utf8_next_char (p)) {
+    UCharDirection d = u_charDirection ((UChar32) g_utf8_get_char (p));
+    rtl = d == U_RIGHT_TO_LEFT || d == U_RIGHT_TO_LEFT_ARABIC || d == U_RIGHT_TO_LEFT_EMBEDDING ||
+          d == U_RIGHT_TO_LEFT_OVERRIDE || d == U_RIGHT_TO_LEFT_ISOLATE;
+  }
+  if (!rtl)
+    return NULL;
+  glong n16 = 0;
+  gunichar2 *u16 = g_utf8_to_utf16 (utf8, len, NULL, &n16, NULL);
+  UErrorCode err = U_ZERO_ERROR;
+  UBiDi *bidi = ubidi_openSized ((int32_t) n16, 0, &err);
+  if (u16)
+    ubidi_setPara (bidi, (const UChar *) u16, (int32_t) n16, UBIDI_DEFAULT_LTR, NULL, &err);
+  guint8 *levels = NULL;
+  if (u16 && U_SUCCESS (err)) {
+    levels = g_malloc0 (len + 1);
+    *para = ubidi_getParaLevel (bidi);
+    int32_t at = 0;
+    for (const char *p = utf8; *p; p = g_utf8_next_char (p)) {
+      guint8 level = ubidi_getLevelAt (bidi, at);
+      memset (levels + (p - utf8), level, g_utf8_next_char (p) - p);
+      at += g_utf8_get_char (p) > 0xffff ? 2 : 1;
+    }
+  }
+  ubidi_close (bidi);
+  g_free (u16);
+  return levels;
+}
+
+/* the string's glyphs in its own order, a run for each face and bidi level; `para`: the paragraph's level (or NULL) */
 static GArray *
-shape (TextFont *f, const char *utf8)
+shape_para (TextFont *f, const char *utf8, guint8 *para)
 {
   GArray *out = g_array_new (FALSE, FALSE, sizeof (Shaped));
   int len = strlen (utf8);
+  guint8 base = 0;
+  g_autofree guint8 *levels = bidi_levels (utf8, len, &base);
+  if (para)
+    *para = base;
   int run_start = 0, run_face = -1;
   for (const char *p = utf8; *p; p = g_utf8_next_char (p)) {
     int face = face_for (f, g_utf8_get_char (p), run_face);
-    if (run_face >= 0 && face != run_face) {
-      shape_run (f, run_face, utf8, len, run_start, (int) (p - utf8) - run_start, out);
+    if (run_face >= 0 && (face != run_face || (levels && levels[p - utf8] != levels[run_start]))) {
+      shape_run (f, run_face, levels ? levels[run_start] : 0, utf8, len, run_start, (int) (p - utf8) - run_start, out);
       run_start = p - utf8;
     }
     run_face = face;
   }
   if (run_face >= 0)
-    shape_run (f, run_face, utf8, len, run_start, len - run_start, out);
+    shape_run (f, run_face, levels ? levels[run_start] : 0, utf8, len, run_start, len - run_start, out);
   return out;
+}
+
+static GArray *
+shape (TextFont *f, const char *utf8)
+{
+  return shape_para (f, utf8, NULL);
 }
 
 static float
@@ -306,7 +361,11 @@ text_layout (TextFont *f, const char *utf8, float max_width, int max_lines, Text
   l->line_h = text_line_height (f);
   if (!utf8 || !*utf8)
     return l;
-  GArray *g = shape (f, utf8);
+  guint8 para = 0;
+  GArray *g = shape_para (f, utf8, &para);
+  /* a right-to-left paragraph starts on the right: a start-aligned one that has a width to align in is put there */
+  if (para & 1 && align == TEXT_LEFT && max_width > 0)
+    align = TEXT_RIGHT;
   if (max_width <= 0 || max_lines < 1)
     max_lines = 1;
 
@@ -371,29 +430,42 @@ text_layout (TextFont *f, const char *utf8, float max_width, int max_lines, Text
     else if (align == TEXT_RIGHT)
       x = max_width > 0 ? max_width - lw : -lw;
     float baseline = roundf (line * l->line_h + f->ascent);
-    for (int part = 0; part < 2; part++) {
-      GArray *src = part ? ell : g;
-      if (!src)
-        continue;
-      guint a = part ? 0 : starts[line], b = part ? src->len : ends[line];
-      if (part && line != nl - 1)
-        continue;
-      for (guint i = a; i < b; i++) {
-        Shaped *s = &g_array_index (src, Shaped, i);
-        float pen = x + s->dx;
-        float fl = floorf (pen);
-        int sub = (int) lroundf ((pen - fl) * SUBPIXELS);
-        if (sub == SUBPIXELS) {
-          sub = 0;
-          fl += 1;
-        }
-        Glyph *gl = glyph_get (f, s->face, s->gid, sub);
-        if (gl->w) {
-          Placed p = { (int) fl + gl->left, (int) (baseline - roundf (s->dy)) - gl->top, gl };
-          g_array_append_val (l->placed, p);
-        }
-        x += s->advance;
+    /* the line's glyphs, and the ellipsis at its end, in the order they are drawn: the bidi algorithm's reordering
+     * of the line by the glyphs' levels (L2), the ellipsis at the paragraph's level; all of them left to right in
+     * the string's order when every level is 0 */
+    guint n_line = ends[line] - starts[line], n_ell = ell && line == nl - 1 ? ell->len : 0, n = n_line + n_ell;
+    g_autofree Shaped **logical = g_new (Shaped *, n + 1);
+    g_autofree Shaped **order = g_new (Shaped *, n + 1);
+    g_autofree UBiDiLevel *levels = g_new (UBiDiLevel, n + 1);
+    gboolean mixed = FALSE;
+    for (guint i = 0; i < n; i++) {
+      logical[i] = i < n_line ? &g_array_index (g, Shaped, starts[line] + i) : &g_array_index (ell, Shaped, i - n_line);
+      if (i >= n_line)
+        logical[i]->level = para;
+      mixed |= (levels[i] = logical[i]->level) != 0;
+      order[i] = logical[i];
+    }
+    if (mixed) {
+      g_autofree int32_t *map = g_new (int32_t, n + 1);
+      ubidi_reorderVisual (levels, (int32_t) n, map);
+      for (guint i = 0; i < n; i++)
+        order[i] = logical[map[i]];
+    }
+    for (guint i = 0; i < n; i++) {
+      Shaped *s = order[i];
+      float pen = x + s->dx;
+      float fl = floorf (pen);
+      int sub = (int) lroundf ((pen - fl) * SUBPIXELS);
+      if (sub == SUBPIXELS) {
+        sub = 0;
+        fl += 1;
       }
+      Glyph *gl = glyph_get (f, s->face, s->gid, sub);
+      if (gl->w) {
+        Placed p = { (int) fl + gl->left, (int) (baseline - roundf (s->dy)) - gl->top, gl };
+        g_array_append_val (l->placed, p);
+      }
+      x += s->advance;
     }
   }
   l->lines = nl;
