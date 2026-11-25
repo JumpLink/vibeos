@@ -1,5 +1,5 @@
 // sm.puri.OSK0 on the session bus, as squeekboard serves it under Phosh: Android's keyboard requests (Waydroid's bridge
-// IME, through gnome/device/waydroid/waydroid-oskbridge) open GNOME's own on-screen keyboard. Waydroid's windows have
+// IME, through an OSK bridge running inside the container) open GNOME's own on-screen keyboard. Waydroid's windows have
 // no input method, so the shell never learns of their text fields by itself; the keyboard types into them as key
 // presses, through its virtual keyboard. It opens only over an Android window in front, and not locked, and closes
 // once that window is no longer in front: nothing else would close it. Docked as on the phone; docked it needs the

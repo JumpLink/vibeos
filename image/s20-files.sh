@@ -98,7 +98,7 @@ ln -sfn ../../Samsung/r8s/r8s.conf "$P/usr/share/alsa/ucm2/conf.d/S20FE/S20FE.co
 Q=$G/quietboot/rootfs
 (cd "$Q" && tar -cf - .) | tar -C "$P" -xpf - --no-same-owner
 [ -L "$P/etc/systemd/system/graphical.target.wants/r8s-reached.service" ] || { echo "r8s-reached not enabled" >&2; exit 1; }
-# r8s-sleepd (gnome/device/r8s-sleep, on the phone since 11-20 11:30): sleep 5 s after the screen goes off; its unit
+# r8s-sleepd (on the phone since 11-20 11:30): sleep 5 s after the screen goes off; its unit
 # runs only on a kernel with the WFI-s2idle state (#49 and later; #51 has it)
 SL=${S20_SLEEP:?set S20_SLEEP}
 install -D -m 755 "$SL/r8s-sleepd.arm64" "$P/usr/local/sbin/r8s-sleepd"
