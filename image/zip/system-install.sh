@@ -10,6 +10,8 @@
 #                       image     a file in Android's data, /data/lost+found/vibeos/rootfs.img; Android and its
 #                                 data stay (an earlier Linux image file there is replaced)
 #                       whole     all of userdata becomes "linux": Android's data is gone (asks for a second Power)
+#            The S20 FE's partition is named "vibeos" instead (its boot looks for that name): existing and whole,
+#            whole only after its device zip has checked the phone in this recovery session (see S20READY).
 #            2. size:   new and image only (GB)
 #            Only what this device's zip can boot is offered (devices this zip knows; any other: everything).
 #            Nothing pressed for two minutes: cancel, nothing written.
@@ -44,16 +46,27 @@ SIZES_IMG="10 20 30 40 50 100"
 DEVICE=$(getprop ro.product.device); [ -n "$DEVICE" ] || DEVICE=$(getprop ro.build.product)
 # what each device's zip boots: the S10e's U-Boot a partition named linux; the POCO's U-Boot the GPT inside a
 # linux partition (which only the POCO's own zip makes); the Tab S5e's initramfs a file in Android's data, mapped
-# by its extents; the S20 FE's U-Boot the partition named vibeos (it has no zip of its own: no LineageOS recovery
-# runs on it, s20-install-from-pc.sh installs it). Any other device: everything is offered.
-AUTO=
+# by its extents; the S20 FE's initramfs (in its kernel, which U-Boot starts from BOOT) the partition named vibeos:
+# the whole phone (owner, 2026-11-24), LineageOS Recovery staying in RECOVERY as the way back. Any other device:
+# everything is offered. PNAME: the name new and whole give the partition
+AUTO= PNAME=linux
 case $DEVICE in
 beyond0lte|beyond0) KINDS="existing new whole" ;;
 surya|karna)        KINDS="nested"; AUTO=1 ;;	# no questions (owner, 2026-11-23): see choose
 gts4lvwifi|gts4lv)  KINDS="image" ;;
-r8s|r8sxx)          KINDS="existing" ;;	# the S20 FE: its partition named vibeos only (userdata is Lineage's)
+r8s|r8sxx)          KINDS="existing whole"; PNAME=vibeos ;;
 *)                  KINDS="existing nested new image whole" ;;
 esac
+# the GPT tool's --name only where the name is not its own default (every call as before elsewhere)
+NAMEOPT=; [ $PNAME = linux ] || NAMEOPT="--name $PNAME"
+# The S20 FE's whole phone erases Android's data, and only the S20's own device zip makes the phone start again (it
+# writes BOOT); without it the phone would be left with nothing to start but recovery. So whole is offered there
+# only when that zip has run once in this recovery session before this one: with no VibeOS system on the phone it
+# checks the phone, writes nothing to it, and leaves S20READY (/tmp is this session's). Then this zip, then the
+# device zip again
+S20READY=/tmp/vibeos-ready-s20
+S20WAIT=
+case $DEVICE in r8s|r8sxx) grep -qx device=s20 $S20READY 2>/dev/null || S20WAIT=1 ;; esac
 can() { case " $KINDS " in *" $1 "*) return 0 ;; esac; return 1; }
 ESP_MIB=480	# the POCO's ESP, as its k22 image has it (blocks 2048-124927 of 4 KiB): the device zip writes esp.img there
 VP=$T-part
@@ -171,19 +184,20 @@ choose)
 		fi
 	elif can new && [ -e $BY/userdata ]; then
 		DISK=$(disk_of $BY/userdata)
-		for s in $SIZES_NEW; do $VP plan $DISK $s > /dev/null 2> $T-part.err && OPTS="$OPTS new"; [ -z "$OPTS" ] || break; done
+		for s in $SIZES_NEW; do $VP $NAMEOPT plan $DISK $s > /dev/null 2> $T-part.err && OPTS="$OPTS new"; [ -z "$OPTS" ] || break; done
 	fi
 	if can image && image_room; then
 		for s in $SIZES_IMG; do [ $FREE -ge $((s + 1)) ] && { OPTS="$OPTS image"; break; }; done
 	fi
-	if can whole && [ -e $BY/userdata ] && [ -z "$EX" ]; then
+	if can whole && [ -e $BY/userdata ] && [ -z "$EX" ] && [ -z "$S20WAIT" ]; then
 		DISK=$(disk_of $BY/userdata)
-		$VP plan-whole $DISK > $T-whole.txt 2> $T-whole.err && OPTS="$OPTS whole"
+		$VP $NAMEOPT plan-whole $DISK > $T-whole.txt 2> $T-whole.err && OPTS="$OPTS whole"
 	fi
 	if [ -z "$OPTS" ]; then
 		case $DEVICE in
 		surya|karna) die "no linux partition with its own GPT: install the POCO's VibeOS 0.1.1 zip once first (it makes it, keeping Android's data), then this one" ;;
 		esac
+		[ -z "$S20WAIT" ] || [ -n "$EX" ] || die "on the Galaxy S20 FE VibeOS takes the whole phone, and only VibeOS's device zip for the S20 FE makes it start afterwards. Install that zip first (it checks the phone and changes nothing), then this one, then the device zip again. Nothing was changed"
 		die "this device offers no place for the system ($KINDS): $(cat $T-part.err $T-whole.err 2>/dev/null | tr '\n' ' ')"
 	fi
 	label() {
@@ -204,14 +218,14 @@ choose)
 	W=$o
 	case $W in
 	existing) printf 'mode=existing\nkind=%s\nname=%s\n' $EXK $EX >> $P ;;
-	whole)    printf 'mode=whole\nkind=part\nname=linux\n' >> $P ;;
+	whole)    printf 'mode=whole\nkind=part\nname=%s\n' $PNAME >> $P ;;
 	new)
 		S=
-		for s in $SIZES_NEW; do $VP plan $DISK $s > /dev/null 2>&1 && S="$S $s"; done
+		for s in $SIZES_NEW; do $VP $NAMEOPT plan $DISK $s > /dev/null 2>&1 && S="$S $s"; done
 		CONFIRM=
 		set -- $S
 		menu "2/2  Size of the new partition?" "$@"
-		printf 'mode=new\nkind=part\nname=linux\nsize=%s\n' $o >> $P ;;
+		printf 'mode=new\nkind=part\nname=%s\nsize=%s\n' $PNAME $o >> $P ;;
 	image)
 		S=
 		for s in $SIZES_IMG; do [ $FREE -ge $((s + 1)) ] && S="$S $s"; done
@@ -248,7 +262,7 @@ prepare)
 	new)
 		DISK=$(disk_of $BY/userdata)
 		unmount_android
-		OUT=$($VP apply $DISK $(get size) 2> $T-part.err)
+		OUT=$($VP $NAMEOPT apply $DISK $(get size) 2> $T-part.err)
 		RC=$?
 		[ $RC = 3 ] && die "$(cat $T-part.err). The new partition is in the table: restart into recovery, Format data, then install again and choose the existing partition"
 		[ $RC = 0 ] || die "partitioning failed ($RC): $(cat $T-part.err)"
@@ -259,10 +273,10 @@ prepare)
 	whole)
 		DISK=$(disk_of $BY/userdata)
 		unmount_android
-		OUT=$($VP whole $DISK 2> $T-part.err)
+		OUT=$($VP $NAMEOPT whole $DISK 2> $T-part.err)
 		RC=$?
 		[ $RC = 3 ] && [ -n "$AUTO" ] && die "$(cat $T-part.err). userdata is \"linux\" in the table now: restart into recovery and install again"
-		[ $RC = 3 ] && die "$(cat $T-part.err). userdata is \"linux\" in the table now: restart into recovery, install again and choose the existing partition"
+		[ $RC = 3 ] && die "$(cat $T-part.err). userdata is \"$PNAME\" in the table now: restart into recovery, install again and choose the existing partition"
 		[ $RC = 0 ] || die "partitioning failed ($RC): $(cat $T-part.err)"
 		set -- $(echo "$OUT" | grep '^whole ')
 		[ "${1:-}" = whole ] || die "the partition tool said: $OUT"

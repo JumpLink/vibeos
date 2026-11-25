@@ -173,10 +173,13 @@ loses the ESP hooks (an initrd built on the phone, copied to the ESP, kills the 
 
 `test/zip-test.sh SYSZIP DEVZIP PRE SYSKEYS -- DEVICE` runs the system zip and then a device zip in one chroot of
 LineageOS recovery's ramdisk (mksh and toybox under qemu-user), each with its own update-binary and updater-script as
-recovery runs them, on a loop device with 4096-byte sectors holding an S10e-shaped GPT. It checks every partition
+recovery runs them, on a loop device with 4096-byte sectors holding an S10e-shaped GPT (`S20=1` or DEVICE `s20`:
+the S20 FE's, `OUT/work/test/sda-real-s20.img`, where `fresh`, `existing` and `wholed` are the cases; `PREDEV=1` runs
+its device zip once before the system zip, `EXPECT=refused` checks the system zip refuses without that run). It checks every partition
 the zips may write and that the others are untouched, the root's file system and its sums, the boot pieces byte for
 byte, and that nothing identifying was printed. It needs `OUT/work/test/sda-real.img` (a sparse copy of an S10e's
-`sda` with only its GPT) and `OUT/work/test/r` (`nura/test/recovery-chroot.py RECOVERY.img OUT/work/test/r` from a
+`sda` with only its GPT; `test/gpt-model.py FIRST OUT` makes one from a phone's first sectors, with every GUID
+replaced and nothing past the table copied) and `OUT/work/test/r` (`nura/test/recovery-chroot.py RECOVERY.img OUT/work/test/r` from a
 LineageOS recovery image), qemu-user-static with binfmt, and `sudo -n`. Two second sessions on the same disk:
 `AGAIN=KEYS` runs the system zip alone (after an S5e image install, the old extent list at the end of recovery must
 be gone and the rest of recovery untouched; `TAIL_OUT` keeps that tail for `init-test.sh`), and `NEWDEV=ZIP` runs a

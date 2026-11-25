@@ -2,9 +2,11 @@
 # part-test.sh [S10E_PART]: s10e-part (the host build, src/s10e-part-host by default) on sparse disk images in a
 # temporary directory: a GPT of boot + userdata made by sgdisk, plain and with two leftover entries that have a type
 # GUID but no name and LBA 0-0 (an earlier multiboot layout left them on a OnePlus 6T; Linux ignores them). show,
-# plan, plan-whole and whole must work on both, and whole must keep the leftovers as they are. Needs sgdisk and
-# python3; no root, no devices.
+# plan, plan-whole and whole must work on both, and whole must keep the leftovers as they are. Then --name (the
+# S20 FE's partition is "vibeos"): whole and apply make that name and touch nothing else, apply finds it again, whole
+# replaces an earlier one behind userdata, and a bad name is refused. Needs sgdisk and python3; no root, no devices.
 set -u
+export PATH=$PATH:/usr/sbin:/sbin
 T=$(cd "$(dirname "$0")/.." && pwd)
 P=${1:-$T/src/s10e-part-host}
 [ -x "$P" ] || { echo "no $P: make -C image/src s10e-part-host" >&2; exit 1; }
@@ -77,4 +79,33 @@ for kind in plain leftovers; do
 	fi
 	rm -f $D $W/w.img
 done
+echo "--name vibeos:"
+D=$W/n.img
+truncate -s 64G $D
+sgdisk -o -n 1:0:+64M -c 1:boot -n 2:0:0 -c 2:userdata -t 2:8300 $D > /dev/null || bad "sgdisk"
+cp --sparse=always $D $W/w.img
+$P --sector-size 512 --name vibeos plan-whole $W/w.img > $W/out 2>&1 && grep -q '^userdata (#2).*-> vibeos' $W/out &&
+	ok "plan-whole says vibeos" || bad "plan-whole: $(cat $W/out)"
+$P --sector-size 512 --name vibeos whole $W/w.img > $W/out 2>&1 && grep -q '^whole 2 ' $W/out && ok whole || bad "whole: $(cat $W/out)"
+sgdisk -i 2 $W/w.img | grep -q "Partition name: 'vibeos'" && ok "#2 is vibeos" || bad "#2 is not vibeos after whole"
+[ "$(sgdisk -p $W/w.img | grep -c -w -e linux -e userdata)" = 0 ] && ok "no linux, no userdata" || bad "a linux or userdata left"
+[ "$(gpt $W/w.img check)" = ok ] && ok "both tables right" || bad "after whole: $(gpt $W/w.img check)"
+cp --sparse=always $D $W/a.img
+$P --sector-size 512 --name vibeos apply $W/a.img 10 > $W/out 2>&1 && grep -q '^created 3 ' $W/out && ok "apply: created 3" ||
+	bad "apply: $(cat $W/out)"
+sgdisk -i 3 $W/a.img | grep -q "Partition name: 'vibeos'" && ok "#3 is vibeos" || bad "#3 is not vibeos"
+$P --sector-size 512 --name vibeos apply $W/a.img 10 > $W/out 2>&1 && [ "$(tail -n1 $W/out)" = "exists 3" ] &&
+	ok "apply again: exists 3" || bad "apply again: $(cat $W/out)"
+$P --sector-size 512 apply $W/a.img 10 > $W/out 2>&1; [ "$(tail -n1 $W/out)" = "exists 3" ] &&
+	bad "apply without --name took vibeos for linux" || ok "apply without --name does not take vibeos for linux"
+cp --sparse=always $W/a.img $W/b.img
+$P --sector-size 512 --name vibeos whole $W/b.img > $W/out 2>&1 && grep -q '^deleted 3$' $W/out && grep -q '^whole 2 ' $W/out &&
+	ok "whole after apply: deleted 3, whole 2" || bad "whole after apply: $(cat $W/out)"
+sgdisk -i 2 $W/b.img | grep -q "Partition name: 'vibeos'" && ! sgdisk -i 3 $W/b.img | grep -q "Partition name: 'vibeos'" &&
+	ok "#2 vibeos, #3 gone" || bad "after whole: $(sgdisk -p $W/b.img | tail -n 3 | tr '\n' ' ')"
+for n in userdata Linux "" vibe-os 0123456789012345678901234567890123456; do
+	$P --sector-size 512 --name "$n" plan-whole $D > $W/out 2>&1 && bad "--name '$n' taken" || ok "--name '$n' refused"
+done
+$P --name vibeos show $D > $W/out 2>&1 && bad "--name with show taken" || ok "--name with show refused"
+rm -f $D $W/w.img $W/a.img $W/b.img
 [ $FAILS = 0 ] && echo "all ok" || { echo "$FAILS failed"; exit 1; }

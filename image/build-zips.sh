@@ -13,13 +13,14 @@ T=$(cd "$(dirname "$0")" && pwd)
 O=${VIBEOS_OUT:?set VIBEOS_OUT (image/local.conf): the directory builds, work files and logs go to}
 FORBID="gsm2sip waydroid ${FORBID_EXTRA:-}"	# never in an image: these package and file names
 Z=$T/zip
-# STRICT=1: only the exact binaries the 0.1.3 zips have (LineageOS 22.2's update-binary 3748b295, vibeos-part d108d33d:
-# make -C src with Debian's aarch64-linux-gnu-gcc 14.2.0, the source with "nest" (the POCO's own GPT, 2026-11-23); the
-# source before it gives ead00bed, the 11-22 and 11-23 system zips', and 1370fac's fe0cd129, the first 0.1.3 one's)
+# STRICT=1: only the exact binaries the release's zips have (LineageOS 22.2's update-binary 3748b295, vibeos-part
+# a97b9da3: make -C src with Debian's aarch64-linux-gnu-gcc 14.2.0-19, the source with --name (the S20 FE's partition
+# named vibeos, 2026-11-24); the source before it gives d108d33d, the 0.1.3 zips', and before that ead00bed, the
+# 11-22 and 11-23 system zips', and 1370fac's fe0cd129, the first 0.1.3 one's)
 same() {	# FILE SUM16 WHAT
 	[ "$(sha256sum < "$1" | cut -c1-16)" = "$2" ] && return 0
-	[ -z "${STRICT:-}" ] || { echo "$3 is not the 0.1.3 zips' ($2)" >&2; exit 1; }
-	echo "build-zips: note: $3 differs from the 0.1.3 zips' ($2)" >&2
+	[ -z "${STRICT:-}" ] || { echo "$3 is not the release's ($2)" >&2; exit 1; }
+	echo "build-zips: note: $3 differs from the release's ($2)" >&2
 }
 UB=${UPDATE_BINARY:-$T/zip/update-binary}
 [ -s "$UB" ] || { echo "no $UB: image/get-update-binary.sh LINEAGEOS.zip makes it" >&2; exit 1; }
@@ -42,7 +43,7 @@ system)
 	VP=${VIBEOS_PART:-$T/src/s10e-part}
 	[ -s "$VP" ] || { echo "no $VP: make -C image/src" >&2; exit 1; }
 	cp "$VP" "$W/vibeos-part"
-	same "$W/vibeos-part" d108d33dd19bfd05 vibeos-part
+	same "$W/vibeos-part" a97b9da397761cb6 vibeos-part
 	# rootfs.img in parts of CHUNK_MB (1 GiB): LineageOS's updater cannot extract an entry of 4 GiB or more (32-bit
 	# ZipEntry), and the image is bigger than that. install.sh chunks maps each part's place; the updater writes it
 	CB=$((${CHUNK_MB:-1024} * 1048576))
