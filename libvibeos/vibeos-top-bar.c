@@ -85,9 +85,12 @@ natural (GtkWidget *widget, int *width, int *height)
   gtk_widget_measure (widget, GTK_ORIENTATION_VERTICAL, *width, &unused, height, NULL, NULL);
 }
 
+/* x from the start: the left, or in a right-to-left language the right of the bar (bar wide) */
 static void
-put (GtkWidget *child, double x, double y, int width, int height)
+put (GtkWidget *child, int bar, double x, double y, int width, int height)
 {
+  if (gtk_widget_get_direction (child) == GTK_TEXT_DIR_RTL)
+    x = bar - x - width;
   gtk_widget_allocate (child, width, height, -1, gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x, y)));
 }
 
@@ -111,20 +114,20 @@ vibeos_top_bar_size_allocate (GtkWidget *widget, int width, int height, int base
   GtkWidget *actions = self->selecting ? self->selection_actions : self->actions;
   double x = title_x (self), end;
 
-  put (self->back, BACK_CENTRE_X - d / 2.0, (bar - d) / 2.0, d, d);
+  put (self->back, width, BACK_CENTRE_X - d / 2.0, (bar - d) / 2.0, d, d);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->back), VIBEOS_RIPPLE_CIRCLE, d / 2.0);
-  put (self->close, BACK_CENTRE_X - BUTTON / 2.0, (bar - BUTTON) / 2.0, BUTTON, BUTTON);
+  put (self->close, width, BACK_CENTRE_X - BUTTON / 2.0, (bar - BUTTON) / 2.0, BUTTON, BUTTON);
 
   natural (actions, &w, &h);
   end = width - END_PAD - w;
-  put (actions, end, (bar - h) / 2.0, w, h);
+  put (actions, width, end, (bar - h) / 2.0, w, h);
   /* the other set of actions, hidden, keeps a place */
-  put (self->selecting ? self->actions : self->selection_actions, end, 0, 0, 0);
+  put (self->selecting ? self->actions : self->selection_actions, width, end, 0, 0, 0);
 
   w = MAX ((int) (end - x - 8), 0);
   natural (self->title, &h, &h);
   gtk_widget_measure (self->title, GTK_ORIENTATION_VERTICAL, w, &h, &h, NULL, NULL);
-  put (self->title, x, (bar - h) / 2.0, w, h);
+  put (self->title, width, x, (bar - h) / 2.0, w, h);
 }
 
 static void
