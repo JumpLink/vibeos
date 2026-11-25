@@ -3,6 +3,7 @@
 // off, Agent missing, power and volume up for the power menu (together, or one held and the other pressed later, with
 // Agent listening already), power and volume down for a screenshot (only together), a volume key on its own, and the
 // double press. Agent is this test, on the test's own bus: the "hold" and "hold-cancel" actions it is sent are checked.
+// Then a tablet's cover, as UPower's LidIsClosed: UPower is this test too, on the test's bus as the system bus.
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import System from 'system';
@@ -31,6 +32,14 @@ const FEEDBACK_IFACE = `<node>
   </interface>
 </node>`;
 
+const UPOWER_IFACE = `<node>
+  <interface name="org.freedesktop.UPower">
+    <property name="LidIsPresent" type="b" access="read"/>
+    <property name="LidIsClosed" type="b" access="read"/>
+    <property name="OnBattery" type="b" access="read"/>
+  </interface>
+</node>`;
+
 const AGENT = 'vibeos.Agent.desktop';
 let holds = [];
 let oldAgent = false;            // an Agent from before "hold-cancel": it refuses that action
@@ -42,6 +51,30 @@ const feedback = Gio.DBusExportedObject.wrapJSObject(FEEDBACK_IFACE, {
         return 0;
     },
 });
+// UPower: a cover's switch, and a property beside it that is not the cover's
+const lid = {LidIsPresent: true, LidIsClosed: false, OnBattery: true};
+const upower = Gio.DBusExportedObject.wrapJSObject(UPOWER_IFACE, {
+    get LidIsPresent() {
+        return lid.LidIsPresent;
+    },
+    get LidIsClosed() {
+        return lid.LidIsClosed;
+    },
+    get OnBattery() {
+        return lid.OnBattery;
+    },
+});
+function setUPower(name, value) {
+    lid[name] = value;
+    upower.emit_property_changed(name, GLib.Variant.new_boolean(value));
+}
+// GNOME Shell's connectObject and disconnectObject (misc/signalTracker.js), on a proxy as far as power.js uses them
+Gio.DBusProxy.prototype.connectObject = function (signal, handler) {
+    (this._testIds ??= []).push(this.connect(signal, handler));
+};
+Gio.DBusProxy.prototype.disconnectObject = function () {
+    (this._testIds ?? []).splice(0).forEach(id => this.disconnect(id));
+};
 const unpack = v => (v instanceof GLib.Variant ? v.deepUnpack() : v);
 const agent = Gio.DBusExportedObject.wrapJSObject(AGENT_IFACE, {
     Activate() {},
@@ -109,6 +142,20 @@ function phone({locked = false, holdAgent = true, agentInstalled = true, asleep 
         state.apps.set(AGENT, {get_id: () => AGENT});
     holds = [];
     return {power, menu, chord, service};
+}
+
+// a Power watching the cover as its constructor starts it, its sleeps and wakes listed with their reasons
+async function covered() {
+    const t = phone();
+    const acted = [];
+    t.power.goToSleep = reason => acted.push(`sleep ${reason}`);
+    t.power.wakeUp = reason => acted.push(`wake ${reason}`);
+    t.power._watchCover();
+    await wait(300);
+    return {power: t.power, acted, stop() {
+        t.power._coverCancellable.cancel();
+        t.power._upower?.disconnectObject(t.power);
+    }};
 }
 
 const press = p => p._powerKey(true, 0);
@@ -285,10 +332,40 @@ async function main() {
     await wait(150);
     check('double press: the app, and its held second press starts no Agent',
         [t.power.slept, t.power.woke, t.service.launched, holds, t.menu.opened], [1, 1, [AGENT], [], 0]);
+
+    let c = await covered();
+    check('cover open at the start: nothing', c.acted, []);
+    setUPower('LidIsClosed', true);
+    await wait(200);
+    check('cover closed: the screen goes to sleep as by the power key', c.acted, ['sleep cover']);
+    setUPower('OnBattery', false);
+    await wait(200);
+    check('another of UPower\'s properties: nothing', c.acted, ['sleep cover']);
+    setUPower('LidIsClosed', false);
+    await wait(200);
+    check('cover opened: the screen wakes', c.acted, ['sleep cover', 'wake cover']);
+    c.stop();
+
+    setUPower('LidIsClosed', true);
+    c = await covered();
+    check('cover closed at the start: nothing', c.acted, []);
+    setUPower('LidIsClosed', false);
+    await wait(200);
+    check('then opened: the screen wakes', c.acted, ['wake cover']);
+    c.stop();
+
+    setUPower('LidIsPresent', false);
+    c = await covered();
+    setUPower('LidIsClosed', true);
+    await wait(200);
+    check('no cover (LidIsPresent false): LidIsClosed does nothing', c.acted, []);
+    c.stop();
 }
 
 agent.export(Gio.DBus.session, '/vibeos/Agent');
 feedback.export(Gio.DBus.session, '/org/sigxcpu/Feedback');
+upower.export(Gio.DBus.session, '/org/freedesktop/UPower');
+Gio.bus_own_name_on_connection(Gio.DBus.session, 'org.freedesktop.UPower', Gio.BusNameOwnerFlags.NONE, null, null);
 Gio.bus_own_name_on_connection(Gio.DBus.session, 'org.sigxcpu.Feedback', Gio.BusNameOwnerFlags.NONE, null, null);
 const loop = new GLib.MainLoop(null, false);
 Gio.bus_own_name_on_connection(Gio.DBus.session, 'vibeos.Agent', Gio.BusNameOwnerFlags.NONE, () => {

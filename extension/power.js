@@ -169,6 +169,7 @@ export class Power extends Signals.EventEmitter {
         this._checkDocked();
         keyguard.connectObject('changed', () => this._syncTimeout(), this);
 
+        this._watchCover();
         this._exportScreenSaver();
         this._syncTimeout();
     }
@@ -531,6 +532,43 @@ export class Power extends Signals.EventEmitter {
         }
     }
 
+    // --- the cover
+
+    // A cover's lid switch (gpio-keys SW_LID: the Xiaomi Pad 5's hall sensor, the Galaxy Tab S5e's book cover) as
+    // Android has it: closed, the screen goes to sleep and locks as by the power key; opened, it wakes to the lock
+    // screen. logind leaves the lid alone (session/logind.conf.d/vibeos-lid.conf), so a cover never asks for a
+    // suspend. UPower follows the switch; the state the shell starts in is taken as it is, and only a change acts.
+    _watchCover() {
+        this._coverClosed = false;
+        this._coverCancellable = new Gio.Cancellable();
+        Gio.DBusProxy.new(Gio.DBus.system, Gio.DBusProxyFlags.NONE, null, 'org.freedesktop.UPower',
+            '/org/freedesktop/UPower', 'org.freedesktop.UPower', this._coverCancellable, (o, res) => {
+                try {
+                    this._upower = Gio.DBusProxy.new_finish(res);
+                } catch (e) {
+                    if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                        logError(e, 'vibeos: the cover (UPower)');
+                    return;
+                }
+                this._coverClosed = this._upower.get_cached_property('LidIsClosed')?.unpack() ?? false;
+                this._upower.connectObject('g-properties-changed', () => this._syncCover(), this);
+            });
+    }
+
+    _syncCover() {
+        if (!this._upower.get_cached_property('LidIsPresent')?.unpack())
+            return;
+        const closed = this._upower.get_cached_property('LidIsClosed')?.unpack() ?? false;
+        if (closed === this._coverClosed)
+            return;
+        this._coverClosed = closed;
+        log(`vibeos: the cover ${closed ? 'closed' : 'opened'}`);
+        if (closed)
+            this.goToSleep('cover');
+        else
+            this.wakeUp('cover');
+    }
+
     // --- org.gnome.ScreenSaver: active while the screen is asleep
 
     _exportScreenSaver() {
@@ -649,6 +687,9 @@ export class Power extends Signals.EventEmitter {
         this._keyguard.disconnectObject(this);
         geometry.disconnectObject(this);
         this._keys.destroy();
+        this._coverCancellable?.cancel();
+        this._upower?.disconnectObject(this);
+        this._upower = null;
         if (this._nameId)
             Gio.bus_unown_name(this._nameId);
         this._dbus?.unexport();
