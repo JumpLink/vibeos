@@ -590,6 +590,23 @@ s20)
 	sed -i 's/\.o$/.ko/; s|^|kernel/|' "$MS/modules.order"
 	# the sensor hub's driver is built in that tree (the phone's updates/bcm4775-shub.ko is the same module, 11-24)
 	[ -f "$MS/kernel/drivers/iio/common/bcm4775_shub/bcm4775-shub.ko" ] || { echo "$KB builds no bcm4775-shub.ko" >&2; exit 1; }
+	# S20_SHUB_KO: the sensor hub's driver the phone runs, byte for byte, in the tree's module's place (0.1.4.3:
+	# linux-r8s-gnss 45d57acf, the GNSS engine as /dev/bcm4775-gnss; the S20's loaded module had its build ID and
+	# its sensors worked, 2026-11-25). Built against this kernel: its vermagic, and every symbol CRC it asks for is
+	# KB's Module.symvers's
+	if [ -n "${S20_SHUB_KO:-}" ]; then
+		MI=$(command -v modinfo || echo /sbin/modinfo)
+		[ "$("$MI" -F vermagic "$S20_SHUB_KO" | cut -d' ' -f1)" = "$KVER" ] || { echo "$S20_SHUB_KO: not built for $KVER" >&2; exit 1; }
+		/sbin/modprobe --dump-modversions "$S20_SHUB_KO" | awk '{print $2, $1}' | LC_ALL=C sort > "$W/shub-crcs.txt"
+		awk '{print $2, $1}' "$KB/Module.symvers" | LC_ALL=C sort > "$W/kb-crcs.txt"
+		[ -z "$(LC_ALL=C join -a1 "$W/shub-crcs.txt" "$W/kb-crcs.txt" | awk 'NF != 3 || $2 != $3')" ] ||
+			{ echo "$S20_SHUB_KO: a symbol CRC that $KB/Module.symvers does not have" >&2; exit 1; }
+		install -m 644 "$S20_SHUB_KO" "$MS/kernel/drivers/iio/common/bcm4775_shub/bcm4775-shub.ko"
+		log "bcm4775-shub.ko <- $S20_SHUB_KO ($(sha256sum < "$S20_SHUB_KO" | cut -c1-16), build ID $(readelf -n "$S20_SHUB_KO" | sed -n 's/.*Build ID: //p'); $(wc -l < "$W/shub-crcs.txt") symbol CRCs = KB's)"
+		rm -f "$W/shub-crcs.txt" "$W/kb-crcs.txt"
+	else
+		log "bcm4775-shub.ko: S20_KBUILD's own (no S20_SHUB_KO: $(strings "$MS/kernel/drivers/iio/common/bcm4775_shub/bcm4775-shub.ko" | grep -q bcm4775-gnss && echo with || echo without) /dev/bcm4775-gnss)"
+	fi
 	modules "$KVER" "$W/modstage/lib/modules"
 	# Wi-Fi (QCA6390, ath11k): linux-firmware's amss.bin and m3.bin, and Samsung's board file (the stock vendor
 	# image's /firmware/qca6390/bdwlan.elf) as board.bin; no board-2.bin, which ath11k would read first. The phone's

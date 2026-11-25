@@ -66,6 +66,9 @@ S20_KBUILD=				# its release kernel's build directory (O=: Image, modules, kerne
 S20_BOOT=				# its boot image, s20/make-boot.sh's (build-device checks it with s20/check-boot.py)
 S20_SHUB=				# the sensor hub's bcm4775b1-shub-r8s.patch (3b2a01e5): the C strings of LineageOS's
 					# universal9830 kernel, lineage-24.0 97369af7, drivers/sensorhub/brcm/bbdpl/r_os/bbd_patch_file_r8.h
+S20_SHUB_KO=				# bcm4775-shub.ko as the phone runs it (linux-r8s-gnss 45d57acf: the GNSS engine as
+					# /dev/bcm4775-gnss), built against S20_KBUILD, in place of that tree's own; checked: its vermagic and
+					# every symbol CRC. Unset, the package has the tree's module, without the GNSS device
 # DEVICE_VERSION=			# a device package's version instead of the system image's (SYSIMG)
 NABU_STAGE=				# Xiaomi Pad 5: device stage (root/, debs/ with debs.sha256, firmware.txt)
 NABU_MODULES=				# its kernel build's modules_install tree (lib/modules)
