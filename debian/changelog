@@ -41,6 +41,10 @@ vibeos (1:0.1.5) unstable; urgency=medium
     core no longer drops a car's or headset's link before each sleep (that
     a link lasts through the sleep is not yet verified), and the sensor hub
     has its GNSS device (no position fix yet).
+  * Camera opens without starting the video encoder. The first Record
+    press after an install or an update measures it, says "Preparing
+    video…" and then records; until then Video previews at the photo size
+    and Camera's video quality settings stay hidden.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
