@@ -361,6 +361,30 @@ License: GPL-3+
 Comment:
  hexagonrpc's upstream pull request #27, unchanged.
 
+Files: patches/u-boot-*/*.patch
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: GPL-2+ and GPL-2 and (GPL-2 or BSD-3-clause) and (GPL-2 or BSD-2-clause)
+Comment:
+ Changes to U-Boot, each under the licence of the files it changes (their
+ SPDX lines): GPL-2.0-or-later; GPL-2.0 (exynos-mobile.c, the S20 FE's board
+ Makefile and exynos990-r8s-u-boot.dtsi, exynos9820-tmu.dtsi, the 32x64
+ console font); GPL-2.0 OR BSD-3-Clause (the Exynos 9820 devicetree files);
+ GPL-2.0-only OR BSD-2-Clause (the Exynos 9820 clock dt-bindings header).
+
+Files: patches/u-boot-s20/shim/*
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: GPL-2+
+Comment:
+ The S20 FE's shim in front of U-Boot and the script that builds it.
+
+Files: patches/u-boot-s5e/0004-video-the-Debian-swirl-as-the-logo.patch
+       patches/u-boot-poco/0003-video-the-Debian-swirl-as-the-logo.patch
+Copyright: 1999 Software in the Public Interest, Inc., and others
+License: LGPL-3+
+Comment:
+ The Debian Open Use Logo (the swirl) as U-Boot's boot logo. Debian offers it
+ under the LGPL-3.0-or-later or, at your option, CC BY-SA 3.0 Unported.
+
 License: Expat
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -556,6 +580,47 @@ License: BSD-2-clause
  2. Redistributions in binary form must reproduce the above copyright notice,
     this list of conditions and the following disclaimer in the documentation
     and/or other materials provided with the distribution.
+ .
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ POSSIBILITY OF SUCH DAMAGE.
+
+License: GPL-2
+ This program is free software; you can redistribute it and/or modify it
+ under the terms of the GNU General Public License version 2 as published by
+ the Free Software Foundation.
+ .
+ On Debian systems, the complete text of the GNU General Public License
+ version 2 can be found in "/usr/share/common-licenses/GPL-2".
+
+License: LGPL-3+
+ This library is free software; you can redistribute it and/or modify it
+ under the terms of the GNU Lesser General Public License as published by the
+ Free Software Foundation; either version 3 of the License, or (at your
+ option) any later version.
+ .
+ On Debian systems, the complete text of the GNU Lesser General Public
+ License version 3 can be found in "/usr/share/common-licenses/LGPL-3".
+
+License: BSD-3-clause
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+ 1. Redistributions of source code must retain the above copyright notice,
+    this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright notice,
+    this list of conditions and the following disclaimer in the documentation
+    and/or other materials provided with the distribution.
+ 3. Neither the name of the copyright holder nor the names of its
+    contributors may be used to endorse or promote products derived from this
+    software without specific prior written permission.
  .
  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE

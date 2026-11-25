@@ -1,0 +1,31 @@
+From 794cce50c8cbfb9164614b07de05d8a542059eab Mon Sep 17 00:00:00 2001
+From: pulpoff <pashkovsky@gmail.com>
+Date: Wed, 25 Nov 2026 17:32:57 +0100
+Subject: [PATCH 2/5] video: simplefb: take the framebuffer from a
+ memory-region
+
+The binding also allows the framebuffer to be a reserved-memory node
+(memory-region) instead of a reg of its own. Fall back to that node's
+reg when the simple-framebuffer node has none.
+---
+ drivers/video/simplefb.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/drivers/video/simplefb.c b/drivers/video/simplefb.c
+index 239b006744d..ef2830171de 100644
+--- a/drivers/video/simplefb.c
++++ b/drivers/video/simplefb.c
+@@ -22,6 +22,13 @@ static int simple_video_probe(struct udevice *dev)
+ 	u32 width, height, rot;
+ 
+ 	base = dev_read_addr_size(dev, &size);
++	if (base == FDT_ADDR_T_NONE) {
++		/* The binding also allows the framebuffer as a memory-region (reserved-memory) */
++		ofnode mem = ofnode_parse_phandle(node, "memory-region", 0);
++
++		if (ofnode_valid(mem))
++			base = ofnode_get_addr_size(mem, "reg", &size);
++	}
+ 	if (base == FDT_ADDR_T_NONE) {
+ 		debug("%s: Failed to decode memory region\n", __func__);
+ 		return -EINVAL;

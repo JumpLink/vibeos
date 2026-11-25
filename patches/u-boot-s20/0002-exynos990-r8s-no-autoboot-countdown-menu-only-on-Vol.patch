@@ -1,0 +1,28 @@
+From c9cb216cb97f0e7d4646dc9fc7165e9f04d74b08 Mon Sep 17 00:00:00 2001
+From: pulpoff <pashkovsky@gmail.com>
+Date: Tue, 17 Nov 2026 20:59:12 +0100
+Subject: [PATCH 2/5] exynos990-r8s: no autoboot countdown, menu only on Volume
+ Down
+
+A key pressed during "Hit any key to stop autoboot" left the U-Boot
+prompt, which three buttons can't drive. bootdelay=-2 boots without
+checking for a key; the menu comes only from holding Volume Down
+(button_cmd_0) and waits for a choice (bootmenu_delay=-1).
+"Restart" is a plain restart: mainline again unless Volume Down is held.
+---
+ board/samsung/exynos-mobile/exynos990-r8s.env | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/board/samsung/exynos-mobile/exynos990-r8s.env b/board/samsung/exynos-mobile/exynos990-r8s.env
+index 3f2ba587bef..3e05867215b 100644
+--- a/board/samsung/exynos-mobile/exynos990-r8s.env
++++ b/board/samsung/exynos-mobile/exynos990-r8s.env
+@@ -52,7 +52,7 @@ bootcmd=run r8s_boot; echo "r8s: boot failed"; bootmenu
+ bootmenu_0=Mainline Linux (bundled)=run r8s_boot
+ bootmenu_1=Lineage Recovery=run reboot_recovery
+ bootmenu_2=Download mode=run reboot_download
+-bootmenu_3=Restart (this menu again)=run reboot_uboot
++bootmenu_3=Restart=run reboot_uboot
+ bootmenu_4=Power off=run r8s_poweroff
+ bootmenu_5=U-Boot console=echo "type: bootmenu"
+ 

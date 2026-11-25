@@ -1,0 +1,92 @@
+From c9e5704a0a02e436800fe7e33fb8dead94c5fdb1 Mon Sep 17 00:00:00 2001
+From: pulpoff <pashkovsky@gmail.com>
+Date: Wed, 25 Nov 2026 17:33:03 +0100
+Subject: [PATCH 5/5] qualcomm: the Galaxy Tab S5e (gts4lvwifi) configuration
+ and environment
+
+U-Boot sits at the start of the recovery partition, followed by two
+Android boot images (LineageOS's recovery and Linux). Quiet boot: no
+framebuffer clear, Samsung's splash stays until the menu is asked for
+(Volume Down). gts4lv.config is the Kconfig fragment, gts4lv.env the
+default environment it names.
+---
+ board/qualcomm/gts4lv.config | 10 +++++++
+ board/qualcomm/gts4lv.env    | 52 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 62 insertions(+)
+ create mode 100644 board/qualcomm/gts4lv.config
+ create mode 100644 board/qualcomm/gts4lv.env
+
+diff --git a/board/qualcomm/gts4lv.config b/board/qualcomm/gts4lv.config
+new file mode 100644
+index 00000000000..24ae0ca133b
+--- /dev/null
++++ b/board/qualcomm/gts4lv.config
+@@ -0,0 +1,10 @@
++# Samsung Galaxy Tab S5e (gts4lvwifi): U-Boot in the recovery partition, Linux as a FIT
++# further into it (see gts4lv.env). Quiet: Samsung's splash stays until the menu is asked for.
++CONFIG_ENV_DEFAULT_ENV_TEXT_FILE="board/qualcomm/gts4lv.env"
++CONFIG_NO_FB_CLEAR=y
++# The menu's Android entry clears the bootloader message in misc.
++CONFIG_CMD_BCB=y
++CONFIG_CMD_POWEROFF=y
++CONFIG_CMD_SETEXPR=y
++CONFIG_CMD_FDT=y
++CONFIG_CMD_PART=y
+diff --git a/board/qualcomm/gts4lv.env b/board/qualcomm/gts4lv.env
+new file mode 100644
+index 00000000000..03168edd560
+--- /dev/null
++++ b/board/qualcomm/gts4lv.env
+@@ -0,0 +1,52 @@
++# Samsung Galaxy Tab S5e (gts4lvwifi). Samsung's bootloader starts the recovery partition while
++# the bootloader message in "misc" says boot-recovery (Debian keeps it so), and the boot
++# partition (LineageOS) otherwise. U-Boot sits at the start of the recovery partition, followed
++# by two Android boot images (header v2, DTB inside): LineageOS's own recovery at 4 MiB and
++# Linux at 34 MiB. Hold Volume Down while it starts for the menu.
++
++bootdelay=0
++bootretry=1
++stdin=serial,button-kbd
++stdout=serial
++stderr=serial
++show_console=setenv stdout serial,vidconsole; setenv stderr serial,vidconsole
++
++fastboot=fastboot -l $fastboot_addr_r usb 0
++
++# load_aimg: read the boot image ${img_off} blocks into the recovery partition to ${loadaddr}.
++# The header gives its size: kernel, ramdisk and DTB, plus up to four 4 KiB pages of header and
++# padding.
++load_aimg=mmc dev 0 && part start mmc 0 recovery rec_start && setexpr img_blk ${rec_start} + ${img_off} && mmc read ${loadaddr} ${img_blk} 8 && setexpr a ${loadaddr} + 0x8 && setexpr.l img_n *${a} && setexpr a ${loadaddr} + 0x10 && setexpr.l s *${a} && setexpr img_n ${img_n} + ${s} && setexpr a ${loadaddr} + 0x670 && setexpr.l s *${a} && setexpr img_n ${img_n} + ${s} && setexpr img_n ${img_n} + 0x4000 && setexpr img_n ${img_n} / 0x200 && mmc read ${loadaddr} ${img_blk} ${img_n}
++
++# Linux: the command line is ours alone, not Samsung's bootloader's.
++linux_args=console=tty0 fbcon=vc:2-63 logo.nologo vt.global_cursor_default=0 splash quiet loglevel=3 systemd.show_status=auto rd.udev.log_level=3 printk.devkmsg=on clk_ignore_unused regulator_ignore_unused fw_devlink.sync_state=timeout panic=10 ath.regdomain=DE cfg80211.ieee80211_regdom=DE
++linux=setenv img_off 0x11000 && run load_aimg && setenv bootargs ${linux_args} ${linux_extra} && bootm ${loadaddr}
++# The rescue entry stays in the initramfs (gts4lv.stay) and opens its root shells over USB (gts4lv.debug:
++# telnet and SSH on 172.16.42.1, a serial console), which no other boot does.
++linux_rescue=setenv linux_extra gts4lv.stay gts4lv.debug; run linux
++
++# LineageOS recovery: the DTB is the stock one with the board's overlay (dtbo index 3) already
++# applied, and the command line is the image's own plus the androidboot.* parameters Samsung's
++# bootloader gave U-Boot, which LineageOS reads.
++lineage_recovery=setenv img_off 0x2000 && run load_aimg && fdt addr ${fdtcontroladdr} && fdt get value bootargs /chosen bootargs && bootm ${loadaddr}
++
++# Android: clear the bootloader message and restart; Samsung's bootloader then starts LineageOS,
++# which stays the default until "Restart -> Recovery" there, or Volume Up + Power at power-on.
++android=bcb load mmc 0 misc && bcb clear command && bcb store && reset
++
++bootcmd=run linux; run show_console; pause; run menucmd
++menucmd=run show_console; setenv bootcmd run menucmd; bootmenu -1
++
++bootmenu_0=Linux (Debian)=run linux; pause
++bootmenu_1=Android (LineageOS)=run android; pause
++bootmenu_2=Android recovery (LineageOS)=run lineage_recovery; pause
++bootmenu_3=Linux: rescue shell in the initramfs=run linux_rescue; pause
++bootmenu_4=Enable fastboot mode=run fastboot
++bootmenu_5=Enable USB mass storage=echo "Press any key to exit UMS mode"; ums 0 mmc 0
++bootmenu_6=Enable serial console gadget=setenv stdin serial,button-kbd,usbacm; setenv stdout serial,vidconsole,usbacm; setenv stderr serial,vidconsole,usbacm; setenv bootretry -1; echo Enabled U-Boot console serial gadget
++bootmenu_7=Drop to shell=setenv bootretry -1
++bootmenu_8=Reset device=reset
++bootmenu_9=Power off=poweroff
++
++button_cmd_0_name=Volume Down
++button_cmd_0=run menucmd

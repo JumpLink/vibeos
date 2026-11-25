@@ -1,0 +1,54 @@
+From 4b4ab6cc42d5b14d47bac8e90142374a6bb52ba0 Mon Sep 17 00:00:00 2001
+From: pulpoff <pashkovsky@gmail.com>
+Date: Wed, 25 Nov 2026 17:36:02 +0100
+Subject: [PATCH 2/4] video: the splash: black out ABL's logos and centre the
+ Debian swirl
+
+ABL leaves its unlocked padlock at the top, the POCO logo in the middle
+and "Powered by android" at the bottom (CONFIG_NO_FB_CLEAR keeps them).
+Black them out and put the swirl where the POCO logo was, 70 px above the
+middle of the screen, so the kernel's fbdev and Plymouth carry one
+picture on.
+---
+ drivers/video/video-uclass.c | 21 ++++++++++++++++++++-
+ 1 file changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/video/video-uclass.c b/drivers/video/video-uclass.c
+index 53641fc28b6..637be8e5fc0 100644
+--- a/drivers/video/video-uclass.c
++++ b/drivers/video/video-uclass.c
+@@ -16,6 +16,9 @@
+ #include <spl.h>
+ #include <stdio_dev.h>
+ #include <video.h>
++#include <splash.h>
++#include <asm/unaligned.h>
++#include <bmp_layout.h>
+ #include <video_console.h>
+ #include <asm/cache.h>
+ #include <asm/global_data.h>
+@@ -597,7 +600,23 @@ static int show_splash(struct udevice *dev)
+ 	u8 *data = SPLASH_START(u_boot_logo);
+ 	int ret;
+ 
+-	ret = video_bmp_display(dev, map_to_sysmem(data), -4, 4, true);
++	/*
++	 * poco: ABL leaves its unlocked padlock at the top, POCO in the middle and "Powered by android" at the bottom (CONFIG_NO_FB_CLEAR keeps
++	 * them). Black them out and put Debian's swirl (200x200) where POCO was, centred on it: 70 px above the
++	 * middle; "Powered by android" at the bottom goes too. The kernel's fbdev and plymouth carry this picture on.
++	 */
++	{
++		struct video_priv *vpriv = dev_get_uclass_priv(dev);
++		struct bmp_image *bmp = (struct bmp_image *)data;
++		int h = get_unaligned_le32(&bmp->header.height);
++		int mx = vpriv->xsize / 2, my = vpriv->ysize / 2;
++
++		video_fill_part(dev, mx - 100, 90, mx + 100, 210, 0);		/* padlock: rows 125-174 */
++		video_fill_part(dev, mx - 190, my - 150, mx + 190, my + 10, 0);	/* POCO: rows 1090-1171 */
++		video_fill_part(dev, mx - 60, my + 140, mx + 60, my + 260, 0);	/* an older U-Boot's small swirl */
++		video_fill_part(dev, mx - 160, vpriv->ysize - 300, mx + 160, vpriv->ysize - 180, 0); /* Powered by android: rows 2123-2194 */
++		ret = video_bmp_display(dev, map_to_sysmem(data), BMP_ALIGN_CENTER, my - 70 - h / 2, true);
++	}
+ 
+ 	return 0;
+ }
