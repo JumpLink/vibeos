@@ -64,6 +64,13 @@ EOF
 	printf 'PRETTY_HOSTNAME="%s"\nCHASSIS=handset\nHARDWARE_VENDOR=%s\nHARDWARE_MODEL="%s"\n' "$2" "$3" "$4" |
 		install -D -m 644 /dev/stdin "$P/usr/share/vibeos-device/machine-info"
 }
+# video CODECS: the codecs Video Player decodes on the device's V4L2 decoder ([Video] hwdec-codecs, mpv's names);
+# the others are decoded in software. Only codecs seen to play cleanly there, a second film opening fine after
+# the first: a decoder that takes a codec and then fails leaves the film broken, or the decoder stuck until a reboot
+video() {
+	printf '%s\n' "# Video Player: the codecs this device's hardware decoder plays cleanly (mpv's names); the others are" \
+		"# decoded in software" "[Video]" "hwdec-codecs=$1" | install -D -m 644 /dev/stdin "$P/usr/share/vibeos-device/video.conf"
+}
 # repack PKG: a .deb of PKG as the mounted k22 root ($KR) has it installed: its status stanza as the control file,
 # its files from its .list, each checked against its .md5sums (for a Debian version the archive no longer has)
 repack() {
@@ -184,6 +191,7 @@ s10e)
 	install -D -m 644 "$T/s10e/s10e-wifi-revive.service" "$P/etc/systemd/system/s10e-wifi-revive.service"
 	install -d -m 700 "$P/var/lib/exynos-cp"; install -d "$P/var/lib/s10e"
 	identity s10e "Galaxy S10e" Samsung "Galaxy S10e"
+	video h264,hevc		# MFC; VP9 not tried yet
 	enable exynos-modem.service s10e-sleepd.service s10e-gpu-load.service s10e-touch-bind.service \
 		s10e-bt-addr.service s10e-arm-reset.service s10e-boot-ok.service s10e-usb-net.service s10e-usb-watch.service \
 		s10e-firstboot.service s10e-dp-audio.service s10e-cec-recheck.timer s10e-wifi-revive.service
@@ -269,6 +277,7 @@ poco)
 	! grep -rl -E 'reboot-param|surya-boot-android' "$P/etc" "$P/usr/local" "$P/usr/lib/systemd" 2>/dev/null ||
 		{ echo "the POCO stage still names a reboot parameter or the Android restart" >&2; exit 1; }
 	identity poco "POCO X3 NFC" Xiaomi "POCO X3 NFC"
+	video h264,hevc		# venus; VP9 fails with decode errors and half the frames
 	DEPS="gdisk, cloud-guest-utils, hexagonrpcd, rmtfs, qrtr-tools, tqftpserv, qcom-phone-utils"
 	# the extra Debian/Mobian packages (k22 versions, fetched by build-system.sh) and the POCO's own builds
 	[ -n "${TEST_OUT:-}" ] || cp $O/work/downloads/poco/*.deb "$W/debs/"
@@ -379,6 +388,7 @@ s5e)
 		enable "$u"
 	done
 	identity gts4lv "Galaxy Tab S5e" Samsung "Galaxy Tab S5e"
+	video h264,hevc		# venus; VP9 is not offered (software), 10-bit HEVC neither
 	DEPS="hexagonrpcd, rmtfs, qrtr-tools, tqftpserv"
 	[ -n "${TEST_OUT:-}" ] || cp $O/work/downloads/s5e/*.deb "$W/debs/"
 	cp "$ST"/debs/*.deb "$W/debs/"
@@ -536,6 +546,7 @@ s20)
 	mask console-setup.service keyboard-setup.service exim4.service lm-sensors.service systemd-binfmt.service \
 		proc-sys-fs-binfmt_misc.automount proc-sys-fs-binfmt_misc.mount
 	identity r8s "Galaxy S20 FE" Samsung "Galaxy S20 FE"
+	video h264,hevc		# MFC; VP9 not tried yet
 	cp "$G/out/boot-r8s-ub13.img" "$W/boot/boot-r8s-ub13.img"
 	[ "$(sha256sum < "$W/boot/boot-r8s-ub13.img" | cut -c1-16)" = 4a82c5e3c5db7ab4 ] || { echo "ub13 is not 4a82c5e3" >&2; exit 1; }
 	# the power-on logo, which s20-install-from-pc.sh puts into up_param as the S10e's device zip does: src/s10e-logo

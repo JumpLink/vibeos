@@ -1111,7 +1111,12 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
     mi = nura.machine_info or 'PRETTY_HOSTNAME="%s"\nCHASSIS=handset\n' % nura.di.get('name', dev)
     for path, body in (('usr/share/vibeos-device/hostname', host + '\n'), ('usr/share/vibeos-device/machine-info', mi),
                        ('usr/share/vibeos-device/nura/deviceinfo', nura.deviceinfo_text),
-                       ('usr/share/vibeos-device/nura/cmdline', cmd + '\n')):
+                       ('usr/share/vibeos-device/nura/cmdline', cmd + '\n'),
+                       # Video Player's codecs on the hardware decoder: H.264 and HEVC; VP9 wedged a Qualcomm iris
+                       # decoder until a reboot, so it stays in software
+                       ('usr/share/vibeos-device/video.conf',
+                        '# Video Player: the codecs this device\'s hardware decoder plays cleanly (mpv\'s names); the '
+                        'others are\n# decoded in software\n[Video]\nhwdec-codecs=h264,hevc\n')):
         os.makedirs(os.path.dirname(os.path.join(P, path)), exist_ok=True)
         open(os.path.join(P, path), 'w').write(body)
     debsdir = os.path.join(tmpw, 'debs')
