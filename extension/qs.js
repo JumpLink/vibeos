@@ -34,7 +34,7 @@ const ICON = 96;
 const LARGE_ICON = 84;                  // a wide tile's icon, centred on LARGE_ICON_CX
 const LARGE_ICON_CX = 108;
 const LARGE_TEXT_X = 210;               // a wide tile's labels, past its icon
-const TILE_RADIUS = 72;                 // an active tile's corners
+const TILE_RADIUS = 72;                 // every tile's corners, whatever its state
 const CONTENT_FADE_FROM = 0.43;         // QS content fades in over q 0.43..1, the footer over 0.9..1
 const FOOTER_FADE_FROM = 0.9;
 
@@ -43,7 +43,7 @@ const SLIDER_X = 48;
 const SLIDER_END = 837;
 const AUTO_X = 876;
 const TRACK_H = 120;
-const TRACK_RADIUS = 36;                // TRACK_INNER_RADIUS next to the thumb
+const TRACK_RADIUS = 36;                // TRACK_INNER_RADIUS next to the thumb; the button's corners too
 const TRACK_INNER_RADIUS = 6;
 const THUMB_W = 12;
 const THUMB_H = 156;
@@ -73,48 +73,44 @@ const CARRIER_FONT = font(14, 550);
 
 const CAP_HEIGHT = 0.73;                // cap height / em of the font (0.72-0.74)
 
-// A tablet's tiles are pills with the icon and the labels side by side, on an opaque scrim. On is a rounded rectangle
-// in the primary colour; off and unavailable are full pills.
+// Every tile in the shade is a rounded rectangle (TILE_RADIUS) whatever its state: only its colours change.
+// A tablet's tiles have the icon and the labels side by side, on an opaque scrim. On is the primary colour.
 const TABLET_TILE = [TabletShade.tile, 1];
 const TABLET_DIM = [Color.onSurfaceVariant, 0.38];
 const TABLET_TILE_COLORS = {
-    active: {bg: [Color.primary, 1], fg: [Color.onPrimary, 1], radius: TILE_RADIUS},
-    inactive: {bg: TABLET_TILE, fg: [Color.onSurface, 1], radius: TILE_H / 2},
-    unavailable: {bg: [TabletShade.unavailable, 1], fg: TABLET_DIM, radius: TILE_H / 2},
+    active: {bg: [Color.primary, 1], fg: [Color.onPrimary, 1]},
+    inactive: {bg: TABLET_TILE, fg: [Color.onSurface, 1]},
+    unavailable: {bg: [TabletShade.unavailable, 1], fg: TABLET_DIM},
 };
-// ... except Wi-Fi, Bluetooth and Do Not Disturb, whose icon sits on a target of its own: a rounded square in the
-// primary colour when on, a circle when off, on a pill that stays dark
+// ... except Wi-Fi, Bluetooth and Do Not Disturb, whose icon sits on a target of its own, a rounded square
+// (TABLET_TARGET_RADIUS) in the primary colour when on, on a tile that stays dark
 const TABLET_TARGET = 168;
 const TABLET_TARGET_INSET = 24;
 const TABLET_TARGET_RADIUS = 48;
 const TABLET_DUAL_COLORS = {
-    active: {bg: TABLET_TILE, fg: [Color.onSurface, 1], target: [Color.primary, 1], glyph: [Color.onPrimary, 1],
-        radius: TILE_H / 2, targetRadius: TABLET_TARGET_RADIUS},
+    active: {bg: TABLET_TILE, fg: [Color.onSurface, 1], target: [Color.primary, 1], glyph: [Color.onPrimary, 1]},
     inactive: {bg: TABLET_TILE, fg: [Color.onSurface, 1], target: [TabletShade.tileTarget, 1],
-        glyph: [Color.onSurface, 1], radius: TILE_H / 2, targetRadius: TABLET_TARGET / 2},
+        glyph: [Color.onSurface, 1]},
     unavailable: {bg: [TabletShade.unavailable, 1], fg: TABLET_DIM, target: [TabletShade.unavailable, 1],
-        glyph: TABLET_DIM, radius: TILE_H / 2, targetRadius: TABLET_TARGET / 2},
+        glyph: TABLET_DIM},
 };
 const DUAL_TARGET = new Set(['wifi', 'bluetooth', 'dnd']);
 const TABLET_TEXT_END = 24;             // the labels end this far from the tile's end
 
-// A phone's tiles are translucent over the blurred screen. The large ones are pills with the icon on a target of its
-// own (a rounded square in the primary colour when on, a translucent circle when off) and the labels past it; the
-// small ones show their icon only, a pill when off and a rounded square in the primary colour when on.
+// A phone's tiles are translucent over the blurred screen. The large ones have the icon on a target of its own (a
+// rounded square, in the primary colour when on, translucent when off) and the labels past it; the small ones show
+// their icon only, in the primary colour when on.
 const PHONE_TILE = SurfaceEffect[1];
 const PHONE_UNAVAILABLE = [Color.surface, 0.18];
 const PHONE_LARGE_COLORS = {
-    active: {bg: PHONE_TILE, fg: [Color.onSurface, 1], target: [Color.primary, 1], glyph: [Color.onPrimary, 1],
-        radius: TILE_H / 2, targetRadius: TABLET_TARGET_RADIUS},
-    inactive: {bg: PHONE_TILE, fg: [Color.onSurface, 1], target: SurfaceEffect[2], glyph: [Color.onSurface, 1],
-        radius: TILE_H / 2, targetRadius: TABLET_TARGET / 2},
-    unavailable: {bg: PHONE_UNAVAILABLE, fg: TABLET_DIM, target: [Color.surface, 0], glyph: TABLET_DIM,
-        radius: TILE_H / 2, targetRadius: TABLET_TARGET / 2},
+    active: {bg: PHONE_TILE, fg: [Color.onSurface, 1], target: [Color.primary, 1], glyph: [Color.onPrimary, 1]},
+    inactive: {bg: PHONE_TILE, fg: [Color.onSurface, 1], target: SurfaceEffect[2], glyph: [Color.onSurface, 1]},
+    unavailable: {bg: PHONE_UNAVAILABLE, fg: TABLET_DIM, target: [Color.surface, 0], glyph: TABLET_DIM},
 };
 const PHONE_SMALL_COLORS = {
-    active: {bg: [Color.primary, 1], fg: [Color.onPrimary, 1], radius: TILE_RADIUS},
-    inactive: {bg: PHONE_TILE, fg: [Color.onSurface, 1], radius: TILE_H / 2},
-    unavailable: {bg: PHONE_UNAVAILABLE, fg: TABLET_DIM, radius: TILE_H / 2},
+    active: {bg: [Color.primary, 1], fg: [Color.onPrimary, 1]},
+    inactive: {bg: PHONE_TILE, fg: [Color.onSurface, 1]},
+    unavailable: {bg: PHONE_UNAVAILABLE, fg: TABLET_DIM},
 };
 // a phone's tiles in their order: the large ones (the first two rows on the first pull), then the small ones
 const PHONE_LARGE = ['wifi', 'bluetooth', 'mobile', 'dnd'];
@@ -235,7 +231,7 @@ function placeCapCentered(text, x, capCenterY, sizePx) {
 
 const Tile = GObject.registerClass(
 class Tile extends St.Button {
-    // @kind: 'tablet', a tablet's pill tile; 'large', a phone's pill tile with a target; 'small', a phone's tile with
+    // @kind: 'tablet', a tablet's wide tile; 'large', a phone's wide tile with a target; 'small', a phone's tile with
     // only its icon. The layout sets its width (setWidthPx).
     constructor(spec, state, onActivated, kind) {
         const w = kind === 'small' ? TILE_W : 2 * TILE_W + ROW_GAP;
@@ -362,22 +358,19 @@ class Tile extends St.Button {
         const t = clamp(this._colorT, 0, 1), a = this._from, b = this._to;
         const colors = {bg: mixColor(a.bg, b.bg, t), fg: mixColor(a.fg, b.fg, t)};
         colors.glyph = mixColor(a.glyph ?? a.fg, b.glyph ?? b.fg, t);
-        colors.radius = lerp(a.radius, b.radius, t);
-        if (a.target) {
+        if (a.target)
             colors.target = mixColor(a.target, b.target, t);
-            colors.targetRadius = lerp(a.targetRadius, b.targetRadius, t);
-        }
         return colors;
     }
 
     _applyStyle() {
-        const {bg, fg, glyph = fg, radius = TILE_RADIUS, target, targetRadius} = this._colors();
-        const r = px(radius).toFixed(2);
+        const {bg, fg, glyph = fg, target} = this._colors();
+        const r = px(TILE_RADIUS).toFixed(2);
         this.style = `background-color: ${colorStyle(bg)}; border-radius: ${r}px;`;
         this._highlight.style = `background-color: ${rgba(Color.onSurface, 0.15)}; border-radius: ${r}px;`;
         if (this._target) {
             this._target.style = `background-color: ${colorStyle(target)}; ` +
-                `border-radius: ${px(targetRadius).toFixed(2)}px;`;
+                `border-radius: ${px(TABLET_TARGET_RADIUS).toFixed(2)}px;`;
         }
         this._icon.setColor(glyph[0], glyph[1]);
         if (this.wide) {
@@ -465,7 +458,7 @@ class LevelSlider extends St.Widget {
         pan.connect('cancel', () => this._endDrag());
         this._track.add_action(pan);
 
-        // the button: a circle when off, a rounded square when on
+        // the button: a rounded square, in the primary colour when on
         this._auto = new St.Button({
             x: px(AUTO_X), y: px((THUMB_H - AUTO_SIZE) / 2), width: px(AUTO_SIZE), height: px(AUTO_SIZE),
             reactive: true, can_focus: true, accessible_name: spec.button.name,
@@ -531,8 +524,7 @@ class LevelSlider extends St.Widget {
         const t = clamp(this._autoT, 0, 1);
         const bg = mixColor(this._autoOff, [Color.primary, 1], t);
         const fg = mix(Color.onSurface, Color.onPrimary, t);
-        const radius = lerp(this._autoSize / 2, TRACK_RADIUS, t);
-        this._auto.style = `background-color: ${colorStyle(bg)}; border-radius: ${px(radius).toFixed(2)}px;`;
+        this._auto.style = `background-color: ${colorStyle(bg)}; border-radius: ${px(TRACK_RADIUS).toFixed(2)}px;`;
         this._autoIcon.setColor(fg);
         this._autoIcon.name = this._spec.button.icons[this._autoOn ? 1 : 0];
     }

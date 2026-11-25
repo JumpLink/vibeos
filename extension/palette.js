@@ -62,8 +62,8 @@ export function mix(a, b, t) {
     return a.map((v, i) => v + (b[i] - v) * t);
 }
 
-// A tablet's shade: an opaque scrim under the quick settings, their pill tiles (a two-target tile's icon circle when
-// off, a tile that is unavailable) and the notification cards
+// A tablet's shade: an opaque scrim under the quick settings, their tiles (a two-target tile's icon square when off,
+// a tile that is unavailable) and the notification cards
 export const TabletShade = {
     scrim: [17, 53, 58],
     tile: [16, 35, 38],
