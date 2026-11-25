@@ -195,6 +195,23 @@ function wifiLevel(strength) {
     return 0;
 }
 
+// The network type Android shows left of the signal while mobile data is connected (MobileMappings: 5G, LTE, H+…),
+// from ModemManager's access technologies, the highest one set (MMModemAccessTechnology's bits)
+const DATA_TYPES = [
+    [1 << 15, '5G'],                    // 5GNR
+    [1 << 14, 'LTE'],
+    [1 << 9, 'H+'],                     // HSPA+
+    [1 << 6 | 1 << 7 | 1 << 8, 'H'],    // HSDPA, HSUPA, HSPA
+    [1 << 5, '3G'],                     // UMTS
+    [1 << 4, 'E'],                      // EDGE
+    [1 << 3 | 1 << 1, 'G'],             // GPRS, GSM
+];
+const MM_MODEM_STATE_CONNECTED = 11;    // MMModemState: a packet data bearer is connected
+
+export function dataType(technologies) {
+    return DATA_TYPES.find(([bits]) => technologies & bits)?.[1] ?? '';
+}
+
 // The 4-bar mobile level from ModemManager's 0..100 quality
 function mobileLevel(quality) {
     if (quality >= 70)
@@ -214,7 +231,8 @@ export const SystemState = GObject.registerClass({
     constructor() {
         super();
         this.wifi = {available: false, enabled: false, connected: false, level: 0, name: ''};
-        this.mobile = {present: false, level: 0, operator: '', tech: '', dataConnected: false, dataEnabled: false};
+        this.mobile = {present: false, level: 0, operator: '', tech: '', dataConnected: false, dataEnabled: false,
+            dataType: ''};
         this.battery = {present: false, level: 0, plugged: false, speed: null, amps: null,
             icon: 'battery-missing-symbolic'};
         this.powerSave = null;          // null: no power-profiles-daemon
@@ -313,9 +331,36 @@ export const SystemState = GObject.registerClass({
                     console.warn(`vibeos: no modem: ${e.message}`);
                 }
             }
+            this._watchModem(modem?.udi);
             this._readOperatorNames();
         }
         this._syncNetwork();
+    }
+
+    // ModemManager's own view of the modem, for what the shell's BroadbandModem keeps to itself: the access
+    // technologies as they are (it sums them up as 4G, 3G…) and the modem's state, connected while a bearer is. Its
+    // properties are pushed as they change: nothing is polled.
+    _watchModem(path) {
+        this._mmModem?.disconnectObject(this);
+        this._mmModem = null;
+        if (!path?.startsWith('/org/freedesktop/ModemManager1/'))
+            return;
+        Gio.DBusProxy.new(Gio.DBus.system, Gio.DBusProxyFlags.DO_NOT_AUTO_START, null, 'org.freedesktop.ModemManager1',
+            path, 'org.freedesktop.ModemManager1.Modem', this._cancellable, (o, res) => {
+                let proxy;
+                try {
+                    proxy = Gio.DBusProxy.new_finish(res);
+                } catch (e) {
+                    if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                        console.warn(`vibeos: no ModemManager modem: ${e.message}`);
+                    return;
+                }
+                if (path !== this._modemDevice?.udi)
+                    return;     // another modem by now
+                this._mmModem = proxy;
+                proxy.connectObject('g-properties-changed', () => this._syncNetwork(), this);
+                this._syncNetwork();
+            });
     }
 
     // The mobile network's name, as Android has it. A network that sends no name of its own leaves ModemManager
@@ -391,6 +436,8 @@ export const SystemState = GObject.registerClass({
 
         const modemState = this._modemDevice?.state ?? NM.DeviceState.UNAVAILABLE;
         const tech = this._modem?.accessTechnology ?? '';
+        const mm = this._mmModem;
+        const bearerUp = mm?.get_cached_property('State')?.unpack() === MM_MODEM_STATE_CONNECTED;
         this.mobile = {
             present: !!this._modemDevice,
             level: mobileLevel(this._modem?.signal_quality ?? 0),
@@ -398,6 +445,7 @@ export const SystemState = GObject.registerClass({
             tech: tech === 'unknown' || tech === 'other' ? '' : tech,
             dataConnected: modemState === NM.DeviceState.ACTIVATED,
             dataEnabled: client.wwan_enabled && modemState === NM.DeviceState.ACTIVATED,
+            dataType: bearerUp ? dataType(mm.get_cached_property('AccessTechnologies')?.unpack() ?? 0) : '',
         };
         this._changed();
     }
@@ -722,8 +770,8 @@ export const SystemState = GObject.registerClass({
         delete Main.brightnessManager._showOSD;
         this._brightness.destroy();
         for (const obj of [this._notifications, this._interface, this._location, this._touchscreen, this._power,
-            this._color, this._client, this._wifiDevice, this._accessPoint, this._modemDevice, this._modem, this._upower,
-            this._upowerDaemon, this._ppd, this._bt, this._rfkill])
+            this._color, this._client, this._wifiDevice, this._accessPoint, this._modemDevice, this._modem, this._mmModem,
+            this._upower, this._upowerDaemon, this._ppd, this._bt, this._rfkill])
             obj?.disconnectObject(this);
         const devices = this._bt.get_devices();
         for (let i = 0; i < devices.get_n_items(); i++)

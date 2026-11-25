@@ -10,6 +10,8 @@ import GLib from 'gi://GLib';
 import GnomeDesktop from 'gi://GnomeDesktop';
 import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
+import Pango from 'gi://Pango';
+import PangoCairo from 'gi://PangoCairo';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -41,8 +43,8 @@ const LAND_RAISE = 16;
 const PAD_START = 25;
 const OPEN_END = 85;
 const TABLET_END = 74;                  // a tablet's: the battery's charging bolt ends this far from the edge
-export const SYSTEM_SPAN = 471;         // the microphone and camera off icons, Bluetooth, signal, Wi-Fi and the
-                                        // widest battery (228) end to end, and room
+export const SYSTEM_SPAN = 543;         // the microphone and camera off icons, Bluetooth, the data type, signal,
+                                        // Wi-Fi and the widest battery (228) end to end, and room
 const ICONS_TAIL = 2;                   // the battery's antialiased edge past its end
 const ICON_GAP = 19;                    // between signal, Wi-Fi and battery
 const ICON_H = 36;                      // signal and Wi-Fi
@@ -53,6 +55,10 @@ const SIGNAL_STEP = 6;
 const WIFI_W = ICON_H * 16.21 / 12;     // ic_wifi_N viewport 16.21 x 12
 const PRIVACY_W = 42;                   // ic_mic_off, ic_device_camera_off: 24 x 24 icons, the size Android draws them
 const BLUETOOTH_W = 42;                 // stat_sys_data_bluetooth_connected: a 17 dp system icon, drawn as those are
+// the network type left of the signal (5G, LTE, H+…): a technical label, the same in every language, its capitals as
+// tall as the signal's third bar; DATA_TYPE_GAP from the signal, the widest ("LTE") in DATA_TYPE_SPAN's 72 px
+const DATA_TYPE_FONT = 'Google Sans Flex, VibeOS Roboto 37px @wght=600,wdth=100,ROND=100,opsz=17';
+const DATA_TYPE_GAP = 6;
 const BATTERY_H = 39;                   // the body's vector is 24 x 13 units, r 4: BATTERY_VP px a unit
 const BATTERY_VP = BATTERY_H / 13;
 
@@ -153,6 +159,21 @@ export function paintSignal(cr, x, bottom, level, color, alpha = 1) {
         setSource(cr, color, alpha * (level >= bar ? 1 : 0.3));
         cr.fill();
     }
+}
+
+// The network type, right-aligned at @right and its capitals centred on @centerY. Returns the width drawn.
+let dataTypeFont = null;
+export function paintDataType(cr, text, right, centerY, color, alpha = 1) {
+    dataTypeFont ??= Pango.FontDescription.from_string(DATA_TYPE_FONT);
+    const layout = PangoCairo.create_layout(cr);
+    layout.set_font_description(dataTypeFont);
+    layout.set_text(text, -1);
+    const [ink] = layout.get_pixel_extents();
+    cr.moveTo(Math.round(right - ink.x - ink.width), Math.round(centerY - ink.y - ink.height / 2));
+    setSource(cr, color, alpha);
+    PangoCairo.show_layout(cr, layout);
+    cr.newPath();
+    return ink.width;
 }
 
 // The Wi-Fi fan, ic_wifi_0..3 (the new icons squash 5 levels into 4: 3 -> 2, 4 -> 3)
@@ -280,8 +301,8 @@ export function notificationIcon(source, size, {glyph = 'white', grey = false} =
     });
 }
 
-// The right-hand system icons: Bluetooth, mobile signal, Wi-Fi, battery, right-aligned at @end (screen px) and centred
-// on @centerY; the shade header draws the same cluster
+// The right-hand system icons: Bluetooth, the data type and the mobile signal, Wi-Fi, battery, right-aligned at @end
+// (screen px) and centred on @centerY; the shade header draws the same cluster
 export function paintSystemIcons(cr, state, end, centerY) {
     const {wifi, mobile, battery, powerSave, micOff, cameraOff, bluetooth} = state;
     let x = end;
@@ -298,6 +319,9 @@ export function paintSystemIcons(cr, state, end, centerY) {
     if (mobile.present) {
         x -= SIGNAL_W;
         paintSignal(cr, x, centerY + ICON_H / 2, mobile.level, Color.white);
+        // while mobile data is connected, its network type, as Android draws it
+        if (mobile.dataType)
+            x -= DATA_TYPE_GAP + paintDataType(cr, mobile.dataType, x - DATA_TYPE_GAP, centerY, Color.white);
         x -= ICON_GAP;
     }
     // a device connected over Bluetooth (a car, headphones), as Android 12 on shows it: left of the mobile network,
@@ -322,7 +346,7 @@ export function paintSystemIcons(cr, state, end, centerY) {
 // 15 ms of the shell's frame, wherever it lands in an animation
 function systemIconsKey({wifi, mobile, battery, powerSave, micOff, cameraOff, bluetooth}) {
     return [battery.present, battery.level, battery.plugged, !!powerSave, wifi.connected, wifi.level, mobile.present,
-        mobile.level, !!micOff, !!cameraOff, !!bluetooth?.connected].join();
+        mobile.level, mobile.dataType, !!micOff, !!cameraOff, !!bluetooth?.connected].join();
 }
 
 export const SystemIcons = GObject.registerClass(
