@@ -123,9 +123,10 @@ en_GB.UTF-8); `JOBS`; `BUILD_CHROOT`.
   that apt and dpkg are consistent and that nothing of the build machine (its name, its DNS search domain and name
   servers, the build paths) is in the image.
 - **Not as in the 0.1.3 image**: Debian's own ModemManager, libcamera and WebKitGTK. The release holds builds of
-  ours (`+surya3`, `+surya20`, `+neo1`) that came with the S10e base, and whose changes are not in this repository;
-  `HOLD_DEBS=DIR` installs and holds such builds instead. The boot splash is Debian's default (a device package
-  sets its own). And the versions: Debian sid moves, so a build today is newer than 0.1.3's of 11-17.
+  ours (`+surya3`, `+surya20`, `+neo1`) that came with the S10e base, and whose changes are not in this repository
+  (`+surya3`'s ModemManager patches are in [linux-beyond0lte](https://github.com/pulpoff/linux-beyond0lte)'s
+  `mobian/modem/modemmanager/`, a libcamera patch for the S10e in its `mobian/camera/`); `HOLD_DEBS=DIR` installs
+  and holds such builds instead. The boot splash is Debian's default (a device package sets its own). And the versions: Debian sid moves, so a build today is newer than 0.1.3's of 11-17.
 - **What `build-system.sh` removes from either base**: systemd-resolved's copy of the build machine's resolv.conf,
   ssl-cert's snakeoil key and certificate (every device makes its own on the first boot, `vibeos-ssl-cert`), and the
   build machine's name in exim4's settings.
