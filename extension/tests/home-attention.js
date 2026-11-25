@@ -4,6 +4,9 @@
 //   Home    every app window on the phone's screen goes to recents (minimized), the swiped one's neighbours too; one
 //           on a TV stays, as do the launcher, a dialog, and what is in recents already. A swipe's windows go without
 //           the minimize animation. The launcher is activated, and the phone counts as home from then on.
+//   fit     the launcher's window is asked for its screen's size when it is seen again (mutter's suspend state back
+//           to active, read through a GValue as the shell has to) and when it shows; not while it is covered; and
+//           after a change of the screen. A size that fits already is asked for again without a word in the journal.
 //   no banner   GNOME's handler ("“Window” is ready") hears nothing while attention.js is on, for either signal, and a
 //           window that asks gets nothing: not activated, no banner.
 //   launched    a window of the app just launched from the launcher comes to the front (not while its splash is up:
@@ -11,10 +14,12 @@
 //   intent  a window asking within INTENT_MS of a tap in an app comes to the front; not when the phone went home
 //           after that tap (the swipe's own touch is the last one then), and again after a fresh touch.
 //   off     GNOME's handler hears them again once attention.js is destroyed.
+import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
 import System from 'system';
 
-import {Main} from './stand-ins.js';
+import {Main, Meta} from './stand-ins.js';
 
 let failures = 0;
 function check(name, ok, detail = '') {
@@ -152,6 +157,90 @@ check('swipe: without the minimize animation',
     Main.wm.skipped.length === 2 && !Main.wm.skipped.includes(named('on the TV').actor),
     `${Main.wm.skipped.length} skipped`);
 check('swipe: the TV\'s window stays', !named('on the TV').minimized);
+
+// ---- the launcher's window fitted to its screen ------------------------------------------------------------------
+
+// mutter's window as the fit uses it: suspend-state an enum property missing from the typelib (mutter's enum is
+// private; any enum type does, Gio.FileType here, 1 active as in mutter), its frame, a signal when it shows
+const ACTIVE = 1, HIDDEN = 2, SUSPENDED = 3;
+const FitWin = GObject.registerClass({
+    Properties: {
+        'suspend-state': GObject.ParamSpec.enum('suspend-state', null, null, GObject.ParamFlags.READWRITE,
+            Gio.FileType, ACTIVE),
+    },
+    Signals: {'shown': {}, 'unmanaged': {}},
+}, class FitWin extends GObject.Object {
+    _init() {
+        super._init();
+        this._state = ACTIVE;
+        this.rect = {x: 0, y: 0, width: 2560, height: 1600};
+        this.asked = [];
+    }
+
+    get suspend_state() {
+        return this._state;
+    }
+
+    set suspend_state(state) {
+        this._state = state;
+        this.notify('suspend-state');
+    }
+
+    connectObject(...args) {
+        args.pop();
+        for (let i = 0; i < args.length; i += 2)
+            this.connect(args[i], args[i + 1]);
+    }
+
+    set_type() {}
+
+    stick() {}
+
+    get_monitor() {
+        return PHONE;
+    }
+
+    get_frame_rect() {
+        return this.rect;
+    }
+
+    move_resize_frame(_userOp, x, y, width, height) {
+        this.asked.push(`${width}x${height}`);
+        this.rect = {x, y, width, height};
+    }
+});
+Meta.Window = FitWin;
+const idle = () => {
+    const context = GLib.MainContext.default();
+    while (context.pending())
+        context.iteration(false);
+};
+
+// the tablet landscape; the launcher covered by a game, told a portrait size meanwhile, and drawing at it
+let screen = {x: 0, y: 0, width: 2560, height: 1600};
+display.get_monitor_geometry = () => screen;
+const fitWin = new FitWin();
+const fitHome = Object.create(Home.prototype);
+fitHome._client = {owns_window: w => w === fitWin};
+fitHome._fitId = 0;
+fitHome._windowCreated(fitWin);
+fitWin.suspend_state = HIDDEN;
+fitWin.suspend_state = SUSPENDED;
+fitWin.rect = {x: 0, y: 0, width: 1600, height: 2560};
+idle();
+check('fit: not while covered', fitWin.asked.length === 0, fitWin.asked.join(', '));
+fitWin.suspend_state = ACTIVE;
+idle();
+check('fit: seen again, the screen\'s size asked for', fitWin.asked.join(', ') === '2560x1600',
+    fitWin.asked.join(', '));
+fitWin.emit('shown');
+idle();
+check('fit: shown, asked for again (nothing is sent when it fits)', fitWin.asked.length === 2,
+    fitWin.asked.join(', '));
+screen = {x: 0, y: 0, width: 1600, height: 2560};
+fitHome._fitWindow(fitWin, 'the screen changed');
+idle();
+check('fit: a turned screen\'s size after it turns', fitWin.asked.at(-1) === '1600x2560', fitWin.asked.join(', '));
 
 // ---- attention ----------------------------------------------------------------------------------------------------
 

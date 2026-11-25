@@ -3,6 +3,7 @@
 // window list) and comes back if the launcher dies.
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -11,6 +12,28 @@ import {SingleStack} from './stack.js';
 
 const LAUNCHER = ['/usr/local/bin/vibeos-launcher'];
 const RESPAWN_MS = 1000;
+
+// mutter's suspend state of a window seen (META_WINDOW_SUSPEND_STATE_ACTIVE; the enum is private to mutter, not in its
+// typelib: 1 active, 2 hidden, 3 suspended)
+const SUSPEND_ACTIVE = 1;
+
+let hasSuspendState;
+
+// a window's suspend state, or null where this mutter has none. The property is not in Meta's typelib either, and gjs
+// shows only the typelib's properties: win.suspend_state is undefined whatever the state (gjs 1.90), so it is read
+// through a GValue.
+function suspendState(win) {
+    try {
+        hasSuspendState ??= GObject.Object.find_property.call(Meta.Window, 'suspend-state') !== null;
+        if (!hasSuspendState)
+            return null;
+        const value = new GObject.Value();
+        win.get_property('suspend-state', value);
+        return value.get_enum();
+    } catch {
+        return null;
+    }
+}
 
 export class Home {
     constructor() {
@@ -28,7 +51,7 @@ export class Home {
         // size it had, cut to fit (800 × 800 on the tablet turned upright), and the launcher drew in that square.
         Main.layoutManager.connectObject('monitors-changed', () => {
             if (this._window)
-                this._fitWindow(this._window);
+                this._fitWindow(this._window, 'the screen changed');
         }, this);
         this._spawn();
         this._takeOverview();
@@ -132,14 +155,21 @@ export class Home {
             if (this._window === win)
                 this._window = null;
         }, this);
-        win.connectObject('shown', () => this._fitWindow(win), this);
+        win.connectObject('shown', () => this._fitWindow(win, 'shown'),
+            'notify::suspend-state', () => {
+                const state = suspendState(win);
+                if (state === SUSPEND_ACTIVE || state === null)
+                    this._fitWindow(win, 'seen again');
+            }, this);
     }
 
     // A turn of the screen before the launcher's first frame: the shell keeps its window at the turned screen's size,
     // but tells the launcher, when the window shows, the size it gave before the turn, and the launcher draws at that
     // size until the next turn. Asking for the screen's size once the window shows sends the launcher the right one;
-    // when it already has it nothing is sent.
-    _fitWindow(win) {
+    // when it already has it nothing is sent. The same when an app stops covering the launcher: mutter tells a
+    // window seen again the size it last sent it, which can be from before a turn and back while it was covered (the
+    // Xiaomi Pad 5's home drawn portrait on its landscape panel, 2026-11-25); and after every change of the screen.
+    _fitWindow(win, why) {
         if (this._fitId)
             GLib.source_remove(this._fitId);
         this._fitId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
@@ -147,6 +177,11 @@ export class Home {
             if (win !== this._window)
                 return GLib.SOURCE_REMOVE;
             const monitor = global.display.get_monitor_geometry(win.get_monitor());
+            const rect = win.get_frame_rect();
+            if (rect.width !== monitor.width || rect.height !== monitor.height) {
+                console.log(`vibeos: home: fit (${why}): the launcher's window ${rect.width}x${rect.height}, the ` +
+                    `screen ${monitor.width}x${monitor.height}`);
+            }
             win.move_resize_frame(false, monitor.x, monitor.y, monitor.width, monitor.height);
             return GLib.SOURCE_REMOVE;
         });
