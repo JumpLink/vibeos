@@ -26,6 +26,9 @@ vibeos (1:0.1.5) unstable; urgency=medium
     the earpiece, as on Android, and its Speaker button moves it to
     the loudspeaker. The ringtone, the dial pad's tones, Vibe and Dictate
     stay on the loudspeaker, and the user's own choice of output is kept.
+  * Navi: a compass that the sensor service finds only after Navi has
+    started is used as well. Before, the arrow did not point until Navi
+    was opened again.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
