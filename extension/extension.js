@@ -34,6 +34,7 @@ import {PowerMenu} from './powermenu.js';
 import {Rotation} from './rotation.js';
 import {Service} from './service.js';
 import {Shade} from './shade.js';
+import {destroySounds, sounds} from './sounds.js';
 import {SystemState} from './state.js';
 import {StatusBar, hideShellPanel} from './statusbar.js';
 import {Taskbar} from './taskbar.js';
@@ -242,6 +243,9 @@ export default class VibeosExtension extends Extension {
         // GNOME's on-screen keyboard's keys tick under the finger (paused while VibeOS's keyboard is in use)
         this._keyHaptics = new KeyHaptics();
         this._keyHaptics.pause(this._keyboardSwap?.active ?? false);
+        // the keyboard's and the volume's sounds (on where there is no motor to tick): made now so that the key's click
+        // is in the server's cache before the first key
+        sounds();
         // The shell's haptics never start feedbackd (NO_AUTO_START), they only find it running: Calls' and Chatty's
         // daemons started it at login, the Phone and Messaging apps in their place only on a ring. So it starts here.
         Gio.DBus.session.call('org.freedesktop.DBus', '/org/freedesktop/DBus', 'org.freedesktop.DBus',
@@ -300,6 +304,7 @@ export default class VibeosExtension extends Extension {
     }
 
     disable() {
+        destroySounds();
         this._frameLog?.destroy();
         this._frameLog = null;
         if (this._keptThroughLock)

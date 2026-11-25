@@ -20,6 +20,7 @@ import {_, pgettext} from './l10n.js';
 import {animate, animateSpring, bezier, clamp, EMPHASIZED_DECELERATE, lerp, Spring} from './motion.js';
 import {Color, rgba, setSource} from './palette.js';
 import {openSettings} from './settings.js';
+import {sounds} from './sounds.js';
 import {HEIGHT, px, SCALE, screenPixels, TABLET} from './units.js';
 
 // --- geometry, screen px; the window runs from the status bar's bottom to the screen's
@@ -331,6 +332,7 @@ class VolumeDialog extends St.Widget {
 
         // the default output
         this._control = Volume.getMixerControl();
+        sounds().setMixer(this._control);
         this._control.connectObject(
             'default-sink-changed', () => this._syncStream(),
             'state-changed', () => this._syncStream(),
@@ -489,6 +491,8 @@ class VolumeDialog extends St.Widget {
                 stream.change_is_muted(false);
             stream.volume = Math.round(this._maxVolume() * level / this._levels());
             stream.push_volume();
+            // each step of a key or of the slider (sounds.js: throttled, and silent when it should be)
+            sounds().volumeChanged(stream);
         }
         this._showValue(level / this._levels(), animated);
     }

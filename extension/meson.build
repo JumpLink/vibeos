@@ -9,7 +9,7 @@ bindir = get_option('prefix') / get_option('bindir')
 
 install_subdir('.', install_dir: extdir, strip_directory: true,
   exclude_directories: ['tools', 'tests', 'po', '__pycache__'],
-  exclude_files: ['meson.build', 'home.js', 'appmem.py'])
+  exclude_files: ['meson.build', 'home.js', 'appmem.py', 'sounds/README'])
 
 # appmem.py runs as a program of its own (recents.js)
 install_data('appmem.py', install_dir: extdir, install_mode: 'rwxr-xr-x')
@@ -29,6 +29,20 @@ endif
 # D-Bus daemon
 if gjs.found() and dbus_run_session.found()
   test('bt-agent', find_program('tests/bt-agent.sh'), args: [meson.current_source_dir()], timeout: 120)
+endif
+
+# the keyboard's click and the volume sound (sounds.js): the motor, the defaults, when they are silent, the throttle and
+# the calls, against stand-ins on a bus of the test's own (tests/sounds.sh); needs gjs and a D-Bus daemon
+glib_compile_schemas = find_program('glib-compile-schemas', required: false)
+if gjs.found() and dbus_run_session.found() and glib_compile_schemas.found()
+  test('sounds', find_program('tests/sounds.sh'), args: [meson.current_source_dir()], timeout: 120)
+endif
+
+# the click and the volume sound really played, through a PipeWire of the test's own with two null sinks, each recorded
+# (tests/sounds-pipewire.sh); needs PipeWire, WirePlumber, pipewire-pulse, libcanberra-pulse and GSound, and is skipped
+# without them
+if gjs.found() and dbus_run_session.found()
+  test('sounds-pipewire', find_program('tests/sounds-pipewire.sh'), args: [meson.current_source_dir()], timeout: 180)
 endif
 
 # Home's rule and a window asking for attention, with GNOME Shell's stand-ins (tests/home-attention.sh); needs gjs

@@ -14,6 +14,15 @@ Files: *
 Copyright: 2026 pulpoff <pashkovsky@gmail.com>
 License: Expat
 
+Files: extension/sounds/key-tap.oga
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: CC0-1.0
+Comment:
+ The on-screen keyboard's click, synthesized by extension/tools/make-key-tap.py
+ from sines and noise: not a recording and not taken from any other work. The
+ volume sound is the freedesktop sound theme's own audio-volume-change, which
+ sound-theme-freedesktop installs.
+
 Files: extension/icondata.js
        extension/l3icondata.js
        vibeos-launcher/src/popup_icons.h
@@ -424,3 +433,8 @@ License: CC-BY-2.0-FR
  material for any purpose, even commercially, provided you give appropriate
  credit, provide a link to the license, and indicate if changes were made. The
  full legal code is at https://creativecommons.org/licenses/by/2.0/fr/legalcode.
+
+License: CC0-1.0
+ Creative Commons Zero 1.0 Universal: the work is dedicated to the public
+ domain, and may be used for any purpose without conditions. The full legal
+ code is at https://creativecommons.org/publicdomain/zero/1.0/legalcode.

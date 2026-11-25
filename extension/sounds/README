@@ -1,0 +1,37 @@
+key-tap.oga: the click under each key of the on-screen keyboard (sounds.js).
+
+Made by tools/make-key-tap.py, which synthesizes it from sines and noise: no recording, no sample from another
+project. It is VibeOS's own, under the repository's Expat license (and CC0 for anyone who wants it on its own).
+18 ms, mono, 48 kHz, Ogg Vorbis (4 KB). Run `tools/make-key-tap.py` to make it again; the noise is seeded, so the
+samples are the same each time (the encoder's own bytes may differ with its version).
+
+Measuring a key's latency on a device (sounds.js logs it)
+---------------------------------------------------------
+
+The shell logs each key tap and volume sound with CLOCK_MONOTONIC microseconds, when asked:
+
+  touch $XDG_RUNTIME_DIR/vibeos-sound-log      # on (rm to stop); no restart: the shell watches for the file
+  journalctl --user -f -o cat | grep vibeos-sound
+
+(or VIBEOS_SOUND_LOG=1 in the shell's environment). A tap logs
+
+  vibeos-sound: tap t=T play sent t=T2 (N us)
+  vibeos-sound: tap t=T done t=T3 (M us)
+
+T is the key going down (the entry of sounds.js keyTap(), called from the keyboard's press handler before the haptic
+tick), T2 is the play having been handed to libcanberra (N is what it cost the shell's main loop), T3 is the click
+having finished (about 18 ms of sound, so T3 - 18 ms is when its stream was done starting, or later). "silent (...)"
+says why a tap or step was not played, "throttled" a volume step inside the 100 ms.
+
+To see when the server starts the stream, run on the device at the same time, in a second shell (the python reads the
+same clock as the log's t=):
+
+  pw-mon | python3 -u -c 'import sys,time
+  for l in sys.stdin:
+      if l.startswith("added:") or "Key tap" in l:
+          print(time.clock_gettime_ns(time.CLOCK_MONOTONIC) // 1000, l.rstrip())'
+
+The line with the "Key tap" stream's properties minus T is the time from the tap to the server having the stream.
+What follows is the audio graph's own delay: the sink's quantum (pw-top, column QUANT, over the rate) and the sound
+card's buffer, which the logs cannot see. For the whole path, film the screen (the key preview shows as the key goes
+down) with the speaker's click in the same clip, at 240 fps, and count the frames from one to the other.
