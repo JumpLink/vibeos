@@ -1,0 +1,31 @@
+#!/bin/sh
+# Brings logind's record of the logged-in user up to date once the session on seat0 is active. systemd-logind 262.2
+# can leave /run/systemd/users/UID as it was before an automatic login's session became active (STATE=online, the
+# session missing from ACTIVE_SESSIONS) while logind's own D-Bus view has it active. polkitd 128 reads that file for
+# every process outside a session scope, which is all of GNOME's user@.service components: it then finds no active
+# session, its "allow_any" defaults apply, and connecting Wi-Fi or Bluetooth asks for a password. A short PAM session of
+# the same user makes logind write the record again.
+#
+# Waits up to 90 s for seat0's active session, acts only when the record and logind disagree, and says what it found
+# either way. VIBEOS_LOGIND_USERS (the records' directory) and VIBEOS_LOGIND_TRIES (2 s waits) are for its test.
+users=${VIBEOS_LOGIND_USERS:-/run/systemd/users}
+tries=${VIBEOS_LOGIND_TRIES:-45}
+i=0
+while :; do
+	s=$(loginctl show-seat seat0 -p ActiveSession --value 2>/dev/null)
+	[ -n "$s" ] && [ "$(loginctl show-session "$s" -p Active --value 2>/dev/null)" = yes ] && break
+	i=$((i + 1))
+	[ $i -ge "$tries" ] && { echo "no active session on seat0 after $((tries * 2)) s: nothing done"; exit 0; }
+	sleep 2
+done
+uid=$(loginctl show-session "$s" -p User --value)
+name=$(loginctl show-session "$s" -p Name --value)
+file=$(sed -n 's/^STATE=//p' "$users/$uid" 2>/dev/null)
+live=$(loginctl show-user "$uid" -p State --value)
+if [ "$file" = active ] && grep -q "^ACTIVE_SESSIONS=.*\b$s\b" "$users/$uid"; then
+	echo "seat0 session $s of $name: logind's record is current (STATE=$file)"
+	exit 0
+fi
+echo "seat0 session $s of $name: logind's record says STATE=$file, logind says $live: making logind write it again"
+systemd-run --quiet --uid="$uid" -p PAMName=login --wait --collect /bin/true
+echo "now STATE=$(sed -n 's/^STATE=//p' "$users/$uid"), ACTIVE_SESSIONS=$(sed -n 's/^ACTIVE_SESSIONS=//p' "$users/$uid")"

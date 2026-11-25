@@ -18,13 +18,16 @@ systemd_user = prefix / 'lib' / 'systemd' / 'user'
 local_paths = ['sed', '-e', 's|/usr/local/sbin/|' + sbindir + '/|g', '-e', 's|/usr/local/libexec/|' + libexecdir + '/|g',
                '@INPUT@']
 foreach unit : ['vibeos.service', 'gnome-desktop.service', 'vibeos-dock.service', 'input-boost.service',
-                'vibeos-wakeup.service', 'sim-apn.service']
+                'vibeos-wakeup.service', 'sim-apn.service', 'vibeos-logind-user-refresh.service']
   configure_file(input: unit, output: unit, command: local_paths, capture: true, install_dir: systemd_system)
 endforeach
 
 install_data('vibeos-dock', 'sim-apn', install_dir: sbindir, install_mode: 'rwxr-xr-x')
 # the session units start gnome-session through it, in the user's language (see the file)
 install_data('vibeos-session-language', install_dir: libexecdir, install_mode: 'rwxr-xr-x')
+# logind's record of the logged-in user brought up to date after an automatic login, for polkit (see the file)
+install_data('vibeos-logind-user-refresh', install_dir: libexecdir, install_mode: 'rwxr-xr-x')
+test('logind-user-refresh', find_program('tests/logind-user-refresh.sh'), args: [meson.current_source_dir()])
 # the dock switcher's udev rule is opt-in: on a plug or an unplug vibeos-dock starts a session, which would take over a
 # desktop that did not ask for it. Linked into /etc/udev/rules.d by whoever wants it
 install_data('71-vibeos-dock.rules', install_dir: datadir / 'vibeos-session')

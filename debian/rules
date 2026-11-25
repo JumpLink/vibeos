@@ -49,12 +49,15 @@ override_dh_auto_clean:
 
 # Nothing that would take over a desktop is enabled: the phone session without a display manager, the docked desktop
 # and the dock switcher are the user's choice (README.Debian), and input-boost's clock floor is the device's to tune.
-# vibeos-wakeup and sim-apn run from boot.
+# vibeos-wakeup and sim-apn run from boot, and so does vibeos-logind-user-refresh, on every device: it does nothing
+# where logind's user record is current, and runs from the next boot.
 # --no-start alone also stops the unit before an upgrade and never starts it again: an apt upgrade took the phone's
 # screen away (the session is the whole UI). So the session units stay up through an upgrade (the new one runs from the
 # next login or boot), and input-boost, if the device runs it, restarts once the new one is in.
 override_dh_installsystemd:
-	dh_installsystemd -pvibeos-session --no-enable --no-start --no-stop-on-upgrade
+	dh_installsystemd -pvibeos-session --no-enable --no-start --no-stop-on-upgrade vibeos.service \
+		gnome-desktop.service vibeos-dock.service
+	dh_installsystemd -pvibeos-session --no-start vibeos-logind-user-refresh.service
 	dh_installsystemd -pvibeos-daemons --no-enable --no-start --restart-after-upgrade input-boost.service
 	dh_installsystemd -pvibeos-daemons vibeos-wakeup.service
 	dh_installsystemd -psim-apn

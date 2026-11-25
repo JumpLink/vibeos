@@ -1,0 +1,10 @@
+[Unit]
+Description=Bring logind's user record up to date after the automatic login (polkit reads it)
+After=display-manager.service systemd-logind.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/vibeos-logind-user-refresh
+
+[Install]
+WantedBy=graphical.target
