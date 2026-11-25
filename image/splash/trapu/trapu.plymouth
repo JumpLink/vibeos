@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Trapu
+Description=The Trapu logo in the Vibe gradient on black, kept up until the phone's shell draws
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/trapu
+ScriptFile=/usr/share/plymouth/themes/trapu/trapu.script

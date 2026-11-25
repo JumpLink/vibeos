@@ -236,8 +236,10 @@ s10e)
 	# boot: U-Boot (recovery, and boot for a whole-phone install): the first 4 MiB of v51-pinsleep (the S10e
 	# kit's default since 11-1x, r7's zip); the kernel, initramfs and arguments are in /boot/s10e above
 	head -c 4194304 "${S10E_UBOOT:?set S10E_UBOOT}" > "$W/boot/uboot.img"
+	# the power-on logo, which the device zip puts into up_param: logo.jpg is splash/trapu's (the Trapu logo where
+	# Plymouth's boot.png has it), the two unlocked-bootloader warnings are the kit's (black)
 	cp "$K/tools/s10e-logo" "$W/boot/s10e-logo"; mkdir -p "$W/boot/boot-logo"
-	cp "$K/boot-logo/logo.jpg" "$K/boot-logo/svb_orange.jpg" "$K/boot-logo/booting_warning.jpg" "$W/boot/boot-logo/"
+	cp "$T/splash/trapu/s10e/logo.jpg" "$K/boot-logo/svb_orange.jpg" "$K/boot-logo/booting_warning.jpg" "$W/boot/boot-logo/"
 	DESC="Galaxy S10e (beyond0lte): kernel 7.2.15-s10e-2 in /boot/s10e (U-Boot in recovery boots it), its modules, the vendor firmware, modem, sleep, GPU, audio, camera and sensor settings"
 	;;
 poco)
@@ -654,14 +656,14 @@ s20)
 	video h264,hevc		# MFC; VP9 not tried yet
 	cp "$SB" "$W/boot/boot.img"
 	# the power-on logo, which the device zip puts into up_param as the S10e's does: src/s10e-logo (the same tar
-	# rewrite; up_param is the S10e's format) and the S20's pictures, logo.jpg being the S10e's swirl at 1080x2400;
-	# on the S20 since 11-17 (up_param abf985d0)
+	# rewrite; up_param is the S10e's format), logo.jpg from splash/trapu (the Trapu logo where Plymouth's boot.png
+	# has it, 1080x2400) and the S20's two unlocked-bootloader warnings (black, on the S20 since 11-17)
 	[ "$(od -An -tx1 -j 16 -N 4 "$T/src/s10e-logo" 2>/dev/null | tr -d ' \n')" = 0200b700 ] ||
 		{ echo "no static aarch64 $T/src/s10e-logo: make -C $T/src" >&2; exit 1; }
 	cp "$T/src/s10e-logo" "$W/boot/s10e-logo"; mkdir -p "$W/boot/boot-logo"
-	cp "$G/boot-logo/logo.jpg" "$G/boot-logo/svb_orange.jpg" "$G/boot-logo/booting_warning.jpg" "$W/boot/boot-logo/"
-	[ "$(cd "$W/boot/boot-logo" && cat logo.jpg svb_orange.jpg booting_warning.jpg | sha256sum | cut -c1-16)" = e05fc7e1b43ad160 ] ||
-		{ echo "$G/boot-logo: not the S20's pictures of 11-17" >&2; exit 1; }
+	cp "$T/splash/trapu/s20/logo.jpg" "$G/boot-logo/svb_orange.jpg" "$G/boot-logo/booting_warning.jpg" "$W/boot/boot-logo/"
+	[ "$(cd "$W/boot/boot-logo" && cat svb_orange.jpg booting_warning.jpg | sha256sum | cut -c1-16)" = bfda3d08a8e0c914 ] ||
+		{ echo "$G/boot-logo: not the S20's warnings of 11-17" >&2; exit 1; }
 	DESC="Galaxy S20 FE (r8s, G780F): the modules of kernel $KVER (in BOOT with U-Boot), Wi-Fi and sensor-hub firmware, the modem stack with the phone's own NV and Wi-Fi MAC read from its EFS, sleep, the quiet boot, the r8s settings (USB network, watchdog, sensors, UCM, panel cutout, GPU)"
 	;;
 nabu)
@@ -739,6 +741,22 @@ nabu)
 	;;
 *) echo "unknown device $DEV" >&2; exit 1 ;;
 esac
+
+# The boot splash, every device's: Plymouth's trapu theme (splash/trapu: the Trapu logo on black, its pictures made by
+# make-boot.py) with this device's panel picture, and the plymouthd.conf that chooses it (the system image's names
+# debian-swirl: this one is diverted, below). A stage's debian-swirl does not go into the package. On the POCO,
+# Plymouth starts in the ESP's initrd, which carries its own theme: the POCO shows trapu when it shuts down or
+# restarts, and its boot keeps the initrd's until that initrd has trapu.
+SPL=$T/splash/trapu
+case $DEV in s10e) PANEL='1080x2280' ;; s20|poco) PANEL='1080x2400' ;; s5e) PANEL='2560x1600' ;; nabu) PANEL='1600x2560' ;; esac
+[ "$(python3 -I -c 'import struct, sys; b = open(sys.argv[1], "rb").read(24)
+print("%dx%d" % struct.unpack(">II", b[16:24]) if b[:8] == b"\x89PNG\r\n\x1a\n" else "")' "$SPL/$DEV/boot.png")" = $PANEL ] &&
+	[ -s "$SPL/$DEV/logo.png" ] || { echo "splash/trapu/$DEV: no boot.png of the panel's $PANEL, or no logo.png" >&2; exit 1; }
+rm -rf "${P:?}/usr/share/plymouth/themes/debian-swirl"
+install -D -m 644 "$SPL/trapu.plymouth" "$P/usr/share/plymouth/themes/trapu/trapu.plymouth"
+install -m 644 "$SPL/trapu.script" "$SPL/$DEV/boot.png" "$SPL/$DEV/logo.png" "$P/usr/share/plymouth/themes/trapu/"
+install -D -m 644 "$SPL/plymouthd.conf" "$P/etc/plymouth/plymouthd.conf"
+log "splash: trapu, boot.png $PANEL ($(sha256sum < "$SPL/$DEV/boot.png" | cut -c1-16))"
 
 # the regulatory database (see regdb_cpio): the signers this kernel's cfg80211 trusts, and a built-in cfg80211 must
 # have its initramfs carry the database. The S20's initramfs is built into its kernel (in S20_BOOT, not built

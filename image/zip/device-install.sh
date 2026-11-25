@@ -32,8 +32,8 @@ put_logo() {
 	[ -b $BY/up_param ] || return 0
 	OUT=$($T-logo apply $BY/up_param $T-boot-logo 2> $T-logo.err)
 	case $?:$OUT in
-	0:same) say "  the power-on logo is Debian's already" ;;
-	0:written*) say "  Debian's power-on logo" ;;
+	0:same) say "  the power-on logo is in place already" ;;
+	0:written*) say "  the power-on logo written" ;;
 	1:*) say "  power-on logo left as it was: $(cat $T-logo.err)" ;;
 	*) say "  WARNING: the power-on logo did not write: $(cat $T-logo.err)" ;;
 	esac

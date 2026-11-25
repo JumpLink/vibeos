@@ -185,7 +185,8 @@ add "/etc/fstab LABEL=vibeos /; hostname vibeos (a device package may rename it)
 rmv /etc/.resolv.conf.systemd-resolved.bak /etc/ssl/private/ssl-cert-snakeoil.key
 for c in "$M"/etc/ssl/certs/*.0; do [ "$(readlink "$c" 2>/dev/null)" = ssl-cert-snakeoil.pem ] && rmv "${c#$M}"; done
 rmv /etc/ssl/certs/ssl-cert-snakeoil.pem
-# the boot splash is a device's (sized for its screen): the S10e's debian-swirl went with its stage
+# the boot splash is a device's (sized for its screen): every device package has the trapu theme and the
+# plymouthd.conf choosing it (build-device.sh); the S10e's debian-swirl went with its stage
 install -d "$M/usr/local/sbin" "$M/etc/vibeos" "$M/var/lib/vibeos/device"
 install -m 755 "$T/rootfs/vibeos-growroot" "$M/usr/local/sbin/vibeos-growroot"
 install -m 755 "$T/rootfs/vibeos-device-setup" "$M/usr/local/sbin/vibeos-device-setup"
