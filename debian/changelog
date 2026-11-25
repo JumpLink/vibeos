@@ -29,6 +29,10 @@ vibeos (1:0.1.5) unstable; urgency=medium
   * Navi: a compass that the sensor service finds only after Navi has
     started is used as well. Before, the arrow did not point until Navi
     was opened again.
+  * After the language is changed in Settings, the back gesture goes back
+    a page in every app again instead of going home (from the next login),
+    and Settings comes to the front again for the pages other parts ask it
+    for (Wallpaper & style, Home settings, an app's App info).
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
