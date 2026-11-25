@@ -56,7 +56,8 @@ DEBIAN_FOR = {
 }
 # pmOS userspace a Debian system has no package for (Alpine binaries cannot be carried)
 NO_DEBIAN = {
-    'q6voiced': 'call audio routing (q6voice): not in Debian (Mobian has q6voiced)',
+    'q6voiced': 'call audio routing (q6voice): not in Debian (Mobian has q6voiced); the payload starts the call '
+                'audio itself (vibeos-q6voiced)',
     'msm-modem-uim-selection': 'SIM slot selection for the msm modem: not in Debian',
     'bootmac': 'Wi-Fi/Bluetooth MAC addresses from the boot serial: not in Debian (Mobian has bootmac); '
                'the payload sets the Bluetooth address itself (vibeos-bt-addr), Wi-Fi keeps the driver\'s',
@@ -295,8 +296,23 @@ def device_row(nura_dev):
             return {'android': f[1].split(','), 'dtb': None if f[2] == '-' else f[2],
                     'layout': None if f[3] == '-' else f[3],
                     'panels': [] if len(f) < 5 or f[4] == '-' else f[4].split(','),
-                    'dtbo': 'clear' if len(f) > 5 and f[5] == 'clear' else None}
+                    'dtbo': 'clear' if len(f) > 5 and f[5] == 'clear' else None,
+                    'mask': [] if len(f) < 7 or f[6] == '-' else f[6].split(',')}
     return None
+
+
+def mask_units(P, units):
+    """the units masked in the payload root P, as empty files under /etc/systemd/system (see the presets in
+    build_payload); the ones it masked, without those already there"""
+    d, done = os.path.join(P, 'etc/systemd/system'), []
+    for unit in units:
+        if not unit.endswith(('.service', '.socket', '.timer')) or '/' in unit or '*' in unit:
+            die('devices.txt: mask %r: not a unit name' % unit)
+        os.makedirs(d, exist_ok=True)
+        if not os.path.lexists(os.path.join(d, unit)):
+            open(os.path.join(d, unit), 'wb').close()
+            done.append(unit)
+    return done
 
 
 def kernel_from_vmlinuz(v):
@@ -632,7 +648,7 @@ def other_phones_files(nura, dev):
     return skip, sorted(pkgs)
 
 
-def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset(), system=None):
+def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset(), system=None, row=None):
     pl = Payload(P, system_files, nura)
     # the kernel's modules, as Nura has them (its modules.* indexes too; depmod runs again on the device)
     dst = os.path.join(P, 'usr/lib/modules', kver)
@@ -750,6 +766,21 @@ def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset
             os.chmod(os.path.join(P, dst), mode)
             pl.carried.append((dst, 'bootmac (replaced by vibeos-bt-addr)'))
         enable.append('vibeos-bt-addr.service')
+    # q6voiced is not in Debian: without what it does, a call connects and stays silent both ways
+    if 'q6voiced' in nura.pkgs:
+        need = [d for d in ('python3-gi', 'libasound2t64') if system is None or d not in system.ver]
+        if need:
+            pl.not_carried.append(('vibeos-q6voiced (needs %s: not in the system image, or not known here)'
+                                   % ', '.join(need), 'q6voiced'))
+        else:
+            for name, dst, mode in (('vibeos-q6voiced', 'usr/libexec/vibeos-q6voiced', 0o755),
+                                    ('vibeos-q6voiced.service', 'usr/lib/systemd/system/vibeos-q6voiced.service', 0o644),
+                                    ('vibeos-q6voiced.sysusers', 'usr/lib/sysusers.d/vibeos-q6voiced.conf', 0o644)):
+                os.makedirs(os.path.dirname(os.path.join(P, dst)), exist_ok=True)
+                shutil.copyfile(os.path.join(HERE, 'data', 'q6voice', name), os.path.join(P, dst))
+                os.chmod(os.path.join(P, dst), mode)
+                pl.carried.append((dst, 'q6voiced (replaced by vibeos-q6voiced)'))
+            enable.append('vibeos-q6voiced.service')
     nura.enable_units = enable
     # no pmOS config naming the DSP files' directory (a generic image's hexagonrpcd finds it itself; Debian's
     # wrapper passes -R, by default a droid-juicer path): this phone's directory under /usr/share/qcom
@@ -786,6 +817,9 @@ def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset
             pl.carried.append(('preset "disable %s" -> masked' % unit, pkg))
         else:
             pl.not_carried.append(('preset "%s %s"' % (what, unit), pkg))
+    for unit in mask_units(P, row['mask'] if row else []):
+        mask.append(unit)
+        pl.carried.append(('devices.txt "mask %s" -> masked' % unit, 'devices.txt'))
     return pl, nfw, mask, hexa, ucm_fork
 
 
@@ -845,6 +879,7 @@ def debian_debs(nura, args, out_dir, system):
 def write_deb(P, name, ver, desc, kver, mask, depends, out, enable=(), regdb_upstream=False):
     os.makedirs(os.path.join(P, 'DEBIAN'), exist_ok=True)
     hwdb = any(r.startswith(('usr/lib/udev/hwdb.d', 'etc/udev/hwdb.d')) for r, _ in extract.walk(P))
+    sysusers = any(r.startswith('usr/lib/sysusers.d/') for r, _ in extract.walk(P))
     with open(os.path.join(P, 'DEBIAN/control'), 'w') as f:
         f.write('Package: %s\nVersion: %s\nArchitecture: arm64\nMaintainer: VibeOS (nura-to-vibeos)\n'
                 'Section: kernel\nPriority: optional\nProvides: vibeos-device\nConflicts: vibeos-device\n%sDescription: VibeOS device layer from a Nura build: %s\n'
@@ -858,9 +893,11 @@ def write_deb(P, name, ver, desc, kver, mask, depends, out, enable=(), regdb_ups
                 '\t\tcp /usr/share/vibeos-device/hostname /etc/hostname\n'
                 '\t\tsed -i "s/^127\\.0\\.1\\.1[[:space:]].*/127.0.1.1\\t$(cat /etc/hostname)/" /etc/hosts\n'
                 '\t\tcp /usr/share/vibeos-device/machine-info /etc/machine-info\n\tfi\n'
-                '\tdepmod -a %s || true\n%s%s%s'
+                '\tdepmod -a %s || true\n%s%s%s%s'
                 '\tglib-compile-schemas /usr/share/glib-2.0/schemas 2>/dev/null || true\nfi\nexit 0\n'
                 % (kver, '\tsystemd-hwdb update || true\n' if hwdb else '',
+                   # before the units below are enabled: a service whose User= does not exist yet fails to start
+                   '\tsystemd-sysusers || true\n' if sysusers else '',
                    ''.join('\tsystemctl %senable %s 2>/dev/null || true\n' % ('--global ' if u.startswith('--user ') else '',
                                                                            u.split()[-1]) for u in enable),
                    REGDB_POSTINST if regdb_upstream else ''))
@@ -1115,7 +1152,7 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
     system = debver.PackageSet.from_list(args.system_packages)
     sysfiles = {l.strip() for l in open(args.system_files, encoding='utf-8') if l.startswith('/')}
     P = os.path.join(tmpw, 'pkg')
-    pl, nfw, mask, hexa, ucm_fork = build_payload(nura, args, P, kver, moddir, sysfiles, soc, skip, system)
+    pl, nfw, mask, hexa, ucm_fork = build_payload(nura, args, P, kver, moddir, sysfiles, soc, skip, system, row)
     host = dev.split('-', 1)[-1]
     mi = nura.machine_info or 'PRETTY_HOSTNAME="%s"\nCHASSIS=handset\n' % nura.di.get('name', dev)
     for path, body in (('usr/share/vibeos-device/hostname', host + '\n'), ('usr/share/vibeos-device/machine-info', mi),

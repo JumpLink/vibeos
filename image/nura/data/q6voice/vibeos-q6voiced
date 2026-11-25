@@ -1,0 +1,103 @@
+#!/usr/bin/python3 -I
+"""vibeos-q6voiced: call audio on Qualcomm phones with the q6voice driver (postmarketOS's q6voiced, which Debian
+does not package). The modem sends call audio straight to the DSP, but the DSP starts the voice stream only while
+the hostless voice PCM ("VoiceMMode1") is open. This opens it both ways while any ModemManager call is dialing,
+ringing out, active or held, and closes it when the last one ends. No audio data passes through it.
+
+  vibeos-q6voiced [hw:CARD,DEVICE]    default: the PCM /proc/asound/pcm names VoiceMMode1
+"""
+import ctypes, re, sys
+
+PCM_NAME = 'VoiceMMode1'
+# MMCallState: DIALING, RINGING_OUT, ACTIVE, HELD
+LIVE = {1, 2, 4, 5}
+
+
+def log(*m):
+    print(*m, flush=True)
+
+
+def find_device(proc='/proc/asound/pcm'):
+    """'hw:C,D' of the voice PCM, from lines such as '00-06: VoiceMMode1 (*) :  : playback 1 : capture 1'"""
+    try:
+        with open(proc) as f:
+            for line in f:
+                m = re.match(r'(\d+)-(\d+): ([^:]*?)\s*(\(\*\))?\s*:', line)
+                if m and m.group(3).split(' ')[0] == PCM_NAME:
+                    return 'hw:%d,%d' % (int(m.group(1)), int(m.group(2)))
+    except OSError:
+        pass
+    return None
+
+
+class Alsa:
+    """the voice PCM, opened as q6voiced does: capture started, playback prepared (the DSP feeds both). Without a
+    device given, it is looked up at each open: the sound card comes with the audio DSP and can register after
+    ModemManager has started"""
+    CAPTURE, PLAYBACK = 1, 0
+
+    def __init__(self, dev=None, find=find_device):
+        self.lib = ctypes.CDLL('libasound.so.2')
+        self.dev, self.find = dev, find
+        self.handles = []
+
+    def open(self):
+        a = self.lib
+        dev = self.dev or self.find()
+        if not dev:
+            log('no %s PCM (yet): this call stays silent' % PCM_NAME)
+            return False
+        for stream in (self.CAPTURE, self.PLAYBACK):
+            h = ctypes.c_void_p()
+            r = a.snd_pcm_open(ctypes.byref(h), dev.encode(), stream, 0)
+            if r < 0:
+                log('open %s: error %d' % ('capture' if stream else 'playback', r))
+                continue
+            # S16_LE, interleaved, mono, 8 kHz, 40 ms: the DSP ignores them, ALSA needs some
+            a.snd_pcm_set_params(h, 2, 3, 1, 8000, 0, 40000)
+            a.snd_pcm_prepare(h)
+            if stream == self.CAPTURE:
+                a.snd_pcm_start(h)
+            self.handles.append(h)
+        return bool(self.handles)
+
+    def close(self):
+        for h in self.handles:
+            self.lib.snd_pcm_close(h)
+        self.handles.clear()
+
+
+class Voice:
+    """which calls are live, and the PCM open while one is"""
+
+    def __init__(self, pcm):
+        self.pcm, self.live, self.opened = pcm, set(), False
+
+    def state(self, call, new):
+        if new in LIVE:
+            self.live.add(call)
+        else:
+            self.live.discard(call)
+        if self.live and not self.opened:
+            self.opened = self.pcm.open()
+            log('voice PCM opened' if self.opened else 'voice PCM: could not open')
+        elif not self.live and self.opened:
+            self.pcm.close()
+            self.opened = False
+            log('voice PCM closed')
+
+
+def main():
+    from gi.repository import Gio, GLib
+    dev = sys.argv[1] if len(sys.argv) > 1 else None
+    voice = Voice(Alsa(dev))
+    bus = Gio.bus_get_sync(Gio.BusType.SYSTEM)
+    bus.signal_subscribe('org.freedesktop.ModemManager1', 'org.freedesktop.ModemManager1.Call', 'StateChanged',
+                         None, None, Gio.DBusSignalFlags.NONE,
+                         lambda c, s, path, i, n, p: voice.state(path, p.unpack()[1]))
+    log('watching ModemManager calls; voice PCM %s' % (dev or '%s, looked up per call' % PCM_NAME))
+    GLib.MainLoop().run()
+
+
+if __name__ == '__main__':
+    sys.exit(main())

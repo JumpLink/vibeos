@@ -11,8 +11,11 @@
 #   dtbo      clear: the zip zeroes the dtbo partition of the slot it boots from, once boot is written. The ABL lays
 #             that partition's overlays (Android's, for its own kernel) over the DTB of every boot image; on a
 #             mainline DTB that fails, and the ABL drops to fastboot without a word (OnePlus 6T)
-# nura               android                          dtb                                   layout                                       panels          dtbo
-oneplus-fajita       fajita,OnePlus6T,OnePlus6TSingle -                                     -                                            -               clear
+#   mask      units the zip masks on this phone (comma-separated): what the image starts but the phone's kernel cannot
+#             serve yet. 81voltd: mainline q6voice has no VoLTE voice session, so a VoLTE call connects and stays
+#             silent both ways; without it the modem places calls over 2G/3G, where q6voice carries the audio
+# nura               android                          dtb                                   layout                                       panels          dtbo    mask
+oneplus-fajita       fajita,OnePlus6T,OnePlus6TSingle -                                     -                                            -               clear   81voltd.service
 oneplus-enchilada    enchilada,OnePlus6               -                                     -                                            -
 google-sargo         sargo                            -                                     -                                            -
 google-bonito        bonito                           -                                     -                                            -

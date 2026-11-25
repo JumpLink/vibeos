@@ -1,0 +1,16 @@
+[Unit]
+Description=Start the q6voice call audio stream during calls
+After=ModemManager.service sound.target
+# BindsTo with WantedBy: stopped and started again with ModemManager (PartOf would only stop it)
+BindsTo=ModemManager.service
+
+[Service]
+ExecStart=/usr/libexec/vibeos-q6voiced
+Restart=on-failure
+# it only opens the voice PCM (group audio) and listens to ModemManager's signals on the system bus. A fixed
+# user (sysusers.d), not DynamicUser: Debian's dbus-daemon cannot resolve a dynamic uid and drops the connection
+User=vibeos-q6voiced
+SupplementaryGroups=audio
+
+[Install]
+WantedBy=ModemManager.service
