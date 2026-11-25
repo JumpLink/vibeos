@@ -1,11 +1,13 @@
 #!/bin/sh
 # vibeos-hide-replaced-apps on a made-up /usr/share/applications: GNOME's entry hidden only while the VibeOS app is
 # there, its other keys and actions kept, made again when GNOME's file changes, gone with either app, and a file of
-# the same name that the script did not write never touched. $1: the session's source directory
+# the same name that the script did not write never touched; what an earlier build left in GNOME's directory removed,
+# and only that; and /etc/profile.d/vibeos-data-dirs.sh putting /usr/share/vibeos first in XDG_DATA_DIRS, once.
+# $1: the session's source directory
 set -u
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
-export VIBEOS_APPS_DIR=$T/apps VIBEOS_HIDDEN_DIR=$T/hidden
-mkdir -p "$T/apps"
+export VIBEOS_APPS_DIR=$T/apps VIBEOS_HIDDEN_DIR=$T/hidden VIBEOS_OLD_HIDDEN_DIR=$T/old
+mkdir -p "$T/apps" "$T/old"
 run() { d=$1; shift; sh "$d/vibeos-hide-replaced-apps" "$@" 2> "$T/err"; }
 S=$1; shift
 fail=0
@@ -81,5 +83,29 @@ check "--clear leaves other files" "[ -f '$T/hidden/other.desktop' ]"
 printf '[MIME Cache]\n' > "$T/hidden/mimeinfo.cache"
 run "$S"
 check "a cache the script did not write is left as it is" "[ \"\$(cat '$T/hidden/mimeinfo.cache')\" = '[MIME Cache]' ]"
+
+
+# what an earlier build left in GNOME's directory (/usr/share/gnome/applications): its copies and cache go, and
+# gnome-menus' own copies (vim.desktop) stay
+M="# Hidden by vibeos-session (vibeos-hide-replaced-apps), made from $T/apps/"
+printf '%s\n[Desktop Entry]\nNoDisplay=true\n' "${M}org.gnome.Nautilus.desktop" > "$T/old/org.gnome.Nautilus.desktop"
+printf '%s\n[MIME Cache]\n' "# Written by vibeos-session (vibeos-hide-replaced-apps): the file types of its copies here" > "$T/old/mimeinfo.cache"
+printf '[Desktop Entry]\nName=Vim\nNoDisplay=true\n' > "$T/old/vim.desktop"
+run "$S"
+check "an earlier build's copy and cache in GNOME's directory removed" \
+	"[ ! -e '$T/old/org.gnome.Nautilus.desktop' ] && [ ! -e '$T/old/mimeinfo.cache' ]"
+check "gnome-menus' own copy there kept" "[ -f '$T/old/vim.desktop' ]"
+VIBEOS_HIDDEN_DIR=$T/hidden2 run "$S"
+check "a copy made in a new directory" "[ -f '$T/hidden2/org.gnome.Nautilus.desktop' ] || [ -f '$T/hidden2/org.gnome.Console.desktop' ]"
+VIBEOS_HIDDEN_DIR=$T/hidden2 run "$S" --clear
+check "--clear removes the directory once it is empty" "[ ! -e '$T/hidden2' ]"
+
+# /etc/profile.d/vibeos-data-dirs.sh, as a login shell reads it after gnome-session_gnomerc.sh
+dirs() { env -i ${1:+XDG_DATA_DIRS="$1"} sh -c ". '$S/profile.d/vibeos-data-dirs.sh'; . '$S/profile.d/vibeos-data-dirs.sh'; printf %s \"\$XDG_DATA_DIRS\""; }
+check "XDG_DATA_DIRS unset: /usr/share/vibeos before the default" \
+	"[ \"\$(dirs '')\" = /usr/share/vibeos:/usr/local/share/:/usr/share/ ]"
+check "GNOME's list: /usr/share/vibeos in front, once" \
+	"[ \"\$(dirs /usr/share/gnome:/usr/local/share/:/usr/share/)\" = /usr/share/vibeos:/usr/share/gnome:/usr/local/share/:/usr/share/ ]"
+check "already there: unchanged" "[ \"\$(dirs /usr/share/gnome:/usr/share/vibeos:/usr/share/)\" = /usr/share/gnome:/usr/share/vibeos:/usr/share/ ]"
 
 exit $fail

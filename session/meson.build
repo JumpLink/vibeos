@@ -30,6 +30,8 @@ install_data('vibeos-logind-user-refresh', install_dir: libexecdir, install_mode
 test('logind-user-refresh', find_program('tests/logind-user-refresh.sh'), args: [meson.current_source_dir()])
 # GNOME's apps that a VibeOS app replaces, hidden from the app lists (see the file; run by the package's trigger)
 install_data('vibeos-hide-replaced-apps', install_dir: libexecdir, install_mode: 'rwxr-xr-x')
+# /usr/share/vibeos first in XDG_DATA_DIRS, where the copies are (see the file)
+install_data('profile.d/vibeos-data-dirs.sh', install_dir: get_option('sysconfdir') / 'profile.d')
 test('hide-replaced-apps', find_program('tests/hide-replaced-apps.sh'), args: [meson.current_source_dir()])
 # the dock switcher's udev rule is opt-in: on a plug or an unplug vibeos-dock starts a session, which would take over a
 # desktop that did not ask for it. Linked into /etc/udev/rules.d by whoever wants it
