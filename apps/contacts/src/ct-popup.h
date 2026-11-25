@@ -13,7 +13,8 @@ G_BEGIN_DECLS
 typedef void (*CtPopupChosen) (int index, gpointer data);
 
 typedef enum {
-  CT_POPUP_OVER_END,            /* an overflow menu: over its ⋮, the right edge a little in from the anchor's end */
+  CT_POPUP_OVER_END,            /* an overflow menu: below its ⋮ (above it with no room below), never over it, the
+                                 * right edge a little in from the anchor's end */
   CT_POPUP_BELOW,               /* a spinner's drop-down: under the anchor, its left edge on the anchor's */
   CT_POPUP_AT,                  /* a context menu: its top-left at (x, y) in the anchor, kept inside the window */
   CT_POPUP_SPINNER,             /* a Spinner's dropdown: over the anchor, its top-left on the anchor's, at least as

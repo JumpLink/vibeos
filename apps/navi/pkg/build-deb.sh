@@ -13,12 +13,15 @@
 #   ROOT             the arm64 root filesystem (the sysroot of both builds), entered with sudo chroot
 #   OUTDIR           where the .deb goes; the package is put together in OUTDIR/vibeos-navi.work
 #
+# NAVI_VERSION=VERSION: the package's version, for a release (1:0.1.4) instead of the project's and the commit's; the
+# release's VibeOS libraries are then required at exactly that version.
+#
 # LIBDIRS=DIR[:DIR…]: libraries ROOT does not have (libtonal, from the same tree's top-level build), for
 # dpkg-shlibdeps to find; their packages' versions are in pkg/shlibs.local.
 #
 # Everything private goes to /usr/lib/vibeos-navi, found through the RUNPATH: no system library is replaced.
 set -eu
-[ $# -eq 5 ] || { sed -n "2,18p" "$0"; exit 2; }
+[ $# -eq 5 ] || { sed -n "2,20p" "$0"; exit 2; }
 navi_build=$(realpath "$1"); vibeos_build=$(realpath "$2"); maplibre_src=$(realpath "$3"); root=$(realpath "$4")
 outdir=$(realpath "$5")
 pkgdir=$(cd "$(dirname "$0")" && pwd)
@@ -31,7 +34,7 @@ git -C "$srcdir" diff --quiet HEAD -- . ../../libvibeos || [ -n "${ALLOW_DIRTY:-
 project=$(meson introspect --projectinfo "$navi_build" | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')
 stamp=$(git -C "$srcdir" log -1 --format=%cd --date=format:%Y%m%d%H%M)
 commit=$(git -C "$srcdir" rev-parse --short=7 HEAD)
-version="$project~git$stamp.$commit"
+version=${NAVI_VERSION:-$project~git$stamp.$commit}
 prefix=$(meson introspect --buildoptions "$navi_build" |
          python3 -c 'import json,sys; print([o["value"] for o in json.load(sys.stdin) if o["name"] == "prefix"][0])')
 [ "$prefix" = /usr ] || { echo "$navi_build is configured for $prefix, not /usr"; exit 1; }
@@ -72,11 +75,21 @@ install -m 644 "$pkgdir/copyright" "$p/usr/share/doc/vibeos-navi/"
 gzip -9n < "$maplibre_src/LICENSES.core.md" > "$p/usr/share/doc/vibeos-navi/LICENSES.maplibre.md.gz"
 cp "$pkgdir/control" "$work/debian/control"
 cp "$pkgdir/shlibs.local" "$work/debian/shlibs.local"
+# a release's package needs that release's libraries, exactly, as debian/rules has every other package of it pin
+# them (dh_makeshlibs -V): pkg/'s (>= 1:0.1.3) is for a build between releases. An image refuses a relaxed pin.
+if [ -n "${NAVI_VERSION:-}" ]; then
+    sed -i -E "/lib(vibeos|spongy|spongy-gtk|tonal)-1-0/ s/\(>= [^)]*\)/(= $version)/" \
+        "$work/debian/control" "$work/debian/shlibs.local"
+    ! grep -E 'lib(vibeos|spongy|spongy-gtk|tonal)-1-0 \(>=' "$work/debian/control" "$work/debian/shlibs.local" ||
+        { echo "a VibeOS library is still pinned with >="; exit 1; }
+fi
 subject=$(git -C "$srcdir" log -1 --format=%s)
+# the entry wrapped as Debian's changelog lines are (at most 80 columns), the subject being as long as it is
+entry=$(printf 'Built from VibeOS commit %s ("%s").\n' "$commit" "$subject" | fold -s -w 74 | sed -e 's/ *$//' -e '1s/^/  * /' -e '2,$s/^/    /')
 cat > "$work/debian/changelog" <<EOF
 vibeos-navi ($version) unstable; urgency=medium
 
-  * Built from VibeOS commit $commit ("$subject").
+$entry
 
  -- pulpoff <pashkovsky@gmail.com>  $(date -R)
 EOF
@@ -108,4 +121,4 @@ chmod 644 debian/vibeos-navi/DEBIAN/md5sums
 dpkg-deb --root-owner-group -Zxz --build debian/vibeos-navi .
 ' sh "$inside"
 mv "$work"/vibeos-navi_*.deb "$outdir/"
-echo "$outdir/vibeos-navi_${version}_arm64.deb"
+echo "$outdir/vibeos-navi_${version#*:}_arm64.deb"

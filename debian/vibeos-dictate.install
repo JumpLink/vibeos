@@ -6,3 +6,5 @@ usr/share/icons/hicolor/scalable/apps/vibeos.Dictate.svg
 usr/share/applications/vibeos.Agent.desktop
 usr/share/dbus-1/services/vibeos.Agent.service
 usr/share/icons/hicolor/scalable/apps/vibeos.Agent.svg
+etc/xdg/autostart/vibeos.Agent-announce.desktop
+usr/share/vibeos-dictate/sounds

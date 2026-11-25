@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Vibe
+Comment=Says who is calling, while Announce calls is on in Vibe's settings
+Exec=vibeos-dictate --agent --background
+Icon=vibeos.Agent
+Terminal=false
+NoDisplay=true
+X-GNOME-AutostartCondition=GSettings vibeos.Dictate announce-calls

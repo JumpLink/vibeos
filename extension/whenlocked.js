@@ -6,7 +6,7 @@
 //
 // An app gets on the lock screen this way only by putting its window up while the phone is locked (an alarm that
 // rings, a call coming in), or by having it on top when the phone locks (a call under way).
-import Gio from 'gi://Gio';
+import GioUnix from 'gi://GioUnix';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 
@@ -15,7 +15,7 @@ const KEY = 'X-Vibeos-ShowWhenLocked';
 // whether @win's app declares that it may show over the lock screen
 export function showsWhenLocked(win) {
     const info = Shell.WindowTracker.get_default().get_window_app(win)?.get_app_info();
-    return info instanceof Gio.DesktopAppInfo && info.has_key(KEY) && info.get_boolean(KEY);
+    return info instanceof GioUnix.DesktopAppInfo && info.has_key(KEY) && info.get_boolean(KEY);
 }
 
 export class WhenLocked {

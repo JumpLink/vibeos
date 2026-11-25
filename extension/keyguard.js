@@ -289,6 +289,9 @@ export class Keyguard extends Signals.EventEmitter {
         this._lockedUntil = 0;          // realtime, ms
         this._countdownId = 0;
         this._checking = false;
+        // what runs once the phone is unlocked (dismissThen), and what runs when the bouncer leaves without it
+        this._afterUnlock = null;
+        this._afterCancel = null;
         // an app's window over the lock screen (setOccluded), and the other windows' actors hidden meanwhile
         this.occludedBy = null;
         this._occlusionHidden = new Set();
@@ -610,9 +613,8 @@ export class Keyguard extends Signals.EventEmitter {
         this._pill.width = px(this._pillWidth);
         this._placePill();
         sources.slice(0, sources.length > PILL.max + 1 ? PILL.max : n).forEach((source, k) => {
-            const icon = notificationIcon(source, px(PILL.icon));
+            const icon = notificationIcon(source, px(PILL.icon), {glyph: `rgb(${PILL_ICON.join(', ')})`});
             icon.opacity = 255;
-            icon.style = `color: rgb(${PILL_ICON.join(', ')});`;
             icon.set_position(px(PILL.pad + PILL.slot * k + (PILL.slot - PILL.icon) / 2), px((PILL.h - PILL.icon) / 2));
             this._pill.add_child(icon);
         });
@@ -925,6 +927,9 @@ export class Keyguard extends Signals.EventEmitter {
     }
 
     _dropBouncer() {
+        const cancelled = this._afterCancel;
+        this._afterUnlock = null;
+        this._afterCancel = null;
         this._bouncerActive = false;
         this._bouncer?.park();
         this._bouncerBox.hide();
@@ -934,6 +939,7 @@ export class Keyguard extends Signals.EventEmitter {
             this.bouncerShowing = false;
             this.emit('changed');
         }
+        cancelled?.();
     }
 
     // auto-confirm on while the last PIN that unlocked was 6 digits or more, and off for the rest of this bouncer once
@@ -959,6 +965,37 @@ export class Keyguard extends Signals.EventEmitter {
             this._goingAway();
             return;
         }
+        this._ensureBouncer();
+        this._settleTo(0, SETTLE_MS * 2, () => this._bouncerShown());
+    }
+
+    // Android's KeyguardManager.requestDismissKeyguard, for an app a key opens (keylaunch.js): the bouncer comes up
+    // (with no secret, the unlock itself), and `then` runs once the phone is unlocked. The bouncer leaving without an
+    // unlock (back, a swipe down, the screen going off) drops it, and runs `cancelled` if there is one; a later call
+    // replaces it, the earlier one cancelled.
+    dismissThen(then, cancelled = null) {
+        if (!this.showing) {
+            then();
+            return;
+        }
+        if (this._unlockingNow || this.occludedBy) {
+            cancelled?.();
+            return;
+        }
+        const earlier = this._afterCancel;
+        this._afterUnlock = then;
+        this._afterCancel = cancelled;
+        if (earlier !== cancelled)
+            earlier?.();
+        if (!this._secure) {
+            this._goingAway();
+            return;
+        }
+        if (this.bouncerShowing)
+            return;
+        this._settle?.stop();
+        this._settle = null;
+        this._tracking = false;
         this._ensureBouncer();
         this._settleTo(0, SETTLE_MS * 2, () => this._bouncerShown());
     }
@@ -1214,6 +1251,8 @@ export class Keyguard extends Signals.EventEmitter {
     }
 
     _finishUnlock() {
+        const then = this._afterUnlock;
+        this._afterCancel = null;
         this._unlockingNow = false;
         this._lockedDown = false;
         this._dropBouncer();
@@ -1227,6 +1266,7 @@ export class Keyguard extends Signals.EventEmitter {
         this._grab = null;
         this.showing = false;
         this.emit('changed');
+        then?.();
     }
 
     // for development (gp-eval): the lock screen goes as if the secret was right

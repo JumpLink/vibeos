@@ -10,7 +10,6 @@ gio = dependency('gio-unix-2.0', version: '>= 2.76')
 appstream = dependency('appstream', version: '>= 1.0')
 bindir = get_option('prefix') / get_option('bindir')
 datadir = get_option('prefix') / get_option('datadir')
-sysconfdir = get_option('sysconfdir')
 src = include_directories('src')
 
 # the packages, their versions, PackageKit and the rules: no GTK, so the tests link them alone
@@ -33,8 +32,7 @@ install_data('data/vibeos.Installer.desktop', install_dir: datadir / 'applicatio
 install_data('data/vibeos.Installer.svg', install_dir: datadir / 'icons/hicolor/scalable/apps')
 # the interface other apps call, documented in it
 install_data('data/vibeos.Installer1.xml', install_dir: datadir / 'dbus-1/interfaces')
-# the default app for .deb files in the session (read before Debian's /usr/share/applications/gnome-mimeapps.list)
-install_data('data/gnome-mimeapps.list', install_dir: get_option('prefix') / sysconfdir / 'xdg')
+# the default app for .deb files in the session: vibeos-session's gnome-mimeapps.list
 gnome.post_install(gtk_update_icon_cache: true, update_desktop_database: true)
 
 test('inst', executable('test-inst', 'tests/test-inst.c', include_directories: src, link_with: core,

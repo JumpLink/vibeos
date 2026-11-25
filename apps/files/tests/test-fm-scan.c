@@ -21,25 +21,25 @@ nth (GPtrArray *array, guint i)
 static void
 test_targets (void)
 {
-  g_autoptr(GPtrArray) lan = targets ("192.168.10.58", 24);
+  g_autoptr(GPtrArray) lan = targets ("192.0.2.58", 24);
   g_autoptr(GPtrArray) wide = targets ("10.1.2.3", 8);
-  g_autoptr(GPtrArray) small = targets ("192.168.10.58", 30);
-  g_autoptr(GPtrArray) point = targets ("192.168.10.58", 32);
+  g_autoptr(GPtrArray) small = targets ("192.0.2.58", 30);
+  g_autoptr(GPtrArray) point = targets ("192.0.2.58", 32);
   g_autofree char *first = nth (lan, 0), *last = nth (lan, lan->len - 1);
   g_autofree char *wide_first = nth (wide, 0), *wide_last = nth (wide, wide->len - 1);
   g_autofree char *small_first = nth (small, 0), *small_last = nth (small, 1);
 
   /* the /24 without its network and broadcast addresses, the device's own among them */
   g_assert_cmpuint (lan->len, ==, 254);
-  g_assert_cmpstr (first, ==, "192.168.10.1");
-  g_assert_cmpstr (last, ==, "192.168.10.254");
+  g_assert_cmpstr (first, ==, "192.0.2.1");
+  g_assert_cmpstr (last, ==, "192.0.2.254");
   /* a /8 only around the address */
   g_assert_cmpuint (wide->len, ==, 254);
   g_assert_cmpstr (wide_first, ==, "10.1.2.1");
   g_assert_cmpstr (wide_last, ==, "10.1.2.254");
   g_assert_cmpuint (small->len, ==, 2);
-  g_assert_cmpstr (small_first, ==, "192.168.10.57");
-  g_assert_cmpstr (small_last, ==, "192.168.10.58");
+  g_assert_cmpstr (small_first, ==, "192.0.2.57");
+  g_assert_cmpstr (small_last, ==, "192.0.2.58");
   g_assert_cmpuint (point->len, ==, 0);
 }
 
@@ -98,23 +98,23 @@ response (guint n, const char *const *names, const guint8 *suffixes, const gbool
 static void
 test_names (void)
 {
-  const char *const server[] = { "WORKGROUP", "PLEX", "PLEX", "WORKGROUP" };
+  const char *const server[] = { "WORKGROUP", "NAS", "NAS", "WORKGROUP" };
   const guint8 server_suffixes[] = { 0x00, 0x00, 0x20, 0x1e };
   const gboolean server_groups[] = { TRUE, FALSE, FALSE, TRUE };
-  const char *const box[] = { "WORKGROUP", "UGOOS" };
+  const char *const box[] = { "WORKGROUP", "TVBOX" };
   const guint8 box_suffixes[] = { 0x00, 0x00 };
   const gboolean box_groups[] = { TRUE, FALSE };
   g_autoptr(GByteArray) a = response (4, server, server_suffixes, server_groups);
   g_autoptr(GByteArray) b = response (2, box, box_suffixes, box_groups);
   g_autoptr(GByteArray) c = response (1, box, box_suffixes, box_groups);
-  g_autofree char *plex = fm_scan_nbstat_name (a->data, a->len);
-  g_autofree char *ugoos = fm_scan_nbstat_name (b->data, b->len);
+  g_autofree char *nas = fm_scan_nbstat_name (a->data, a->len);
+  g_autofree char *tvbox = fm_scan_nbstat_name (b->data, b->len);
   g_autofree char *group = fm_scan_nbstat_name (c->data, c->len);
   g_autofree char *cut = fm_scan_nbstat_name (a->data, 60);
-  g_autofree char *dashed = fm_scan_address_name ("192.168.10.1");
+  g_autofree char *dashed = fm_scan_address_name ("192.0.2.1");
 
-  g_assert_cmpstr (plex, ==, "PLEX");
-  g_assert_cmpstr (ugoos, ==, "UGOOS");
+  g_assert_cmpstr (nas, ==, "NAS");
+  g_assert_cmpstr (tvbox, ==, "TVBOX");
   g_assert_null (group);
   g_assert_null (cut);
   /* a request is no answer */
@@ -124,7 +124,7 @@ test_names (void)
 
     g_assert_null (request);
   }
-  g_assert_cmpstr (dashed, ==, "192-168-10-1");
+  g_assert_cmpstr (dashed, ==, "192-0-2-1");
 }
 
 static void

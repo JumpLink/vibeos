@@ -21,7 +21,8 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {BackProbe} from './a11y.js';
 import {BackPanelController} from './backpanel.js';
-import {dismissKeyboard} from './keyboard/keyboard.js';
+import {TouchClaim} from './claim.js';
+import {dismissKeyboard, keyboardShown} from './keyboard/keyboard.js';
 import {cubic, openerOf} from './launch.js';
 import {Animator} from './motion.js';
 import {overWindows} from './scanout.js';
@@ -216,6 +217,8 @@ export class EdgeBack {
             haptic: () => nav.haptic(),
         });
         this._g = null;
+        // the swipe's touch, once it is back, the system's: the app under it has it cancelled (claim.js)
+        this._claim = new TouchClaim();
         this._answer = null;                // {win, result}: what back meant in the focused app when last asked
         this._epoch = 0;                    // bumped when a back changes the app: older answers are stale
         this._prefetchId = 0;
@@ -239,6 +242,8 @@ export class EdgeBack {
             // a sequence dropped before the gesture recognized emits neither end nor cancel
             'notify::state', () => {
                 const state = this._gesture.state;
+                if (state !== Clutter.GestureState.RECOGNIZING)
+                    this._claim.release();
                 if ((state === Clutter.GestureState.CANCELLED || state === Clutter.GestureState.COMPLETED) &&
                     this._g && !this._g.started)
                     this._end(true);
@@ -297,7 +302,8 @@ export class EdgeBack {
         const nav = this._nav;
         const focus = global.display.focus_window;
         const launcher = !focus || nav.home.isHome(focus);
-        if (Main.keyboard.visible)
+        // (a keyboard left on the screen closed too: Back takes it away)
+        if (keyboardShown())
             return {kind: 'keyboard', launcher};
         if (nav.recentsShown)
             return {kind: 'recents'};
@@ -388,6 +394,7 @@ export class EdgeBack {
             return;
         this._clearLongPress();
         g.started = true;
+        this._claim.take();
         // the finger is back's now: the launcher under it lets go (Android pilfers it), so the drawer's list
         // neither scrolls nor opens the app it started on
         if (g.target.kind === 'drawer' || g.target.kind === 'home-screen' || g.target.launcher)
@@ -505,6 +512,8 @@ export class EdgeBack {
 
     _end(cancelled) {
         this._clearLongPress();
+        // (before back's key or button: the app has its keyboard focus again)
+        this._claim.release();
         const g = this._g;
         if (!g)
             return;
@@ -644,6 +653,7 @@ export class EdgeBack {
         this._g = null;
         this._gesture.get_actor()?.remove_action(this._gesture);
         this._gesture.disconnectObject(this);
+        this._claim.release();
         this._panel.destroy();
         this._probe.destroy();
     }

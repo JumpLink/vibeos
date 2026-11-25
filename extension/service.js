@@ -59,10 +59,29 @@ const IFACE = `<node>
          never covered; one whose app's desktop file says X-Vibeos-Keyboard=overlay is, and the app makes room itself
          (keyboard.js). Changes are announced as the keyboard starts to come up and to go down. -->
     <property name="KeyboardOverlap" type="u" access="read"/>
+    <!-- the screen's brightness as the quick settings' slider shows it and sets it, 0..1; -1 when the phone has no
+         backlight the shell drives. For Agent, which sets it when asked ("brightness to 50 percent") -->
+    <property name="Brightness" type="d" access="readwrite"/>
     <!-- the apps open now, the ones recents shows a card for, the most recently used first: each app's id (its
          desktop file's, without ".desktop") and its name. For Agent, which answers "which apps are open?" -->
     <method name="RunningApps">
       <arg type="a(ss)" name="apps" direction="out"/>
+    </method>
+    <!-- the notifications in the shade now, the newest first: each one's app id (its desktop file's, without
+         ".desktop", or the sender's name), the app's name, the title, the body, and when it came (Unix seconds). For
+         Agent, which answers "what did I miss?" with counts and app names, and reads them only when asked -->
+    <method name="Notifications">
+      <arg type="a(ssssx)" name="notifications" direction="out"/>
+    </method>
+    <!-- Android's KeyguardManager.createConfirmDeviceCredentialIntent: the owner's PIN or pattern asked for, for an
+         app that must know the owner is in front of the phone (Vibe, before its voice sample is replaced or deleted).
+         The phone locks and its bouncer comes up; confirmed is true once the secret was entered and the phone is
+         unlocked again, back in the app. The bouncer leaving without it (back, a swipe down, the screen going off)
+         answers false, and the phone stays locked. With no secret (swipe), true at once; while the phone is locked,
+         or another app's confirmation waits, false. app_id: the caller's desktop file id, for the journal. -->
+    <method name="ConfirmOwner">
+      <arg type="s" name="app_id" direction="in"/>
+      <arg type="b" name="confirmed" direction="out"/>
     </method>
   </interface>
 </node>`;
@@ -70,7 +89,7 @@ const IFACE = `<node>
 export class Service {
     constructor(home) {
         this._home = home;
-        this._launch = new LaunchTransition();
+        this._launch = new LaunchTransition(home);
         this._nav = new Navigation(home);
         this._nav.onGestureBegin = () => {
             this._launch.cancelSplash();
@@ -79,6 +98,7 @@ export class Service {
         };
         setExpectWindow(app => this._launch.expect(app));
         this._volumeKeys = new Map();   // app id -> {sender, watch}: who took the volume keys
+        this._confirming = false;       // an app's ConfirmOwner waits for the bouncer
         this._overlap = 0;
         this._sizedKeyboard = null;     // the keyboard whose height is watched
         Main.keyboard.connectObject('visibility-changed', () => this._updateOverlap(), this);
@@ -132,6 +152,16 @@ export class Service {
         return this._overlap;
     }
 
+    get Brightness() {
+        return Main.brightnessManager.globalScale?.value ?? -1;
+    }
+
+    set Brightness(value) {
+        const scale = Main.brightnessManager.globalScale;
+        if (scale)
+            scale.value = Math.clamp(value, 0, 1);
+    }
+
     // The keys' top edge against the bottom of the window in front. The keyboard is measured, not where it is in its
     // slide: the app hears the end of the slide at its start, and moves with it.
     _updateOverlap() {
@@ -168,6 +198,35 @@ export class Service {
 
     Drawer(open) {
         this._nav.drawerOpen = open;
+    }
+
+    ConfirmOwnerAsync([appId], invocation) {
+        const keyguard = this._keyguard;
+        const answer = confirmed => invocation.return_value(new GLib.Variant('(b)', [confirmed]));
+        if (!keyguard) {
+            invocation.return_dbus_error('org.freedesktop.DBus.Error.Failed', 'The lock screen is not running');
+            return;
+        }
+        if (!keyguard._secure) {
+            answer(true);
+            return;
+        }
+        if (keyguard.showing || this._confirming) {
+            answer(false);
+            return;
+        }
+        console.log(`vibeos: ${appId} asks for the owner's secret`);
+        this._confirming = true;
+        let answered = false;
+        const once = confirmed => {
+            if (answered)
+                return;
+            answered = true;
+            this._confirming = false;
+            answer(confirmed);
+        };
+        keyguard.lock();
+        keyguard.dismissThen(() => once(true), () => once(false));
     }
 
     setKeyguard(keyguard) {
@@ -213,6 +272,19 @@ export class Service {
         return apps;
     }
 
+    Notifications() {
+        const list = [];
+        for (const source of Main.messageTray.getSources()) {
+            const id = (source.app?.get_id() ?? source.policy?.id ?? '').replace(/\.desktop$/, '');
+            for (const n of source.notifications) {
+                const when = n.datetime?.to_unix() ?? 0;
+                list.push([id, source.title ?? '', n.title ?? '', n.body ?? n.bannerBodyText ?? '', when]);
+            }
+        }
+        list.sort((a, b) => b[4] - a[4]);
+        return list;
+    }
+
     TakeVolumeKeysAsync([appId, take], invocation) {
         this._giveVolumeKeysBack(appId);
         if (take) {
@@ -246,9 +318,25 @@ export class Service {
             null, Gio.DBusCallFlags.NONE, -1, null, null);
     }
 
-    // the Bixby key (keys.js AppSwitchKey)
+    // the side button's recents (keylaunch.js)
     toggleRecents() {
         this._nav.toggleRecents();
+    }
+
+    // An app a key opens (keylaunch.js), with the launch's animation out of a box in the screen's middle, as an app
+    // opened from another; one already in front only stays there
+    launchApp(app) {
+        const focus = global.display.focus_window;
+        if (focus && Shell.WindowTracker.get_default().get_window_app(focus) === app) {
+            Main.activateWindow(focus);
+            return;
+        }
+        const index = Main.layoutManager.primaryIndex;
+        const area = Main.layoutManager.getWorkAreaForMonitor(index);
+        const scale = global.display.get_monitor_scale(index);
+        const s = Math.min(area.width, area.height) / 5;
+        this._launch.launch(app, [(area.x + (area.width - s) / 2) * scale, (area.y + (area.height - s) / 2) * scale,
+            s * scale, s * scale], '');
     }
 
     destroy() {

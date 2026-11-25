@@ -118,6 +118,7 @@ typedef struct {
   TonalVariant variant;
   double       contrast;
   gboolean     pure_black;
+  gboolean     high_contrast;   /* Accessibility's High contrast: the contrast at its top, outlines (vibeos.css) */
 } Source;
 
 struct _VibeosTheme {
@@ -126,6 +127,7 @@ struct _VibeosTheme {
   gboolean         initialized;         /* vibeos_init_full has run: there is a display to style */
   GSettings       *settings;            /* vibeos.Theme, NULL without its schema */
   GSettings       *interface;           /* org.gnome.desktop.interface, NULL without its schema */
+  GSettings       *a11y;                /* org.gnome.desktop.a11y.interface, NULL without its high-contrast key */
   GtkCssProvider  *provider;
 
   VibeosScheme     scheme;              /* the app's own choice of light or dark (vibeos_theme_set_scheme) */
@@ -189,7 +191,7 @@ read_source (VibeosTheme *self, Source *source)
 {
   const char *env;
 
-  *source = (Source) { DEFAULT_SEED, TONAL_VARIANT_TONAL_SPOT, 0, FALSE };
+  *source = (Source) { DEFAULT_SEED, TONAL_VARIANT_TONAL_SPOT, 0, FALSE, FALSE };
   if (self->settings)
     {
       g_autofree char *style = g_settings_get_string (self->settings, "style");
@@ -205,13 +207,20 @@ read_source (VibeosTheme *self, Source *source)
   env = g_getenv ("VIBEOS_CONTRAST");
   if (env && *env)
     source->contrast = CLAMP (g_ascii_strtod (env, NULL), -1.0, 1.0);
+  /* High contrast is Material's high contrast level (1, Android's own for it), whatever contrast the theme has */
+  source->high_contrast = self->a11y && g_settings_get_boolean (self->a11y, "high-contrast");
+  env = g_getenv ("VIBEOS_HIGH_CONTRAST");
+  if (env && *env)
+    source->high_contrast = g_str_equal (env, "1") || g_str_equal (env, "true");
+  if (source->high_contrast)
+    source->contrast = 1.0;
 }
 
 static gboolean
 source_equal (const Source *a, const Source *b)
 {
   return a->seed == b->seed && a->variant == b->variant && a->contrast == b->contrast
-         && !a->pure_black == !b->pure_black;
+         && !a->pure_black == !b->pure_black && !a->high_contrast == !b->high_contrast;
 }
 
 /* every widget of every window redrawn: the ones that draw themselves read their colours as they draw */
@@ -247,6 +256,11 @@ load_stylesheet (VibeosTheme *self)
                 self->dark ? GTK_INTERFACE_COLOR_SCHEME_DARK : GTK_INTERFACE_COLOR_SCHEME_LIGHT, NULL);
 #else
   g_object_set (gtk_settings_get_default (), "gtk-application-prefer-dark-theme", self->dark, NULL);
+#endif
+#if GTK_CHECK_VERSION (4, 20, 0)
+  /* and in the same contrast: the stylesheets' @media (prefers-contrast: more) rules, libadwaita's high contrast */
+  g_object_set (gtk_settings_get_default (), "gtk-interface-contrast",
+                self->source.high_contrast ? GTK_INTERFACE_CONTRAST_MORE : GTK_INTERFACE_CONTRAST_NO_PREFERENCE, NULL);
 #endif
 }
 
@@ -317,6 +331,7 @@ vibeos_theme_dispose (GObject *object)
 
   g_clear_object (&self->settings);
   g_clear_object (&self->interface);
+  g_clear_object (&self->a11y);
   g_clear_object (&self->provider);
   G_OBJECT_CLASS (vibeos_theme_parent_class)->dispose (object);
 }
@@ -341,6 +356,18 @@ vibeos_theme_init (VibeosTheme *self)
       if (self->interface)
         g_signal_connect (self->interface, "changed::color-scheme", G_CALLBACK (on_settings_changed), self);
     }
+  /* High contrast applies with or without a theme to follow */
+  self->a11y = settings_if_installed ("org.gnome.desktop.a11y.interface");
+  if (self->a11y)
+    {
+      g_autoptr (GSettingsSchema) schema = NULL;
+
+      g_object_get (self->a11y, "settings-schema", &schema, NULL);
+      if (!g_settings_schema_has_key (schema, "high-contrast"))
+        g_clear_object (&self->a11y);
+    }
+  if (self->a11y)
+    g_signal_connect (self->a11y, "changed::high-contrast", G_CALLBACK (on_settings_changed), self);
   update (self);
 }
 

@@ -5,23 +5,23 @@ static void
 test_places (void)
 {
   g_autoptr(GPtrArray) remotes = g_ptr_array_new_with_free_func ((GDestroyNotify) fm_remote_free);
-  FmRemote *plex = fm_remote_new (FM_PROTO_SMB);
+  FmRemote *nas = fm_remote_new (FM_PROTO_SMB);
   g_autofree char *home_uri = NULL;
   g_autoptr(GFile) music = g_file_new_build_filename (g_get_home_dir (), "Music", NULL);
   g_autoptr(GFile) etc = g_file_new_for_path ("/etc");
-  g_autoptr(GFile) video = g_file_new_for_uri ("smb://plex/VIDEO/");
-  g_autoptr(GFile) other = g_file_new_for_uri ("smb://nas/share/x/");
+  g_autoptr(GFile) video = g_file_new_for_uri ("smb://nas/VIDEO/");
+  g_autoptr(GFile) other = g_file_new_for_uri ("smb://backup/share/x/");
   g_autoptr(GFile) trash = g_file_new_for_uri ("trash:///a.txt");
   g_autoptr(GFile) net = g_file_new_for_uri ("network:///");
   g_autoptr(FmPlace) a = NULL, b = NULL, c = NULL, d = NULL, e = NULL, f = NULL;
   g_autofree char *root = NULL, *server = NULL;
 
-  g_free (plex->id);
-  plex->id = g_strdup ("remote-1");
-  g_free (plex->name);
-  plex->name = g_strdup ("PLEX");
-  fm_remote_set_address (plex, "plex");
-  g_ptr_array_add (remotes, plex);
+  g_free (nas->id);
+  nas->id = g_strdup ("remote-1");
+  g_free (nas->name);
+  nas->name = g_strdup ("NAS");
+  fm_remote_set_address (nas, "nas");
+  g_ptr_array_add (remotes, nas);
 
   a = fm_place_find (music, remotes, NULL);
   g_assert_cmpint (a->kind, ==, FM_PLACE_STORAGE);
@@ -30,15 +30,15 @@ test_places (void)
   g_assert_cmpint (b->kind, ==, FM_PLACE_SYSTEM);
   c = fm_place_find (video, remotes, NULL);
   g_assert_cmpint (c->kind, ==, FM_PLACE_REMOTE);
-  g_assert_cmpstr (c->name, ==, "PLEX");
+  g_assert_cmpstr (c->name, ==, "NAS");
   g_assert_cmpstr (c->remote_id, ==, "remote-1");
   root = g_file_get_uri (c->root);
-  g_assert_cmpstr (root, ==, "smb://plex/");
+  g_assert_cmpstr (root, ==, "smb://nas/");
   d = fm_place_find (other, remotes, NULL);
   g_assert_cmpint (d->kind, ==, FM_PLACE_SERVER);
-  g_assert_cmpstr (d->name, ==, "nas");
+  g_assert_cmpstr (d->name, ==, "backup");
   server = g_file_get_uri (d->root);
-  g_assert_cmpstr (server, ==, "smb://nas/");
+  g_assert_cmpstr (server, ==, "smb://backup/");
   e = fm_place_find (trash, remotes, NULL);
   g_assert_cmpint (e->kind, ==, FM_PLACE_TRASH);
   f = fm_place_find (net, remotes, NULL);

@@ -54,6 +54,9 @@ function ObjectManager ()
   return {
     activate = function () end,
     lookup = function (_, q) return clients[q[1][3]] end,
+    -- the privacy part's links: none here
+    iterate = function () return function () end end,
+    connect = function () end,
   }
 end
 local hooks = {}

@@ -1,0 +1,12 @@
+# The VibeOS session's default apps, installed as /etc/xdg/gnome-mimeapps.list: the session's desktop name is GNOME
+# (gdm/vibeos.desktop), so this is the list GLib reads for it, and for GNOME's own session on the same device. GLib
+# reads $XDG_CONFIG_DIRS before $XDG_DATA_DIRS, so it comes before Debian's
+# /usr/share/applications/gnome-mimeapps.list; a default the user sets (~/.config/mimeapps.list) still comes first.
+[Default Applications]
+# App Installer opens .deb files (Debian's list gives them to GNOME Software's local-file handler)
+application/vnd.debian.binary-package=vibeos.Installer.desktop
+application/x-deb=vibeos.Installer.desktop
+# Files opens folders (Debian's list gives them to Nautilus): "Open folder" in a download notification, a folder
+# link, xdg-open on a directory, the file chooser's "Open With". Nautilus, where it is installed, still opens
+# them when asked by name.
+inode/directory=vibeos.Files.desktop;org.gnome.Nautilus.desktop;

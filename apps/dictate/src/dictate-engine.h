@@ -27,6 +27,10 @@ const char    *dictate_engine_get_language (DictateEngine *self);
  * activity detection (dictate-vad.h) and only it is recognised; once the speaker has finished, or said nothing for
  * a while, the engine stops by itself (STOPPING is skipped: the state goes from listening to idle) */
 void           dictate_engine_set_turns    (DictateEngine *self, gboolean turns);
+/* taking turns, at any time: held, the turn does not end by itself, through any pause (the power key held); let go,
+ * it ends as it would have: at the speaker's next pause, at once if they have paused already, and with nothing said
+ * yet, after the usual wait from then */
+void           dictate_engine_set_held     (DictateEngine *self, gboolean held);
 /* FALSE, with the reason for the user, when the language's model or its recogniser is not installed */
 gboolean       dictate_engine_available    (DictateEngine *self, char **reason);
 void           dictate_engine_start        (DictateEngine *self);

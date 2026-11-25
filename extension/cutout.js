@@ -8,11 +8,13 @@
 // is over it.
 // Turned, it is on a short edge, and apps are kept clear of it: a black band
 // along that edge, which CutoutBand reserves as a strut, and a status bar whose content starts after the hole when
-// the hole is at its end.
+// the hole is at its end. A fullscreen app (no status bar) is kept clear of it on every edge (CutoutBand).
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
+import Mtk from 'gi://Mtk';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -51,8 +53,10 @@ function readPanelFile(Gm, compatibles) {
     return null;
 }
 
-// The hole on the upright panel, screen px: [x, y, width, height] around every cutout in the panel's top half, or
-// null. gmobile gives them in the panel's own pixels (x-res wide), scaled here to the mode it runs at.
+// The hole on the upright panel: {box: [x, y, width, height] around every cutout in the panel's top half, in the
+// panel's own pixels (gmobile's), xRes: the panel's width in them}, or null. Scaled to screen px as it is read (rect,
+// upright): a screen px is a reference px, and how many of them the panel is across changes with the scale (Display
+// size).
 async function readHole() {
     let Gm;
     try {
@@ -69,7 +73,6 @@ async function readHole() {
     const panel = new Gm.DeviceInfo({compatibles}).get_display_panel() ?? readPanelFile(Gm, compatibles);
     if (!panel)
         return null;
-    const k = panel.get_x_res() > 0 ? SCREEN_W / panel.get_x_res() : 1;
     const cutouts = panel.get_cutouts();
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = 0; i < cutouts.get_n_items(); i++) {
@@ -83,7 +86,7 @@ async function readHole() {
     }
     if (x1 <= x0)
         return null;
-    return [x0 * k, y0 * k, (x1 - x0) * k, (y1 - y0) * k].map(Math.round);
+    return {box: [x0, y0, x1 - x0, y1 - y0], xRes: panel.get_x_res()};
 }
 
 export const Cutout = GObject.registerClass({
@@ -92,7 +95,7 @@ export const Cutout = GObject.registerClass({
     constructor() {
         super();
         this._transform = 0;
-        this._hole = null;              // [x, y, width, height] on the upright panel, screen px
+        this._hole = null;              // readHole()'s
         readHole().then(hole => {
             if (this._destroyed || !hole)
                 return;
@@ -113,12 +116,16 @@ export const Cutout = GObject.registerClass({
 
     // the hole on the upright panel, screen px: [x, y, width, height] ([0, 0, 0, 0]: none)
     get upright() {
-        return this._hole ?? [0, 0, 0, 0];
+        if (!this._hole)
+            return [0, 0, 0, 0];
+        const k = this._hole.xRes > 0 ? SCREEN_W / this._hole.xRes : 1;
+        return this._hole.box.map(v => Math.round(v * k));
     }
 
     // how far the hole reaches in from the upright panel's top edge, screen px (0: no hole)
     get depth() {
-        return this._hole ? this._hole[1] + this._hole[3] : 0;
+        const [, y, , h] = this.upright;
+        return y + h;
     }
 
     // how far content keeps off each edge for the hole, screen px (Android's safe insets)
@@ -138,7 +145,7 @@ export const Cutout = GObject.registerClass({
         if (!this._hole || !m)
             return [0, 0, 0, 0];
         const W = m.width * SCALE, H = m.height * SCALE;
-        const [x, y, w, h] = this._hole;
+        const [x, y, w, h] = this.upright;
         switch (this.side) {
         case 'top':
             return [x, y, w, h];
@@ -204,45 +211,158 @@ export const Cutout = GObject.registerClass({
     }
 });
 
-// Android's black band along the hole's edge when the hole is not under the status bar: apps keep clear of it (a
-// strut), and the status bar draws over its top end. Gone with the status bar (a fullscreen app covers the hole).
+// Apps whose fullscreen window goes under the hole, as Android's LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES has it: the
+// picture fills the panel and the hole sits inside it (a video). vibeos.Shell's cutout-extend-apps lists their ids
+// (desktop file names without .desktop); an app turns it on and off for itself by adding or removing its id, which
+// takes effect at once, with the window open. Every other app is kept clear of the hole.
+const EXTEND_APPS_KEY = 'cutout-extend-apps';
+
+function shellSettings() {
+    const schema = Gio.SettingsSchemaSource.get_default()?.lookup('vibeos.Shell', true);
+    return schema?.has_key(EXTEND_APPS_KEY) ? new Gio.Settings({settings_schema: schema}) : null;
+}
+
+// Mutter's word on where a window goes, asked of the band (a function of the window: its place, or null for no say)
+const PlaceConstraint = GObject.registerClass({
+    Implements: [Meta.ExternalConstraint],
+}, class PlaceConstraint extends GObject.Object {
+    constructor(place) {
+        super();
+        this._place = place;
+    }
+
+    vfunc_constrain(win, info) {
+        const rect = this._place(win);
+        if (!rect)
+            return false;
+        info.set_rect(rect);
+        return true;
+    }
+});
+
+// Android's black band along the hole's edge, wherever the status bar is not over the hole: turned, along the short
+// edge the hole is on, a strut that apps keep clear of, with the status bar drawing over its top end; and under a
+// fullscreen app, which has no status bar, on whichever edge the hole is, the top one too. The fullscreen app's window
+// is laid out beside it, as Android lays out a fullscreen app by default (LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT):
+// mutter gives a fullscreen window the whole monitor, and a constraint the band puts on every window takes the band
+// off it. The band takes the touches that land on it: under it is the launcher, or another app.
 export const CutoutBand = GObject.registerClass(
 class CutoutBand extends St.Widget {
     constructor(cutout, statusBar) {
-        super({name: 'vibeosCutoutBand', style: 'background-color: black;', reactive: false});
+        super({name: 'vibeosCutoutBand', style: 'background-color: black;', reactive: true});
         this._cutout = cutout;
         this._statusBar = statusBar;
+        this._released = false;         // destroyed: fullscreen windows have the whole panel again
+        this._settings = shellSettings();
+        this._settings?.connectObject(`changed::${EXTEND_APPS_KEY}`, () => this._sync(), this);
+        this._constraint = new PlaceConstraint(win => this._fullscreenRect(win));
+        const watch = win => {
+            win.add_external_constraint(this._constraint);
+            win.connectObject('notify::fullscreen', () => this._sync(), this);
+        };
+        for (const win of global.display.list_all_windows())
+            watch(win);
+        global.display.connectObject('window-created', (_d, win) => watch(win),
+            'notify::focus-window', () => this._sync(), this);
         cutout.connectObject('changed', () => this._sync(), this);
         statusBar.connectObject('notify::visible', () => this._sync(), this);
         Main.layoutManager.connectObject('monitors-changed', () => this._sync(), this);
         this._sync();
     }
 
+    // the band's depth in from the hole's edge, logical px; 0 for none (no hole, the panel is not the primary
+    // screen: docked, or the band is gone)
+    get _depth() {
+        if (!Main.layoutManager.primaryMonitor || !this._cutout.side || this._released)
+            return 0;
+        return Math.ceil(px(this._cutout.depth));
+    }
+
+    // whether the app has its fullscreen window under the hole (cutout-extend-apps)
+    _extends(win) {
+        if (!this._settings)
+            return false;
+        const id = Shell.WindowTracker.get_default().get_window_app(win)?.get_id()?.replace(/\.desktop$/, '');
+        return !!id && this._settings.get_strv(EXTEND_APPS_KEY).includes(id);
+    }
+
+    // whether the window with the focus is a fullscreen app on the panel that has its picture under the hole: with
+    // it up there is no band (which is drawn over windows) on any edge. Leave fullscreen, or another window in
+    // front, and the band is back.
+    _extended() {
+        const win = global.display.focus_window;
+        return !!win && win.is_fullscreen() && win.get_window_type() === Meta.WindowType.NORMAL &&
+            win.get_monitor() === Main.layoutManager.primaryIndex && this._extends(win);
+    }
+
+    // where a fullscreen app window on the panel goes: the panel less the band; null for any other window (the
+    // launcher's is fullscreen too, under the status bar), or with no band
+    _fullscreenRect(win) {
+        const m = Main.layoutManager.primaryMonitor, d = this._depth, side = this._cutout.side;
+        if (!d || !win.is_fullscreen() || win.get_window_type() !== Meta.WindowType.NORMAL ||
+            win.get_monitor() !== Main.layoutManager.primaryIndex || this._extends(win))
+            return null;
+        const top = side === 'top' ? d : 0, right = side === 'right' ? d : 0;
+        const bottom = side === 'bottom' ? d : 0, left = side === 'left' ? d : 0;
+        return new Mtk.Rectangle({x: m.x + left, y: m.y + top, width: m.width - left - right,
+            height: m.height - top - bottom});
+    }
+
     _sync() {
         const m = Main.layoutManager.primaryMonitor;
-        const side = this._cutout.side;
-        const d = Math.ceil(px(this._cutout.depth));
-        // the shell takes struts from hidden actors too: no band is no size
-        if (!m || !side || side === 'top' || !d || !this._statusBar.visible) {
+        const side = this._cutout.side, d = this._depth;
+        // upright the status bar is over the hole but under a fullscreen app (the only time it hides); the shell
+        // takes struts from hidden actors too: no band is no size
+        if (!d || (side === 'top' && this._statusBar.visible) || this._extended()) {
             this.hide();
             this.set_position(m?.x ?? 0, m?.y ?? 0);
             this.set_size(0, 0);
-            return;
-        }
-        if (side === 'left') {
-            this.set_position(m.x, m.y);
-            this.set_size(d, m.height);
-        } else if (side === 'right') {
-            this.set_position(m.x + m.width - d, m.y);
-            this.set_size(d, m.height);
         } else {
-            this.set_position(m.x, m.y + m.height - d);
-            this.set_size(m.width, d);
+            if (side === 'top') {
+                this.set_position(m.x, m.y);
+                this.set_size(m.width, d);
+            } else if (side === 'left') {
+                this.set_position(m.x, m.y);
+                this.set_size(d, m.height);
+            } else if (side === 'right') {
+                this.set_position(m.x + m.width - d, m.y);
+                this.set_size(d, m.height);
+            } else {
+                this.set_position(m.x, m.y + m.height - d);
+                this.set_size(m.width, d);
+            }
+            this.show();
         }
-        this.show();
+        this._refit();
+    }
+
+    // Fullscreen app windows on the panel to where they go now. Mutter fits them to a turned screen when the
+    // monitors change, which can be before the cutout has the hole on its new edge: they kept the band on the edge
+    // it had left. Laid out again they get the whole panel back when the band goes.
+    _refit() {
+        const m = Main.layoutManager.primaryMonitor;
+        if (!m)
+            return;
+        for (const win of global.display.list_all_windows()) {
+            if (!win.is_fullscreen() || win.get_window_type() !== Meta.WindowType.NORMAL ||
+                win.get_monitor() !== Main.layoutManager.primaryIndex)
+                continue;
+            const r = this._fullscreenRect(win) ??
+                new Mtk.Rectangle({x: m.x, y: m.y, width: m.width, height: m.height});
+            if (!win.get_frame_rect().equal(r))
+                win.move_resize_frame(false, r.x, r.y, r.width, r.height);
+        }
     }
 
     destroy() {
+        global.display.disconnectObject(this);
+        this._settings?.disconnectObject(this);
+        for (const win of global.display.list_all_windows()) {
+            win.disconnectObject(this);
+            win.remove_external_constraint(this._constraint);
+        }
+        this._released = true;
+        this._refit();
         this._cutout.disconnectObject(this);
         this._statusBar.disconnectObject(this);
         Main.layoutManager.disconnectObject(this);

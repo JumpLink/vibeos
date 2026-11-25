@@ -31,6 +31,7 @@ static const char *view_titles[N_VIEWS] = { N_("Day"), N_("Week"), N_("Month"), 
 #define DRAWER_MS 250                   /* the drawer opening or closing, at most */
 #define VIEW_FADE_MS 150                /* one view fading into another */
 #define PAGE_MS 300                     /* a page opening over the main one */
+#define MENU_GAP 4                      /* the overflow menu's top, this far under its ⋮ */
 
 typedef struct {
   GtkWidget *window;
@@ -945,6 +946,8 @@ on_more (VibeosPressable *button, Shell *shell)
   GtkWidget *menu = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *layer = gtk_overlay_new ();
   GtkGesture *press = gtk_gesture_click_new ();
+  GtkOverlay *overlay = vibeos_window_get_overlay (shell->window);
+  graphene_rect_t at;
 
   close_menu (shell);
   g_signal_connect (press, "pressed", G_CALLBACK (on_menu_scrim), shell);
@@ -954,6 +957,13 @@ on_more (VibeosPressable *button, Shell *shell)
   gtk_widget_add_css_class (menu, "cal-overflow-menu");
   gtk_widget_set_halign (menu, GTK_ALIGN_END);
   gtk_widget_set_valign (menu, GTK_ALIGN_START);
+  /* under the ⋮, never over it (libvibeos's VibeosMenu), its end a little in from the button's */
+  if (gtk_widget_compute_bounds (GTK_WIDGET (button), GTK_WIDGET (overlay), &at))
+    {
+      gtk_widget_set_margin_top (menu, (int) (at.origin.y + at.size.height) + MENU_GAP);
+      gtk_widget_set_margin_end (menu, MAX (0, gtk_widget_get_width (GTK_WIDGET (overlay)) -
+                                               (int) (at.origin.x + at.size.width)));
+    }
   gtk_accessible_update_property (GTK_ACCESSIBLE (menu), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
   gtk_box_append (GTK_BOX (menu), menu_item (shell, _("Go to…"), G_CALLBACK (on_menu_go_to)));
   gtk_box_append (GTK_BOX (menu), menu_item (shell, _("Refresh"), G_CALLBACK (on_menu_refresh)));
@@ -965,7 +975,7 @@ on_more (VibeosPressable *button, Shell *shell)
   gtk_box_append (GTK_BOX (menu), menu_item (shell, _("About"), G_CALLBACK (on_menu_about)));
   gtk_overlay_add_overlay (GTK_OVERLAY (layer), menu);
   shell->menu = layer;
-  gtk_overlay_add_overlay (vibeos_window_get_overlay (shell->window), layer);
+  gtk_overlay_add_overlay (overlay, layer);
 }
 
 /* --- the Today button: a calendar with today's date in it */

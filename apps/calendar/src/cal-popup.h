@@ -10,7 +10,8 @@ G_BEGIN_DECLS
 typedef void (*CalPopupChosen) (int index, gpointer data);
 
 /* the list at @anchor's top-left (or its top-right with @end), @width wide (0: the anchor's), @selected (−1 none)
- * marked; @chosen runs with the tapped row's index, not on a dismiss */
+ * marked; with @end and nothing selected (an overflow menu) below the anchor instead, or above it when there is no
+ * room below, never over it; @chosen runs with the tapped row's index, not on a dismiss */
 void cal_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, int selected, double width,
                      gboolean end, CalPopupChosen chosen, gpointer data);
 /* closes the popup of @widget's window, if one shows; TRUE if it did (Back) */

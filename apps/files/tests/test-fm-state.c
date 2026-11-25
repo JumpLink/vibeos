@@ -14,7 +14,7 @@ test_state (void)
 
   g_assert_true (fm_state_add_bookmark (state, "file:///home/user/Music", "Music"));
   g_assert_false (fm_state_add_bookmark (state, "file:///home/user/Music", "Again"));
-  fm_state_add_bookmark (state, "smb://plex/VIDEO/", "Films");
+  fm_state_add_bookmark (state, "smb://nas/VIDEO/", "Films");
   fm_state_rename_bookmark (state, 1, "Movies");
   fm_state_add_history (state, "file:///a", "Main storage");
   fm_state_add_history (state, "file:///b", "Main storage");

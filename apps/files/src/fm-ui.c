@@ -366,6 +366,7 @@ fm_progress_set_fraction (GtkWidget *progress, double fraction)
 /* ---- the popup menu -------------------------------------------------------------------------------------------- */
 
 #define POPUP_EDGE   8.0
+#define POPUP_GAP    4.0        /* an overflow menu, this far from its ⋮ */
 #define POPUP_ROW_H  48
 #define POPUP_PAD    16
 #define POPUP_MIN_W  196
@@ -527,8 +528,13 @@ fm_popup_show_icons (GtkWidget *anchor, const char *const *labels, const char *c
   height = MIN (n_labels * POPUP_ROW_H, window_height - 2 * POPUP_EDGE);
   if (place == FM_POPUP_OVER_END)
     {
+      /* next to its ⋮, never over it (libvibeos's VibeosMenu): the end a little in from the anchor's, below the
+       * anchor, or above it when it does not fit below; when it fits neither way, the CLAMP below pushes it onto
+       * the anchor */
       left = at.x + gtk_widget_get_width (anchor) - width - 4;
-      top = at.y + 4;
+      top = at.y + gtk_widget_get_height (anchor) + POPUP_GAP;
+      if (top + height > window_height - POPUP_EDGE && at.y - POPUP_GAP - height >= POPUP_EDGE)
+        top = at.y - POPUP_GAP - height;
     }
   else
     {

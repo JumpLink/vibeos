@@ -6,25 +6,34 @@
  *  - the stores the tools read, written where the apps keep them: the Dialer's calls.db and Messaging's bugle_db in
  *    XDG_DATA_HOME, the contacts and the events in EDS's built-in address book and calendar (EDS started on the
  *    private bus by D-Bus activation, its files in the private XDG directories);
- *  - the services the tools ask, stood in for on the private bus: NetworkManager, BlueZ and UPower (as on the
- *    system bus), the Clock's alarms and timers and the shell's open apps (on the session bus). Turning Wi-Fi or
- *    Bluetooth off, setting an alarm, starting a timer change only these. */
+ *  - the services the tools ask, stood in for on the private bus: NetworkManager, BlueZ, UPower and ModemManager (as
+ *    on the system bus), the Clock's alarms and timers and the shell's open apps and notifications (on the session
+ *    bus). Turning Wi-Fi or Bluetooth off, setting or removing an alarm or a timer change only these;
+ *  - the Weather app's last place and forecast, in the private cache directory, so that the weather is read from
+ *    there and never fetched;
+ *  - the Phone's call service on a mock modem, on buses of its own, for the in-call and incoming-call cases. */
 #include "agent-eval-mock.h"
 
 #include <glib/gstdio.h>
 #include <libebook/libebook.h>
+#include <time.h>
 #include <libecal/libecal.h>
+#include <signal.h>
 #include <sqlite3.h>
 #include <string.h>
+#include <sys/prctl.h>
 
 static JsonObject *fixture;     /* the fixtures' "phone" */
 
 /* ---------------- the services ---------------- */
 
 static gboolean wifi_on, bt_on;
-static GVariant *alarms;        /* aa{sv} */
+static GPtrArray *alarms;       /* GVariant a{sv} */
 static GPtrArray *timers;       /* GVariant a{sv} */
+static guint32 next_id;         /* the next alarm's or timer's */
 static guint launched;
+
+static void write_weather (JsonObject *weather);
 
 static const char NM_XML[] =
   "<node>"
@@ -35,6 +44,7 @@ static const char NM_XML[] =
   "  <property name='ActiveConnections' type='ao' access='read'/>"
   "  <property name='Connectivity' type='u' access='read'/>"
   "  <property name='State' type='u' access='read'/>"
+  "  <property name='WwanEnabled' type='b' access='read'/>"
   " </interface>"
   " <interface name='org.freedesktop.NetworkManager.Connection.Active'>"
   "  <property name='Type' type='s' access='read'/>"
@@ -50,6 +60,13 @@ static const char BLUEZ_XML[] =
   " </interface>"
   " <interface name='org.bluez.Adapter1'>"
   "  <property name='Powered' type='b' access='readwrite'/>"
+  " </interface>"
+  "</node>";
+
+static const char MM_XML[] =
+  "<node>"
+  " <interface name='org.freedesktop.DBus.ObjectManager'>"
+  "  <method name='GetManagedObjects'><arg type='a{oa{sa{sv}}}' direction='out'/></method>"
   " </interface>"
   "</node>";
 
@@ -69,12 +86,14 @@ static const char CLOCK_XML[] =
   " <interface name='vibeos.Clock.Alarms'>"
   "  <method name='GetAlarms'><arg type='aa{sv}' direction='out'/></method>"
   "  <method name='AddAlarm'><arg type='a{sv}' direction='in'/><arg type='u' direction='out'/></method>"
+  "  <method name='DeleteAlarm'><arg type='u' direction='in'/></method>"
   " </interface>"
   " <interface name='vibeos.Clock.Timers'>"
   "  <method name='GetTimers'><arg type='aa{sv}' direction='out'/></method>"
   "  <method name='AddTimer'><arg type='x' direction='in'/><arg type='s' direction='in'/>"
   "   <arg type='b' direction='in'/><arg type='u' direction='out'/></method>"
   "  <method name='Start'><arg type='u' direction='in'/></method>"
+  "  <method name='Delete'><arg type='u' direction='in'/></method>"
   " </interface>"
   "</node>";
 
@@ -82,6 +101,7 @@ static const char SHELL_XML[] =
   "<node>"
   " <interface name='vibeos.Shell'>"
   "  <method name='RunningApps'><arg type='a(ss)' direction='out'/></method>"
+  "  <method name='Notifications'><arg type='a(ssssx)' direction='out'/></method>"
   "  <method name='Launch'><arg type='s' direction='in'/><arg type='(dddd)' direction='in'/>"
   "   <arg type='s' direction='in'/></method>"
   " </interface>"
@@ -143,7 +163,50 @@ nm_get (GDBusConnection *c, const char *sender, const char *path, const char *in
     }
   if (!strcmp (property, "Connectivity"))
     return g_variant_new_uint32 (4);
+  if (!strcmp (property, "WwanEnabled"))
+    return g_variant_new_boolean (member_bool (member_object (fixture, "mobile"), "data_on", TRUE));
   return g_variant_new_uint32 (70);
+}
+
+/* the modem, as ModemManager has it: with what names the phone and its SIM (the number, the IMEI) among its
+ * properties, as a real modem's, so that the test set sees that the tool never reads them */
+static void
+mm_call (GDBusConnection *c, const char *sender, const char *path, const char *interface, const char *method,
+         GVariant *parameters, GDBusMethodInvocation *invocation, gpointer data)
+{
+  JsonObject *m = member_object (fixture, "mobile");
+  GVariantBuilder objects, modem, gpp, interfaces;
+  const char *numbers[] = { member_string (m, "own_number", ""), NULL };
+
+  g_variant_builder_init (&objects, G_VARIANT_TYPE ("a{oa{sa{sv}}}"));
+  if (m)
+    {
+      g_variant_builder_init (&modem, G_VARIANT_TYPE_VARDICT);
+      g_variant_builder_add (&modem, "{sv}", "State", g_variant_new_int32 (member_int (m, "state", 8)));
+      g_variant_builder_add (&modem, "{sv}", "SignalQuality",
+                             g_variant_new ("(ub)", (guint32) member_int (m, "signal", 60), TRUE));
+      g_variant_builder_add (&modem, "{sv}", "AccessTechnologies",
+                             g_variant_new_uint32 (member_int (m, "technology", 1 << 14)));
+      g_variant_builder_add (&modem, "{sv}", "Sim",
+                             g_variant_new_object_path (member_bool (m, "sim", TRUE)
+                                                        ? "/org/freedesktop/ModemManager1/SIM/0" : "/"));
+      g_variant_builder_add (&modem, "{sv}", "OwnNumbers", g_variant_new_strv (numbers, -1));
+      g_variant_builder_add (&modem, "{sv}", "EquipmentIdentifier",
+                             g_variant_new_string (member_string (m, "imei", "")));
+      g_variant_builder_init (&gpp, G_VARIANT_TYPE_VARDICT);
+      g_variant_builder_add (&gpp, "{sv}", "OperatorName", g_variant_new_string (member_string (m, "operator", "")));
+      g_variant_builder_add (&gpp, "{sv}", "RegistrationState",
+                             g_variant_new_uint32 (member_bool (m, "roaming", FALSE) ? 5 : 1));
+      g_variant_builder_add (&gpp, "{sv}", "Imei", g_variant_new_string (member_string (m, "imei", "")));
+      g_variant_builder_init (&interfaces, G_VARIANT_TYPE ("a{sa{sv}}"));
+      g_variant_builder_add (&interfaces, "{s@a{sv}}", "org.freedesktop.ModemManager1.Modem",
+                             g_variant_builder_end (&modem));
+      g_variant_builder_add (&interfaces, "{s@a{sv}}", "org.freedesktop.ModemManager1.Modem.Modem3gpp",
+                             g_variant_builder_end (&gpp));
+      g_variant_builder_add (&objects, "{o@a{sa{sv}}}", "/org/freedesktop/ModemManager1/Modem/0",
+                             g_variant_builder_end (&interfaces));
+    }
+  g_dbus_method_invocation_return_value (invocation, g_variant_new ("(a{oa{sa{sv}}})", &objects));
 }
 
 static gboolean
@@ -216,52 +279,123 @@ upower_get (GDBusConnection *c, const char *sender, const char *path, const char
   return g_variant_new_boolean (TRUE);
 }
 
+/* a list's entries, as an aa{sv} */
+static GVariant *
+listed (GPtrArray *list)
+{
+  GVariantBuilder all;
+
+  g_variant_builder_init (&all, G_VARIANT_TYPE ("aa{sv}"));
+  for (guint i = 0; i < list->len; i++)
+    g_variant_builder_add_value (&all, list->pdata[i]);
+  return g_variant_builder_end (&all);
+}
+
+/* the entry with that id gone from a list; FALSE when there is none */
+static gboolean
+remove_id (GPtrArray *list, guint32 id)
+{
+  for (guint i = 0; i < list->len; i++)
+    {
+      guint32 has = 0;
+      g_variant_lookup (list->pdata[i], "id", "u", &has);
+      if (has == id)
+        {
+          g_ptr_array_remove_index (list, i);
+          return TRUE;
+        }
+    }
+  return FALSE;
+}
+
+/* now on CLOCK_BOOTTIME, in ms: the Clock's timers count on it */
+static gint64
+boottime_ms (void)
+{
+  struct timespec now;
+
+  clock_gettime (CLOCK_BOOTTIME, &now);
+  return (gint64) now.tv_sec * 1000 + now.tv_nsec / 1000000;
+}
+
+static GVariant *
+timer_new (guint32 id, guint32 state, gint64 length, gint64 remaining, gint64 started, const char *label)
+{
+  return g_variant_ref_sink (g_variant_new_parsed (
+    "{'id': <%u>, 'state': <%u>, 'length': <%x>, 'total-length': <%x>, 'remaining': <%x>, 'last-start': <%x>,"
+    " 'label': <%s>}", id, state, length, length, remaining, started, label));
+}
+
 static void
 clock_call (GDBusConnection *c, const char *sender, const char *path, const char *interface, const char *method,
             GVariant *parameters, GDBusMethodInvocation *invocation, gpointer data)
 {
   if (!strcmp (method, "GetAlarms"))
-    g_dbus_method_invocation_return_value (invocation, g_variant_new_tuple (&alarms, 1));
+    g_dbus_method_invocation_return_value (invocation, g_variant_new_tuple ((GVariant *[]) { listed (alarms) }, 1));
   else if (!strcmp (method, "AddAlarm"))
     {
-      GVariantBuilder all;
-      GVariantIter iter;
-      GVariant *a;
       g_autoptr (GVariant) added = g_variant_get_child_value (parameters, 0);
+      GVariantDict alarm;
+      guint32 id = next_id++;
 
-      g_variant_builder_init (&all, G_VARIANT_TYPE ("aa{sv}"));
-      g_variant_iter_init (&iter, alarms);
-      while ((a = g_variant_iter_next_value (&iter)))
-        {
-          g_variant_builder_add_value (&all, a);
-          g_variant_unref (a);
-        }
-      g_variant_builder_add_value (&all, added);
-      g_variant_unref (alarms);
-      alarms = g_variant_ref_sink (g_variant_builder_end (&all));
+      g_variant_dict_init (&alarm, added);
+      g_variant_dict_insert (&alarm, "id", "u", id);
+      g_ptr_array_add (alarms, g_variant_ref_sink (g_variant_dict_end (&alarm)));
       g_message ("mock: an alarm added");
-      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(u)", 100 + g_variant_n_children (alarms)));
+      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(u)", id));
+    }
+  else if (!strcmp (method, "DeleteAlarm") || !strcmp (method, "Delete"))
+    {
+      guint32 id;
+
+      g_variant_get (parameters, "(u)", &id);
+      if (!remove_id (strcmp (method, "Delete") ? alarms : timers, id))
+        {
+          g_dbus_method_invocation_return_dbus_error (invocation, "vibeos.Clock.Error.NotFound", "No such id");
+          return;
+        }
+      g_message ("mock: %s removed", strcmp (method, "Delete") ? "an alarm" : "a timer");
+      g_dbus_method_invocation_return_value (invocation, NULL);
     }
   else if (!strcmp (method, "GetTimers"))
-    {
-      GVariantBuilder all;
-      g_variant_builder_init (&all, G_VARIANT_TYPE ("aa{sv}"));
-      for (guint i = 0; i < timers->len; i++)
-        g_variant_builder_add_value (&all, timers->pdata[i]);
-      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(aa{sv})", &all));
-    }
+    g_dbus_method_invocation_return_value (invocation, g_variant_new_tuple ((GVariant *[]) { listed (timers) }, 1));
   else if (!strcmp (method, "AddTimer"))
     {
       gint64 length;
       const char *label;
       gboolean once;
+      guint32 id = next_id++;
 
       g_variant_get (parameters, "(x&sb)", &length, &label, &once);
-      g_ptr_array_add (timers, g_variant_ref_sink (g_variant_new_parsed (
-        "{'id': <%u>, 'state': <uint32 4>, 'length': <%x>, 'remaining': <%x>, 'label': <%s>}", timers->len + 1, length,
-        length, label)));
+      /* 4: reset, until it is started */
+      g_ptr_array_add (timers, timer_new (id, 4, length, length, 0, label));
       g_message ("mock: a timer added");
-      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(u)", timers->len));
+      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(u)", id));
+    }
+  else if (!strcmp (method, "Start"))
+    {
+      guint32 id;
+
+      g_variant_get (parameters, "(u)", &id);
+      for (guint i = 0; i < timers->len; i++)
+        {
+          guint32 has = 0;
+          gint64 length = 0, remaining = 0;
+          const char *label = "";
+
+          g_variant_lookup (timers->pdata[i], "id", "u", &has);
+          if (has != id)
+            continue;
+          g_variant_lookup (timers->pdata[i], "length", "x", &length);
+          g_variant_lookup (timers->pdata[i], "remaining", "x", &remaining);
+          g_variant_lookup (timers->pdata[i], "label", "&s", &label);
+          {
+            GVariant *started = timer_new (id, 1, length, remaining, boottime_ms (), label);
+            g_variant_unref (timers->pdata[i]);
+            timers->pdata[i] = started;
+          }
+        }
+      g_dbus_method_invocation_return_value (invocation, NULL);
     }
   else
     g_dbus_method_invocation_return_value (invocation, NULL);
@@ -283,6 +417,23 @@ shell_call (GDBusConnection *c, const char *sender, const char *path, const char
           g_variant_builder_add (&apps, "(ss)", member_string (app, "id", ""), member_string (app, "name", ""));
         }
       g_dbus_method_invocation_return_value (invocation, g_variant_new ("(a(ss))", &apps));
+      return;
+    }
+  if (!strcmp (method, "Notifications"))
+    {
+      GVariantBuilder all;
+      JsonArray *list = member_array (fixture, "notifications");
+      gint64 now = g_get_real_time () / G_USEC_PER_SEC;
+
+      g_variant_builder_init (&all, G_VARIANT_TYPE ("a(ssssx)"));
+      for (guint i = 0; list && i < json_array_get_length (list); i++)
+        {
+          JsonObject *n = json_array_get_object_element (list, i);
+          g_variant_builder_add (&all, "(ssssx)", member_string (n, "app_id", ""), member_string (n, "app", ""),
+                                 member_string (n, "title", ""), member_string (n, "body", ""),
+                                 now - member_int (n, "minutes_ago", 0) * 60);
+        }
+      g_dbus_method_invocation_return_value (invocation, g_variant_new ("(a(ssssx))", &all));
       return;
     }
   launched++;
@@ -347,27 +498,13 @@ mock_services_start (void)
   g_autoptr (GDBusConnection) system = session ? g_bus_get_sync (G_BUS_TYPE_SYSTEM, NULL, &error) : NULL;
   static const GDBusInterfaceVTable nm = { NULL, nm_get, nm_set }, bluez_om = { bluez_call },
                                     bluez_adapter = { NULL, bluez_get, bluez_set }, upower = { NULL, upower_get },
-                                    clock = { clock_call }, shell = { shell_call };
-  JsonArray *list = member_array (fixture, "alarms");
-  GVariantBuilder all;
+                                    clock = { clock_call }, shell = { shell_call }, mm = { mm_call };
 
   if (!system)
     g_error ("mock: no bus: %s", error->message);
-  wifi_on = member_bool (member_object (fixture, "wifi"), "on", TRUE);
-  bt_on = member_bool (member_object (fixture, "bluetooth"), "on", TRUE);
-  g_variant_builder_init (&all, G_VARIANT_TYPE ("aa{sv}"));
-  for (guint i = 0; list && i < json_array_get_length (list); i++)
-    {
-      JsonObject *a = json_array_get_object_element (list, i);
-      int hour = 0, minute = 0;
-
-      sscanf (member_string (a, "time", "7:00"), "%d:%d", &hour, &minute);
-      g_variant_builder_add_value (&all, g_variant_new_parsed (
-        "{'id': <%u>, 'hour': <%i>, 'minute': <%i>, 'days': <%u>, 'enabled': <%b>, 'label': <%s>}", i + 1, hour,
-        minute, days_of (member_array (a, "days")), member_bool (a, "on", TRUE), member_string (a, "label", "")));
-    }
-  alarms = g_variant_ref_sink (g_variant_builder_end (&all));
+  alarms = g_ptr_array_new_with_free_func ((GDestroyNotify) g_variant_unref);
   timers = g_ptr_array_new_with_free_func ((GDestroyNotify) g_variant_unref);
+  mock_services_reset ();
 
   serve (system, NM_XML, "/org/freedesktop/NetworkManager",
          (const char *const[]) { "org.freedesktop.NetworkManager", NULL }, &nm);
@@ -377,6 +514,8 @@ mock_services_start (void)
   serve (system, BLUEZ_XML, "/org/bluez/hci0", (const char *const[]) { "org.bluez.Adapter1", NULL }, &bluez_adapter);
   serve (system, UPOWER_XML, "/org/freedesktop/UPower/devices/DisplayDevice",
          (const char *const[]) { "org.freedesktop.UPower.Device", NULL }, &upower);
+  serve (system, MM_XML, "/org/freedesktop/ModemManager1",
+         (const char *const[]) { "org.freedesktop.DBus.ObjectManager", NULL }, &mm);
   serve (session, CLOCK_XML, "/vibeos/Clock/Alarms", (const char *const[]) { "vibeos.Clock.Alarms", NULL }, &clock);
   serve (session, CLOCK_XML, "/vibeos/Clock/Timers", (const char *const[]) { "vibeos.Clock.Timers", NULL }, &clock);
   serve (session, SHELL_XML, "/vibeos/Shell", (const char *const[]) { "vibeos.Shell", NULL }, &shell);
@@ -384,6 +523,7 @@ mock_services_start (void)
   own (system, "org.freedesktop.NetworkManager");
   own (system, "org.bluez");
   own (system, "org.freedesktop.UPower");
+  own (system, "org.freedesktop.ModemManager1");
   own (session, "vibeos.Clock.Alarms");
   own (session, "vibeos.Shell");
   /* both connections stay open for the rest of the run */
@@ -394,9 +534,36 @@ mock_services_start (void)
 void
 mock_services_reset (void)
 {
-  /* each case starts from the fixtures' state */
+  JsonArray *list = member_array (fixture, "alarms");
+
+  /* each case starts from the fixtures' state: Wi-Fi, Bluetooth, the alarms and the timers, and a forecast the
+   * Weather app has just fetched (a long run outlasts the half hour Agent takes one to be new) */
+  write_weather (member_object (fixture, "weather"));
   wifi_on = member_bool (member_object (fixture, "wifi"), "on", TRUE);
   bt_on = member_bool (member_object (fixture, "bluetooth"), "on", TRUE);
+  g_ptr_array_set_size (alarms, 0);
+  g_ptr_array_set_size (timers, 0);
+  next_id = 1;
+  for (guint i = 0; list && i < json_array_get_length (list); i++)
+    {
+      JsonObject *a = json_array_get_object_element (list, i);
+      int hour = 0, minute = 0;
+
+      sscanf (member_string (a, "time", "7:00"), "%d:%d", &hour, &minute);
+      g_ptr_array_add (alarms, g_variant_ref_sink (g_variant_new_parsed (
+        "{'id': <%u>, 'hour': <%i>, 'minute': <%i>, 'days': <%u>, 'enabled': <%b>, 'label': <%s>}", next_id++, hour,
+        minute, days_of (member_array (a, "days")), member_bool (a, "on", TRUE), member_string (a, "label", ""))));
+    }
+  list = member_array (fixture, "timers");
+  for (guint i = 0; list && i < json_array_get_length (list); i++)
+    {
+      JsonObject *t = json_array_get_object_element (list, i);
+      gint64 left = member_int (t, "minutes_left", 5) * 60000;
+      gboolean running = member_bool (t, "running", TRUE);
+
+      g_ptr_array_add (timers, timer_new (next_id++, running ? 1 : 2, member_int (t, "minutes", 10) * 60000, left,
+                                          running ? boottime_ms () : 0, member_string (t, "label", "")));
+    }
 }
 
 /* ---------------- the stores ---------------- */
@@ -624,6 +791,8 @@ write_contacts (ESourceRegistry *registry, JsonArray *contacts)
       e_contact_set (contact, E_CONTACT_FULL_NAME, member_string (c, "name", ""));
       if (json_object_has_member (c, "nickname"))
         e_contact_set (contact, E_CONTACT_NICKNAME, member_string (c, "nickname", ""));
+      if (json_object_has_member (c, "note"))
+        e_contact_set (contact, E_CONTACT_NOTE, member_string (c, "note", ""));
       for (guint j = 0; tels && j < json_array_get_length (tels); j++)
         {
           JsonObject *t = json_array_get_object_element (tels, j);
@@ -705,6 +874,74 @@ write_events (ESourceRegistry *registry, JsonArray *events)
     }
 }
 
+/* the Weather app's cache (apps/weather): the place it shows, and its forecast, fetched "just now", from yesterday on
+ * as Open-Meteo gives it with past_days=1 */
+static void
+write_weather (JsonObject *weather)
+{
+  g_autofree char *dir = g_build_filename (g_get_user_cache_dir (), "vibeos-launcher", NULL);
+  g_autofree char *place = NULL, *forecast = NULL, *at = NULL;
+  g_autoptr (JsonBuilder) b = json_builder_new ();
+  g_autoptr (JsonNode) root = NULL;
+  g_autoptr (GDateTime) now = g_date_time_new_now_local ();
+  JsonObject *current = member_object (weather, "now");
+  JsonArray *days = member_array (weather, "days");
+  const char *daily[] = { "weather_code", "temperature_2m_max", "temperature_2m_min",
+                          "precipitation_probability_max" };
+  const char *keys[] = { "code", "high", "low", "rain" };
+
+  if (!weather)
+    return;
+  g_mkdir_with_parents (dir, 0700);
+  at = g_build_filename (dir, "weather.json", NULL);
+  place = g_strdup_printf ("{\"lat\": %g, \"lon\": %g, \"place\": \"%s\"}",
+                           json_object_get_double_member (weather, "lat"), json_object_get_double_member (weather, "lon"),
+                           member_string (weather, "place", ""));
+  g_file_set_contents (at, place, -1, NULL);
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "latitude");
+  json_builder_add_double_value (b, json_object_get_double_member (weather, "lat"));
+  json_builder_set_member_name (b, "longitude");
+  json_builder_add_double_value (b, json_object_get_double_member (weather, "lon"));
+  json_builder_set_member_name (b, "current");
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "temperature_2m");
+  json_builder_add_double_value (b, member_int (current, "temperature", 10));
+  json_builder_set_member_name (b, "apparent_temperature");
+  json_builder_add_double_value (b, member_int (current, "feels_like", 8));
+  json_builder_set_member_name (b, "weather_code");
+  json_builder_add_int_value (b, member_int (current, "code", 3));
+  json_builder_set_member_name (b, "wind_speed_10m");
+  json_builder_add_double_value (b, member_int (current, "wind", 12));
+  json_builder_end_object (b);
+  json_builder_set_member_name (b, "daily");
+  json_builder_begin_object (b);
+  json_builder_set_member_name (b, "time");
+  json_builder_begin_array (b);
+  for (guint i = 0; days && i <= json_array_get_length (days); i++)
+    {
+      g_autoptr (GDateTime) day = g_date_time_add_days (now, (int) i - 1);
+      g_autofree char *date = g_date_time_format (day, "%Y-%m-%d");
+      json_builder_add_string_value (b, date);
+    }
+  json_builder_end_array (b);
+  for (guint k = 0; k < G_N_ELEMENTS (daily); k++)
+    {
+      json_builder_set_member_name (b, daily[k]);
+      json_builder_begin_array (b);
+      /* yesterday: as today */
+      for (guint i = 0; days && i <= json_array_get_length (days); i++)
+        json_builder_add_int_value (b, member_int (json_array_get_object_element (days, i ? i - 1 : 0), keys[k], 0));
+      json_builder_end_array (b);
+    }
+  json_builder_end_object (b);
+  json_builder_end_object (b);
+  root = json_builder_get_root (b);
+  forecast = json_to_string (root, FALSE);
+  g_free (at), at = g_build_filename (dir, "forecast.json", NULL);
+  g_file_set_contents (at, forecast, -1, NULL);
+}
+
 void
 mock_fixtures_write (JsonObject *phone)
 {
@@ -726,4 +963,294 @@ guint
 mock_launched (void)
 {
   return launched;
+}
+
+/* ---------------- the calls (the Phone's call service on a mock modem) ---------------- */
+
+/* The call service (vibeos-dialer-calls) and the Dialer's mock phone (apps/dialer/tests/mock-phone.py: a
+ * ModemManager with a voice modem, callaudiod, a notification server) on a pair of buses of their own, as the
+ * Dialer's tests run them: never the phone's modem, so never a real call, and no ringtone (no sound server there).
+ * Agent's tools reach the service through DICTATE_DIALER_BUS. Everything here ends with agent-eval. */
+
+static GDBusConnection *rig;    /* the rig's "session" bus: the service and the mock's controls */
+
+/* a child that ends when agent-eval does, however it ends */
+static void
+die_with_parent (gpointer data)
+{
+  prctl (PR_SET_PDEATHSIG, SIGTERM);
+}
+
+/* `env`: names and values in turn, a NULL value to unset; what it writes is read (`piped`) or dropped */
+static GSubprocess *
+spawn (const char *const *argv, const char *const *env, gboolean piped, GError **error)
+{
+  g_autoptr (GSubprocessLauncher) launcher = g_subprocess_launcher_new (piped ? G_SUBPROCESS_FLAGS_STDOUT_PIPE
+                                                                              : G_SUBPROCESS_FLAGS_STDOUT_SILENCE);
+
+  g_subprocess_launcher_set_child_setup (launcher, die_with_parent, NULL, NULL);
+  for (guint i = 0; env && env[i]; i += 2)
+    {
+      if (env[i + 1])
+        g_subprocess_launcher_setenv (launcher, env[i], env[i + 1], TRUE);
+      else
+        g_subprocess_launcher_unsetenv (launcher, env[i]);
+    }
+  return g_subprocess_launcher_spawnv (launcher, argv, error);
+}
+
+/* the first line a child writes */
+static char *
+first_line (GSubprocess *child, GError **error)
+{
+  g_autoptr (GDataInputStream) in = g_data_input_stream_new (g_subprocess_get_stdout_pipe (child));
+
+  return g_data_input_stream_read_line_utf8 (in, NULL, NULL, error);
+}
+
+static char *
+bus_daemon (const char *config, GError **error)
+{
+  const char *argv[] = { "dbus-daemon", "--nofork", "--config-file", config, "--print-address=1", NULL };
+  g_autoptr (GSubprocess) child = spawn (argv, NULL, TRUE, error);
+
+  return child ? first_line (child, error) : NULL;
+}
+
+static GVariant *
+rig_call (const char *name, const char *path, const char *interface, const char *method, GVariant *args,
+          const char *reply, GError **error)
+{
+  return g_dbus_connection_call_sync (rig, name, path, interface, method, args, reply ? G_VARIANT_TYPE (reply) : NULL,
+                                      G_DBUS_CALL_FLAGS_NO_AUTO_START, 5000, NULL, error);
+}
+
+static GVariant *
+phone_control (const char *method, GVariant *args, const char *reply)
+{
+  g_autoptr (GError) error = NULL;
+  GVariant *v = rig_call ("vibeos.Test.Phone", "/vibeos/Test/Phone", "vibeos.Test.Phone", method, args, reply,
+                          &error);
+
+  if (!v)
+    g_warning ("calls: mock phone %s: %s", method, error->message);
+  return v;
+}
+
+gboolean
+mock_calls_start (const char *mock_phone, const char *service)
+{
+  g_autoptr (GError) error = NULL;
+  g_autofree char *dir = g_build_filename (g_get_home_dir (), "call-rig", NULL);
+  g_autofree char *config = g_build_filename (dir, "bus.conf", NULL);
+  g_autofree char *conf = g_strdup_printf ("<busconfig><type>session</type><listen>unix:dir=%s</listen>"
+                                           "<auth>EXTERNAL</auth><policy context=\"default\"><allow "
+                                           "send_destination=\"*\" eavesdrop=\"true\"/><allow eavesdrop=\"true\"/>"
+                                           "<allow own=\"*\"/></policy></busconfig>", dir);
+  g_autofree char *session = NULL, *system = NULL, *ready = NULL, *no_sound = NULL;
+  g_autoptr (GSubprocess) mock = NULL, calls = NULL;
+  g_autoptr (GVariant) owner = NULL;
+  gint64 deadline;
+
+  if (!g_file_test (mock_phone, G_FILE_TEST_IS_REGULAR) || !g_file_test (service, G_FILE_TEST_IS_EXECUTABLE))
+    {
+      g_message ("calls: no rig (%s, %s): the call cases are skipped", mock_phone, service);
+      return FALSE;
+    }
+  g_mkdir_with_parents (dir, 0700);
+  no_sound = g_strdup_printf ("unix:%s/no-sound", dir);
+  if (!g_file_set_contents (config, conf, -1, &error) || !(session = bus_daemon (config, &error))
+      || !(system = bus_daemon (config, &error)))
+    {
+      g_warning ("calls: the rig's buses: %s", error ? error->message : "?");
+      return FALSE;
+    }
+  {
+    const char *argv[] = { "python3", mock_phone, system, NULL };
+    const char *env[] = { "DBUS_SESSION_BUS_ADDRESS", session, NULL };
+
+    mock = spawn (argv, env, TRUE, &error);
+    if (!mock || !(ready = first_line (mock, &error)) || strcmp (ready, "ready"))
+      {
+        g_warning ("calls: the mock phone: %s", error ? error->message : ready ? ready : "?");
+        return FALSE;
+      }
+  }
+  rig = g_dbus_connection_new_for_address_sync (session, G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT
+                                                         | G_DBUS_CONNECTION_FLAGS_MESSAGE_BUS_CONNECTION,
+                                                NULL, NULL, &error);
+  if (!rig)
+    {
+      g_warning ("calls: the rig's bus: %s", error->message);
+      return FALSE;
+    }
+  /* a modem that holds calls: the service finds out once, as it starts */
+  g_clear_pointer (&owner, g_variant_unref);
+  owner = phone_control ("SetHold", g_variant_new ("(b)", TRUE), NULL);
+  g_clear_pointer (&owner, g_variant_unref);
+  {
+    const char *argv[] = { service, NULL };
+    g_autofree char *data = g_build_filename (dir, "data", NULL), *state = g_build_filename (dir, "state", NULL);
+    g_autofree char *conf_dir = g_build_filename (dir, "config", NULL);
+    /* the Dialer's settings from its installed schema, in memory; its own call log, not the fixtures'; no sound
+     * server: it rings into nothing */
+    const char *env[] = { "DBUS_SESSION_BUS_ADDRESS", session, "VIBEOS_DIALER_SYSTEM_BUS", system,
+                          "GSETTINGS_BACKEND", "memory", "GSETTINGS_SCHEMA_DIR", NULL, "PULSE_SERVER", no_sound,
+                          "XDG_DATA_HOME", data, "XDG_STATE_HOME", state, "XDG_CONFIG_HOME", conf_dir, NULL };
+    calls = spawn (argv, env, FALSE, &error);
+    if (!calls)
+      {
+        g_warning ("calls: the call service: %s", error->message);
+        return FALSE;
+      }
+  }
+  for (deadline = g_get_monotonic_time () + 10 * G_USEC_PER_SEC; g_get_monotonic_time () < deadline;)
+    {
+      gboolean up = FALSE;
+
+      g_clear_pointer (&owner, g_variant_unref);
+      owner = rig_call ("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "NameHasOwner",
+                        g_variant_new ("(s)", "vibeos.Dialer.Calls"), "(b)", NULL);
+      if (owner)
+        g_variant_get (owner, "(b)", &up);
+      if (up)
+        break;
+      g_usleep (100 * 1000);
+    }
+  g_setenv ("DICTATE_DIALER_BUS", session, TRUE);
+  g_message ("calls: the call service is up on its mock phone");
+  /* the children live as long as agent-eval: their GSubprocess objects may go */
+  return TRUE;
+}
+
+/* the service's calls now, and its microphone and speaker */
+static GVariant *
+service_properties (void)
+{
+  g_autoptr (GVariant) reply = rig_call ("vibeos.Dialer.Calls", "/vibeos/Dialer/Calls",
+                                         "org.freedesktop.DBus.Properties", "GetAll",
+                                         g_variant_new ("(s)", "vibeos.Dialer.Calls"), "(a{sv})", NULL);
+
+  return reply ? g_variant_get_child_value (reply, 0) : NULL;
+}
+
+/* the first of the service's calls in `state`, or 0 */
+static guint32
+call_in (guint32 state)
+{
+  g_autoptr (GVariant) props = service_properties ();
+  g_autoptr (GVariant) calls = props ? g_variant_lookup_value (props, "Calls", G_VARIANT_TYPE ("aa{sv}")) : NULL;
+  GVariantIter iter;
+  GVariant *call;
+
+  if (!calls)
+    return 0;
+  g_variant_iter_init (&iter, calls);
+  while ((call = g_variant_iter_next_value (&iter)))
+    {
+      guint32 id = 0, s = 99;
+      g_variant_lookup (call, "id", "u", &id);
+      g_variant_lookup (call, "state", "u", &s);
+      g_variant_unref (call);
+      if (s == state)
+        return id;
+    }
+  return 0;
+}
+
+static guint32
+wait_call (guint32 state)
+{
+  guint32 id = 0;
+
+  for (gint64 deadline = g_get_monotonic_time () + 5 * G_USEC_PER_SEC;
+       !(id = call_in (state)) && g_get_monotonic_time () < deadline;)
+    g_usleep (100 * 1000);
+  return id;
+}
+
+gboolean
+mock_calls_set (JsonObject *call)
+{
+  g_autoptr (GVariant) report = NULL;
+  g_autoptr (GVariant) done = NULL;
+  g_autoptr (JsonNode) calls = NULL;
+  const char *state = call ? member_string (call, "state", "ringing") : NULL;
+  guint32 id;
+
+  if (!rig)
+    return FALSE;
+  /* the last case's calls end, the microphone and the speaker as at the start */
+  report = phone_control ("Report", NULL, "(s)");
+  if (report)
+    {
+      const char *json;
+      g_variant_get (report, "(&s)", &json);
+      calls = json_from_string (json, NULL);
+    }
+  if (calls && JSON_NODE_HOLDS_OBJECT (calls)
+      && json_object_has_member (json_node_get_object (calls), "calls"))
+    {
+      JsonObjectIter iter;
+      const char *path;
+      JsonNode *value;
+
+      json_object_iter_init (&iter, json_object_get_object_member (json_node_get_object (calls), "calls"));
+      while (json_object_iter_next (&iter, &path, &value))
+        if (json_array_get_int_element (json_node_get_array (value), 0) != 7)
+          {
+            g_autoptr (GVariant) hung = phone_control ("RemoteHangup", g_variant_new ("(oi)", path, 4), NULL);
+          }
+    }
+  for (gint64 deadline = g_get_monotonic_time () + 5 * G_USEC_PER_SEC; g_get_monotonic_time () < deadline;)
+    {
+      if (!call_in (2) && !call_in (3) && !call_in (4) && !call_in (5))
+        break;
+      g_usleep (100 * 1000);
+    }
+  g_clear_pointer (&done, g_variant_unref);
+  done = rig_call ("vibeos.Dialer.Calls", "/vibeos/Dialer/Calls", "vibeos.Dialer.Calls", "SetMuted",
+                   g_variant_new ("(b)", FALSE), NULL, NULL);
+  g_clear_pointer (&done, g_variant_unref);
+  done = rig_call ("vibeos.Dialer.Calls", "/vibeos/Dialer/Calls", "vibeos.Dialer.Calls", "SetSpeaker",
+                   g_variant_new ("(b)", FALSE), NULL, NULL);
+  if (!call)
+    return TRUE;
+  /* the case's call: it rings, or it was answered (and maybe put on hold) */
+  g_clear_pointer (&done, g_variant_unref);
+  done = phone_control ("Incoming", g_variant_new ("(s)", member_string (call, "from", "")), "(o)");
+  if (!done || !(id = wait_call (2)))
+    return FALSE;
+  if (!strcmp (state, "ringing"))
+    return TRUE;
+  g_clear_pointer (&done, g_variant_unref);
+  done = rig_call ("vibeos.Dialer.Calls", "/vibeos/Dialer/Calls", "vibeos.Dialer.Calls", "Answer",
+                   g_variant_new ("(u)", id), NULL, NULL);
+  if (!done || !wait_call (4))
+    return FALSE;
+  if (!strcmp (state, "held"))
+    {
+      g_clear_pointer (&done, g_variant_unref);
+      done = rig_call ("vibeos.Dialer.Calls", "/vibeos/Dialer/Calls", "vibeos.Dialer.Calls", "SetHeld",
+                       g_variant_new ("(ub)", id, TRUE), NULL, NULL);
+      return done && wait_call (5);
+    }
+  return TRUE;
+}
+
+char *
+mock_calls_state (gboolean *muted, gboolean *speaker)
+{
+  g_autoptr (GVariant) props = service_properties ();
+  static const char *const names[] = { "calling", "calling", "ringing", "ringing", "active", "held" };
+
+  *muted = *speaker = FALSE;
+  if (!props)
+    return g_strdup ("no service");
+  g_variant_lookup (props, "Muted", "b", muted);
+  g_variant_lookup (props, "Speaker", "b", speaker);
+  for (guint32 s = 0; s < G_N_ELEMENTS (names); s++)
+    if (call_in (s))
+      return g_strdup (names[s]);
+  return g_strdup ("none");
 }

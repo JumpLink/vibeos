@@ -3,7 +3,10 @@
  * as each one is finished.
  *
  * The model and the voice are found on the phone (talk_find_brain (), talk_find_voice ()), loaded the first time
- * they are needed and kept. Each runs on a thread of its own; the playback is GStreamer's, to the default output. */
+ * they are needed and kept. Each runs on a thread of its own; the playback is GStreamer's, to the default output.
+ *
+ * When the model's server cannot be reached, a fixed set of commands answers instead (dictate-offline.h). In private
+ * mode (talk-private) the replies play only in headphones; on the speaker they are short and say nothing personal. */
 #pragma once
 
 #include <glib-object.h>
@@ -32,8 +35,17 @@ void             dictate_talk_ask       (DictateTalk *self, const char *language
 void             dictate_talk_stop      (DictateTalk *self);
 /* a new conversation: the model forgets this one */
 void             dictate_talk_reset     (DictateTalk *self);
+/* `text` said as Agent's reply (in `language`'s voice), the model not asked: a call ringing */
+void             dictate_talk_announce  (DictateTalk *self, const char *language, const char *text);
+/* what goes on now ("a call is ringing, from Anna"), told to the model with each question; NULL for nothing */
+void             dictate_talk_set_context (DictateTalk *self, const char *context);
+/* the phone is locked (Agent was asked by holding the power key on the lock screen): from the next question on, only
+ * the tools that read are offered and run, until it is unlocked */
+void             dictate_talk_set_locked  (DictateTalk *self, gboolean locked);
 DictateTalkState dictate_talk_get_state (DictateTalk *self);
 void             dictate_talk_set_speed (DictateTalk *self, double speed);
+/* the voice stops at once (a tap while it speaks); the reply goes on being written */
+void             dictate_talk_hush      (DictateTalk *self);
 /* the replies spoken (TRUE, at first) or only written; turned off while one is spoken, it stops speaking at once */
 void             dictate_talk_set_speak (DictateTalk *self, gboolean speak);
 gboolean         dictate_talk_get_speak (DictateTalk *self);

@@ -51,6 +51,7 @@ foreach name : ['call-log', 'phone-number', 'blocked-numbers']
                         dependencies: [gio, ebook, dependency('sqlite3')]))
 endforeach
 
-# the call flows end to end, against a mock modem, shell and notification server on buses of their own
-test('calls-flow', find_program('python3'), timeout: 90,
+# the call flows end to end, against a mock modem, shell and notification server on buses of their own; GStreamer's
+# registry made first takes up to a minute under arm64 emulation
+test('calls-flow', find_program('python3'), timeout: 180,
      args: [files('tests/test-calls.py'), meson.current_build_dir(), meson.current_source_dir()])

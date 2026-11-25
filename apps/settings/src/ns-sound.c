@@ -445,10 +445,29 @@ louder_changed (GSettings *snd, const char *key, GtkWidget *media)
   gtk_range_set_range (GTK_RANGE (media), 0, g_settings_get_boolean (snd, key) ? 150 : 100);
 }
 
-static void
-haptic_set (GtkRange *r, GSettings *fb)
+/* A vibration motor: an input device that plays force feedback (an effect type in its "ff" capabilities), which is
+ * what feedbackd's udev rules tag as a vibra and drive. A device without one (a tablet with the driver's node but
+ * no motor gets none in its device tree) has no Vibration intensity. Read once: a motor does not come and go. */
+static gboolean
+has_vibrator (void)
 {
-  g_settings_set_double (fb, "max-haptic-strength", gtk_range_get_value (r) / 100.0);
+  static int known = -1;
+  if (known >= 0)
+    return known;
+  known = FALSE;
+  g_autoptr (GDir) d = g_dir_open ("/sys/class/input", 0, NULL);
+  for (const char *n; d && (n = g_dir_read_name (d)) && !known;) {
+    if (!g_str_has_prefix (n, "event"))
+      continue;
+    g_autofree char *path = g_build_filename ("/sys/class/input", n, "device", "capabilities", "ff", NULL);
+    g_autofree char *ff = NULL;
+    if (!g_file_get_contents (path, &ff, NULL, NULL))
+      continue;
+    /* hexadecimal words: anything but zeros and spaces is an effect it plays */
+    for (const char *c = ff; *c && !known; c++)
+      known = g_ascii_isxdigit (*c) && *c != '0';
+  }
+  return known;
 }
 
 /* Not on this page, and why:
@@ -504,17 +523,22 @@ ns_page_sound (GtkWidget *row, gpointer data)
 
   if (fb || phone) {
     g = ns_group (c, "Vibration");
-    if (ns_has_key (fb, "max-haptic-strength")) {
+    /* feedbackd's max-haptic-strength, the most it drives the motor with (the shell's ticks, the Phone and the
+     * Clock all vibrate through feedbackd); the slider follows the key, whoever sets it */
+    gboolean strength = ns_has_key (fb, "max-haptic-strength") && has_vibrator ();
+    if (strength) {
       GtkWidget *scale;
       ns_row_scale (g, "Vibration intensity", "phone-symbolic", 0, 100, 10, &scale);
-      gtk_range_set_value (GTK_RANGE (scale), 100 * g_settings_get_double (fb, "max-haptic-strength"));
-      g_signal_connect (scale, "value-changed", G_CALLBACK (haptic_set), fb);
+      g_settings_bind_with_mapping (fb, "max-haptic-strength", gtk_range_get_adjustment (GTK_RANGE (scale)), "value",
+                                    G_SETTINGS_BIND_DEFAULT, level_get, level_set, NULL, NULL);
     }
-    if (ns_has_key (phone, "vibrate-when-ringing"))
+    if (ns_has_key (phone, "vibrate-when-ringing") && has_vibrator ())
       ns_caps_bind_visible (ns_row_switch (g, "Vibrate while ringing", "Calls vibrate as well as ring in Sound mode",
                                            phone, "vibrate-when-ringing"), NS_CAP_MODEM);
-    /* nothing but the calls' row in it: the card goes with it */
-    if (!ns_has_key (fb, "max-haptic-strength"))
+    /* nothing but the calls' row in it, or nothing at all: the card goes with it */
+    if (!has_vibrator ())
+      ns_group_set_visible (g, FALSE);
+    else if (!strength)
       ns_caps_bind_visible (g, NS_CAP_MODEM);
   }
 

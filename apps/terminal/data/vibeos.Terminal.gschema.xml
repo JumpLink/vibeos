@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The Terminal's preferences: the text size a pinch set. -->
+<schemalist>
+  <schema id="vibeos.Terminal" path="/vibeos/Terminal/">
+    <key name="font-scale" type="d">
+      <range min="0.5" max="3.0"/>
+      <default>1.0</default>
+      <summary>The text's size, as a scale of the monospace font's</summary>
+    </key>
+  </schema>
+</schemalist>

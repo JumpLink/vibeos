@@ -10,6 +10,7 @@ Build-Depends: debhelper-compat (= 13),
                gir1.2-glib-2.0-dev,
                libglib2.0-dev (>= 2.76),
                libgtk-4-dev (>= 4.14),
+               libvte-2.91-gtk4-dev (>= 0.78),
                libmpv-dev,
                libepoxy-dev,
                gir1.2-gtk-4.0-dev,
@@ -33,8 +34,8 @@ Build-Depends: debhelper-compat (= 13),
                libdrm-dev,
                libgmp-dev,
                libsqlite3-dev,
-               libecal2.0-dev (>= 3.46),
-               libebook1.2-dev,
+               libecal2.0-dev (>= 3.62),
+               libebook1.2-dev (>= 3.62),
                libgstreamer1.0-dev,
                libgstreamer-plugins-base1.0-dev,
                libsecret-1-dev,
@@ -89,6 +90,7 @@ Recommends: vibeos-session (= ${source:Version}),
             vibeos-installer (>= ${source:Version}),
             vibeos-software (>= ${source:Version}),
             vibeos-video (>= ${source:Version}),
+            vibeos-terminal (>= ${source:Version}),
             vibeos-iconpack-vibeos (>= ${source:Version}),
             vibeos-iconpack-gnome-free (>= ${source:Version}),
             vibeos-parallax-solar-system (>= ${source:Version}),
@@ -141,7 +143,10 @@ Description: GNOME Shell extension of VibeOS, the shell for touch devices
 Package: vibeos-session
 Architecture: all
 Conflicts: gnome-phone-session
-Replaces: gnome-phone-session
+# /etc/xdg/gnome-mimeapps.list was vibeos-installer's
+Breaks: vibeos-installer (<< 1:0.1.3+audit3~)
+Replaces: gnome-phone-session,
+          vibeos-installer (<< 1:0.1.3+audit3~),
 Provides: gnome-phone-session
 Depends: gnome-session (>= 51~),
          gnome-shell-extension-vibeos (= ${source:Version}),
@@ -159,6 +164,8 @@ Description: VibeOS session
  A udev rule keeps the phone's own storage (UFS or eMMC: Android's partitions
  and the system's) out of Files and the file picker; SD cards and USB drives
  still show.
+ .
+ The session's default apps: App Installer for .deb files, Files for folders.
 
 Package: vibeos-daemons
 Architecture: any
@@ -505,6 +512,7 @@ Recommends: accountsservice,
             gnome-keyring,
             pkexec,
             vibeos-sandbox,
+            vibeos-installer,
 Description: settings app for VibeOS
  VibeOS Settings is the settings app of VibeOS: connections (Wi-Fi,
  Bluetooth, mobile network, hotspot), sounds, notifications, display, battery,
@@ -589,7 +597,7 @@ Description: dictation for VibeOS
  hears English, German, Spanish, French, Italian and Russian, the language
  chosen in its app bar.
  .
- Agent, in the same package, is a spoken conversation: it listens, answers
+ Vibe, in the same package, is a spoken conversation: it listens, answers
  from a language model (VibeOS's server, or a GGUF file on the phone through
  llama.cpp) and speaks the answer with a Piper voice, downloaded with the
  language when it is chosen.
@@ -864,3 +872,17 @@ Description: video player for VibeOS
  10 seconds, and where a film was left is remembered. Files on a share play
  through GVfs's FUSE path, the share mounted on demand. It is the default
  application for videos.
+
+Package: vibeos-terminal
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+Description: terminal for VibeOS
+ VibeOS Terminal runs the user's shell in GNOME's terminal widget (VTE),
+ made for a touchscreen: a tap brings the keyboard, which opens over the
+ window rather than shrinking it, with a row of Esc, Tab, Ctrl, Alt and the
+ arrow keys on it (Ctrl and Alt sticky, as Termux's); a long press selects a
+ word with handles to widen it and a toolbar to copy or paste; a drag of one
+ finger or two scrolls the history and flings it; and a pinch zooms the
+ text. In less, man or vim scrolling sends the cursor keys, and to a program
+ that takes the mouse, such as htop or mc, the mouse wheel, as a wheel would.

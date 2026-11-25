@@ -5,7 +5,6 @@
 // panel, reserves its height for maximized windows (strut), is transparent with white icons over the launcher and
 // black over an app, and hides under a fullscreen app.
 import Clutter from 'gi://Clutter';
-import Cogl from 'gi://Cogl';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GnomeDesktop from 'gi://GnomeDesktop';
@@ -15,6 +14,7 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
+import {appCircle, sourceApp} from './appicon.js';
 import {Canvas, paintIcon} from './icons.js';
 import {Color, cogl, font, setSource, Type} from './palette.js';
 import {px, screenPixels, SCALE, SCREEN_W, TABLET} from './units.js';
@@ -41,7 +41,8 @@ const LAND_RAISE = 16;
 const PAD_START = 25;
 const OPEN_END = 85;
 const TABLET_END = 74;                  // a tablet's: the battery's charging bolt ends this far from the edge
-export const SYSTEM_SPAN = 300;         // signal, Wi-Fi and the widest battery (228) end to end, and room
+export const SYSTEM_SPAN = 410;         // the microphone and camera off icons, signal, Wi-Fi and the widest battery
+                                        // (228) end to end, and room
 const ICONS_TAIL = 2;                   // the battery's antialiased edge past its end
 const ICON_GAP = 19;                    // between signal, Wi-Fi and battery
 const ICON_H = 36;                      // signal and Wi-Fi
@@ -50,6 +51,7 @@ const SIGNAL_PAD = 6;
 const SIGNAL_BASE = 18;
 const SIGNAL_STEP = 6;
 const WIFI_W = ICON_H * 16.21 / 12;     // ic_wifi_N viewport 16.21 x 12
+const PRIVACY_W = 42;                   // ic_mic_off, ic_device_camera_off: 24 x 24 icons, the size Android draws them
 const BATTERY_H = 39;                   // the body's vector is 24 x 13 units, r 4: BATTERY_VP px a unit
 const BATTERY_VP = BATTERY_H / 13;
 
@@ -235,15 +237,6 @@ export function inkBox(text) {
     return {x: ink.x / k, y: ink.y / k, width: ink.width / k, height: ink.height / k};
 }
 
-// Paints colour-icon notification icons white, keeping their alpha (Android tints the small icons)
-const WhiteMaskEffect = GObject.registerClass(
-class WhiteMaskEffect extends Clutter.ShaderEffect {
-    vfunc_get_static_snippet() {
-        return Cogl.Snippet.new(Cogl.SnippetHook.FRAGMENT, '',
-            'cogl_color_out = vec4(cogl_color_out.a);');
-    }
-});
-
 let iconTheme = null;
 
 // The -symbolic variant of a themed icon when the theme has one, else null
@@ -259,27 +252,37 @@ export function symbolicIcon(gicon) {
     return name ? new Gio.ThemedIcon({name}) : null;
 }
 
-// The notification icon for a source: its -symbolic variant when the theme has one, else the icon masked white
-export function notificationIcon(source, size) {
+// The notification icon for a source, @size logical px: the app's logo in a circle, as the shade's rows draw it
+// (appicon.js); a source with no app (the shell's own, a D-Bus client with no desktop file) its -symbolic icon in
+// @glyph (a CSS colour) when the theme has one, else its own icon in the circle too. Masked white, a colour icon was a
+// white blob: a square for every tile. @grey: the circle in greys (the always-on display)
+export function notificationIcon(source, size, {glyph = 'white', grey = false} = {}) {
+    const app = sourceApp(source);
     // a source with no icon (a D-Bus client with no desktop file, Waydroid's apps): the fallback the shade's rows
-    // show. Not its notification's picture: that is mostly a round app icon, which the white mask makes a disc
-    const gicon = source.icon ?? new Gio.ThemedIcon({name: 'dialog-information'});
-    const symbolic = symbolicIcon(gicon);
-    const icon = new St.Icon({
-        gicon: symbolic ?? gicon,
+    // show. Not a notification's own picture: the one icon stands for all of the source's notifications
+    const gicon = app?.get_icon() ?? source.icon ?? new Gio.ThemedIcon({name: 'dialog-information'});
+    // an app's logo, unless the app's icon is a symbolic one itself: drawn in the shell's light text colour, a white
+    // disc would lose it
+    const logo = app && !gicon.get_names?.()[0]?.endsWith('-symbolic');
+    const symbolic = logo ? null : symbolicIcon(gicon);
+    if (!symbolic) {
+        const circle = appCircle(gicon, Math.round(size));
+        if (grey)
+            circle.add_effect(new Clutter.DesaturateEffect({factor: 1}));
+        return circle;
+    }
+    return new St.Icon({
+        gicon: symbolic,
         icon_size: size,
-        style: 'color: white;',
+        style: `color: ${glyph};`,
         opacity: Math.round(NOTIF_ALPHA * 255),
     });
-    if (!symbolic)
-        icon.add_effect(new WhiteMaskEffect());
-    return icon;
 }
 
 // The right-hand system icons: mobile signal, Wi-Fi, battery, right-aligned at @end (screen px) and centred on
 // @centerY; the shade header draws the same cluster
 export function paintSystemIcons(cr, state, end, centerY) {
-    const {wifi, mobile, battery, powerSave} = state;
+    const {wifi, mobile, battery, powerSave, micOff, cameraOff} = state;
     let x = end;
     if (battery.present) {
         x -= BATTERY_WIDTH(battery);
@@ -294,15 +297,24 @@ export function paintSystemIcons(cr, state, end, centerY) {
     if (mobile.present) {
         x -= SIGNAL_W;
         paintSignal(cr, x, centerY + ICON_H / 2, mobile.level, Color.white);
+        x -= ICON_GAP;
+    }
+    // Settings' Camera and Microphone switches off: no app gets them (privacy.js)
+    for (const [off, icon] of [[cameraOff, 'ic_device_camera_off'], [micOff, 'ic_mic_off']]) {
+        if (!off)
+            continue;
+        x -= PRIVACY_W;
+        paintIcon(cr, icon, x, centerY - PRIVACY_W / 2, PRIVACY_W, Color.white);
+        x -= ICON_GAP;
     }
 }
 
 // What paintSystemIcons draws. The state changes far more often than that (an access point's strength within a bar,
 // UPower's energy rate), and a repaint is a texture across the whole bar converted on the CPU on its way to the GPU:
 // 15 ms of the shell's frame, wherever it lands in an animation
-function systemIconsKey({wifi, mobile, battery, powerSave}) {
+function systemIconsKey({wifi, mobile, battery, powerSave, micOff, cameraOff}) {
     return [battery.present, battery.level, battery.plugged, !!powerSave, wifi.connected, wifi.level, mobile.present,
-        mobile.level].join();
+        mobile.level, !!micOff, !!cameraOff].join();
 }
 
 export const SystemIcons = GObject.registerClass(
@@ -559,6 +571,7 @@ export const StatusBar = GObject.registerClass({
             this._notifications.add_child(icon);
         });
         // the dot stands for the sources without an icon (_layoutNotifications shows it)
+        this._dot = null;
         if (sources.length > 0) {
             const dot = new Canvas({width: px(DOT_RADIUS * 2), height: px(DOT_RADIUS * 2)});
             dot.draw = (cr, w, h) => {
@@ -567,6 +580,7 @@ export const StatusBar = GObject.registerClass({
                 cr.fill();
             };
             this._notifications.add_child(dot);
+            this._dot = dot;
         }
         this._layoutNotifications();
     }
@@ -584,7 +598,7 @@ export const StatusBar = GObject.registerClass({
         const centerY = CENTER_Y - this._raise;
         let i = 0;
         for (const child of this._notifications) {
-            if (child instanceof St.Icon) {
+            if (child !== this._dot) {
                 child.visible = i < shown;
                 child.set_position(px(x0 + i * NOTIF_PITCH + (NOTIF_ICON - NOTIF_GLYPH) / 2),
                     px(centerY - NOTIF_GLYPH / 2));

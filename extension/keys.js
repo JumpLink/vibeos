@@ -78,11 +78,12 @@ export class HardwareKeys {
     }
 }
 
-// The Bixby key under the volume keys opens recents. The device tree reports it as
-// KEY_COFFEE, which XKB makes XF86ScreenSaver and gnome-settings-daemon a screen lock; the udev hwdb entry
-// (61-s10e-bixby.hwdb) makes it KEY_APPSELECT, XF86AppSelect, which nothing else in GNOME takes. onPress() once per
-// press, repeats dropped. In recents (a modal grab, action mode POPUP) the shell filters the binding out (it is
-// allowed in NORMAL only), and the key reaches recents itself (recents.js _onKey).
+// The side button: a key that reports KEY_APPSELECT, XF86AppSelect, which nothing else in GNOME takes (the S10e's
+// button under the volume keys; an older device tree of the S10e reported it as KEY_COFFEE, which XKB makes
+// XF86ScreenSaver and gnome-settings-daemon a screen lock, and the udev hwdb entry 61-s10e-bixby.hwdb made it
+// KEY_APPSELECT). What it opens is keylaunch.js's. onPress() once per press, repeats dropped, in the session and on
+// the lock screen (an app opens after the unlock). In recents (a modal grab, action mode POPUP) the shell filters the
+// binding out, and the key reaches recents itself (recents.js _onKey).
 const APP_SWITCH = 'XF86AppSelect';
 
 export class AppSwitchKey {
@@ -94,7 +95,8 @@ export class AppSwitchKey {
             this._action = 0;
             return;
         }
-        Main.wm.allowKeybinding(Meta.external_binding_name_for_action(this._action), Shell.ActionMode.NORMAL);
+        Main.wm.allowKeybinding(Meta.external_binding_name_for_action(this._action),
+            Shell.ActionMode.NORMAL | Shell.ActionMode.LOCK_SCREEN);
         global.display.connectObject('accelerator-activated', (display, action) => {
             if (action === this._action)
                 this._onPress();

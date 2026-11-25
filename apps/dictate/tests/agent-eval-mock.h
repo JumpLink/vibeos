@@ -14,4 +14,13 @@ void  mock_services_reset  (void);
 /* apps the shell was asked to start */
 guint mock_launched        (void);
 
+/* the Phone's call service (SERVICE, vibeos-dialer-calls) on the Dialer's mock phone (MOCK_PHONE, mock-phone.py),
+ * for Agent's tools: FALSE when either is missing, and the call cases are skipped */
+gboolean mock_calls_start  (const char *mock_phone, const char *service);
+/* a case's call ({"from": NUMBER, "state": "ringing" | "active" | "held"}), the last one's ended first; NULL for
+ * none. FALSE when it could not be set up */
+gboolean mock_calls_set    (JsonObject *call);
+/* the calls now: "ringing", "active", "held", "calling" or "none"; the microphone muted, the speaker on */
+char    *mock_calls_state  (gboolean *muted, gboolean *speaker);
+
 G_END_DECLS

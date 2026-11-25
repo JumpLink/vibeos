@@ -16,8 +16,8 @@ typedef void (*ClockMenuAction) (gpointer data);
 ClockPopupMenu *clock_popup_menu_new (void);
 void            clock_popup_menu_append (ClockPopupMenu *self, const char *label, ClockMenuAction action,
                                          gpointer data);
-/* shows it over @anchor's window (one made by vibeos_window_new), at the anchor's end and top; it destroys itself
- * once closed */
+/* shows it over @anchor's window (one made by vibeos_window_new), lined up with the anchor's end,
+ * below the anchor (above it when there is no room below), never over it; it destroys itself once closed */
 void            clock_popup_menu_present (ClockPopupMenu *self, GtkWidget *anchor);
 
 G_END_DECLS

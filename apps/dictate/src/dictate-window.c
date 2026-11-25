@@ -18,12 +18,19 @@
  * sentence by sentence. The engine listens for one turn (dictate_engine_set_turns: voice activity detection
  * finds where the user has finished) and what they said goes to the model; once the reply has been spoken it
  * listens again. While it listens or a reply is written or spoken, the FAB is a stop square and stops all of it: the
- * reply ends where it is, what was heard and not yet sent is dropped, and nothing listens until the next tap. */
+ * reply ends where it is, what was heard and not yet sent is dropped, and nothing listens until the next tap.
+ *
+ * A call that rings is said ("Call from Anna. Answer or decline?") when the app says so (dictate-main.c,
+ * dictate_calls_may_announce ()), and then Agent listens once for what to do, whether or not the window is on the
+ * screen; a window made only for that (never shown) closes once the call has stopped ringing and all is quiet. */
 #include "dictate-window.h"
+#include "dictate-calls.h"
+#include "dictate-cues.h"
 #include "dictate-download-dialog.h"
 #include "dictate-engine.h"
 #include "dictate-mic.h"
 #include "dictate-models.h"
+#include "dictate-output.h"
 #include "dictate-settings.h"
 #include "dictate-talk.h"
 #include "dictate-text.h"
@@ -72,7 +79,14 @@ typedef struct {
   GString *heard;               /* the user's finished sentences so far */
   char *said;                   /* and the one being spoken */
   gboolean stopping_reply;      /* the user stopped the reply: it does not listen again on its own */
+  gboolean reply_failed;        /* the reply going on failed: its end is no "done" */
   DictateTalkState talk_state;  /* the last one seen */
+  guint ringing;                /* the call being announced, while it rings */
+  gboolean announcing;          /* the announcement is being said: then Agent listens for the answer */
+  gboolean answer_listening;    /* and listens for it */
+  gboolean held;                /* the power key is held (dictate_window_hold): no pause ends the turn */
+  gboolean hold_turn;           /* the last turn was the power key's: no listening again after the reply */
+  GCancellable *caller;         /* the caller being looked up */
 } Window;
 
 /* --- the document's file */
@@ -433,6 +447,7 @@ set_inhibit (Window *self, gboolean on)
 /* --- Talk */
 
 static void talk_listen (Window *self);
+static void maybe_close (Window *self);
 
 /* the conversation's end in sight, above the FAB's row, once its new size is laid out */
 static gboolean
@@ -548,9 +563,13 @@ talk_send (Window *self)
   talk_name (self->mine, TRUE);
   self->mine = NULL;
   self->reply = talk_bubble (self, FALSE, "…");
+  self->reply_failed = FALSE;
+  dictate_cue_play (self->settings, DICTATE_CUE_WORKING);
   dictate_talk_ask (self->talk, dictate_engine_get_language (self->engine), said);
 }
 
+/* listening for a turn, whose end is found in what is said: a tap's on the microphone, or the power key's, which no
+ * pause ends while the key is held (dictate_window_hold) */
 static void
 talk_listen (Window *self)
 {
@@ -570,7 +589,11 @@ talk_listen (Window *self)
   self->speaking = g_strdup (dictate_engine_get_language (self->engine));
   if (!self->mine)
     self->mine = talk_bubble (self, TRUE, "…");
+  /* the cue plays while the microphone opens: it is over before the first words are heard */
+  dictate_cue_play (self->settings, DICTATE_CUE_LISTENING);
+  self->hold_turn = FALSE;
   dictate_engine_set_turns (self->engine, TRUE);
+  dictate_engine_set_held (self->engine, self->held);
   dictate_engine_start (self->engine);
 }
 
@@ -699,6 +722,9 @@ on_talk_propose (DictateTalk *talk, DictateAction *action, Window *self)
   g_signal_connect (cancel, "clicked", G_CALLBACK (on_card_cancel), widget);
   gtk_box_append (GTK_BOX (self->talk_list), widget);
   talk_follow (self);
+  /* a call announced with the window not on the screen ("decline and text…"): the card needs it */
+  if (!gtk_widget_get_visible (self->window))
+    gtk_window_present (GTK_WINDOW (self->window));
 }
 
 static void
@@ -717,19 +743,56 @@ on_talk_state (DictateTalk *talk, Window *self)
       else
         talk_name (self->reply, FALSE);
       self->reply = NULL;
-      /* spoken to its end: the user's turn */
-      if (was == DICTATE_TALK_SPEAKING && !self->stopping_reply && self->talking &&
+      gboolean announced = self->announcing;
+
+      self->announcing = FALSE;
+      /* a call announced, still ringing: Agent listens for what to do with it, on the screen or not */
+      if (announced && was == DICTATE_TALK_SPEAKING && !self->stopping_reply && self->ringing
+          && dictate_engine_get_state (self->engine) == DICTATE_IDLE)
+        {
+          talk_listen (self);
+          self->answer_listening = TRUE;
+        }
+      /* spoken to its end: the user's turn (whose cue says it is over) */
+      else if (was == DICTATE_TALK_SPEAKING && !self->stopping_reply && self->talking && !self->hold_turn &&
           g_settings_get_boolean (self->settings, "talk-listen-again") &&
           dictate_engine_get_state (self->engine) == DICTATE_IDLE && gtk_widget_get_mapped (self->window))
         talk_listen (self);
+      else if (was != DICTATE_TALK_IDLE && !self->stopping_reply && !self->reply_failed && self->talking)
+        dictate_cue_play (self->settings, DICTATE_CUE_DONE);
     }
   show_state (self);
+  maybe_close (self);
 }
 
 static void
 on_talk_error (DictateTalk *talk, const char *message, Window *self)
 {
+  /* told before the reply ends (dictate-talk.c): its end then plays no "done" */
+  self->reply_failed = TRUE;
+  dictate_cue_play (self->settings, DICTATE_CUE_FAILED);
   vibeos_snackbar_show (self->snackbar, message, NULL, NULL, NULL, VIBEOS_SNACKBAR_LONG);
+}
+
+/* the server had too many questions: its reply says so, and the cue is the failed one */
+static void
+on_talk_busy (DictateTalk *talk, Window *self)
+{
+  self->reply_failed = TRUE;
+  dictate_cue_play (self->settings, DICTATE_CUE_FAILED);
+}
+
+/* a tap on the conversation while Agent speaks: it stops speaking at once, the reply goes on being written. Only a
+ * tap: a scroll moves past the click's threshold and cancels it */
+static void
+on_talk_tap (GtkGestureClick *gesture, int n, double x, double y, Window *self)
+{
+  if (self->talk && dictate_talk_get_state (self->talk) == DICTATE_TALK_SPEAKING)
+    {
+      self->stopping_reply = TRUE;
+      dictate_talk_hush (self->talk);
+      self->stopping_reply = FALSE;
+    }
 }
 
 /* the FAB in Talk: idle, it listens; otherwise it is the stop square and stops everything: the reply being written
@@ -785,6 +848,7 @@ on_state_changed (DictateEngine *engine, Window *self)
                      (self->talk && dictate_talk_get_state (self->talk) != DICTATE_TALK_IDLE));
   if (state == DICTATE_IDLE && self->talking)
     {
+      self->answer_listening = FALSE;
       if (self->close_when_idle)
         {
           gtk_window_destroy (GTK_WINDOW (self->window));
@@ -805,6 +869,7 @@ on_state_changed (DictateEngine *engine, Window *self)
           return;
         }
       talk_send (self);
+      maybe_close (self);
     }
   else if (state == DICTATE_IDLE)
     {
@@ -887,8 +952,222 @@ dictate_window_toggle_dictation (GtkWidget *window)
 {
   Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
 
-  if (self)
-    on_mic (DICTATE_MIC (self->mic), self);
+  if (!self)
+    return;
+  /* push-to-talk while Agent answers: it stops at once and listens, the user wants to speak */
+  if (self->talking && self->talk && dictate_talk_get_state (self->talk) != DICTATE_TALK_IDLE
+      && dictate_engine_get_state (self->engine) == DICTATE_IDLE)
+    {
+      self->stopping_reply = TRUE;
+      dictate_talk_stop (self->talk);
+      self->stopping_reply = FALSE;
+      talk_listen (self);
+      show_state (self);
+      return;
+    }
+  on_mic (DICTATE_MIC (self->mic), self);
+}
+
+/* --- the power key held (dictate-main.c "hold") */
+
+void
+dictate_window_hold (GtkWidget *window, gboolean held, gboolean locked)
+{
+  Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
+  DictateState state;
+
+  if (!self || !self->talk)
+    return;
+  state = dictate_engine_get_state (self->engine);
+  if (held)
+    {
+      g_message ("window: the power key is held: listening%s", locked ? ", the phone locked" : "");
+      dictate_talk_set_locked (self->talk, locked);
+      /* Agent stops speaking at once: the user wants to speak */
+      if (dictate_talk_get_state (self->talk) != DICTATE_TALK_IDLE)
+        {
+          self->stopping_reply = TRUE;
+          dictate_talk_stop (self->talk);
+          self->stopping_reply = FALSE;
+        }
+      self->held = TRUE;
+      self->drop_when_idle = FALSE;
+      /* listening at once, as after a tap on the microphone (a turn already under way is held on) */
+      dictate_engine_set_held (self->engine, TRUE);
+      if (state == DICTATE_IDLE)
+        talk_listen (self);
+      self->hold_turn = TRUE;
+    }
+  else if (self->held)
+    {
+      /* Let go: Agent listens on until the speaker pauses (at once if they have), then what was said goes to the
+       * model, as Android's assistant listens on after its long press. The key is mostly let go before the first
+       * word: stopping here ended those turns with nothing heard, the microphone off. */
+      self->held = FALSE;
+      dictate_engine_set_held (self->engine, FALSE);
+    }
+  show_state (self);
+  maybe_close (self);
+}
+
+void
+dictate_window_hold_cancel (GtkWidget *window)
+{
+  Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
+  DictateState state;
+
+  if (!self || !self->talk || !self->held)
+    return;
+  g_message ("window: the power key's hold is given up: nothing is sent");
+  self->held = FALSE;
+  dictate_engine_set_held (self->engine, FALSE);
+  state = dictate_engine_get_state (self->engine);
+  /* what was heard goes, as when the microphone is stopped while listening */
+  if (state == DICTATE_STARTING || state == DICTATE_LISTENING)
+    {
+      self->drop_when_idle = TRUE;
+      dictate_engine_stop (self->engine);
+    }
+  show_state (self);
+  maybe_close (self);
+}
+
+void
+dictate_window_unlocked (GtkWidget *window)
+{
+  Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
+
+  if (self && self->talk)
+    dictate_talk_set_locked (self->talk, FALSE);
+}
+
+/* --- calls (dictate-calls.h): the app tells the window of them */
+
+/* a window made only to announce a call, or for the power key held on a locked phone, never shown: it goes once the
+ * call has stopped ringing (the key is let go) and all is quiet, and with it the models it loaded */
+static gboolean
+close_idle (gpointer data)
+{
+  GtkWidget *window = data;
+  Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
+
+  if (self && !gtk_widget_get_visible (window) && !self->ringing && !self->announcing && !self->held
+      && dictate_engine_get_state (self->engine) == DICTATE_IDLE
+      && dictate_talk_get_state (self->talk) == DICTATE_TALK_IDLE)
+    gtk_window_destroy (GTK_WINDOW (window));
+  return G_SOURCE_REMOVE;
+}
+
+static void
+maybe_close (Window *self)
+{
+  if (self->talk && !gtk_widget_get_visible (self->window) && !self->ringing)
+    g_idle_add_full (G_PRIORITY_LOW, close_idle, g_object_ref (self->window), g_object_unref);
+}
+
+/* the call that rings, as get_current_call says it (only its name, or what kind of number; in private mode on the
+ * speaker, not even the name). `data`: the areas, the private mode's bit above them */
+#define CALLER_PRIVATE (1ull << 32)
+
+static void
+caller_thread (GTask *task, gpointer source, gpointer data, GCancellable *cancellable)
+{
+  guint64 bits = *(guint64 *) data;
+  DictateToolContext ctx = { (guint32) bits, NULL, NULL, NULL, FALSE, FALSE };
+
+  ctx.private_speaker = (bits & CALLER_PRIVATE) && !dictate_output_headphones (NULL);
+
+  g_task_return_pointer (task, dictate_tools_run ("get_current_call", "{}", &ctx, 5000), g_free);
+}
+
+static void
+on_caller (GObject *source, GAsyncResult *result, gpointer data)
+{
+  g_autoptr (GtkWidget) window = data;
+  Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
+  g_autofree char *found = g_task_propagate_pointer (G_TASK (result), NULL);
+  g_autofree char *text = NULL;
+  const char *language;
+
+  if (!self || !found || !self->ringing)
+    return;
+  choose_language (self);
+  language = dictate_engine_get_language (self->engine);
+  if (!(text = dictate_calls_announce_text (language, found)))
+    return;
+  g_message ("window: a call rings: it is announced");
+  /* whatever went on stops: listening, the words so far dropped, and a reply */
+  if (dictate_engine_get_state (self->engine) != DICTATE_IDLE)
+    {
+      self->drop_when_idle = TRUE;
+      dictate_engine_stop (self->engine);
+    }
+  self->stopping_reply = TRUE;
+  dictate_talk_stop (self->talk);
+  self->stopping_reply = FALSE;
+  self->reply = talk_bubble (self, FALSE, "…");
+  self->reply_failed = FALSE;
+  self->announcing = TRUE;
+  dictate_talk_announce (self->talk, language, text);
+}
+
+void
+dictate_window_announce_call (GtkWidget *window, guint id)
+{
+  Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
+  g_autoptr (GTask) task = NULL;
+
+  if (!self || !self->talk)
+    return;
+  self->ringing = id;
+  if (self->caller)
+    g_cancellable_cancel (self->caller);
+  g_clear_object (&self->caller);
+  self->caller = g_cancellable_new ();
+  task = g_task_new (NULL, self->caller, on_caller, g_object_ref (window));
+  {
+    guint64 *bits = g_new (guint64, 1);
+
+    *bits = dictate_tools_areas (self->settings)
+            | (g_settings_get_boolean (self->settings, "talk-private") ? CALLER_PRIVATE : 0);
+    g_task_set_task_data (task, bits, g_free);
+  }
+  g_task_run_in_thread (task, caller_thread);
+}
+
+void
+dictate_window_call_stopped (GtkWidget *window, guint id)
+{
+  Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
+
+  if (!self || !self->talk || self->ringing != id)
+    return;
+  self->ringing = 0;
+  /* answered or declined on the screen, or missed: no more announcing, and no listening for it */
+  if (self->announcing)
+    {
+      self->announcing = FALSE;
+      self->stopping_reply = TRUE;
+      dictate_talk_stop (self->talk);
+      self->stopping_reply = FALSE;
+    }
+  if (self->answer_listening && dictate_engine_get_state (self->engine) != DICTATE_IDLE)
+    {
+      self->drop_when_idle = TRUE;
+      dictate_engine_stop (self->engine);
+    }
+  show_state (self);
+  maybe_close (self);
+}
+
+void
+dictate_window_calls_changed (GtkWidget *window, GPtrArray *calls)
+{
+  Window *self = g_object_get_data (G_OBJECT (window), "dictate-window");
+
+  /* for the model: what "answer", "hang up" or "mute" would be about */
+  if (self && self->talk)
+    dictate_talk_set_context (self->talk, dictate_calls_context (calls));
 }
 
 /* --- the app bar's actions */
@@ -921,7 +1200,7 @@ on_clear (VibeosPressable *button, Window *self)
 
   dialog = vibeos_dialog_new (self->talking ? _("Clear the conversation?") : _("Clear the text?"));
 
-  vibeos_dialog_set_message (dialog, self->talking ? _("All of the conversation is deleted, and Agent forgets it.")
+  vibeos_dialog_set_message (dialog, self->talking ? _("All of the conversation is deleted, and Vibe forgets it.")
                                                    : _("All of the text is deleted."));
   vibeos_dialog_add_button (dialog, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
   vibeos_dialog_add_button (dialog, _("Clear"), VIBEOS_RESPONSE_OK);
@@ -964,6 +1243,13 @@ on_speak_changed (GSettings *settings, const char *key, Window *self)
   dictate_talk_set_speak (self->talk, speak);
   self->stopping_reply = FALSE;
   show_speak (self);
+}
+
+/* Speech rate in Agent's settings: the next sentence is at the new pace */
+static void
+on_speed_changed (GSettings *settings, const char *key, Window *self)
+{
+  dictate_talk_set_speed (self->talk, g_settings_get_double (settings, "talk-speed"));
 }
 
 static void
@@ -1019,7 +1305,7 @@ static const VibeosAboutSection agent_legal[] = {
   { NULL }
 };
 
-static const VibeosAboutInfo agent_about = { .name = "Agent", .icon_name = "vibeos.Agent", .legal = agent_legal };
+static const VibeosAboutInfo agent_about = { .name = "Vibe", .icon_name = "vibeos.Agent", .legal = agent_legal };
 
 /* --- Agent's Settings, a page over the conversation (dictate-settings.h) */
 
@@ -1439,6 +1725,9 @@ window_free (gpointer data)
   g_signal_handlers_disconnect_by_data (vibeos_theme_get_default (), self);
   g_clear_handle_id (&self->save_id, g_source_remove);
   g_clear_handle_id (&self->place_id, g_source_remove);
+  if (self->caller)
+    g_cancellable_cancel (self->caller);
+  g_clear_object (&self->caller);
   g_signal_handlers_disconnect_by_data (self->engine, self);
   dictate_engine_stop (self->engine);
   g_clear_object (&self->engine);
@@ -1472,10 +1761,10 @@ dictate_window_new (GtkApplication *app, gboolean agent)
   self->settings = g_settings_new ("vibeos.Dictate");
   self->path = g_build_filename (g_get_user_data_dir (), "vibeos-dictate", "document.txt", NULL);
   g_object_set_data_full (G_OBJECT (self->window), "dictate-window", self, window_free);
-  gtk_window_set_title (GTK_WINDOW (self->window), agent ? _("Agent") : _("Dictate"));
+  gtk_window_set_title (GTK_WINDOW (self->window), agent ? _("Vibe") : _("Dictate"));
 
   /* the app bar */
-  title = self->title = gtk_label_new (agent ? _("Agent") : _("Dictate"));
+  title = self->title = gtk_label_new (agent ? _("Vibe") : _("Dictate"));
   gtk_widget_add_css_class (bar, "vibeos-app-bar");
   gtk_widget_add_css_class (title, "vibeos-app-bar-title");
   gtk_label_set_xalign (GTK_LABEL (title), 0);
@@ -1613,7 +1902,7 @@ dictate_window_new (GtkApplication *app, gboolean agent)
     gtk_box_append (GTK_BOX (outer), self->pages);
     self->marker = g_object_new (GTK_TYPE_BOX, "accessible-role", GTK_ACCESSIBLE_ROLE_DIALOG, NULL);
     gtk_accessible_update_property (GTK_ACCESSIBLE (self->marker), GTK_ACCESSIBLE_PROPERTY_LABEL,
-                                    agent ? _("Agent") : _("Dictate"), -1);
+                                    agent ? _("Vibe") : _("Dictate"), -1);
     gtk_widget_set_can_target (self->marker, FALSE);
     gtk_widget_set_visible (self->marker, FALSE);
     gtk_box_append (GTK_BOX (outer), self->marker);
@@ -1640,10 +1929,20 @@ dictate_window_new (GtkApplication *app, gboolean agent)
       g_signal_connect (self->talk, "error", G_CALLBACK (on_talk_error), self);
       g_signal_connect (self->talk, "status", G_CALLBACK (on_talk_status), self);
       g_signal_connect (self->talk, "propose", G_CALLBACK (on_talk_propose), self);
+      g_signal_connect (self->talk, "busy", G_CALLBACK (on_talk_busy), self);
       dictate_talk_set_speed (self->talk, g_settings_get_double (self->settings, "talk-speed"));
       dictate_talk_set_speak (self->talk, g_settings_get_boolean (self->settings, "talk-speak"));
       show_speak (self);
       g_signal_connect (self->settings, "changed::talk-speak", G_CALLBACK (on_speak_changed), self);
+      g_signal_connect (self->settings, "changed::talk-speed", G_CALLBACK (on_speed_changed), self);
+      {
+        /* in the capture phase, never claimed: the bubbles and the cards' buttons still get their taps */
+        GtkGesture *tap = gtk_gesture_click_new ();
+
+        gtk_event_controller_set_propagation_phase (GTK_EVENT_CONTROLLER (tap), GTK_PHASE_CAPTURE);
+        g_signal_connect (tap, "released", G_CALLBACK (on_talk_tap), self);
+        gtk_widget_add_controller (self->talk_scroller, GTK_EVENT_CONTROLLER (tap));
+      }
     }
   g_signal_connect (self->window, "close-request", G_CALLBACK (on_close_request), self);
   g_signal_connect_swapped (vibeos_layout_get_for_window (GTK_WINDOW (self->window)), "changed",

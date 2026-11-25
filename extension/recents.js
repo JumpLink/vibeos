@@ -1300,10 +1300,16 @@ export class Recents {
         if (this._busy)
             return Clutter.EVENT_STOP;
         const key = event.get_key_symbol();
-        // Escape, and the Bixby key again (keys.js AppSwitchKey), its repeats while held dropped
-        if (key === Clutter.KEY_Escape ||
-            (key === Clutter.KEY_AppSelect && !(event.get_flags() & Clutter.EventFlags.FLAG_REPEATED)))
+        if (key === Clutter.KEY_Escape) {
             this.back();
+        } else if (key === Clutter.KEY_AppSelect && !(event.get_flags() & Clutter.EventFlags.FLAG_REPEATED)) {
+            // the side button (keys.js AppSwitchKey), its repeats while held dropped, does what it does elsewhere
+            // (keylaunch.js): recents again closes them, an app opens
+            if (this._nav.sideKey)
+                this._nav.sideKey();
+            else
+                this.back();
+        }
         return Clutter.EVENT_STOP;
     }
 
@@ -1856,6 +1862,7 @@ export class Recents {
             }
         }
         this._nav.home.window?.activate(global.get_current_time());
+        this._nav.home.markHome();
         this._nav.statusBarOverApp(null);
 
         // (in the grid: columns scrolled, and away by as much as the newest column's place)

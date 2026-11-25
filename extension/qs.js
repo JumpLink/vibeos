@@ -665,19 +665,23 @@ function brightnessSlider(state, shade) {
 // unmutes it again. Below a tablet's brightness row, its look (owner, 11-21); a phone's quick settings have none.
 function volumeSlider() {
     const control = Volume.getMixerControl();
+    // "Louder than 100%" (Settings > Sound): the slider's top is PulseAudio's amplified maximum, as in volume.js
+    const sound = new Gio.Settings({schema_id: 'org.gnome.desktop.sound'});
+    const max = () => sound.get_boolean('allow-volume-above-100-percent')
+        ? control.get_vol_max_amplified() : control.get_vol_max_norm();
     let stream = null;
     const slider = new LevelSlider({
         get: () => {
             if (!stream)
                 return null;
-            return stream.is_muted ? 0 : clamp(stream.volume / control.get_vol_max_norm());
+            return stream.is_muted ? 0 : clamp(stream.volume / max());
         },
         set: v => {
             if (!stream)
                 return;
             if (v > 0 && stream.is_muted)
                 stream.change_is_muted(false);
-            stream.volume = Math.round(control.get_vol_max_norm() * v);
+            stream.volume = Math.round(max() * v);
             stream.push_volume();
         },
         icon: v => v <= 0 ? 'ic_volume_media_mute' : 'ic_volume_media',
@@ -699,6 +703,7 @@ function volumeSlider() {
         slider.sync();
     };
     control.connectObject('default-sink-changed', syncStream, 'state-changed', syncStream, slider);
+    sound.connectObject('changed::allow-volume-above-100-percent', () => slider.sync(), slider);
     slider.connect('destroy', () => stream?.disconnectObject(slider));
     syncStream();
     return slider;

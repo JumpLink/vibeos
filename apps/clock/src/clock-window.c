@@ -37,6 +37,7 @@ typedef struct
   GSettings *settings;
   GtkWidget *navigator;         /* the window's pages: this shell, then the cities picker, Settings ... */
   GtkWidget *title, *stack, *content, *nav;
+  GtkWidget *rail;              /* a tablet's, upright too, for the bottom navigation: beside every page */
   VibeosSnackbar *snackbar;
   GtkWidget *pages[N_TABS];
   Tab tab;
@@ -45,7 +46,7 @@ typedef struct
   gboolean column;              /* the buttons in a column at the end rather than a row at the bottom */
 } Shell;
 
-/* the bottom navigation bar's tabs */
+/* the tabs, on the bottom navigation bar or the rail */
 static const struct
 {
   const char *name, *icon;
@@ -165,6 +166,8 @@ select_tab (Shell *shell, Tab tab)
 
   shell->tab = tab;
   g_settings_set_enum (shell->settings, "selected-tab", tab);
+  vibeos_nav_bar_set_selected (VIBEOS_NAV_BAR (shell->nav), tab);
+  vibeos_nav_rail_set_selected (VIBEOS_NAV_RAIL (shell->rail), tab);
   gtk_stack_set_visible_child (GTK_STACK (shell->stack), shell->pages[tab]);
   gtk_label_set_text (GTK_LABEL (shell->title), _(tabs[tab].name));
 
@@ -184,6 +187,17 @@ static void
 on_nav (VibeosNavBar *nav, int index, Shell *shell)
 {
   select_tab (shell, index);
+}
+
+/* The rail stays beside the cities picker, Settings and the other pages: a destination tapped over them closes them
+ * and shows its tab, the one already selected only closes them */
+static void
+on_rail (VibeosNavRail *rail, int index, Shell *shell)
+{
+  if (clock_navigator_get_depth (CLOCK_NAVIGATOR (shell->navigator)) > 1)
+    clock_navigator_pop_to_root (CLOCK_NAVIGATOR (shell->navigator));
+  if (index != (int) shell->tab)
+    select_tab (shell, index);
 }
 
 /* keys go to the tab on screen first: the timer's keypad takes digits. Not while a page is open over the tabs */
@@ -305,7 +319,6 @@ show_tab (Shell *shell, Tab tab)
   /* a notification's "show": the tabs, over whatever page was open */
   if (clock_navigator_get_depth (CLOCK_NAVIGATOR (shell->navigator)) > 1)
     clock_navigator_pop_to_root (CLOCK_NAVIGATOR (shell->navigator));
-  vibeos_nav_bar_set_selected (VIBEOS_NAV_BAR (shell->nav), tab);
   select_tab (shell, tab);
 }
 
@@ -358,16 +371,20 @@ on_lift (VibeosSnackbar *snackbar, GParamSpec *pspec, Shell *shell)
   gtk_widget_queue_allocate (shell->content);
 }
 
-/* a tablet: its own text sizes (clock.css); in landscape the pages end where the buttons' column starts */
+/* a tablet: its own text sizes (clock.css) and the rail for the bottom navigation, upright too; in landscape the
+ * pages end where the buttons' column starts */
 static void
 on_layout_changed (VibeosLayout *layout, Shell *shell)
 {
-  gboolean column = vibeos_layout_is_tablet (layout) && vibeos_layout_is_landscape (layout);
+  gboolean tablet = vibeos_layout_is_tablet (layout);
+  gboolean column = tablet && vibeos_layout_is_landscape (layout);
 
-  if (vibeos_layout_is_tablet (layout))
+  if (tablet)
     gtk_widget_add_css_class (shell->window, "tablet");
   else
     gtk_widget_remove_css_class (shell->window, "tablet");
+  gtk_widget_set_visible (shell->rail, tablet);
+  gtk_widget_set_visible (shell->nav, !tablet);
   if (column == shell->column)
     return;
   shell->column = column;
@@ -408,6 +425,7 @@ clock_window_new (GtkApplication *app, GSettings *settings)
 {
   Shell *shell = g_new0 (Shell, 1);
   GtkWidget *window = vibeos_window_new (app);
+  GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   GtkWidget *bar = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
   GtkWidget *gear = gtk_image_new_from_icon_name ("clock-settings-symbolic");
@@ -496,10 +514,20 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   g_signal_connect (shell->nav, "selected", G_CALLBACK (on_nav), shell);
   gtk_box_append (GTK_BOX (box), shell->nav);
 
-  /* the tabs are the first page; the cities picker and Settings open over them */
+  /* a tablet: the rail at the window's start, the pages beside it */
+  shell->rail = vibeos_nav_rail_new ();
+  for (int i = 0; i < N_TABS; i++)
+    vibeos_nav_rail_append (VIBEOS_NAV_RAIL (shell->rail), tabs[i].icon, _(tabs[i].name));
+  g_signal_connect (shell->rail, "selected", G_CALLBACK (on_rail), shell);
+  g_signal_connect (shell->rail, "reselected", G_CALLBACK (on_rail), shell);
+  gtk_box_append (GTK_BOX (row), shell->rail);
+
+  /* the tabs are the first page; the cities picker and Settings open over them, beside the rail */
   shell->navigator = clock_navigator_new ();
+  gtk_widget_set_hexpand (shell->navigator, TRUE);
   clock_navigator_push (CLOCK_NAVIGATOR (shell->navigator), box);
-  vibeos_window_set_content (GTK_WINDOW (window), shell->navigator);
+  gtk_box_append (GTK_BOX (row), shell->navigator);
+  vibeos_window_set_content (GTK_WINDOW (window), row);
   shortcuts = gtk_shortcut_controller_new ();
   gtk_shortcut_controller_add_shortcut (GTK_SHORTCUT_CONTROLLER (shortcuts),
                                         gtk_shortcut_new (gtk_keyval_trigger_new (GDK_KEY_Escape, 0),
@@ -514,7 +542,6 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   on_layout_changed (shell->layout, shell);
   /* the tab it was left on */
   shell->tab = g_settings_get_enum (settings, "selected-tab");
-  vibeos_nav_bar_set_selected (VIBEOS_NAV_BAR (shell->nav), shell->tab);
   select_tab (shell, shell->tab);
   return window;
 }

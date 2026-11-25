@@ -1,0 +1,143 @@
+// What the keys that open an app open (Settings > System > Gestures): a double press of the power key (power.js) and
+// the side button (keys.js AppSwitchKey). vibeos.Shell power-double-press-app and side-key-app hold a desktop file id,
+// 'recents' (the side button only) or '' for nothing, and are read at each press, so a change in Settings counts at
+// once. An app that is not installed counts as nothing for the double press, and as recent apps for the side button,
+// the button's job before it could open an app.
+//
+// An app opens the way Android opens the one a key asks for: the shade and recents close, the screen is on (power.js
+// wakes it for the double press), and on a locked phone the bouncer comes up first and the app opens once the phone
+// is unlocked, as KeyguardManager.requestDismissKeyguard has it.
+//
+// Holding the power key (vibeos.Shell power-hold-agent, on by default) talks to Agent, as Android's "press and hold
+// for the assistant": Agent listens from the long press, through any pause while the key is held, and once it is let
+// go until the speaker pauses, as Android's assistant listens on; then it answers. Agent is told through its
+// GApplication action "hold" ((bb): held, locked), which D-Bus activation queues for it while it starts. On an
+// unlocked phone its window opens as an app a key opens; on a locked one nothing is unlocked and no window shows:
+// Agent listens and answers aloud, and only reads (no alarm set, no call, no message) until the phone is unlocked.
+// A hold that becomes part of a chord (volume up for the power menu, chord.js) is given up: Agent's "hold-cancel"
+// stops the listening and drops what was heard.
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import Shell from 'gi://Shell';
+
+const DOUBLE_PRESS_KEY = 'power-double-press-app';
+const SIDE_KEY = 'side-key-app';
+const HOLD_KEY = 'power-hold-agent';
+const RECENTS = 'recents';
+const AGENT = 'vibeos.Agent.desktop';
+const AGENT_NAME = 'vibeos.Agent';
+const AGENT_PATH = '/vibeos/Agent';
+
+export class KeyLaunch {
+    // @service: service.js's Service (launchApp, toggleRecents); @keyguard; @power: power.js's Power (interactive);
+    // @shade: closed for the app
+    constructor({service, keyguard, power, shade}) {
+        this._service = service;
+        this._keyguard = keyguard;
+        this._power = power;
+        this._shade = shade;
+        const schema = Gio.SettingsSchemaSource.get_default()?.lookup('vibeos.Shell', true);
+        this._settings = schema ? new Gio.Settings({settings_schema: schema}) : null;
+    }
+
+    // a key's value, or null when the installed schema is older than the key
+    _value(key) {
+        return this._settings?.settings_schema.has_key(key) ? this._settings.get_string(key) : null;
+    }
+
+    // a switch's value, or `fallback` when the installed schema is older than the key
+    _flag(key, fallback) {
+        return this._settings?.settings_schema.has_key(key) ? this._settings.get_boolean(key) : fallback;
+    }
+
+    _app(id) {
+        return id ? Shell.AppSystem.get_default().lookup_app(id) : null;
+    }
+
+    // power.js: whether a second press of the power key opens an app (the first press's lock then waits for it)
+    get doublePressArmed() {
+        return !!this._app(this._value(DOUBLE_PRESS_KEY));
+    }
+
+    // the power key's second press, the screen already waking
+    doublePress() {
+        const app = this._app(this._value(DOUBLE_PRESS_KEY));
+        if (app)
+            this._open(app, 'power key double press');
+    }
+
+    // power.js: whether holding the power key talks to Agent (else it opens the power menu)
+    get holdArmed() {
+        return this._flag(HOLD_KEY, false) && !!this._app(AGENT);
+    }
+
+    // the power key held long enough (held), and let go (!held): Agent listens from the one until the speaker pauses
+    // after the other
+    hold(held) {
+        if (held) {
+            // the phone as it is at the hold's start: a hold begun locked stays a locked one to its end
+            this._holdLocked = this._keyguard.showing;
+            log(`vibeos: power key held: Agent listens${this._holdLocked ? ', the phone locked' : ''}`);
+            if (!this._holdLocked) {
+                if (this._shade?.isOpen)
+                    this._shade.close();
+                if (this._service.navigation.recentsShown)
+                    this._service.navigation.recentsBack();
+                this._service.launchApp(this._app(AGENT));
+            }
+        }
+        // after the launch's own activation, on the same connection: Agent gets them in this order
+        this._agentAction('hold', [new GLib.Variant('(bb)', [held, !!this._holdLocked])], e =>
+            log(`vibeos: Agent's hold (${held}): ${e.message}`));
+    }
+
+    // the hold given up before the key's up: Agent stops listening and sends nothing. An Agent without the action
+    // (older than the chord's) is let go instead, as at the key's up: it sends what it heard, mostly nothing
+    cancelHold() {
+        log('vibeos: power key hold given up: Agent stops');
+        this._agentAction('hold-cancel', [], e => {
+            log(`vibeos: Agent's hold-cancel: ${e.message}`);
+            this.hold(false);
+        });
+    }
+
+    // one of Agent's GApplication actions, with its parameter ([] for none); onError(e) if Agent refuses it
+    _agentAction(name, parameter, onError) {
+        Gio.DBus.session.call(AGENT_NAME, AGENT_PATH, 'org.freedesktop.Application', 'ActivateAction',
+            new GLib.Variant('(sava{sv})', [name, parameter, {}]),
+            null, Gio.DBusCallFlags.NONE, -1, null, (bus, res) => {
+                try {
+                    bus.call_finish(res);
+                } catch (e) {
+                    onError(e);
+                }
+            });
+    }
+
+    // a press of the side button: with the screen on only, as before it could open an app
+    sideKey() {
+        if (!this._power.interactive)
+            return;
+        const value = this._value(SIDE_KEY) ?? RECENTS;
+        if (value === '')
+            return;
+        const app = value === RECENTS ? null : this._app(value);
+        if (app)
+            this._open(app, 'side button');
+        else if (!this._keyguard.showing)
+            this._service.toggleRecents();
+    }
+
+    _open(app, why) {
+        log(`vibeos: ${why}: ${app.get_id()}${this._keyguard.showing ? ', after the unlock' : ''}`);
+        if (this._shade?.isOpen)
+            this._shade.close();
+        if (this._service.navigation.recentsShown)
+            this._service.navigation.recentsBack();
+        this._keyguard.dismissThen(() => this._service.launchApp(app));
+    }
+
+    destroy() {
+        this._settings = null;
+    }
+}

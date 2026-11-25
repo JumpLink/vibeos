@@ -1,0 +1,58 @@
+/* The Terminal's styles, over libvibeos's (vibeos.css). The terminal draws its own text in the theme's colours
+ * (term-view.c); this places it, and styles the selection's toolbar. */
+
+window.vibeos.terminal {
+  background-color: @vibeos_surface;
+}
+
+/* no padding of its own: the selection's arithmetic takes the grid from the widget's top left corner */
+window.terminal vte-terminal {
+  padding: 0;
+}
+
+/* the ⋮ */
+window.terminal .vibeos-icon-button {
+  color: @vibeos_on_surface_variant;
+}
+
+/* the floating text toolbar: a raised card of text buttons */
+term-toolbar {
+  background-color: @vibeos_surface_container_high;
+  border-radius: 8dp;
+  box-shadow: 0 4dp 8dp alpha(black, 0.35);
+  padding: 0 4dp;
+  min-height: 48dp;
+}
+
+term-toolbar .vibeos-text-button {
+  color: @vibeos_on_surface;
+  min-height: 48dp;
+  padding: 0 12dp;
+}
+
+/* the extra keys: a strip in the keyboard's colour standing on its top edge, the keys pressed, on and locked */
+term-keys {
+  background-color: @vibeos_surface_container;
+}
+
+term-keys .term-key {
+  color: @vibeos_on_surface;
+  font-weight: 500;
+  min-height: 36dp;
+  margin: 4dp 2dp;
+  border-radius: 8dp;
+}
+
+term-keys .term-key.pressed {
+  background-color: @vibeos_surface_container_highest;
+}
+
+term-keys .term-key.on {
+  color: @vibeos_on_primary_container;
+  background-color: @vibeos_primary_container;
+}
+
+term-keys .term-key.locked {
+  color: @vibeos_on_primary;
+  background-color: @vibeos_primary;
+}

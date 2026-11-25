@@ -1,3 +1,156 @@
+vibeos (1:0.1.4.2) unstable; urgency=medium
+
+  * Home always lands on the home screen. The swipe up, back from an app's
+    first screen and a sideways app's swipe up now take every app window
+    off the phone's screen into recents, as the Home key, recents and the
+    taskbar already did; they took only the app they flew home, so the
+    app a quick switch or a recents card came from was in front of the
+    home screen again, and each further swipe home showed the next one.
+    A window on a TV or monitor plugged into the phone stays where it is.
+  * A system swipe's touch is the system's once it is recognised: the
+    swipe up, back and the sideways swipe cancel the touch the app under
+    them was given, as Android does, and the app sees nothing more of it,
+    its lift included. The quick switch along the gesture bar no longer
+    pages Calendar under the finger.
+  * No more "... is ready" notifications. GNOME's banner for a window that
+    asks for attention is off while VibeOS's shell runs. The app just
+    opened from the launcher, and a screen one app opens from another
+    right after a tap, come to the front; after Home nothing comes up over
+    the home screen by itself until the user touches something.
+
+ -- pulpoff <pashkovsky@gmail.com>  Tue, 24 Nov 2026 18:37:03 +0100
+
+vibeos (1:0.1.4.1) unstable; urgency=medium
+
+  * Built against evolution-data-server 3.62, which is in sid: Contacts,
+    Phone, Messages, Calendar and Vibe no longer load EDS 3.56's
+    libedataserver beside 3.62's, and 0.1.4's hold of EDS can be lifted.
+    The build requires EDS 3.62 now. vCards are written and read through
+    3.62's API (e_vcard_convert_to_string, e_vcard_get_attributes_by_name),
+    which replaced the calls 3.56 had.
+  * Agent is called Vibe where the user sees it: the launcher and the app
+    list (a search for Agent still finds it), its window, its settings,
+    Settings' Gestures and the package's description. The ids stay
+    (vibeos.Agent, vibeos.Dictate, power-hold-agent).
+  * Vibe: a power key hold listens on after the key is let go, until the
+    speaker pauses, as Android's assistant does after its long press; a
+    hold the shell gives up for the power menu sends nothing.
+  * Shell: power and volume up open the power menu when pressed as a hand
+    does, either key first and held.
+  * Shell: a notification's icon is its app's logo in the status bar, on
+    the lock screen and on the always-on display, not a white square.
+  * Shell: a fullscreen app keeps clear of the camera hole, as on Android.
+  * Shell: "Wireless charging" on a charging pad.
+  * Shell: vibeos.Shell has the screen's Brightness and ConfirmOwner, the
+    owner's PIN or pattern asked for by an app.
+  * Keyboard: one closed under a swipe goes, and Back or a touch takes away
+    one left on the screen. Console keeps its size and the keys slide in
+    over it (vibeos.Shell keyboard-slide-apps, or X-Vibeos-Keyboard=slide
+    in an app's desktop file).
+  * Video: full screen, by a button beside the menu (f and F11 too), and by
+    turning the screen sideways; full screen, a film shot the way the screen
+    is turned is cropped to fill it, and one shot the other way stays
+    whole.
+  * Video: a tap on a control's button no longer hides the controls.
+  * Shell: desktop files are read through GioUnix, so GJS no longer warns
+    that Gio.DesktopAppInfo has moved.
+  * Vibe: the call announcer's autostart entry leaves out
+    X-GNOME-Autostart-Phase, which gnome-session warned about at login.
+  * Navi: the package's changelog entry is wrapped at 80 columns.
+  * Navi: a release's package requires that release's libvibeos, libspongy
+    and libtonal at exactly its version, as every other package does; 0.1.4's
+    took any since 0.1.3.
+  * Terminal, a new app (vibeos-terminal, vibeos.Terminal), takes Console's
+    place: GNOME's terminal widget (VTE) made for the touchscreen. A tap
+    brings the keyboard over the window with a row of Esc, Tab, Ctrl, Alt
+    and the arrows on it (Ctrl and Alt sticky, as Termux's); a long press
+    selects with handles and a Copy and Paste toolbar; one finger or two
+    scroll and fling, as a mouse wheel would in less, vim or htop; a pinch
+    zooms the text. The vibeos metapackage recommends it, the default home
+    has it in Console's dock slot, and the launcher shows it instead of
+    Console and puts it in Console's places on a home already set up.
+    Console stays installed where it was.
+  * Video: full screen plays under the camera hole, the hole inside the
+    picture, instead of beside a black bar. Settings (in the menu) has Black
+    bar at the camera to bring the bar back, live while a film plays. The
+    shell keeps the other apps clear of the hole; vibeos.Shell's
+    cutout-extend-apps lists the apps that go under it.
+
+ -- pulpoff <pashkovsky@gmail.com>  Tue, 24 Nov 2026 15:23:27 +0100
+
+vibeos (1:0.1.4) unstable; urgency=medium
+
+  * Agent, a new app in vibeos-dictate (vibeos.Agent): a spoken
+    conversation with VibeOS's model server, answered in the language
+    chosen (English, German, Spanish, French, Italian or Russian) with a
+    Piper voice; a language not on the phone is downloaded when it is
+    chosen, from pinned addresses with each file's size and SHA-256
+    checked.
+  * Agent: tools on the phone. It reads the call log, contacts, messages,
+    calendar, alarms, battery, storage, the mobile network, Wi-Fi and
+    Bluetooth, the weather, the open apps and what was missed; sets and
+    cancels alarms and timers, switches Wi-Fi and Bluetooth, opens an app
+    and starts a route in Navi. A call, a message, a new contact or an
+    event stops at a card and happens only on the user's tap. "What Agent
+    can use" switches each kind of data off. What a tool reads is data,
+    never an instruction.
+  * Agent: a log of what it did (vibeos-dictate/agent-log.jsonl, nothing
+    said or read in it) and undo of its last action; in a call it says who
+    is calling, and switches the speaker, the microphone and hold, hangs
+    up, answers and declines; the core commands work offline in six
+    languages; private mode and quiet hours; speech rate, answer length and
+    state cues in its settings, a column on a tablet.
+  * Holding the power key talks to Agent for as long as it is held, on by
+    default (Settings, System, Gestures). On a locked phone Agent only
+    reads until the phone is unlocked. The power menu is now power and
+    volume up together, and logind leaves the power key's long press to
+    the shell (/usr/lib/systemd/logind.conf.d/vibeos-power-key.conf, read at
+    the next boot): Mobian's 5 s hold no longer powers the phone off.
+  * Gestures: a double press of the power key opens an app (Agent at
+    first), and the side button opens any app (Camera at first) or
+    recents.
+  * Settings: Display size changes the display's scale, and the shell keeps
+    it without asking; the volume keys and the quick settings slider go
+    above 100% where Settings allows it; the Microphone and Camera switches
+    block every app (WirePlumber's permissions for every PipeWire client,
+    the Camera app's own check), and the status bar shows them off; High
+    contrast in the apps (libvibeos) and the shell.
+  * Settings: Set PIN and Set pattern ask for the old one on Settings' own
+    screen (vibeos-set-own-password through pkexec, for the active local
+    user only). Its PAM service is in /usr/lib/pam.d, which Debian's
+    libpam 1.7.0 reads but does not promise to keep reading (#1140029).
+  * Settings: an account's "Use for" lists Calendar, Contacts and Files;
+    Uninstall goes through App Installer; Default apps offers every app of
+    a kind; Tap to wake only with a touchscreen that wakes the screen,
+    Vibration only with a motor; an uninstalled app leaves the lists; a
+    page shows what changed elsewhere while it is open; GNOME Settings'
+    privacy and network panels open the matching page.
+  * Files opens folders: the session's default apps
+    (/etc/xdg/gnome-mimeapps.list) move from vibeos-installer to
+    vibeos-session.
+  * Every menu opens below its button (or above it when it does not fit),
+    VibeosMenu's and the ones eight apps draw themselves.
+  * Tablets: Clock has the rail in both orientations, Contacts' detail
+    pane a centred photo and name, Weather's Set City a card, and
+    Software's carousel whole columns.
+  * Shell: an app can have the keyboard come up over its window
+    (X-Vibeos-Keyboard=overlay, vibeos.Shell's KeyboardOverlap);
+    vibeos.Shell tells which apps are open and lists the notifications;
+    Home minimizes only the phone screen's windows, so a game on a
+    plugged-in TV stays open.
+  * App Installer has no icon in the launcher.
+  * Browser: web videos play and loop, decoded in software (the hardware
+    decoder's frames came out black).
+  * libvibeos: a sheet's close and a bar's back circle follow the theme, a
+    search view can have a button at the bar's end, and a dialog gives
+    the focus back only if its answer left it there.
+  * Dictate: a language that needs Vosk installs it with its files, and
+    Piper 1.5 voices read their vowel clusters as one phoneme.
+  * Navi, the car navigation app, is released with this version as a
+    package of its own (vibeos-navi, apps/navi/pkg/build-deb.sh).
+
+ -- pulpoff <pashkovsky@gmail.com>  Mon, 23 Nov 2026 19:40:00 +0100
+
 vibeos (1:0.1.3) unstable; urgency=medium
 
   * Tablets: the shell and the launcher laid out for a tablet either way up,

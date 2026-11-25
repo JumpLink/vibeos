@@ -745,6 +745,8 @@ make_view (NbTab *t)
   WebKitSettings *settings = webkit_settings_new ();
   webkit_settings_set_enable_smooth_scrolling (settings, TRUE);
   webkit_settings_set_enable_developer_extras (settings, FALSE);
+  /* sound waits for a tap; a muted video still plays by itself (autoplay, or play() from the page), as in Chrome,
+   * and one the page then unmutes pauses */
   webkit_settings_set_media_playback_requires_user_gesture (settings, TRUE);
   /* WebKit holds a page's rendering near 60 fps (Safari's choice for 120 Hz screens): on a 120 Hz panel a scroll
    * then ran at 40-60 fps. Without it, 117 fps measured. */

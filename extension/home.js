@@ -19,6 +19,9 @@ export class Home {
         this._respawnId = 0;
         this._fitId = 0;
         this._destroyed = false;
+        // the display's last user time as the phone last went home: no app comes up by itself after it until the user
+        // touches something again (attention.js)
+        this.homeAt = 0;
 
         global.display.connectObject('window-created', (_d, win) => this._windowCreated(win), this);
         // A turn of the screen: the launcher's window is asked for the turned screen's size. Left alone it kept the
@@ -57,15 +60,32 @@ export class Home {
     // Home: every app window on the phone's own screen goes to recents (minimized), the launcher takes the focus. A
     // window on a TV or monitor plugged into the phone (a game played there) stays where it is: Home is the phone's.
     goHome() {
+        this.appsToRecents(false);
+        this._window?.activate(global.get_current_time());
+        this.markHome();
+    }
+
+    // Home's rule, for every way home (the Home key, the swipe up, back from an app's first screen, the swipe up of a
+    // sideways app): the launcher is the desktop, under every window, so a window left unminimized on the phone's
+    // screen is in front of it. skipEffect: the windows go without the minimize animation (a swipe flies its own).
+    appsToRecents(skipEffect) {
         const workspace = global.workspace_manager.get_active_workspace();
         const phone = Main.layoutManager.primaryIndex;
         for (const win of workspace.list_windows()) {
             if (win === this._window || win.minimized || win.get_window_type() !== Meta.WindowType.NORMAL ||
                 win.get_monitor() !== phone)
                 continue;
+            const actor = skipEffect ? win.get_compositor_private() : null;
+            if (actor)
+                Main.wm.skipNextEffect(actor);
             win.minimize();
         }
-        this._window?.activate(global.get_current_time());
+    }
+
+    // the phone is home now, the launcher activated: every way home says so (the launcher's activation is a user
+    // time too, so this comes after it)
+    markHome() {
+        this.homeAt = global.display.get_last_user_time();
     }
 
     get window() {

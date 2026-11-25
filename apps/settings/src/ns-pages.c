@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <gio/gdesktopappinfo.h>
 #include <json-glib/json-glib.h>
+#include <linux/input-event-codes.h>
 #include <math.h>
 #include <sys/utsname.h>
 #include <tonal.h>
@@ -43,19 +44,62 @@ airplane_set (GtkWidget *sw, GParamSpec *ps, gpointer data)
 }
 
 static void
+airplane_show (GtkWidget *row, gboolean on)
+{
+  GtkWidget *sw = ns_row_get_switch (row);
+  g_object_set_data (G_OBJECT (sw), "ns-syncing", GINT_TO_POINTER (1));
+  ns_switch_set_active (sw, on);
+  g_object_set_data (G_OBJECT (sw), "ns-syncing", NULL);
+}
+
+static void
 airplane_got (GObject *src, GAsyncResult *res, gpointer row)
 {
   g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, NULL);
   g_autoptr (GVariant) on = NULL;
   if (v) {
     g_variant_get (v, "(v)", &on);
-    GtkWidget *sw = ns_row_get_switch (row);
-    g_object_set_data (G_OBJECT (sw), "ns-syncing", GINT_TO_POINTER (1));
-    ns_switch_set_active (sw, g_variant_get_boolean (on));
-    g_object_set_data (G_OBJECT (sw), "ns-syncing", NULL);
+    airplane_show (row, g_variant_get_boolean (on));
     gtk_widget_set_visible (row, TRUE);
   }
   g_object_unref (row);
+}
+
+/* the switch follows gsd's, whoever turns it (the shade's Airplane mode tile) while the page is open */
+static void
+airplane_changed (GDBusConnection *bus, const char *sender, const char *path, const char *iface, const char *signal,
+                  GVariant *params, gpointer ref)
+{
+  /* a weak reference: GDBus may still deliver a change after the row has gone and unsubscribed */
+  g_autoptr (GtkWidget) row = g_weak_ref_get (ref);
+  const char *which;
+  g_autoptr (GVariant) changed = NULL;
+  gboolean on;
+  if (!row || !g_variant_is_of_type (params, G_VARIANT_TYPE ("(sa{sv}as)")))
+    return;
+  g_variant_get (params, "(&s@a{sv}@as)", &which, &changed, NULL);
+  if (g_variant_lookup (changed, "AirplaneMode", "b", &on))
+    airplane_show (row, on);
+}
+
+static void
+weak_ref_free (GWeakRef *ref)
+{
+  g_weak_ref_clear (ref);
+  g_free (ref);
+}
+
+typedef struct {
+  GDBusConnection *bus;
+  guint            id;
+} Subscription;
+
+static void
+subscription_free (Subscription *s)
+{
+  g_dbus_connection_signal_unsubscribe (s->bus, s->id);
+  g_object_unref (s->bus);
+  g_free (s);
 }
 
 void
@@ -74,12 +118,24 @@ ns_page_connections (GtkWidget *row, gpointer data)
   g_signal_connect (sw, "notify::active", G_CALLBACK (airplane_set), NULL);
   gtk_widget_set_visible (air, FALSE);
   g_autoptr (GDBusConnection) bus = g_bus_get_sync (G_BUS_TYPE_SESSION, NULL, NULL);
-  if (bus)
+  if (bus) {
+    /* the row is the subscription's: it ends with the row, so no change comes to a row that is gone */
+    Subscription *sub = g_new0 (Subscription, 1);
+    GWeakRef *ref = g_new0 (GWeakRef, 1);
+    g_weak_ref_init (ref, air);
+    sub->bus = g_object_ref (bus);
+    sub->id = g_dbus_connection_signal_subscribe (bus, "org.gnome.SettingsDaemon.Rfkill",
+                                                  "org.freedesktop.DBus.Properties", "PropertiesChanged",
+                                                  "/org/gnome/SettingsDaemon/Rfkill",
+                                                  "org.gnome.SettingsDaemon.Rfkill", G_DBUS_SIGNAL_FLAGS_NONE,
+                                                  airplane_changed, ref, (GDestroyNotify) weak_ref_free);
+    g_object_set_data_full (G_OBJECT (air), "ns-airplane", sub, (GDestroyNotify) subscription_free);
     g_dbus_connection_call (bus, "org.gnome.SettingsDaemon.Rfkill", "/org/gnome/SettingsDaemon/Rfkill",
                             "org.freedesktop.DBus.Properties", "Get",
                             g_variant_new ("(ss)", "org.gnome.SettingsDaemon.Rfkill", "AirplaneMode"),
                             G_VARIANT_TYPE ("(v)"), G_DBUS_CALL_FLAGS_NONE, 3000, NULL, airplane_got,
                             g_object_ref (air));
+  }
   r = page_row (g, "network-wireless-hotspot-symbolic", "Wi-Fi hotspot", "Share the mobile data", ns_page_hotspot);
   ns_caps_bind_visible (r, NS_CAP_MODEM);
   g = ns_group (c, NULL);
@@ -681,6 +737,33 @@ timeout_picked (GtkWidget *row, guint i, gpointer session)
   g_settings_set_uint (session, "idle-delay", timeouts[i]);
 }
 
+/* Tap to wake: a touchscreen that sends KEY_WAKEUP for a double tap on a dark screen, which the shell wakes on
+ * (keys.js, power.js): s6sy761's "gestures", NT36xxx's "Wake Gesture", gts4lv-touchd's "double tap" devices. In the
+ * key bits each input device has in sysfs: hexadecimal longs, the most significant first, leading zero ones left out.
+ * Read once: a touchscreen does not come and go. */
+static gboolean
+has_wake_key (void)
+{
+  static int known = -1;
+  if (known >= 0)
+    return known;
+  known = FALSE;
+  g_autoptr (GDir) dir = g_dir_open ("/sys/class/input", 0, NULL);
+  const char *name;
+  while (!known && dir && (name = g_dir_read_name (dir))) {
+    if (!g_str_has_prefix (name, "input"))
+      continue;
+    g_autofree char *path = g_build_filename ("/sys/class/input", name, "capabilities", "key", NULL);
+    g_autofree char *bits = NULL;
+    if (!g_file_get_contents (path, &bits, NULL, NULL))
+      continue;
+    g_auto (GStrv) words = g_strsplit (g_strstrip (bits), " ", -1);
+    guint n = g_strv_length (words), per = sizeof (unsigned long) * 8, w = KEY_WAKEUP / per;
+    known = w < n && (g_ascii_strtoull (words[n - 1 - w], NULL, 16) >> (KEY_WAKEUP % per)) & 1;
+  }
+  return known;
+}
+
 void
 ns_page_display (GtkWidget *row, gpointer data)
 {
@@ -737,7 +820,7 @@ ns_page_display (GtkWidget *row, gpointer data)
       GtkWidget *r = ns_row_switch (g, "Auto-rotate screen", sub, NULL, NULL);
       g_settings_bind (touch, "orientation-lock", ns_row_get_switch (r), "active", G_SETTINGS_BIND_INVERT_BOOLEAN);
     }
-    if (vibeos && ns_has_key (vibeos, "double-tap-wake"))
+    if (vibeos && ns_has_key (vibeos, "double-tap-wake") && has_wake_key ())
       ns_row_switch (g, "Tap to wake", "Wake the screen with a double tap", vibeos, "double-tap-wake");
   }
   ns_push (page);
@@ -1015,12 +1098,9 @@ ns_page_display_size (GtkWidget *row, gpointer data)
   g_object_set_data (G_OBJECT (font), "ns-scale", sc);
   g_signal_connect (sc, "value-changed", G_CALLBACK (text_moved), iface);
   g_signal_connect_object (iface, "changed::text-scaling-factor", G_CALLBACK (text_changed), font, 0);
-  /* the shell keeps the size it started at until it can follow a new one: Display size shows, without changing,
-   * unless NS_DISPLAY_SIZE=1 asks for it */
-  gboolean sizes = !g_strcmp0 (g_getenv ("NS_DISPLAY_SIZE"), "1");
-  ns_displays_size_row (GTK_WIDGET (page), g, sizes);
-  if (!sizes)
-    ns_note (c, "Display size can't be changed yet.");
+  /* Display size is the panel's scale in mutter, which the apps, the launcher and the shell (units.js) all lay out
+   * by as it changes */
+  ns_displays_size_row (GTK_WIDGET (page), g, TRUE);
 
   if (vi && ns_has_key (vi, "bold-text")) {
     g = ns_group (c, "Style options");
@@ -1853,6 +1933,11 @@ ns_page_general (GtkWidget *row, gpointer data)
   GtkWidget *g = ns_group (c, NULL);
   page_row (g, "preferences-desktop-locale-symbolic", "Language and region", "Language, formats", ns_page_language);
   page_row (g, "input-keyboard-symbolic", "Keyboard", "On-screen keyboard, layouts", ns_page_keyboard);
+  /* Android 17's place for it, after Keyboard */
+  if (ns_gestures_available ())
+    page_row (g, "phone-symbolic", "Gestures",
+              ns_caps_has (NS_CAP_SIDE_KEY) ? "Power button, side button" : "Double-press power button",
+              ns_page_gestures);
   page_row (g, "input-mouse-symbolic", "Mouse and touchpad", "Pointer speed, hardware keyboard", ns_page_mouse);
   page_row (g, "preferences-system-time-symbolic", "Date and time", "Automatic time, time zone", ns_page_datetime);
   if (have_updates ()) {

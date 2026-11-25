@@ -10,6 +10,7 @@ import {CollectWhenStill} from './gc.js';
 import {Cutout, CutoutBand} from './cutout.js';
 import {Desktop, isDesktopSession} from './dock.js';
 import {DisplayChangeOnPanel} from './displaychange.js';
+import {HighContrast} from './contrast.js';
 import {EndMark} from './endmark.js';
 import {FrameLog} from './framelog.js';
 import {syncGtkCss} from './gtkcss.js';
@@ -19,6 +20,7 @@ import {KeyboardSwap} from './keyboard/keyboard.js';
 import {KeyHaptics} from './keyhaptics.js';
 import {AppSwitchKey} from './keys.js';
 import {Keyguard} from './keyguard.js';
+import {KeyLaunch} from './keylaunch.js';
 import {NoWindowMipmaps} from './mipmaps.js';
 import {ModalWatch} from './modalwatch.js';
 import {AndroidKeyboard} from './osk.js';
@@ -45,6 +47,13 @@ export default class VibeosExtension extends Extension {
         // the screen's geometry first: every module lays out with it, and its monitors-changed handler runs before
         // theirs
         geometry.start();
+        // Accessibility's High contrast: the colours the extension draws with, before anything is drawn with them
+        try {
+            this._highContrast = new HighContrast();
+        } catch (e) {
+            logError(e, 'vibeos: High contrast');
+            this._highContrast = null;
+        }
 
         // ~/.config/vibeos/debug: the shell's Eval and Screenshot D-Bus calls are open to every client, for
         // development only
@@ -176,7 +185,7 @@ export default class VibeosExtension extends Extension {
         this._volume.keysTaker = () => this._service.volumeKeysTaker();
         Main.layoutManager.addTopChrome(this._volume);
         overWindows(this._volume);
-        // power and volume down together: a screenshot
+        // power and volume down together: a screenshot; power and volume up: the power menu (power.js)
         this._chord = new ScreenshotChord();
         this._volume.chord = this._chord;
         // the power menu a long press of the power key opens, over the lock screen too
@@ -193,11 +202,14 @@ export default class VibeosExtension extends Extension {
         this._service.setPower(this._power);
         // ... and while it is off, the volume keys do nothing (an app that took them still gets them: a call)
         this._volume.screenOff = () => this._power && !this._power.interactive;
-        // the Bixby key: recents, with the screen on (the lock screen's own action mode keeps it out there)
-        this._appSwitch = new AppSwitchKey(() => {
-            if (this._power.interactive)
-                this._service.toggleRecents();
-        });
+        // the apps a double press of the power key and the side button open (Settings > System > Gestures), or the
+        // side button's recents; and Agent, listening while the power key is held
+        this._keyLaunch = new KeyLaunch({service: this._service, keyguard: this._keyguard, power: this._power,
+            shade: this._shade});
+        this._power.doublePress = this._keyLaunch;
+        this._appSwitch = new AppSwitchKey(() => this._keyLaunch.sideKey());
+        // ... and in recents, which takes the keys while it is open
+        this._service.navigation.sideKey = () => this._keyLaunch.sideKey();
         // a modal grab still up with the shell at rest on the home screen goes to the journal
         const nav = this._service.navigation;
         this._modalWatch = new ModalWatch(() => this._power.interactive && !this._keyguard.showing &&
@@ -275,6 +287,12 @@ export default class VibeosExtension extends Extension {
         this._endMark = null;
         this._appSwitch?.destroy();
         this._appSwitch = null;
+        if (this._service?.navigation)
+            this._service.navigation.sideKey = null;
+        if (this._power)
+            this._power.doublePress = null;
+        this._keyLaunch?.destroy();
+        this._keyLaunch = null;
         this._modalWatch?.destroy();
         this._modalWatch = null;
         this._power?.destroy();
@@ -285,6 +303,8 @@ export default class VibeosExtension extends Extension {
         this._volume = null;
         this._displayChange?.destroy();
         this._displayChange = null;
+        this._highContrast?.destroy();
+        this._highContrast = null;
         this._chord?.destroy();
         this._chord = null;
         this._whenLocked?.destroy();

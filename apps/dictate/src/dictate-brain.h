@@ -18,6 +18,7 @@ GQuark dictate_brain_error_quark (void);
 typedef enum {
   DICTATE_BRAIN_ERROR_USER,
   DICTATE_BRAIN_ERROR_BUSY,     /* the server has had too many questions from this phone: said, not shown */
+  DICTATE_BRAIN_ERROR_OFFLINE,  /* the server cannot be reached, or is down: Agent works offline (dictate-offline.h) */
 } DictateBrainError;
 
 /* a piece of the reply as it is written, on the replying thread: return FALSE to stop the reply there */

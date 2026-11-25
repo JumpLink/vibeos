@@ -15,7 +15,10 @@
  * user decided goes to the model with the next question. */
 #include "dictate-talk.h"
 #include "dictate-access.h"
+#include "dictate-actions.h"
 #include "dictate-brain.h"
+#include "dictate-offline.h"
+#include "dictate-output.h"
 #include "dictate-tools.h"
 #include "dictate-voice.h"
 
@@ -38,12 +41,19 @@
   "You are Vibe, the AI agent of this phone. You were made for VibeOS, a Linux operating system for phones, by the " \
   "VibeOS developers; if you are asked who made you or what you are, say that, and never name another company or " \
   "model as your maker. %s " \
-  "The user speaks to you and hears your answers read aloud, so answer the way people talk: one to three short " \
-  "sentences, no lists, no headings, no markdown, no emoji, no links. If you do not know something, say so. " \
+  "The user speaks to you and hears your answers read aloud, so answer the way people talk: %s, no lists, no " \
+  "headings, no markdown, no emoji, no links. If you do not know something, say so. " \
   "Today is %s. Always answer in %s, even when the user's words, or something you are given, are in another " \
   "language; names stay as they are."
 
-typedef enum { JOB_PREPARE, JOB_ASK, JOB_RESET, JOB_QUIT } JobKind;
+/* private mode, the answer out loud on the speaker (dictate-output.h): after what Agent can use */
+#define PRIVATE_SPEAKER \
+  " Private mode is on and your answer plays out loud on the phone's speaker, where others may hear it: answer in " \
+  "one short sentence, and do not say anyone's name or number, or what a message, a notification or an event " \
+  "says. Say only what kind of thing it is and how many (\"You have two new messages.\"), and that the user can " \
+  "hear more with headphones on."
+
+typedef enum { JOB_PREPARE, JOB_ASK, JOB_SAY, JOB_RESET, JOB_QUIT } JobKind;
 typedef enum { SAY_PREPARE, SAY_TEXT, SAY_END, SAY_QUIT } SayKind;
 
 typedef struct {
@@ -55,6 +65,12 @@ typedef struct {
   char *voice, *name;           /* the voice's, and Kokoro's voice in it */
   char *access;                 /* what Agent can use, for the prompt (read on the main thread) */
   guint32 areas;                /* the same, for the tools */
+  char *verbosity;              /* how much to say: "short", "normal", "detailed" (talk-verbosity) */
+  gboolean remote;              /* the model is a server's: the question leaves the phone */
+  char *said;                   /* what the user said, as said (`text` may have more before it): for offline */
+  gboolean private_mode;        /* talk-private (read on the main thread) */
+  gboolean private_speaker;     /* and the answer plays on the speaker (found on the brain's thread) */
+  gboolean locked;              /* the phone is locked: reading tools only (dictate_talk_set_locked) */
 } Job;
 
 struct _DictateTalk {
@@ -63,9 +79,10 @@ struct _DictateTalk {
   guint turn;                   /* atomic */
   GAsyncQueue *jobs, *says;     /* Job, for the brain's and the voice's threads */
   GThread *brain_thread, *voice_thread;
-  GMutex lock;                  /* the reply's cancellable, the speed */
+  GMutex lock;                  /* the reply's cancellable, the speed, the sink */
   GCancellable *cancellable;
   double speed;
+  char *sink;                   /* private mode with headphones on: the replies play there and nowhere else */
   int speak;                    /* atomic: the replies spoken, or only written */
   GMainContext *main;
   GSettings *settings;
@@ -73,12 +90,15 @@ struct _DictateTalk {
   GstElement *pipeline, *src;
   guint bus_watch;
   guint playing;
+  guint hushed;                 /* atomic: the turn the user hushed (tapped): its reply is only written from then */
   guint64 played;               /* samples pushed */
   guint rate;
   guint ended;                  /* the last turn whose reply has been written to its end */
   char *reply;                  /* the reply as written, for "reply" */
   guint test_answers;           /* DICTATE_TEST_OUTPUT's files so far */
   GPtrArray *proposals;         /* DictateAction: shown, what became of them not yet told to the model */
+  char *context;                /* what goes on (a call ringing), told to the model with each question */
+  gboolean locked;              /* the phone is locked: the questions from now on may only read */
   gboolean disposed;
   /* the brain's thread's */
   DictateBrain *brain;
@@ -86,6 +106,8 @@ struct _DictateTalk {
   gboolean fresh;               /* the conversation starts with the next question */
   char *access;                 /* what the conversation was told Agent can use */
   char *answers_in;             /* and the language it was told to answer in */
+  char *verbosity;              /* and how much to say */
+  gboolean offline_told;        /* the user has been told that Agent works offline (since its last answer online) */
   /* the voice's thread's */
   DictateVoice *voice;
   char *voice_path, *voice_name;
@@ -115,6 +137,8 @@ job_free (Job *job)
   g_free (job->voice);
   g_free (job->name);
   g_free (job->access);
+  g_free (job->verbosity);
+  g_free (job->said);
   g_free (job);
 }
 
@@ -377,8 +401,9 @@ on_error_post (gpointer data)
     {
       g_atomic_int_inc (&self->turn);
       stop_playback (self);
-      set_state (self, DICTATE_TALK_IDLE);
+      /* told first: whoever sees the turn end then knows it failed */
       g_signal_emit (self, signals[SIGNAL_ERROR], 0, p->text);
+      set_state (self, DICTATE_TALK_IDLE);
     }
   return G_SOURCE_REMOVE;
 }
@@ -427,8 +452,8 @@ on_bus (GstBus *bus, GstMessage *message, gpointer data)
         stop_playback (self);
         if (current (self, self->playing))
           {
-            set_state (self, DICTATE_TALK_IDLE);
             g_signal_emit (self, signals[SIGNAL_ERROR], 0, _("The answer could not be played"));
+            set_state (self, DICTATE_TALK_IDLE);
           }
         return G_SOURCE_REMOVE;
       }
@@ -447,15 +472,23 @@ start_playback (DictateTalk *self, guint rate)
   const char *test = g_getenv ("DICTATE_TEST_OUTPUT");
   g_autofree char *file = test ? g_strdup_printf ("%s-%u.wav", test, ++self->test_answers) : NULL;
   g_autofree char *quoted = file ? g_strescape (file, NULL) : NULL;
-  g_autofree char *sink = test ? g_strdup_printf ("tee name=t ! queue ! fakesink sync=true t. ! queue ! wavenc ! "
+  g_autofree char *device = NULL, *keep = NULL;
+  g_autofree char *sink = NULL;
+  g_autofree char *description = NULL;
+  g_autoptr (GstBus) bus = NULL;
+
+  /* private mode with headphones on: to them, and not wherever the default goes meanwhile */
+  g_mutex_lock (&self->lock);
+  device = self->sink ? g_strescape (self->sink, NULL) : NULL;
+  g_mutex_unlock (&self->lock);
+  keep = device ? g_strdup_printf (" device=\"%s\"", device) : g_strdup ("");
+  sink = test ? g_strdup_printf ("tee name=t ! queue ! fakesink sync=true t. ! queue ! wavenc ! "
                                                   "filesink location=\"%s\"", quoted)
                                /* a media role, so that the phone's policy treats it as speech and not as music */
-                               : g_strdup (pulse ? "pulsesink client-name=Dictate "
-                                                   "stream-properties=\"props,media.role=Assistant\""
-                                                 : "autoaudiosink");
-  g_autofree char *description = g_strdup_printf ("appsrc name=src format=time ! audioconvert ! audioresample ! %s",
-                                                  sink);
-  g_autoptr (GstBus) bus = NULL;
+                               : pulse ? g_strdup_printf ("pulsesink client-name=Dictate%s "
+                                                          "stream-properties=\"props,media.role=Assistant\"", keep)
+                                       : g_strdup ("autoaudiosink");
+  description = g_strdup_printf ("appsrc name=src format=time ! audioconvert ! audioresample ! %s", sink);
 
   self->pipeline = gst_parse_launch (description, &error);
   if (!self->pipeline)
@@ -484,7 +517,7 @@ on_audio (gpointer data)
 
   if (!current (self, p->turn))
     return G_SOURCE_REMOVE;
-  if (p->samples && p->n && g_atomic_int_get (&self->speak))
+  if (p->samples && p->n && g_atomic_int_get (&self->speak) && (guint) g_atomic_int_get (&self->hushed) != p->turn)
     {
       GstBuffer *buffer;
 
@@ -495,8 +528,8 @@ on_audio (gpointer data)
           if (!start_playback (self, p->rate))
             {
               g_atomic_int_inc (&self->turn);
-              set_state (self, DICTATE_TALK_IDLE);
               g_signal_emit (self, signals[SIGNAL_ERROR], 0, _("The answer could not be played"));
+              set_state (self, DICTATE_TALK_IDLE);
               return G_SOURCE_REMOVE;
             }
           self->playing = p->turn;
@@ -597,7 +630,9 @@ voice_thread (gpointer data)
         }
       if (say->kind == SAY_PREPARE)
         ensure_voice (self, say);
-      else if (!current (self, say->turn) || (say->kind == SAY_TEXT && !g_atomic_int_get (&self->speak)))
+      else if (!current (self, say->turn) || (say->kind == SAY_TEXT && (!g_atomic_int_get (&self->speak)
+                                                                         || (guint) g_atomic_int_get (&self->hushed)
+                                                                              == say->turn)))
         ;
       else if (say->kind == SAY_END)
         post_audio (self, say->turn, NULL, 0, 0, TRUE);
@@ -666,8 +701,19 @@ speech_of (const char *language)
   return &SPEECH[0];
 }
 
+/* how much Agent says (talk-verbosity), for the prompt */
+static const char *
+how_much (const char *verbosity)
+{
+  if (!g_strcmp0 (verbosity, "short"))
+    return "one short sentence, two at the most";
+  if (!g_strcmp0 (verbosity, "detailed"))
+    return "up to five or six sentences when the question needs them, each still short";
+  return "one to three short sentences";
+}
+
 static char *
-system_prompt (const char *access, const char *language)
+system_prompt (const char *access, const char *language, const char *verbosity)
 {
   const Speech *speech = speech_of (language);
   g_autoptr (GDateTime) now = g_date_time_new_now_local ();
@@ -675,7 +721,7 @@ system_prompt (const char *access, const char *language)
                                            g_date_time_get_day_of_month (now),
                                            speech->months[g_date_time_get_month (now) - 1],
                                            g_date_time_get_year (now));
-  return g_strdup_printf (SYSTEM_PROMPT, access ? access : "", date, speech->name);
+  return g_strdup_printf (SYSTEM_PROMPT, access ? access : "", how_much (verbosity), date, speech->name);
 }
 
 static gboolean
@@ -719,7 +765,7 @@ say_for (Job *job, int kind, const char *text)
 static void
 say (Writing *w, const char *text)
 {
-  if (!g_atomic_int_get (&w->self->speak))
+  if (!g_atomic_int_get (&w->self->speak) || (guint) g_atomic_int_get (&w->self->hushed) == w->turn)
     return;
   g_async_queue_push (w->self->says, say_for (w->job, SAY_TEXT, text));
 }
@@ -800,11 +846,60 @@ talk_propose (DictateAction *action, gpointer data)
   post (w->self, on_propose, p);
 }
 
+/* a tool has run: for the tests */
+static void
+post_tool (DictateTalk *self, guint turn, const char *name, const char *arguments, const char *result, double ms)
+{
+  Post *p = g_new0 (Post, 1);
+
+  /* the log has the tool and its time, not what it read */
+  g_debug ("talk: tool %s ran in %.0f ms (%zu bytes)", name, ms, strlen (result));
+  p->turn = turn, p->text = g_strdup (name), p->arguments = g_strdup (arguments);
+  p->result = g_strdup (result), p->ms = ms;
+  post (self, on_tool, p);
+}
+
+/* a tool the offline commands run (dictate-offline.h): as the model's are, with their line while it runs */
+static char *
+offline_run (const char *name, const char *arguments, gpointer data)
+{
+  Writing *w = data;
+  DictateToolContext ctx = { w->job->areas, w->job->language, talk_propose, w, w->job->private_speaker,
+                             w->job->locked };
+  const char *status = dictate_tools_status (name);
+  gint64 t0 = g_get_monotonic_time ();
+  char *result;
+
+  if (status)
+    post_status (w->self, w->turn, status);
+  result = dictate_tools_run (name, arguments, &ctx, TOOL_TIMEOUT_MS);
+  post_tool (w->self, w->turn, name, arguments, result, (g_get_monotonic_time () - t0) / 1000.0);
+  post_status (w->self, w->turn, NULL);
+  return result;
+}
+
+/* the model cannot be reached: the fixed commands answer, told once (until the model answers again) */
+static char *
+answer_offline (DictateTalk *self, Job *job, Writing *w)
+{
+  g_autofree char *reply = dictate_offline_reply (job->language, job->said, job->private_speaker, offline_run, w);
+  char *all = self->offline_told ? g_strdup (reply)
+                                 : g_strconcat (dictate_offline_notice (job->language), " ", reply, NULL);
+
+  g_message ("talk: offline: the fixed commands answer");
+  self->offline_told = TRUE;
+  g_string_truncate (w->reply, 0);
+  g_string_truncate (w->sentence, 0);
+  w->hold = FALSE;
+  on_piece (all, w);
+  return all;
+}
+
 /* the model's calls of one step run, their results added for the next step; FALSE when the turn has been stopped */
 static gboolean
 run_calls (DictateTalk *self, Job *job, Writing *w, GPtrArray *calls, guint *used)
 {
-  DictateToolContext ctx = { job->areas, job->language, talk_propose, w };
+  DictateToolContext ctx = { job->areas, job->language, talk_propose, w, job->private_speaker, job->locked };
   gboolean going = TRUE;
 
   for (guint i = 0; i < calls->len; i++)
@@ -830,14 +925,7 @@ run_calls (DictateTalk *self, Job *job, Writing *w, GPtrArray *calls, guint *use
           (*used)++;
         }
       ms = (g_get_monotonic_time () - t0) / 1000.0;
-      /* the log has the tool and its time, not what it read */
-      g_debug ("talk: tool %s ran in %.0f ms (%zu bytes)", c->name, ms, strlen (result));
-      {
-        Post *p = g_new0 (Post, 1);
-        p->turn = job->turn, p->text = g_strdup (c->name), p->arguments = g_strdup (c->arguments);
-        p->result = g_strdup (result), p->ms = ms;
-        post (self, on_tool, p);
-      }
+      post_tool (self, job->turn, c->name, c->arguments, result, ms);
       dictate_brain_add_result (self->brain, c->id, result);
     }
   return going && current (self, job->turn);
@@ -853,15 +941,34 @@ answer (DictateTalk *self, Job *job)
   g_autofree char *tools = NULL;
   const char *text = job->text;
   guint used = 0, step = 0;
+  gboolean offline = FALSE;
 
+  /* private mode: the replies only in headphones, and on the speaker short and with nothing personal in them */
+  {
+    g_autofree char *sink = NULL;
+
+    if (job->private_mode)
+      job->private_speaker = !dictate_output_headphones (&sink);
+    g_mutex_lock (&self->lock);
+    g_free (self->sink);
+    self->sink = g_steal_pointer (&sink);
+    g_mutex_unlock (&self->lock);
+    if (job->private_speaker)
+      {
+        char *access = g_strconcat (job->access ? job->access : "", PRIVATE_SPEAKER, NULL);
+        g_free (job->access);
+        job->access = access;
+      }
+  }
   if (!ensure_brain (self, job))
     goto out;
-  if (self->fresh || g_strcmp0 (job->access, self->access) != 0 || g_strcmp0 (job->language, self->answers_in) != 0)
+  if (self->fresh || g_strcmp0 (job->access, self->access) != 0 || g_strcmp0 (job->language, self->answers_in) != 0
+      || g_strcmp0 (job->verbosity, self->verbosity) != 0)
     {
-      g_autofree char *prompt = system_prompt (job->access, job->language);
+      g_autofree char *prompt = system_prompt (job->access, job->language, job->verbosity);
 
-      /* a switch in Agent's settings turned, or the language changed, since the last question: the conversation
-       * goes on, told the new list and the language to answer in from now on */
+      /* a switch in Agent's settings turned, the language or how much to say changed, since the last question: the
+       * conversation goes on, told the new list, the language to answer in and how much to say from now on */
       if (self->fresh)
         dictate_brain_reset (self->brain, prompt);
       else
@@ -874,6 +981,7 @@ answer (DictateTalk *self, Job *job)
       self->fresh = FALSE;
       g_free (self->access), self->access = g_strdup (job->access);
       g_free (self->answers_in), self->answers_in = g_strdup (job->language);
+      g_free (self->verbosity), self->verbosity = g_strdup (job->verbosity);
     }
   g_mutex_lock (&self->lock);
   g_set_object (&self->cancellable, cancellable);
@@ -882,31 +990,45 @@ answer (DictateTalk *self, Job *job)
   if (!current (self, job->turn))
     goto out;
   if (dictate_brain_has_tools (self->brain))
-    tools = dictate_tools_definitions (job->areas);
-  for (;; step++)
-    {
-      g_autoptr (GPtrArray) calls = NULL;
-      gint64 t0 = g_get_monotonic_time ();
+    tools = dictate_tools_definitions (job->areas, job->locked);
+  /* no network at all: no use trying the server */
+  if (job->remote && job->said && !g_network_monitor_get_network_available (g_network_monitor_get_default ()))
+    g_set_error_literal (&error, DICTATE_BRAIN_ERROR, DICTATE_BRAIN_ERROR_OFFLINE, "no network");
+  else
+    for (;; step++)
+      {
+        g_autoptr (GPtrArray) calls = NULL;
+        gint64 t0 = g_get_monotonic_time ();
 
-      /* past the last call allowed, the model is given no tools: it answers */
-      w.hold = tools && used < TOOL_CALLS_MAX;
-      g_free (reply);
-      reply = dictate_brain_step (self->brain, text, w.hold ? tools : NULL, on_piece, &w, &calls, cancellable,
-                                  &error);
-      text = NULL;
-      if (!reply || !calls || calls->len == 0)
-        break;
-      g_debug ("talk: step %u: %u calls after %.0f ms", step, calls->len, (g_get_monotonic_time () - t0) / 1000.0);
-      /* what it wrote before its calls is not the answer */
-      g_string_truncate (w.reply, 0);
-      g_string_truncate (w.sentence, 0);
-      if (!run_calls (self, job, &w, calls, &used))
-        break;
-      post_status (self, job->turn, NULL);
-    }
+        /* past the last call allowed, the model is given no tools: it answers */
+        w.hold = tools && used < TOOL_CALLS_MAX;
+        g_free (reply);
+        reply = dictate_brain_step (self->brain, text, w.hold ? tools : NULL, on_piece, &w, &calls, cancellable,
+                                    &error);
+        text = NULL;
+        if (!reply || !calls || calls->len == 0)
+          break;
+        g_debug ("talk: step %u: %u calls after %.0f ms", step, calls->len, (g_get_monotonic_time () - t0) / 1000.0);
+        /* what it wrote before its calls is not the answer */
+        g_string_truncate (w.reply, 0);
+        g_string_truncate (w.sentence, 0);
+        if (!run_calls (self, job, &w, calls, &used))
+          break;
+        post_status (self, job->turn, NULL);
+      }
   g_mutex_lock (&self->lock);
   g_clear_object (&self->cancellable);
   g_mutex_unlock (&self->lock);
+  if (!reply && g_error_matches (error, DICTATE_BRAIN_ERROR, DICTATE_BRAIN_ERROR_OFFLINE) && job->said
+      && current (self, job->turn))
+    {
+      g_message ("talk: the model cannot be reached: %s", error->message);
+      g_clear_error (&error);
+      reply = answer_offline (self, job, &w);
+      offline = TRUE;
+    }
+  else if (reply)
+    self->offline_told = FALSE;
   if (!reply && g_error_matches (error, DICTATE_BRAIN_ERROR, DICTATE_BRAIN_ERROR_BUSY))
     {
       /* the server has had too many questions: not an error on the screen, it is said as the reply */
@@ -926,19 +1048,41 @@ answer (DictateTalk *self, Job *job)
                                    ? _("That is too long to answer") : _("The language model could not answer"));
       goto out;
     }
-  {
-    int read, written;
-    double read_ms, first_ms, total_ms;
-    dictate_brain_last_timing (self->brain, &read, &written, &read_ms, &first_ms, &total_ms);
-    g_debug ("talk: read %d in %.0f ms, first word at %.0f ms, %d written in %.0f ms", read, read_ms, first_ms,
-             written, total_ms);
-  }
+  if (!offline)
+    {
+      int read, written;
+      double read_ms, first_ms, total_ms;
+      dictate_brain_last_timing (self->brain, &read, &written, &read_ms, &first_ms, &total_ms);
+      g_debug ("talk: read %d in %.0f ms, first word at %.0f ms, %d written in %.0f ms", read, read_ms, first_ms,
+               written, total_ms);
+    }
   if (current (self, job->turn))
     {
       pass_sentences (&w, TRUE);
       g_async_queue_push (self->says, say_for (job, SAY_END, NULL));
     }
 out:
+  {
+    /* the action log has every question too (not its words): it went to the model's server, if the model is one */
+    const char *sent[] = { job->remote && !offline ? DICTATE_SENT_SERVER : NULL, NULL };
+    dictate_actions_record ("question", DICTATE_TIER_READ, reply ? "answered" : "not answered", sent, NULL, 0);
+  }
+  g_string_free (w.reply, TRUE);
+  g_string_free (w.sentence, TRUE);
+}
+
+/* an announcement (a call ringing): said as Agent's reply, without the model */
+static void
+say_only (DictateTalk *self, Job *job)
+{
+  Writing w = { self, job, job->turn, g_string_new (NULL), g_string_new (NULL), FALSE };
+
+  on_piece (job->text, &w);
+  if (current (self, job->turn))
+    {
+      pass_sentences (&w, TRUE);
+      g_async_queue_push (self->says, say_for (job, SAY_END, NULL));
+    }
   g_string_free (w.reply, TRUE);
   g_string_free (w.sentence, TRUE);
 }
@@ -956,9 +1100,11 @@ brain_thread (gpointer data)
       if (kind == JOB_PREPARE)
         ensure_brain (self, job);
       else if (kind == JOB_RESET)
-        self->fresh = TRUE;
+        self->fresh = TRUE, self->offline_told = FALSE;
       else if (kind == JOB_ASK && current (self, job->turn))
         answer (self, job);
+      else if (kind == JOB_SAY && current (self, job->turn))
+        say_only (self, job);
       job_free (job);
       if (kind == JOB_QUIT)
         break;
@@ -967,6 +1113,7 @@ brain_thread (gpointer data)
   g_clear_pointer (&self->brain_path, g_free);
   g_clear_pointer (&self->access, g_free);
   g_clear_pointer (&self->answers_in, g_free);
+  g_clear_pointer (&self->verbosity, g_free);
   return NULL;
 }
 
@@ -992,6 +1139,9 @@ job_with_files (DictateTalk *self, int kind, const char *language, const char *t
   job->access = dictate_access_prompt (self->settings,
                                        dictate_brain_is_remote (brain) ? dictate_tools_area_has_tools : NULL);
   job->areas = dictate_tools_areas (self->settings);
+  job->verbosity = g_settings_get_string (self->settings, "talk-verbosity");
+  job->private_mode = g_settings_get_boolean (self->settings, "talk-private");
+  job->remote = dictate_brain_is_remote (brain);
   job->brain = g_steal_pointer (&brain);
   job->voice = g_steal_pointer (&voice);
   job->name = g_steal_pointer (&name);
@@ -1055,21 +1205,64 @@ dictate_talk_ask (DictateTalk *self, const char *language, const char *text)
 {
   g_autofree char *reason = NULL;
   g_autofree char *before = NULL;
+  g_autofree char *now = NULL;
   g_autofree char *asked = NULL;
   Job *job;
 
   dictate_talk_stop (self);
   before = outcomes (self);
-  asked = before ? g_strconcat (before, text, NULL) : g_strdup (text);
+  now = self->context ? g_strdup_printf ("(Now on the phone: %s.)\n", self->context) : NULL;
+  if (self->locked)
+    {
+      g_autofree char *was = g_steal_pointer (&now);
+      now = g_strconcat (was ? was : "", "(The phone is locked: you can only look things up, not change or send "
+                         "anything, until the user unlocks it.)\n", NULL);
+    }
+  asked = g_strconcat (before ? before : "", now ? now : "", text, NULL);
   job = job_with_files (self, JOB_ASK, language, asked, &reason);
   if (!job)
     {
       g_signal_emit (self, signals[SIGNAL_ERROR], 0, reason);
       return;
     }
+  job->said = g_strdup (text);
+  job->locked = self->locked;
   g_clear_pointer (&self->reply, g_free);
   set_state (self, DICTATE_TALK_THINKING);
   g_async_queue_push (self->jobs, job);
+}
+
+void
+dictate_talk_announce (DictateTalk *self, const char *language, const char *text)
+{
+  g_autofree char *reason = NULL;
+  Job *job;
+
+  dictate_talk_stop (self);
+  job = job_with_files (self, JOB_SAY, language, text, &reason);
+  if (!job)
+    {
+      g_message ("talk: nothing to announce with: %s", reason);
+      return;
+    }
+  g_clear_pointer (&self->reply, g_free);
+  set_state (self, DICTATE_TALK_THINKING);
+  g_async_queue_push (self->jobs, job);
+}
+
+void
+dictate_talk_set_locked (DictateTalk *self, gboolean locked)
+{
+  if (self->locked != !!locked)
+    g_message ("talk: the phone is %s", locked ? "locked: reading only" : "unlocked");
+  self->locked = !!locked;
+}
+
+void
+dictate_talk_set_context (DictateTalk *self, const char *context)
+{
+  g_free (self->context);
+  self->context = g_strdup (context && *context ? context : NULL);
 }
 
 void
@@ -1103,6 +1296,19 @@ dictate_talk_set_speak (DictateTalk *self, gboolean speak)
     return;
   stop_playback (self);
   /* written to its end: nothing more to wait for; else the model is still writing it */
+  set_state (self, self->ended == turn ? DICTATE_TALK_IDLE : DICTATE_TALK_THINKING);
+}
+
+/* a tap while it speaks: the voice stops at once, the reply goes on being written */
+void
+dictate_talk_hush (DictateTalk *self)
+{
+  guint turn = g_atomic_int_get (&self->turn);
+
+  if (self->state != DICTATE_TALK_SPEAKING)
+    return;
+  g_atomic_int_set (&self->hushed, turn);
+  stop_playback (self);
   set_state (self, self->ended == turn ? DICTATE_TALK_IDLE : DICTATE_TALK_THINKING);
 }
 
@@ -1145,6 +1351,8 @@ dictate_talk_finalize (GObject *object)
   g_main_context_unref (self->main);
   g_clear_object (&self->settings);
   g_ptr_array_unref (self->proposals);
+  g_free (self->context);
+  g_free (self->sink);
   g_free (self->reply);
   g_free (self->voice_path);
   g_free (self->voice_name);
@@ -1178,9 +1386,12 @@ dictate_talk_init (DictateTalk *self)
   g_mutex_init (&self->lock);
   self->speed = 1.0;
   self->speak = TRUE;
+  self->hushed = G_MAXUINT;     /* no turn */
   self->main = g_main_context_ref_thread_default ();
   self->settings = g_settings_new ("vibeos.Dictate");
   self->proposals = g_ptr_array_new_with_free_func ((GDestroyNotify) dictate_action_unref);
+  /* made here, on the main thread, where it hears the network change: the brain's thread only reads it */
+  g_network_monitor_get_default ();
   self->jobs = g_async_queue_new ();
   self->says = g_async_queue_new ();
   self->brain_thread = g_thread_new ("dictate-brain", brain_thread, self);

@@ -45,6 +45,7 @@ Upgrading from gnome-phone keeps everything: see [Upgrading from gnome-phone](#u
 <tr><td><img src="docs/icons/software.png" width="48"></td><td><b>Software</b> (<code>vibeos-software</code>)</td><td>The app store, on the VibeOS store at vibeos.top: featured apps, apps and games by category, search, an app's page with screenshots, ratings and reviews, updates and Update all, and a store account to review apps and see them on every device. Installing, updating and uninstalling go through App Installer</td></tr>
 <tr><td><img src="docs/icons/installer.png" width="48"></td><td><b>App Installer</b> (<code>vibeos-installer</code>)</td><td>Installs .deb files tapped in Files, and installs and uninstalls apps from the software sources for Software (its D-Bus interface): shows the app, both versions when one is installed, and what else changes, before anything does; PackageKit installs, polkit asks</td></tr>
 <tr><td><img src="docs/icons/settings.png" width="48"></td><td><b>Settings</b> (<code>vibeos-settings</code>)</td><td>Settings made for touch: Wi-Fi, Bluetooth, mobile network and hotspot, sounds, notifications, display, battery, wallpaper and parallax, the home screen, the lock screen (PIN, pattern, password), location, accounts, apps, language, accessibility. VibeOS opens it wherever GNOME opens a Settings panel</td></tr>
+<tr><td><img src="docs/icons/terminal.png" width="48"></td><td><b>Terminal</b> (<code>vibeos-terminal</code>)</td><td>The shell in GNOME's terminal widget (VTE), made for touch: the keyboard comes up over it with a row of Esc, Tab, Ctrl, Alt and the arrows; a long press selects, with handles and Copy and Paste; one finger or two scroll, as a mouse wheel would in less, vim or htop; a pinch zooms the text</td></tr>
 </table>
 
 <p align="center">
@@ -98,7 +99,7 @@ shell; the device images do.
 | `vibeos-session` | The "VibeOS" session (GDM, or a systemd unit with no display manager) |
 | `vibeos-daemons` | The PIN check, alarm wake-ups, the touch GPU boost, and `vibeos-migrate-ids`, which carries a user's settings over from gnome-phone |
 | `vibeos-launcher` | The home screen |
-| `vibeos-dialer`, `vibeos-messaging`, `vibeos-contacts`, `vibeos-browser`, `vibeos-camera`, `vibeos-files`, `vibeos-clock`, `vibeos-calendar`, `vibeos-calculator`, `vibeos-weather`, `vibeos-compass`, `vibeos-dictate`, `vibeos-software`, `vibeos-installer`, `vibeos-settings` | The apps |
+| `vibeos-dialer`, `vibeos-messaging`, `vibeos-contacts`, `vibeos-browser`, `vibeos-camera`, `vibeos-files`, `vibeos-clock`, `vibeos-calendar`, `vibeos-calculator`, `vibeos-weather`, `vibeos-compass`, `vibeos-dictate`, `vibeos-software`, `vibeos-installer`, `vibeos-settings`, `vibeos-terminal` | The apps |
 | `vibeos-iconpack-vibeos` | The VibeOS icons, the default: large Material Symbols glyphs on squircles in each app's colour |
 | `vibeos-iconpack-gnome-free` | gnome-free (called Round before): white glyphs on gradient discs |
 | `vibeos-parallax-solar-system` | The default wallpaper: a tilt-parallax solar system from NASA's public-domain images |

@@ -108,6 +108,9 @@ GtkWidget *sw_app_tile_new      (JsonObject *app, int width);
 GtkWidget *sw_strip_new         (GtkWidget **box);
 /* the strip's items, all `item_width` wide, come to rest with one at the start (24px in), none cut off there */
 void       sw_strip_snap        (GtkWidget *strip, int item_width);
+/* a title from the store as this device says it: the store names some sections for a phone ("Made for your
+ * phone"), which a tablet calls "your tablet". `widget` is any widget in the window (none: the title as it is) */
+char      *sw_device_title      (GtkWidget *widget, const char *title);
 /* "Title  3                See all" over a section; `action` NULL for none */
 GtkWidget *sw_section_header_new (const char *title, const char *count, const char *action, GCallback callback,
                                   gpointer data);

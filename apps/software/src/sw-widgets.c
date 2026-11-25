@@ -735,15 +735,54 @@ sw_app_row_new (JsonObject *app, const char *subtitle)
   return row;
 }
 
+/* `name` with a break allowed (a zero-width space) where a lower-case letter meets a capital, in a word too long for
+ * a tile's line: the tile's two lines then break it between its words ("GstPipeline" / "Studio") rather than
+ * wherever the line ends. A word that fits keeps its place on a line ("(VieLotusIM)") */
+#define LONG_WORD 13            /* characters: about what a tile's line holds, 76 dp at 13 sp */
+
+static char *
+soft_breaks (const char *name)
+{
+  GString *out = g_string_new (NULL);
+  const char *p = name ? name : "";
+
+  while (*p)
+    {
+      const char *end = p;
+      gunichar last = 0;
+      glong length;
+
+      /* a word, and the spaces after it */
+      while (*end && !g_unichar_isspace (g_utf8_get_char (end)))
+        end = g_utf8_next_char (end);
+      length = g_utf8_strlen (p, end - p);
+      for (; p < end; p = g_utf8_next_char (p))
+        {
+          gunichar c = g_utf8_get_char (p);
+
+          if (length >= LONG_WORD && g_unichar_islower (last) && g_unichar_isupper (c))
+            g_string_append_unichar (out, 0x200B);
+          g_string_append_unichar (out, c);
+          last = c;
+        }
+      for (; *p && g_unichar_isspace (g_utf8_get_char (p)); p = g_utf8_next_char (p))
+        g_string_append_unichar (out, g_utf8_get_char (p));
+    }
+  return g_string_free (out, FALSE);
+}
+
 GtkWidget *
 sw_app_tile_new (JsonObject *app, int width)
 {
-  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6), *name = gtk_label_new (sw_json_string (app, "name"));
+  GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 6), *name = gtk_label_new (NULL);
+  g_autofree char *shown_name = soft_breaks (sw_json_string (app, "name"));
   GtkWidget *rating, *tile;
 
   sw_app_cache_put (app);
   gtk_widget_add_css_class (box, "sw-app-tile-box");
   gtk_box_append (GTK_BOX (box), app_icon (app, width));
+  /* a name written as one word breaks between its words, not wherever the line ends ("GstPipelineS / tudio") */
+  gtk_label_set_text (GTK_LABEL (name), shown_name);
   gtk_label_set_xalign (GTK_LABEL (name), 0);
   gtk_label_set_wrap (GTK_LABEL (name), TRUE);
   gtk_label_set_wrap_mode (GTK_LABEL (name), PANGO_WRAP_WORD_CHAR);
@@ -785,6 +824,17 @@ void
 sw_strip_snap (GtkWidget *strip, int item_width)
 {
   spongy_scroll_view_set_snap (SPONGY_SCROLL_VIEW (strip), item_width + SW_STRIP_SPACING, FALSE);
+}
+
+char *
+sw_device_title (GtkWidget *widget, const char *title)
+{
+  VibeosLayout *layout = widget ? vibeos_layout_get (widget) : NULL;
+  const char *phone = title ? strstr (title, "your phone") : NULL;
+
+  if (!phone || !layout || !vibeos_layout_is_tablet (layout))
+    return g_strdup (title);
+  return g_strdup_printf ("%.*syour tablet%s", (int) (phone - title), title, phone + strlen ("your phone"));
 }
 
 GtkWidget *

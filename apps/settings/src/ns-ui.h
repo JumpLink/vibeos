@@ -158,8 +158,8 @@ gboolean   ns_settings_exists (const char *schema);
 GSettings *ns_page_settings (NsPage *page, const char *schema);
 /* whether the installed schema has `key` (an older one may not) */
 gboolean   ns_has_key (GSettings *s, const char *key);
-/* an app id as GSettings paths take it (GNOME Settings', feedbackd's and phoc's way): no .desktop, lower case,
- * anything but letters, digits and '-' made '-' */
+/* an app id as the notification keys' paths take it (GNOME Shell's way): no .desktop, lower case, anything but
+ * letters, digits and '-' made '-', and no two '-' in a row */
 char      *ns_munge_app_id (const char *id);
 /* a texture of a pixbuf (gdk_texture_new_for_pixbuf is deprecated); any thread */
 GdkTexture *ns_texture_for_pixbuf (GdkPixbuf *pb);
