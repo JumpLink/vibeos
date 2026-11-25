@@ -6,12 +6,13 @@
 
 #include <json-glib/json-glib.h>
 
-#define THUMB_W 150
-#define THUMB_H 300
+/* a preview is a square of 512 px: a card on a tablet in landscape is about 270 dp wide, which is 540 px at scale 2 */
+#define THUMB_W 512
+#define THUMB_H 512
 /* the least a card is: three in a row, with their borders and spacing, inside a 360 px wide phone's group (88 made
- * the page a few px wider than the screen); they fill the row */
+ * the page a few px wider than the screen); they fill the row, each as tall as it is wide */
 #define PICK_W 76
-#define PICK_H 152
+#define PICK_H 76
 
 typedef struct {
   GSettings *bg, *iface;
@@ -22,7 +23,8 @@ static char *
 thumb_cache (const char *dir)
 {
   g_autofree char *sum = g_compute_checksum_for_string (G_CHECKSUM_MD5, dir, -1);
-  g_autofree char *name = g_strconcat ("parallax-", sum, ".png", NULL);
+  /* the preview's size is in the name: a file made at another size is not read as this one */
+  g_autofree char *name = g_strdup_printf ("parallax-%s-%dx%d.png", sum, THUMB_W, THUMB_H);
   return g_build_filename (g_get_user_cache_dir (), "vibeos-settings", name, NULL);
 }
 
@@ -244,7 +246,7 @@ ns_parallax_grid (GSettings *bg, GSettings *iface)
   GtkWidget *flow = g->flow = gtk_flow_box_new ();
   gtk_flow_box_set_selection_mode (GTK_FLOW_BOX (flow), GTK_SELECTION_NONE);
   gtk_flow_box_set_homogeneous (GTK_FLOW_BOX (flow), TRUE);
-  /* three in a row: by the previews' own width (THUMB_W) only two fit, each half the screen tall */
+  /* three in a row: by the previews' own width (THUMB_W) only two fit */
   gtk_flow_box_set_min_children_per_line (GTK_FLOW_BOX (flow), 3);
   gtk_flow_box_set_max_children_per_line (GTK_FLOW_BOX (flow), 3);
   gtk_flow_box_set_column_spacing (GTK_FLOW_BOX (flow), 10);
