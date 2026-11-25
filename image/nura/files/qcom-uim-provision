@@ -2,13 +2,19 @@
 # qcom-uim-provision: open the modem's primary GW provisioning session on the first USIM application, when the
 # modem left it closed. Some Qualcomm modems (OnePlus 6T on mainline) see the card but start no session: the card
 # reads "present", the USIM "detected", and ModemManager reports sim-missing. Android's RIL opens the session; on
-# mainline nothing does. Waits up to 60 s for the card, does nothing when a session exists or no USIM is there.
+# mainline nothing does. Waits (up to 60 s) only while the modem does not answer or a card is still coming up: as
+# soon as the modem answers and no slot has a card, it stops, so a phone without a SIM boots without delay. Does
+# nothing when a session exists or no USIM is there.
 set -u
 DEV=${QMI_DEVICE:-qrtr://0}
 status() { qmicli -d "$DEV" --uim-get-card-status 2>/dev/null; }
 for i in $(seq 1 "${UIM_TRIES:-30}"); do
 	s=$(status)
 	case "$s" in *"Card state: 'present'"*) break ;; esac
+	# the modem answered and every slot is empty or has no card to read: nothing will come, stop waiting
+	if [ -n "$s" ] && ! printf '%s\n' "$s" | grep "Card state:" | grep -qv "'absent'\|'error: no-atr-received"; then
+		s=; break
+	fi
 	s=
 	sleep "${UIM_SLEEP:-2}"
 done

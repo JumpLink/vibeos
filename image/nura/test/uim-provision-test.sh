@@ -11,7 +11,7 @@ mkdir "$W/bin"
 cat > "$W/bin/qmicli" <<'EOF'
 #!/bin/sh
 case "$3" in
---uim-get-card-status) cat "$CARD" ;;
+--uim-get-card-status) echo . >> "$POLLS"; cat "$CARD" ;;
 *) echo "$*" >> "$CALLS"; echo "[qrtr://0] Successfully changed provisioning session" ;;
 esac
 EOF
@@ -55,13 +55,15 @@ EOF
 EOF
 }
 
-# run NAME WANT-OUTPUT WANT-CALL: the script on $W/card, its last line and the call it made ("" for none)
+# run NAME WANT-OUTPUT WANT-CALL [WANT-POLLS]: the script on $W/card, its last line and the call it made ("" for
+# none), and how often it asked for the card status (3 tries allowed: fewer means it stopped waiting early)
 run() {
-	: > "$W/calls"
-	out=$(PATH="$W/bin:$PATH" CARD="$W/card" CALLS="$W/calls" UIM_TRIES=2 UIM_SLEEP=0 sh "$T/files/qcom-uim-provision" | tail -1)
+	: > "$W/calls"; : > "$W/polls"
+	out=$(PATH="$W/bin:$PATH" CARD="$W/card" CALLS="$W/calls" POLLS="$W/polls" UIM_TRIES=3 UIM_SLEEP=0 sh "$T/files/qcom-uim-provision" | tail -1)
 	call=$(cat "$W/calls")
-	if [ "$out" = "$2" ] && [ "$call" = "$3" ]; then echo "  ok: $1"
-	else echo "  FAIL: $1: said '$out', called '$call'"; FAILS=$((FAILS + 1)); fi
+	polls=$(wc -l < "$W/polls" | tr -d ' ')
+	if [ "$out" = "$2" ] && [ "$call" = "$3" ] && [ "$polls" = "${4:-$polls}" ]; then echo "  ok: $1"
+	else echo "  FAIL: $1: said '$out', called '$call', polled $polls"; FAILS=$((FAILS + 1)); fi
 }
 
 card "session doesn't exist" "error: no-atr-received (3)" present "usim (2)" > "$W/card"
@@ -70,10 +72,16 @@ run "closed session: opened on the USIM's slot and AID" "primary GW session open
 card "slot '2', application '1'" "error: no-atr-received (3)" present "usim (2)" > "$W/card"
 run "session open: nothing done" "primary GW session already open" ""
 card "session doesn't exist" "error: no-atr-received (3)" absent "" > "$W/card"
-run "no card: nothing done" "no card present" ""
+run "no card: nothing done, no waiting" "no card present" "" 1
 card "session doesn't exist" "error: no-atr-received (3)" present "csim (4)" > "$W/card"
 run "no USIM: nothing done" "no USIM application" ""
 card "session doesn't exist" present absent "" > "$W/card"
 run "only an ISIM in the present slot: nothing done" "no USIM application" ""
+card "session doesn't exist" absent absent "" > "$W/card"
+run "both slots absent: stops at once" "no card present" "" 1
+card "session doesn't exist" "error: no-atr-received (3)" "error: no-atr-received (3)" "" > "$W/card"
+run "no ATR in either slot: stops at once" "no card present" "" 1
+: > "$W/card"
+run "modem gives no answer: keeps waiting" "no card present" "" 3
 
 [ $FAILS = 0 ] && echo "all ok" || { echo "$FAILS failed"; exit 1; }
