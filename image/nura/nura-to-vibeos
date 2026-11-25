@@ -324,7 +324,7 @@ def watchdog_dropins(P):
          '# qcom_wdt accepts at most 31 s. A reboot that hangs in the modem/rmtfs shutdown path is reset by the\n'
          '# hardware watchdog instead of hanging forever.\n[Manager]\nRuntimeWatchdogSec=30s\nRebootWatchdogSec=30s\n'),
         ('etc/systemd/system/rmtfs.service.d/90-fajita-stop.conf',
-         '# rmtfs blocks its stop for the default 90 s when the modem is gone.\n[Service]\nTimeoutStopSec=5s\n')):
+         '# rmtfs blocks its stop for the default 90 s when the modem is gone.\n[Service]\nTimeoutStopSec=15s\n')):
         os.makedirs(os.path.dirname(os.path.join(P, rel)), exist_ok=True)
         with open(os.path.join(P, rel), 'w') as f:
             f.write(body)
