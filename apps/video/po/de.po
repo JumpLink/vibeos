@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-video\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 01:45+0100\n"
+"POT-Creation-Date: 2026-11-25 02:37+0100\n"
 "PO-Revision-Date: 2026-11-24 16:54+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: German\n"
@@ -105,6 +105,14 @@ msgstr "Im Vollbild das Kameraloch freilassen, statt darunter abzuspielen"
 #: main.c
 msgid "Settings"
 msgstr "Einstellungen"
+
+#: main.c
+msgid "Volume"
+msgstr "Lautstärke"
+
+#: main.c
+msgid "Brightness"
+msgstr "Helligkeit"
 
 #: main.c
 msgid "Back"

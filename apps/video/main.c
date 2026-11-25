@@ -4,6 +4,14 @@
  * play/pause and forward 10 s in the middle, the time, the seek bar and the length at the bottom. A tap shows or hides
  * them (they hide by themselves after a few seconds of playing); a double tap on the left or right third skips 10 s.
  *
+ * A finger slid up or down over the picture sets the volume on its right half and the brightness on its left, as
+ * tablet players do (more is up; the picture's whole height is the whole range). It starts when the finger has moved
+ * past the touch slop more up or down than sideways, and not on a button, the seek bar, the system's side strips (the
+ * back swipe's) or its gesture bar along the bottom. The volume is the sound server's default output (the one the
+ * volume keys and the shell's slider set), the brightness the shell's (vibeos.Shell's Brightness, the shade's slider;
+ * never below 2 %). Both are asked for without waiting, one at a time: with no sound server, or no backlight the shell
+ * drives, the slide does nothing. A bar on that side shows the level, and fades a second after the finger is up.
+ *
  * The phones' and tablets' hardware decoders (V4L2 memory-to-memory: Qualcomm's venus and iris, Samsung's MFC) decode
  * H.264 and HEVC: a third to a tenth of the CPU time of FFmpeg's decoders, and the phone stays cooler. Other codecs
  * only where the device says its decoder takes them reliably (VP9 wedged one's firmware until a reboot): the
@@ -48,6 +56,8 @@
 #include <string.h>
 #include <mpv/client.h>
 #include <mpv/render_gl.h>
+#include <pulse/glib-mainloop.h>
+#include <pulse/pulseaudio.h>
 #include <spongy-gtk.h>
 #include <unicode/ucasemap.h>
 #include <unicode/uloc.h>
@@ -62,6 +72,10 @@
 #define SIDE_BUTTON_DP 56
 #define TOP_BUTTON_DP 48
 #define STALL_MS 2000
+#define LEVEL_HIDE_MS 1000
+#define EDGE_DP 30              /* the shell's back swipe starts in a strip this wide at each side */
+#define NAV_DP 32               /* and its gesture bar along the bottom */
+#define MIN_BRIGHTNESS 0.02
 #define DEVICE_VIDEO_CONF "/usr/share/vibeos-device/video.conf"
 #define HWDEC_CODECS "h264,hevc"
 
@@ -89,6 +103,24 @@ typedef struct {
   guint hide_id, tap_id, events_id, shape_id;
   guint inhibit;
   double tap_x;
+  /* the volume and brightness drags (see on_level_update): where the finger went down, whether it is one (1), is
+   * not (0) or is not decided yet (-1), which of the two it sets, the level it began from and the finger's travel at
+   * that point */
+  GtkWidget *level;
+  double drag_x, drag_y, drag_from;
+  int drag_state;
+  gboolean drag_volume;
+  double level_value, drag_base;
+  guint level_id;
+  /* the sound server's default sink (PulseAudio's API, as PipeWire answers it) and the volume asked of it */
+  pa_glib_mainloop *pa_loop;
+  pa_context *pa;
+  pa_cvolume sink_volume;
+  gboolean pa_up, sink_known, sink_muted, vol_busy;
+  double vol_want, vol_sent;
+  /* the shell's brightness over the session bus, and the level asked of it */
+  gboolean light_known, light_busy;
+  double light_want, light_sent;
   /* MPRIS (see the end): the bus, its object's registrations and name, and what it last told */
   GDBusConnection *bus;
   GDBusNodeInfo *mpris_info;
@@ -1198,6 +1230,320 @@ on_video_pressed (GtkGestureClick *click, int n, double x, double y, Player *p)
   p->tap_id = g_timeout_add (DOUBLE_TAP_MS, single_tap, p);
 }
 
+/* ---- sliding a finger up and down: the volume (right half) and the brightness (left half) ---- */
+
+static void
+level_show (Player *p, gboolean volume, double v)
+{
+  p->level_value = CLAMP (v, 0, 1);
+  g_object_set_data (G_OBJECT (p->level), "volume", GINT_TO_POINTER (volume));
+  gtk_accessible_update_property (GTK_ACCESSIBLE (p->level), GTK_ACCESSIBLE_PROPERTY_LABEL,
+                                  volume ? _("Volume") : _("Brightness"), -1);
+  g_clear_handle_id (&p->level_id, g_source_remove);
+  gtk_widget_remove_css_class (p->level, "hidden");
+  gtk_widget_queue_draw (p->level);
+}
+
+static gboolean
+level_hide (gpointer data)
+{
+  Player *p = data;
+  p->level_id = 0;
+  gtk_widget_add_css_class (p->level, "hidden");
+  return G_SOURCE_REMOVE;
+}
+
+/* the bar: a dark panel on the side the finger controls, the speaker or the sun over the level, the percent under it */
+static void
+draw_level (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
+{
+  Player *p = data;
+  gboolean volume = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (area), "volume"));
+  double pw = 56, ph = CLAMP (h * 0.6, 160, 280), margin = EDGE_DP + 12;
+  double px = volume ? w - margin - pw : margin, py = (h - ph) / 2;
+  cairo_set_source_rgba (cr, 0, 0, 0, 0.6);
+  cairo_new_sub_path (cr);
+  cairo_arc (cr, px + pw - 12, py + 12, 12, -G_PI / 2, 0);
+  cairo_arc (cr, px + pw - 12, py + ph - 12, 12, 0, G_PI / 2);
+  cairo_arc (cr, px + 12, py + ph - 12, 12, G_PI / 2, G_PI);
+  cairo_arc (cr, px + 12, py + 12, 12, G_PI, 3 * G_PI / 2);
+  cairo_close_path (cr);
+  cairo_fill (cr);
+
+  /* the icon on Material's 24-unit grid, at its natural size */
+  cairo_save (cr);
+  cairo_translate (cr, px + pw / 2 - 12, py + 10);
+  cairo_set_source_rgb (cr, 1, 1, 1);
+  if (volume) {
+    cairo_move_to (cr, 3, 9); cairo_line_to (cr, 3, 15); cairo_line_to (cr, 7, 15); cairo_line_to (cr, 12, 20);
+    cairo_line_to (cr, 12, 4); cairo_line_to (cr, 7, 9); cairo_close_path (cr);
+    cairo_fill (cr);
+    cairo_set_line_width (cr, 2);
+    cairo_arc (cr, 12, 12, 5, -G_PI / 3, G_PI / 3);
+    cairo_stroke (cr);
+    if (p->level_value > 0.5) {
+      cairo_arc (cr, 12, 12, 9, -G_PI / 3, G_PI / 3);
+      cairo_stroke (cr);
+    }
+  } else {
+    cairo_arc (cr, 12, 12, 4.5, 0, 2 * G_PI);
+    cairo_fill (cr);
+    cairo_set_line_width (cr, 2);
+    cairo_set_line_cap (cr, CAIRO_LINE_CAP_ROUND);
+    for (int i = 0; i < 8; i++) {
+      double a = i * G_PI / 4;
+      cairo_move_to (cr, 12 + 8 * cos (a), 12 + 8 * sin (a));
+      cairo_line_to (cr, 12 + 10.5 * cos (a), 12 + 10.5 * sin (a));
+      cairo_stroke (cr);
+    }
+  }
+  cairo_restore (cr);
+
+  /* the percent */
+  char text[16];
+  g_snprintf (text, sizeof text, "%d", (int) round (p->level_value * 100));
+  PangoLayout *layout = gtk_widget_create_pango_layout (GTK_WIDGET (area), text);
+  int tw, th;
+  pango_layout_get_pixel_size (layout, &tw, &th);
+  cairo_set_source_rgb (cr, 1, 1, 1);
+  cairo_move_to (cr, px + (pw - tw) / 2.0, py + ph - th - 8);
+  pango_cairo_show_layout (cr, layout);
+  g_object_unref (layout);
+
+  /* the level between them */
+  double bx = px + pw / 2 - 2, by = py + 44, bh = ph - 44 - th - 20;
+  cairo_set_source_rgba (cr, 1, 1, 1, 0.3);
+  cairo_rectangle (cr, bx, by, 4, bh);
+  cairo_fill (cr);
+  cairo_set_source_rgb (cr, 1, 1, 1);
+  cairo_rectangle (cr, bx, by + bh * (1 - p->level_value), 4, bh * p->level_value);
+  cairo_fill (cr);
+}
+
+static void volume_set_done (pa_context *c, int success, void *data);
+static void light_set_done (GObject *source, GAsyncResult *res, gpointer data);
+
+/* -- the volume: the default sink, as the volume keys and the shell's slider have it -- */
+
+static void
+volume_apply (Player *p)
+{
+  if (!p->pa_up || !p->sink_known || p->vol_busy || p->vol_want == p->vol_sent)
+    return;
+  pa_cvolume v = p->sink_volume;
+  pa_cvolume_scale (&v, (pa_volume_t) round (p->vol_want * PA_VOLUME_NORM));
+  p->vol_sent = p->vol_want;
+  if (p->sink_muted && p->vol_want > 0) {
+    pa_operation *o = pa_context_set_sink_mute_by_name (p->pa, "@DEFAULT_SINK@", 0, NULL, NULL);
+    if (o)
+      pa_operation_unref (o);
+    p->sink_muted = FALSE;
+  }
+  pa_operation *o = pa_context_set_sink_volume_by_name (p->pa, "@DEFAULT_SINK@", &v, volume_set_done, p);
+  if (o) {
+    p->vol_busy = TRUE;
+    pa_operation_unref (o);
+  }
+}
+
+static void
+volume_set_done (pa_context *c, int success, void *data)
+{
+  Player *p = data;
+  p->vol_busy = FALSE;
+  volume_apply (p);
+}
+
+static void
+sink_read (pa_context *c, const pa_sink_info *i, int eol, void *data)
+{
+  Player *p = data;
+  if (eol || !i || p->sink_known || p->drag_state != 1 || !p->drag_volume || i->volume.channels == 0)
+    return;
+  p->sink_volume = i->volume;
+  p->sink_muted = i->mute;
+  p->sink_known = TRUE;
+  p->drag_base = i->mute ? 0 : pa_cvolume_max (&i->volume) / (double) PA_VOLUME_NORM;
+  p->vol_want = p->vol_sent = -1;
+  /* the finger's travel counts from where it was as the level was read */
+  level_show (p, TRUE, p->drag_base);
+}
+
+static void
+pa_state_changed (pa_context *c, void *data)
+{
+  Player *p = data;
+  pa_context_state_t s = pa_context_get_state (c);
+  p->pa_up = s == PA_CONTEXT_READY;
+}
+
+static void
+pa_start (Player *p)
+{
+  p->pa_loop = pa_glib_mainloop_new (NULL);
+  pa_proplist *props = pa_proplist_new ();
+  pa_proplist_sets (props, PA_PROP_APPLICATION_ID, APP_ID);
+  p->pa = pa_context_new_with_proplist (pa_glib_mainloop_get_api (p->pa_loop), _("Video Player"), props);
+  pa_proplist_free (props);
+  pa_context_set_state_callback (p->pa, pa_state_changed, p);
+  /* never waits for the server: without one, the drag does nothing */
+  pa_context_connect (p->pa, NULL, PA_CONTEXT_NOFAIL | PA_CONTEXT_NOAUTOSPAWN, NULL);
+}
+
+static void
+pa_stop (Player *p)
+{
+  if (p->pa) {
+    pa_context_set_state_callback (p->pa, NULL, NULL);
+    pa_context_disconnect (p->pa);
+    pa_context_unref (p->pa);
+    p->pa = NULL;
+  }
+  if (p->pa_loop) {
+    pa_glib_mainloop_free (p->pa_loop);
+    p->pa_loop = NULL;
+  }
+  p->pa_up = FALSE;
+}
+
+/* -- the brightness: the shell's, which the shade's slider shows and sets (and keeps) -- */
+
+#define SHELL_NAME "vibeos.Shell"
+#define SHELL_PATH "/vibeos/Shell"
+
+static void
+light_apply (Player *p)
+{
+  GDBusConnection *bus = g_application_get_dbus_connection (G_APPLICATION (p->app));
+  if (!bus || !p->light_known || p->light_busy || p->light_want == p->light_sent)
+    return;
+  p->light_sent = p->light_want;
+  p->light_busy = TRUE;
+  g_dbus_connection_call (bus, SHELL_NAME, SHELL_PATH, "org.freedesktop.DBus.Properties", "Set",
+                          g_variant_new ("(ssv)", SHELL_NAME, "Brightness", g_variant_new_double (p->light_want)),
+                          NULL, G_DBUS_CALL_FLAGS_NO_AUTO_START, 2000, NULL, light_set_done, p);
+}
+
+static void
+light_set_done (GObject *source, GAsyncResult *res, gpointer data)
+{
+  Player *p = data;
+  g_autoptr (GVariant) r = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), res, NULL);
+  p->light_busy = FALSE;
+  light_apply (p);
+}
+
+static void
+light_read_done (GObject *source, GAsyncResult *res, gpointer data)
+{
+  Player *p = data;
+  g_autoptr (GVariant) r = g_dbus_connection_call_finish (G_DBUS_CONNECTION (source), res, NULL);
+  if (!r || p->light_known || p->drag_state != 1 || p->drag_volume)
+    return;
+  g_autoptr (GVariant) v = NULL;
+  g_variant_get (r, "(v)", &v);
+  double level = g_variant_is_of_type (v, G_VARIANT_TYPE_DOUBLE) ? g_variant_get_double (v) : -1;
+  /* below 0: no backlight the shell drives */
+  if (level < 0)
+    return;
+  p->light_known = TRUE;
+  p->drag_base = level;
+  p->light_want = p->light_sent = -1;
+  level_show (p, FALSE, level);
+}
+
+/* -- the drag itself -- */
+
+/* The finger went down: where it is the app's own is decided here (the system's edge strips, the buttons and the seek
+ * bar are not); whether it is a slide up or down, on the first movement past the slop */
+static void
+on_level_begin (GtkGestureDrag *drag, double x, double y, Player *p)
+{
+  GtkWidget *overlay = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (drag));
+  int w = gtk_widget_get_width (overlay), h = gtk_widget_get_height (overlay);
+  p->drag_state = 0;
+  if (p->dragging || x < EDGE_DP || x > w - EDGE_DP || y > h - NAV_DP)
+    return;
+  GtkWidget *hit = gtk_widget_pick (overlay, x, y, GTK_PICK_DEFAULT);
+  if (hit && (gtk_widget_get_ancestor (hit, GTK_TYPE_BUTTON) || gtk_widget_get_ancestor (hit, GTK_TYPE_RANGE)))
+    return;
+  p->drag_x = x;
+  p->drag_y = y;
+  p->drag_state = -1;
+}
+
+static void
+on_level_update (GtkGestureDrag *drag, double dx, double dy, Player *p)
+{
+  GtkWidget *overlay = gtk_event_controller_get_widget (GTK_EVENT_CONTROLLER (drag));
+  int h = gtk_widget_get_height (overlay);
+  if (p->drag_state == 0)
+    return;
+  if (p->drag_state == -1) {
+    int slop = 8;
+    g_object_get (gtk_widget_get_settings (overlay), "gtk-dnd-drag-threshold", &slop, NULL);
+    if (hypot (dx, dy) <= slop)
+      return;
+    if (fabs (dy) <= fabs (dx)) {
+      p->drag_state = 0;
+      return;
+    }
+    p->drag_state = 1;
+    p->drag_volume = p->drag_x > gtk_widget_get_width (overlay) / 2.0;
+    p->drag_from = dy;
+    p->sink_known = p->light_known = FALSE;
+    /* not a tap: the press already began one */
+    g_clear_handle_id (&p->tap_id, g_source_remove);
+    gtk_gesture_set_state (GTK_GESTURE (drag), GTK_EVENT_SEQUENCE_CLAIMED);
+    p->drag_base = -1;
+    /* the level it begins from, read as the slide begins */
+    if (p->drag_volume) {
+      if (p->pa_up) {
+        pa_operation *o = pa_context_get_sink_info_by_name (p->pa, "@DEFAULT_SINK@", sink_read, p);
+        if (o)
+          pa_operation_unref (o);
+      }
+    } else {
+      GDBusConnection *bus = g_application_get_dbus_connection (G_APPLICATION (p->app));
+      if (bus)
+        g_dbus_connection_call (bus, SHELL_NAME, SHELL_PATH, "org.freedesktop.DBus.Properties", "Get",
+                                g_variant_new ("(ss)", SHELL_NAME, "Brightness"), G_VARIANT_TYPE ("(v)"),
+                                G_DBUS_CALL_FLAGS_NO_AUTO_START, 2000, NULL, light_read_done, p);
+    }
+    return;
+  }
+  if (p->drag_base < 0)
+    return;
+  /* the whole height of the picture is the whole range, up is more */
+  double v = p->drag_base + (p->drag_from - dy) / MAX (h, 1);
+  if (p->drag_volume) {
+    p->vol_want = CLAMP (v, 0, 1);
+    level_show (p, TRUE, p->vol_want);
+    volume_apply (p);
+  } else {
+    p->light_want = CLAMP (v, MIN_BRIGHTNESS, 1);
+    level_show (p, FALSE, p->light_want);
+    light_apply (p);
+  }
+}
+
+static void
+on_level_end (GtkGestureDrag *drag, double dx, double dy, Player *p)
+{
+  if (p->drag_state == 1) {
+    /* the last level, if one is still waiting for its turn */
+    if (p->drag_volume)
+      volume_apply (p);
+    else
+      light_apply (p);
+    /* the bar stays a moment after the finger is up */
+    g_clear_handle_id (&p->level_id, g_source_remove);
+    if (!gtk_widget_has_css_class (p->level, "hidden"))
+      p->level_id = g_timeout_add (LEVEL_HIDE_MS, level_hide, p);
+  }
+  p->drag_state = 0;
+}
+
 static gboolean
 on_key (GtkEventControllerKey *keys, guint keyval, guint keycode, GdkModifierType state, Player *p)
 {
@@ -1236,6 +1582,8 @@ static const char CSS[] =
   ".video-notice { font-size: 14sp; color: alpha(white, 0.8); }"
   ".video-time { font-size: 14sp; font-feature-settings: 'tnum'; }"
   ".video-icon { background: none; border: none; box-shadow: none; padding: 0; min-width: 0; min-height: 0; }"
+  ".video-level { font-size: 14sp; transition: opacity 300ms ease-out; }"
+  ".video-level.hidden { opacity: 0; }"
   ".video-message { font-size: 16sp; background-color: alpha(black, 0.6); border-radius: 12dp; padding: 12dp 20dp; }"
   ".video-seek trough { min-height: 4dp; border-radius: 2dp; background-color: alpha(white, 0.3); }"
   ".video-seek highlight { background-color: white; border-radius: 2dp; }"
@@ -1278,9 +1626,22 @@ build (Player *p)
   g_signal_connect (p->area, "render", G_CALLBACK (on_render), p);
   gtk_overlay_set_child (GTK_OVERLAY (overlay), p->area);
 
+  GtkGesture *slide = gtk_gesture_drag_new ();
+  g_signal_connect (slide, "drag-begin", G_CALLBACK (on_level_begin), p);
+  g_signal_connect (slide, "drag-update", G_CALLBACK (on_level_update), p);
+  g_signal_connect (slide, "drag-end", G_CALLBACK (on_level_end), p);
+  gtk_widget_add_controller (overlay, GTK_EVENT_CONTROLLER (slide));
+
   GtkGesture *tap = gtk_gesture_click_new ();
   g_signal_connect (tap, "pressed", G_CALLBACK (on_video_pressed), p);
   gtk_widget_add_controller (overlay, GTK_EVENT_CONTROLLER (tap));
+
+  /* the level bar of a volume or brightness slide: over everything, never taking a touch, hidden until a slide */
+  p->level = gtk_drawing_area_new ();
+  gtk_widget_add_css_class (p->level, "video-level");
+  gtk_widget_add_css_class (p->level, "hidden");
+  gtk_widget_set_can_target (p->level, FALSE);
+  gtk_drawing_area_set_draw_func (GTK_DRAWING_AREA (p->level), draw_level, p, NULL);
 
   /* the controls: a column of the top bar, the middle row and the bottom bar */
   p->controls = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
@@ -1347,6 +1708,7 @@ build (Player *p)
   gtk_widget_set_can_target (p->spinner, FALSE);
   gtk_widget_set_visible (p->spinner, FALSE);
   gtk_overlay_add_overlay (GTK_OVERLAY (overlay), p->spinner);
+  gtk_overlay_add_overlay (GTK_OVERLAY (overlay), p->level);
 
   p->message = gtk_label_new (_("Open a video from Files"));
   gtk_widget_add_css_class (p->message, "video-message");
@@ -1722,12 +2084,15 @@ on_startup (GApplication *app, Player *p)
   vibeos_init_full (VIBEOS_INIT_SCALED_TEXT);
   vibeos_css_load_string (CSS, GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
   mpris_start (p);
+  pa_start (p);
 }
 
 static void
 on_shutdown (GApplication *app, Player *p)
 {
   mpris_stop (p);
+  pa_stop (p);
+  g_clear_handle_id (&p->level_id, g_source_remove);
   if (p->inhibit)
     gtk_application_uninhibit (p->app, p->inhibit);
   p->inhibit = 0;
