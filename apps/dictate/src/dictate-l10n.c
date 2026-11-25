@@ -150,12 +150,21 @@ plural_form (const char *language, gulong n)
 {
   if (!g_strcmp0 (language, "fr"))
     return n > 1;
-  if (!g_strcmp0 (language, "ru"))
+  if (!g_strcmp0 (language, "ru") || !g_strcmp0 (language, "uk"))
     {
       if (n % 10 == 1 && n % 100 != 11)
         return 0;
       return n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? 1 : 2;
     }
+  if (!g_strcmp0 (language, "pl"))
+    {
+      if (n == 1)
+        return 0;
+      return n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? 1 : 2;
+    }
+  /* Hebrew: one, two (the dual), the rest */
+  if (!g_strcmp0 (language, "he"))
+    return n == 1 ? 0 : n == 2 ? 1 : 2;
   return n != 1;
 }
 
