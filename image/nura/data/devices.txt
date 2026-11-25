@@ -15,7 +15,7 @@
 #             serve yet. 81voltd: mainline q6voice has no VoLTE voice session, so a VoLTE call connects and stays
 #             silent both ways; without it the modem places calls over 2G/3G, where q6voice carries the audio
 #   watchdog  reset: the zip carries two systemd drop-ins (RuntimeWatchdogSec/RebootWatchdogSec=30s, rmtfs
-#             TimeoutStopSec=5s): a reboot that hangs in the modem shutdown path is reset by the hardware watchdog
+#             TimeoutStopSec=15s): a reboot that hangs in the modem shutdown path is reset by the hardware watchdog
 # nura               android                          dtb                                   layout                                       panels          dtbo    mask            watchdog
 oneplus-fajita       fajita,OnePlus6T,OnePlus6TSingle -                                     -                                            -               clear   81voltd.service reset
 oneplus-enchilada    enchilada,OnePlus6               -                                     -                                            -
