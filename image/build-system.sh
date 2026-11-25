@@ -90,7 +90,13 @@ for f in "$SPEECH"/vibeos-dictate-*.deb; do
 	cp "$f" "$P/"
 done
 [ -n "$SP" ] || { echo "$SPEECH: no vibeos-dictate-* .deb" >&2; exit 1; }
-[ -z "$ART" ] || for p in vibeos-iconpack-h2o vibeos-iconpack-oneui vibeos-parallax-sets; do cp "$ART"/${p}_0.1.0_all.deb "$P/"; done
+# the art packages, when ART is set: each of the three at whatever version ART has, but only one of each
+[ -z "$ART" ] || for p in vibeos-iconpack-h2o vibeos-iconpack-oneui vibeos-parallax-sets; do
+	set -- "$ART"/${p}_*_all.deb
+	[ -f "$1" ] || { echo "$ART: no $p .deb" >&2; exit 1; }
+	[ $# = 1 ] || { echo "$ART: more than one $p .deb" >&2; exit 1; }
+	cp "$1" "$P/"
+done
 # no development builds (0.1.3~next*, relaxed pins) and nothing that is not ours
 for f in "$P"/*.deb; do
 	v=$(dpkg-deb -f "$f" Version)
