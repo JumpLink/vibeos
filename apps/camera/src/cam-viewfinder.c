@@ -343,17 +343,29 @@ cam_viewfinder_init (CamViewfinder *self)
   gtk_widget_set_overflow (GTK_WIDGET (self), GTK_OVERFLOW_HIDDEN);
 }
 
-GtkWidget *
-cam_viewfinder_new (GdkPaintable *paintable)
+void
+cam_viewfinder_set_paintable (CamViewfinder *self, GdkPaintable *paintable)
 {
-  CamViewfinder *self = g_object_new (CAM_TYPE_VIEWFINDER, NULL);
-
+  if (self->paintable == paintable)
+    return;
+  if (self->paintable)
+    g_signal_handlers_disconnect_by_data (self->paintable, self);
+  g_clear_object (&self->paintable);
   if (paintable)
     {
       self->paintable = g_object_ref (paintable);
       g_signal_connect (paintable, "invalidate-contents", G_CALLBACK (on_invalidate), self);
       g_signal_connect (paintable, "invalidate-size", G_CALLBACK (on_invalidate), self);
     }
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+}
+
+GtkWidget *
+cam_viewfinder_new (GdkPaintable *paintable)
+{
+  CamViewfinder *self = g_object_new (CAM_TYPE_VIEWFINDER, NULL);
+
+  cam_viewfinder_set_paintable (self, paintable);
   return GTK_WIDGET (self);
 }
 

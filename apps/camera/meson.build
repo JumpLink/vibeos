@@ -21,7 +21,7 @@ deps = [dependency('gtk4', version: '>= 4.14'), dependency('gio-unix-2.0'), depe
 
 resources = gnome.compile_resources('camera-resources', 'src/camera.gresource.xml', source_dir: ['src', 'data'])
 executable('vibeos-camera',
-           'src/cam-main.c', 'src/cam-window.c', 'src/cam-devices.c', 'src/cam-encoder.c', 'src/cam-pipeline.c',
+           'src/cam-main.c', 'src/cam-window.c', 'src/cam-startup.c', 'src/cam-devices.c', 'src/cam-encoder.c', 'src/cam-pipeline.c',
            'src/cam-sensors.c', 'src/cam-recorder.c', 'src/cam-photo.c', 'src/cam-storage.c', 'src/cam-sounds.c',
            'src/cam-widgets.c', 'src/cam-mode-selector.c', 'src/cam-viewfinder.c', 'src/cam-qr-sheet.c',
            'src/cam-settings.c', 'src/cam-dialogs.c', resources,

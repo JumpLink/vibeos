@@ -12,6 +12,7 @@
  *   nb-widgets.c    dialogs, sheets, switches … in Jelly's look
  *   nb-navigator.c  the transitions between a tab's pages
  *   nb-refresh.c    pull to refresh
+ *   nb-video.c      web video in software: the V4L2 decoders left out, listed by a child process
  *   store.c         history, favourites, prefs (JSON, the old browser's files) */
 #pragma once
 
@@ -107,8 +108,19 @@ struct _NbTab {
   GCancellable  *thumb_cancel;
 };
 
+/* nb-video.c: web video decodes in software, the list of V4L2 decoders to leave out coming from a child process */
+void        nb_video_start        (void);
+/* the app ends: a child still listing is stopped */
+void        nb_video_stop         (void);
+/* TRUE once it is there (or gave up): web processes may start, they read it from the environment */
+gboolean    nb_video_ready        (void);
+/* `vibeos-browser --probe-decoders`: prints the decoders, one per line */
+int         nb_video_probe_main   (void);
+
 /* nb-app.c */
 void        nb_app_startup        (GtkApplication *app);
+/* the video decoder list has come (nb-video.c): the tab shown gets its web view */
+void        nb_app_video_ready    (void);
 void        nb_app_shutdown       (void);
 /* restores the session (or opens the home page) when there is no window, else raises the most recent one */
 void        nb_app_activate       (void);

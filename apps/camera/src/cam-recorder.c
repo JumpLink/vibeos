@@ -1,6 +1,7 @@
 /* cam-recorder: see cam-recorder.h. */
 #include "cam-recorder.h"
 #include "cam-encoder.h"
+#include "cam-startup.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -47,8 +48,12 @@ aac_encoder (void)
 gboolean
 cam_recorder_can_record_audio (void)
 {
-  g_autoptr(GstElementFactory) source = gst_element_factory_find ("pulsesrc");
+  g_autoptr(GstElementFactory) source = NULL;
 
+  /* the answer comes with GStreamer's start (cam-startup.h) */
+  if (!cam_gst_ready ())
+    return FALSE;
+  source = gst_element_factory_find ("pulsesrc");
   return source && aac_encoder ();
 }
 

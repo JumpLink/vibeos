@@ -32,7 +32,8 @@ typedef struct {
   gboolean   flash;             /* a flash LED to light for it (back-facing, and the phone has one) */
 } CamCamera;
 
-/* All cameras libcamera reports, in its order (CamCamera *, owned by the array). Never NULL; empty if none. */
+/* All cameras libcamera reports, in its order (CamCamera *, owned by the array). Never NULL; empty if none. It
+ * waits on libcamera, which opens the camera devices: never on the main loop (cam-startup.h). */
 GPtrArray *cam_devices_enumerate   (void);
 /* The main camera for the facing: the one with the largest pixel array; NULL if none faces so */
 CamCamera *cam_devices_main_for    (GPtrArray *cameras, CamFacing facing);

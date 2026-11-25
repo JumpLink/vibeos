@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-camera\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-25 01:23+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Spanish\n"
@@ -475,9 +475,17 @@ msgstr "Ajustes Pro"
 msgid "Flash mode"
 msgstr "Modo de flash"
 
-# android: Aperture error_no_cameras_available
+#. TRANSLATORS: over the empty viewfinder while the camera is being found and opened
 #: src/cam-window.c
-msgid "No cameras were found on the device, cannot start the app."
-msgstr ""
-"No se encontraron cámaras en el dispositivo, no se puede iniciar la "
-"aplicación."
+msgid "Starting camera…"
+msgstr "Iniciando la cámara…"
+
+#. TRANSLATORS: over the empty viewfinder: the device has no camera, or none answered; a tap looks again
+#: src/cam-window.c
+msgid "No camera found"
+msgstr "No se encontró ninguna cámara"
+
+#. TRANSLATORS: over the empty viewfinder: the camera system did not start in time; a tap tries again
+#: src/cam-window.c
+msgid "The camera is not responding"
+msgstr "La cámara no responde"

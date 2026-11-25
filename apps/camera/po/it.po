@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-camera\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-25 01:23+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -41,7 +41,9 @@ msgstr "Aggiungi la posizione delle foto e dei video"
 # android: Aperture location_permission_dialog_description
 #: src/cam-dialogs.c
 msgid "Map your memories by including location metadata with each capture."
-msgstr "Mappa i tuoi ricordi includendo informazioni sulla posizione in ogni acquisizione."
+msgstr ""
+"Mappa i tuoi ricordi includendo informazioni sulla posizione in ogni "
+"acquisizione."
 
 # android: Aperture location_permission_dialog_later
 #: src/cam-dialogs.c
@@ -141,7 +143,9 @@ msgstr "Copia negli appunti"
 msgid ""
 "The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, "
 "under the GNU LGPL 2.1 or later."
-msgstr "Le fotocamere sono gestite da <a href=\"https://libcamera.org/\">libcamera</a>, con licenza GNU LGPL 2.1 o successiva."
+msgstr ""
+"Le fotocamere sono gestite da <a href=\"https://libcamera.org/\">libcamera</"
+"a>, con licenza GNU LGPL 2.1 o successiva."
 
 # android: Aperture title_activity_settings
 #: src/cam-settings.c
@@ -329,12 +333,17 @@ msgstr "Galleria"
 
 #: src/cam-window.c
 msgid "Camera access is off. Turn it on in Settings, Security and privacy."
-msgstr "L'accesso alla fotocamera è disattivato. Attivalo in Impostazioni, Sicurezza e privacy."
+msgstr ""
+"L'accesso alla fotocamera è disattivato. Attivalo in Impostazioni, Sicurezza "
+"e privacy."
 
 # android: Aperture force_torch_help
 #: src/cam-window.c
-msgid "On photo mode, you can long press the flash button to switch into torch mode."
-msgstr "In modalità foto, puoi tenere premuto il pulsante del flash per attivare la torcia."
+msgid ""
+"On photo mode, you can long press the flash button to switch into torch mode."
+msgstr ""
+"In modalità foto, puoi tenere premuto il pulsante del flash per attivare la "
+"torcia."
 
 # android: Framework httpErrorOk (several translations, short)
 #: src/cam-window.c
@@ -399,18 +408,24 @@ msgstr "IMPOSTAZIONI"
 
 # android: Aperture error_stream_config
 #: src/cam-window.c
-msgid "There was an error while preparing the stream. Please report this to the developers."
-msgstr "Si è verificato un errore durante la configurazione della fotocamera. Si prega di segnalarlo agli sviluppatori."
+msgid ""
+"There was an error while preparing the stream. Please report this to the "
+"developers."
+msgstr ""
+"Si è verificato un errore durante la configurazione della fotocamera. Si "
+"prega di segnalarlo agli sviluppatori."
 
 # android: Aperture error_camera_in_use
 #: src/cam-window.c
 msgid "This camera is already in use, try closing the app using it."
-msgstr "Questa fotocamera è già in uso, prova a chiudere l'app che la sta usando."
+msgstr ""
+"Questa fotocamera è già in uso, prova a chiudere l'app che la sta usando."
 
 # android: Aperture error_other_recoverable_error
 #: src/cam-window.c
 msgid "Error while setting up the session. The app will try to recover."
-msgstr "Errore durante l'apertura della sessione. L'applicazione proverà a rimediare."
+msgstr ""
+"Errore durante l'apertura della sessione. L'applicazione proverà a rimediare."
 
 # android: Aperture camcorder_unsupported_toast
 #: src/cam-window.c
@@ -419,18 +434,27 @@ msgstr "Nessuna fotocamera supporta la registrazione video."
 
 # android: Aperture thermal_status_moderate
 #: src/cam-window.c
-msgid "Moderate thermal throttling, make sure the device isn't under direct sunlight."
-msgstr "Moderata limitazione termica in atto, assicurarsi che il dispositivo non sia sotto la luce solare diretta."
+msgid ""
+"Moderate thermal throttling, make sure the device isn't under direct "
+"sunlight."
+msgstr ""
+"Moderata limitazione termica in atto, assicurarsi che il dispositivo non sia "
+"sotto la luce solare diretta."
 
 # android: Aperture thermal_status_severe
 #: src/cam-window.c
-msgid "Severe thermal throttling, it is recommended to let the device cool down a bit."
-msgstr "Intensa limitazione termica in atto, si consiglia di lasciare che il dispositivo si raffreddi un po'."
+msgid ""
+"Severe thermal throttling, it is recommended to let the device cool down a "
+"bit."
+msgstr ""
+"Intensa limitazione termica in atto, si consiglia di lasciare che il "
+"dispositivo si raffreddi un po'."
 
 # android: Aperture thermal_status_critical
 #: src/cam-window.c
 msgid "Critical thermal throttling, the app might be closed soon."
-msgstr "Critica limitazione termica in atto, l'app potrebbe venire chiusa a breve."
+msgstr ""
+"Critica limitazione termica in atto, l'app potrebbe venire chiusa a breve."
 
 # android: Aperture thermal_status_emergency
 #: src/cam-window.c
@@ -440,7 +464,8 @@ msgstr "Limitazione termica d'emergenza in atto, l'app verrà chiusa ora."
 # android: Aperture thermal_status_shutdown
 #: src/cam-window.c
 msgid "Shutdown thermal throttling, the device will power off."
-msgstr "Limitazione termica da spegnimento in atto, il dispositivo si spegnerà."
+msgstr ""
+"Limitazione termica da spegnimento in atto, il dispositivo si spegnerà."
 
 # android: Aperture save_location_toast
 #: src/cam-window.c
@@ -457,7 +482,17 @@ msgstr "Impostazioni Pro"
 msgid "Flash mode"
 msgstr "Flash"
 
-# android: Aperture error_no_cameras_available
+#. TRANSLATORS: over the empty viewfinder while the camera is being found and opened
 #: src/cam-window.c
-msgid "No cameras were found on the device, cannot start the app."
-msgstr "Nessuna fotocamera trovata sul dispositivo, impossibile avviare l'app."
+msgid "Starting camera…"
+msgstr "Avvio della fotocamera…"
+
+#. TRANSLATORS: over the empty viewfinder: the device has no camera, or none answered; a tap looks again
+#: src/cam-window.c
+msgid "No camera found"
+msgstr "Nessuna fotocamera trovata"
+
+#. TRANSLATORS: over the empty viewfinder: the camera system did not start in time; a tap tries again
+#: src/cam-window.c
+msgid "The camera is not responding"
+msgstr "La fotocamera non risponde"
