@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-browser\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 14:32+0100\n"
+"POT-Creation-Date: 2026-11-25 13:38+0100\n"
 "PO-Revision-Date: 2026-11-24 03:43+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -643,6 +643,22 @@ msgstr "Emesso il"
 #: src/nb-tab.c
 msgid "Expires On"
 msgstr "Scade il"
+
+#: src/nb-tab.c
+msgid "This page used too much memory"
+msgstr "Questa pagina ha usato troppa memoria"
+
+#: src/nb-tab.c
+msgid "This page stopped working"
+msgstr "Questa pagina ha smesso di funzionare"
+
+#: src/nb-tab.c
+msgid "Reload it to try again."
+msgstr "Aggiornala per riprovare."
+
+#: src/nb-tab.c
+msgid "Reload"
+msgstr "Aggiorna"
 
 # android: Jelly error_no_activity_found
 #: src/nb-tab.c
