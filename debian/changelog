@@ -39,6 +39,51 @@ vibeos (1:0.1.4.3) unstable; urgency=medium
     voice, and the old Russian voice is removed once the new one is in.
     Voice match is not offered yet.
   * Terminal in the six languages too.
+  * The status bar shows the mobile network's type left of the signal
+    while mobile data is connected: 5G, LTE, H+, H, 3G, E or G.
+  * The battery's fill is green above half, yellow from 30 %, orange from
+    15 % and red below, charging or not, on the status bar, the shade and
+    the lock screen. Power saver shows its plus sign, no longer a yellow
+    fill.
+  * On a tablet the notification panel ends under Clear all, with round
+    corners, and is see-through as on a phone; it grows with its
+    notifications up to the screen's bottom and scrolls inside.
+  * Apps start whatever the drivers do. Camera, Browser, Dictate and Vibe
+    no longer hang at start when GStreamer's start never ends (a camera
+    driver that does not answer): the window comes at once and says what
+    is missing, and they try again. The Clock's alarm shows its ringing
+    screen and the Phone's calls service keeps answering in that case
+    too; the sound follows once GStreamer is up.
+    tools/start-test/vibeos-start-test starts every app with no network,
+    no sound, no camera and a GStreamer that never starts, and checks that
+    its window shows within 2 s.
+  * Video Player decodes H.264 and HEVC on the device's hardware decoder
+    (V4L2), with far less heat and battery; other codecs where the device
+    layer says its decoder takes them, and anything the decoder cannot
+    take in software as before. Where nothing takes its sound (no output
+    but PipeWire's dummy one) it plays on without sound and says "No
+    audio output", instead of standing still.
+  * One video device that refuses to open no longer silences the whole
+    device: WirePlumber's V4L2 monitor is off (from the next boot).
+  * Wi-Fi and Bluetooth no longer ask for a password after an automatic
+    login on a device whose logind leaves its user record behind:
+    vibeos-logind-user-refresh brings it up to date at boot, and does
+    nothing where it is current.
+  * The shade keeps its blur where the device draws it in time: it
+    measures its first openings, and a device too slow for it gets the
+    opaque shade instead, decided again after a kernel, Mesa or shell
+    update.
+  * The notifications scroll as the apps' lists do: they stretch at the
+    ends and spring back, and a fling runs into the stretch.
+  * Every quick settings tile is a rounded square, on or off, and so are
+    the icon squares of Wi-Fi, Bluetooth and Do Not Disturb and the
+    buttons beside the brightness and volume sliders. The settings and
+    power buttons stay round.
+  * GNOME's Files, Console, Software, Calls, Chatty, Calculator,
+    Calendar, Snapshot and Weather no longer show next to VibeOS's own
+    in Settings, Vibe and "Open with": hidden as GNOME hides an entry,
+    made again whenever a package changes the installed apps. They stay
+    installed, and Files (Nautilus) still opens folders when asked.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 00:48:14 +0100
 
