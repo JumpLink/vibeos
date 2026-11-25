@@ -16,11 +16,13 @@ log = Log.open_topic ("s-device")
 local ROLES = { communication = true, phone = true }
 local active = false
 
+-- type "pw": a rule's property is in the device's own properties, never in its registry global's (a constraint
+-- without a type matches the global's few keys, and so no device at all)
 local alsa_devs_om = ObjectManager {
   Interest {
     type = "device",
     Constraint { "device.api", "=", "alsa" },
-    Constraint { "vibeos.communication-device", "is-present" },
+    Constraint { "vibeos.communication-device", "is-present", type = "pw" },
   }
 }
 
