@@ -45,6 +45,14 @@ if gjs.found() and dbus_run_session.found()
   test('sounds-pipewire', find_program('tests/sounds-pipewire.sh'), args: [meson.current_source_dir()], timeout: 180)
 endif
 
+# what a Back button is called in an app's language, from catalogs it compiles (tests/back-names.sh); needs gjs and
+# msgfmt. Its question asked of a real app over a real accessibility bus is tests/back-probe.sh, not run here (it
+# starts a compositor).
+msgfmt = find_program('msgfmt', required: false)
+if gjs.found() and msgfmt.found()
+  test('back-names', find_program('tests/back-names.sh'), args: [meson.current_source_dir()], timeout: 60)
+endif
+
 # Home's rule and a window asking for attention, with GNOME Shell's stand-ins (tests/home-attention.sh); needs gjs
 if gjs.found()
   test('home-attention', find_program('tests/home-attention.sh'), args: [meson.current_source_dir()], timeout: 60)

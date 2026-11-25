@@ -619,10 +619,23 @@ show_panel (const char *name)
   return FALSE;
 }
 
+/* Settings' window, to the front under the activation token of the call that asked for it (the token GtkApplication's
+ * before_emit gave GDK from that call's platform data), or under a new one. Not g_application_activate (): that emits
+ * with platform data of this program's own, whose token is the one Settings was started with (GTK keeps that one for
+ * the life of the process) in place of the caller's. Settings started over after a language change was started with
+ * a token its new window then used, and mutter ignores a token used already, without even marking the window as
+ * wanting attention: every page asked for after that (the home screen's Wallpaper & style and Home settings, an app's
+ * App info, the shell's links to Settings) left Settings where it was, in recents (2026-11-25). */
+static void
+show (GApplication *app)
+{
+  activate (GTK_APPLICATION (app), NULL);
+}
+
 static void
 open_page (GApplication *app, const char *name, const char *arg)
 {
-  g_application_activate (app);
+  show (app);
   ns_pop_all ();
   if (arg && *arg && (!g_strcmp0 (name, "applications") || !g_strcmp0 (name, "apps"))) {
     select_row (row_for_page (ns_page_apps));
@@ -701,7 +714,7 @@ gnome_settings_call (GDBusConnection *bus, const char *sender, const char *path,
   if (action)
     g_action_group_activate_action (G_ACTION_GROUP (app), action, value);
   else
-    g_application_activate (G_APPLICATION (app));
+    show (G_APPLICATION (app));
   klass->after_emit (G_APPLICATION (app), platform);
   g_dbus_method_invocation_return_value (call, NULL);
 }
@@ -734,7 +747,7 @@ command_line (GApplication *app, GApplicationCommandLine *cl, gpointer data)
   if (name)
     open_page (app, name, id);
   else
-    g_application_activate (app);
+    show (app);
   return 0;
 }
 
