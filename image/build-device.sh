@@ -651,6 +651,8 @@ nabu)
 	install -D -m 644 "$T/nabu/qbootctl-wait-for-shell.conf" "$P/etc/systemd/system/qbootctl.service.d/vibeos-wait-for-shell.conf"
 	install -D -m 755 "$T/nabu/wait-for-shell" "$P/usr/libexec/vibeos-device/wait-for-shell"
 	POSTINST_EXTRA="$POSTINST_EXTRA qbootctl.service"
+	# no libcamera monitor in WirePlumber: with it, the camera subsystem never goes idle (nabu/61-vibeos-no-libcamera.conf)
+	install -D -m 644 "$T/nabu/61-vibeos-no-libcamera.conf" "$P/usr/share/wireplumber/wireplumber.conf.d/61-vibeos-no-libcamera.conf"
 	identity nabu "Xiaomi Pad 5" Xiaomi "Xiaomi Pad 5"
 	video h264,hevc		# iris; VP9 decodes in software (60-nabu-gst-vp9.conf ranks the V4L2 decoder down)
 	DEPS="hexagonrpcd, rmtfs, qrtr-tools, tqftpserv, qbootctl"
