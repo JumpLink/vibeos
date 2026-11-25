@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-shell\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 00:44+0100\n"
+"POT-Creation-Date: 2026-11-25 03:49+0100\n"
 "PO-Revision-Date: 2026-11-24 19:46+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -145,6 +145,12 @@ msgstr "Impostazioni di notifica"
 #: notifications.js
 msgid "No notifications"
 msgstr "Nessuna notifica"
+
+#. TRANSLATORS: an app records sound for the first time and asks for the microphone; %s is the app's name
+#: pairdialog.js
+#, javascript-format
+msgid "Allow %s to use the microphone?"
+msgstr "Consentire a %s di usare il microfono?"
 
 #. TRANSLATORS: a Bluetooth device asks to connect to one of the phone's services; %s is its name
 #: pairdialog.js

@@ -243,6 +243,13 @@ vs_bwrap_args (const VsSandbox *sb)
   static const char *const sys[] = { "/sys/block", "/sys/bus", "/sys/class", "/sys/dev", "/sys/devices", NULL };
   for (guint i = 0; sys[i]; i++)
     add3 (a, "--ro-bind-try", sys[i], sys[i]);
+  /* which device this is: /proc/device-tree is a link to /sys/firmware/devicetree/base, which holds the model and
+   * the compatible list a phone's apps pick their audio routing and layouts by. Those two files only: the rest of
+   * the tree (serial numbers, the boot arguments, calibration) stays out. */
+  static const char *const device_tree[] = { "/sys/firmware/devicetree/base/compatible",
+                                             "/sys/firmware/devicetree/base/model", NULL };
+  for (guint i = 0; device_tree[i]; i++)
+    add3 (a, "--ro-bind-try", device_tree[i], device_tree[i]);
 
   add (a, "--tmpfs");
   add (a, "/tmp");
@@ -367,6 +374,15 @@ vs_proxy_rules (const VsSandbox *sb)
   add (a, "--talk=org.freedesktop.portal.*");
   add (a, "--call=org.freedesktop.portal.*=*");
   add (a, "--broadcast=org.freedesktop.portal.*=@/org/freedesktop/portal/*");
+  /* an "Open Settings" button: Settings (its name, and GNOME's, which it answers too) is started, shown, or told to
+   * open a page, as GApplication does it; nothing else of it, and it is not on the app's name list */
+  static const char *const settings[][2] = { { "vibeos.Settings", "/vibeos/Settings" },
+                                             { "org.gnome.Settings", "/org/gnome/Settings" } };
+  for (guint i = 0; i < G_N_ELEMENTS (settings); i++) {
+    add_fmt (a, "--call=%s=org.gtk.Application.Activate@%s", settings[i][0], settings[i][1]);
+    add_fmt (a, "--call=%s=org.gtk.Application.Open@%s", settings[i][0], settings[i][1]);
+    add_fmt (a, "--call=%s=org.gtk.Actions.Activate@%s", settings[i][0], settings[i][1]);
+  }
   /* notifications: the shell's own notification policy applies */
   add (a, "--talk=org.freedesktop.Notifications");
   /* push messages: UnifiedPush distributors; each app only receives what is sent to its own registration, encrypted

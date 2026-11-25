@@ -17,7 +17,7 @@ static const struct {
   [VS_PERM_NETWORK]    = { "network",    VS_STORE_TABLE, "network",    KIND_YESNO,    VS_GRANT_ALLOW, FALSE, FALSE },
   [VS_PERM_LOCATION]   = { "location",   "location",     "location",   KIND_LOCATION, VS_GRANT_ASK,   TRUE,  TRUE },
   [VS_PERM_CAMERA]     = { "camera",     "devices",      "camera",     KIND_YESNO,    VS_GRANT_ASK,   TRUE,  TRUE },
-  [VS_PERM_MICROPHONE] = { "microphone", VS_STORE_TABLE, "microphone", KIND_YESNO,    VS_GRANT_DENY,  FALSE, TRUE },
+  [VS_PERM_MICROPHONE] = { "microphone", VS_STORE_TABLE, "microphone", KIND_YESNO,    VS_GRANT_ASK,   TRUE,  TRUE },
   [VS_PERM_CONTACTS]   = { "contacts",   VS_STORE_TABLE, "contacts",   KIND_YESNO,    VS_GRANT_DENY,  FALSE, FALSE },
   [VS_PERM_CALENDAR]   = { "calendar",   VS_STORE_TABLE, "calendar",   KIND_YESNO,    VS_GRANT_DENY,  FALSE, FALSE },
   [VS_PERM_PHONE]      = { "phone",      VS_STORE_TABLE, "phone",      KIND_YESNO,    VS_GRANT_DENY,  FALSE, FALSE },
@@ -127,7 +127,7 @@ vs_perm_set (VsStore *store, const char *app_id, VsPerm perm, VsGrant grant, GEr
 
 /* where xdg-desktop-portal and the document portal keep what an app may do */
 static const char *const app_tables[] = {
-  VS_STORE_TABLE, "location", "devices", "background", "notifications", "screenshot", "screencast", "remote-desktop",
+  VS_STORE_TABLE, VS_ASK_TABLE, "location", "devices", "background", "notifications", "screenshot", "screencast", "remote-desktop",
   "inhibit", "wallpaper", "realtime", "gamemode", "camera", "documents", NULL
 };
 

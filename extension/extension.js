@@ -22,6 +22,7 @@ import {KeyHaptics} from './keyhaptics.js';
 import {AppSwitchKey} from './keys.js';
 import {Keyguard} from './keyguard.js';
 import {KeyLaunch} from './keylaunch.js';
+import {MicrophonePrompts} from './micprompt.js';
 import {NoWindowMipmaps} from './mipmaps.js';
 import {ModalWatch} from './modalwatch.js';
 import {AndroidKeyboard} from './osk.js';
@@ -207,6 +208,12 @@ export default class VibeosExtension extends Extension {
             logError(e, 'vibeos: Bluetooth');
             this._destroyBluetooth();
         }
+        // "Allow <app> to use the microphone?" for an app in the sandbox that records for the first time (micprompt.js)
+        try {
+            this._micPrompts = new MicrophonePrompts(this._keyguard);
+        } catch (e) {
+            logError(e, 'vibeos: the microphone question');
+        }
         // the screen off, the AOD or black, over everything: the power key, the double tap, the timeout
         this._power = new Power(this._keyguard, this._state, this._powerMenu, this._chord);
         Main.layoutManager.addTopChrome(this._power.layer);
@@ -229,7 +236,7 @@ export default class VibeosExtension extends Extension {
         const nav = this._service.navigation;
         this._modalWatch = new ModalWatch(() => this._power.interactive && !this._keyguard.showing &&
             !nav.recentsShown && !this._shade?.isOpen && !this._powerMenu?.showing && !this._pairing?.showing &&
-            nav._atHome());
+            !this._micPrompts?.showing && nav._atHome());
         // ... and over them all, the end of uiGroup
         this._endMark = new EndMark();
         // GNOME's on-screen keyboard's keys tick under the finger (paused while VibeOS's keyboard is in use)
@@ -329,6 +336,8 @@ export default class VibeosExtension extends Extension {
         this._power?.destroy();
         this._power = null;
         this._destroyBluetooth();
+        this._micPrompts?.destroy();
+        this._micPrompts = null;
         this._powerMenu?.destroy();
         this._powerMenu = null;
         this._volume?.destroy();
