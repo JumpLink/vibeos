@@ -70,6 +70,7 @@ S20_SHUB=				# the sensor hub's bcm4775b1-shub-r8s.patch (3b2a01e5): the C strin
 NABU_STAGE=				# Xiaomi Pad 5: device stage (root/, debs/ with debs.sha256, firmware.txt)
 NABU_MODULES=				# its kernel build's modules_install tree (lib/modules)
 NABU_BOOT=				# its boot_b image (b3)
+NABU_CAMSS=				# qcom-camss.ko with the camera fix (vibeos-nabu-7.3.6 e0a119144716), in place of NABU_MODULES's
 # SYSIMG=				# the system image whose upstream-signed regulatory.db goes into the initramfs of a
 					# kernel with cfg80211 built in (default: OUT/system/rootfs.img)
 # S5E_KERNEL=				# the same for the S5e: a gzip -9n Image for the slot image instead of Image-uc.gz

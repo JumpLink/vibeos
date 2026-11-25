@@ -667,6 +667,22 @@ nabu)
 	ldconfig'
 	KVER=7.3.6-nabu
 	rm -rf "$P/usr/lib/modules"; modules $KVER "${NABU_MODULES:?set NABU_MODULES}"
+	# The cameras: qcom-camss with the camera fix (kjy-linux's vibeos-nabu-7.3.6 at e0a119144716, its c60c19a51288 and
+	# e0a119144716 on 8d90d5f14a59, the tree NABU_MODULES was built from). NABU_CAMSS, checked by its sha256 and its
+	# vermagic, replaces NABU_MODULES's own qcom-camss.ko in place; no other module and not the kernel changes (boot_b
+	# stays b3). This one module is a swap: a modules_install of that branch at e0a119144716 or later, as NABU_MODULES,
+	# replaces it. The stage's /etc/modprobe.d/nabu-camss.conf, which kept qcom_camss from loading until this fix, goes.
+	CS=kernel/drivers/media/platform/qcom/camss/qcom-camss.ko
+	[ -f "$P/usr/lib/modules/$KVER/$CS" ] || { echo "NABU_MODULES: no $CS" >&2; exit 1; }
+	[ "$(sha256sum < "${NABU_CAMSS:?set NABU_CAMSS}" | cut -c1-16)" = c89bd7c9ec0cf4d2 ] ||
+		{ echo "$NABU_CAMSS: not qcom-camss with the camera fix (c89bd7c9)" >&2; exit 1; }
+	[ "$(/usr/sbin/modinfo -F vermagic "$NABU_CAMSS")" = "$KVER SMP preempt mod_unload aarch64" ] ||
+		{ echo "$NABU_CAMSS: not for $KVER" >&2; exit 1; }
+	install -m 644 "$NABU_CAMSS" "$P/usr/lib/modules/$KVER/$CS"
+	depmod -b "$P/usr" $KVER 2>> "$L/depmod.txt"
+	log "$CS <- $NABU_CAMSS (c89bd7c9: the camera fix, vibeos-nabu-7.3.6 e0a119144716)"
+	[ -f "$P/etc/modprobe.d/nabu-camss.conf" ] || { echo "$ST/root: no etc/modprobe.d/nabu-camss.conf" >&2; exit 1; }
+	rm "$P/etc/modprobe.d/nabu-camss.conf"
 	(cd "$P/usr/lib/firmware" && find . -type f | sed 's|^\./||') > "$L/stage-firmware.txt"
 	echo "stage firmware: $(wc -l < "$L/stage-firmware.txt") files from $ST/root (sources: $ST/firmware.txt)" >> "$L/firmware.txt"
 	# The SLPI's hexagonrpcd units (hexagonrpcd-sdsp*, started by 82-nabu-hexagonrpcd.rules) replace the generic
@@ -689,7 +705,7 @@ nabu)
 	[ "$(sha256sum < "$BI" | cut -c1-16)" = cc210283410b6be0 ] || { echo "$BI: not the boot_b image b3" >&2; exit 1; }
 	cp "$BI" "$W/boot/boot_b.img"
 	log "boot_b $(sha256sum < "$W/boot/boot_b.img" | cut -c1-16)"
-	DESC="Xiaomi Pad 5 (nabu): kernel 7.3.6-nabu modules (the kernel and initramfs are in boot_b), the tablet's firmware, hexagonrpcd and the SLPI's sensors, UCM, speaker protection, video, clock and boot settings, the restart into LineageOS (slot a)"
+	DESC="Xiaomi Pad 5 (nabu): kernel 7.3.6-nabu modules (the kernel and initramfs are in boot_b; qcom-camss with the camera fix from vibeos-nabu-7.3.6 e0a119144716), the tablet's firmware, hexagonrpcd and the SLPI's sensors, UCM, speaker protection, video, clock and boot settings, the restart into LineageOS (slot a)"
 	;;
 *) echo "unknown device $DEV" >&2; exit 1 ;;
 esac
