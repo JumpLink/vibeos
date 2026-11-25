@@ -35,7 +35,7 @@ import {atSentenceStart, autocorrection, Learnt, Lexicon, neighboursOf, placeInS
 // shown, the keyboard slides up decelerating; hidden, it slides down accelerating
 const SHOW_MS = 200;
 const HIDE_MS = 190;
-// a window slid up over the keys (keyboardSlides) stops with the text cursor's line this far above their top edge
+// a window slid up over the keys stops with the text cursor's line this far above their top edge
 const SLIDE_MARGIN_DP = 8;
 // a second tap on shift this soon locks the capitals, and so does holding it this long
 const DOUBLE_TAP_MS = 300;
@@ -211,18 +211,18 @@ function touchId(event) {
     return event.get_event_sequence()?.get_slot?.() ?? event.get_event_sequence();
 }
 
-// An app whose desktop file says X-Vibeos-Keyboard=overlay keeps its window as it is when the keyboard comes up: the
-// keys go over it, as over a full-screen map (Navi), instead of the window being fitted above them. It learns how
-// much of it the keys cover from vibeos.Shell's KeyboardOverlap (service.js) and makes room itself.
+// The keyboard goes over the app's window: the window keeps its size and nothing in it is laid out again. Only where
+// the text cursor's line would be under the keys does the whole window slide up, just far enough to keep that line
+// SLIDE_MARGIN_DP above them, and back down when they close (VibeosKeyboard._kbSlideStart); a field that is in view
+// leaves the window still. A terminal fitted above the keys had its text reflowed for the new size, and again when it
+// grew back (owner, 11-24: "keyboard squeezes terminal window instead of opening on top of it").
 //
-// One that says X-Vibeos-Keyboard=slide, or whose id is in vibeos.Shell's keyboard-slide-apps (Console's by default),
-// keeps its size too, and its window slides up over the keys, just far enough to keep the text cursor's line above
-// them, and back down when they close (VibeosKeyboard._kbSlideStart): a terminal fitted above the keys had its text
-// reflowed for the new size, and again when it grew back (owner, 11-24: "keyboard squeezes terminal window instead of
-// opening on top of it"). Other apps are fitted above the keys, as before.
+// An app whose desktop file says X-Vibeos-Keyboard=overlay has the keys over its window with no slide: it learns how
+// much of it the keys cover from vibeos.Shell's KeyboardOverlap (service.js) and makes room itself, as the Navi map
+// does. One that says X-Vibeos-Keyboard=fit, or whose id is in vibeos.Shell's keyboard-fit-apps, is fitted above the
+// keys instead, the shell's own way: its window is made smaller and grows back when they close.
 const OVERLAY_KEY = 'X-Vibeos-Keyboard';
-const SLIDE_APPS_KEY = 'keyboard-slide-apps';
-const SLIDE_APPS_DEFAULT = ['org.gnome.Console'];
+const FIT_APPS_KEY = 'keyboard-fit-apps';
 
 function windowApp(window) {
     return window ? Shell.WindowTracker.get_default().get_window_app(window) : null;
@@ -237,15 +237,15 @@ export function keyboardOverlays(window) {
     return keyboardKey(windowApp(window)) === 'overlay';
 }
 
-export function keyboardSlides(window) {
+export function keyboardFits(window) {
     const app = windowApp(window);
     if (!app)
         return false;
-    if (keyboardKey(app) === 'slide')
+    if (keyboardKey(app) === 'fit')
         return true;
     shellSettings ??= vibeosSettings();
-    const apps = shellSettings?.settings_schema.has_key(SLIDE_APPS_KEY)
-        ? shellSettings.get_strv(SLIDE_APPS_KEY) : SLIDE_APPS_DEFAULT;
+    const apps = shellSettings?.settings_schema.has_key(FIT_APPS_KEY)
+        ? shellSettings.get_strv(FIT_APPS_KEY) : [];
     return apps.includes(app.get_id()?.replace(/\.desktop$/, ''));
 }
 
@@ -391,7 +391,7 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
             const y = rect.get_y(), height = rect.get_height();
             if (!Number.isFinite(y) || !Number.isFinite(height))
                 return;
-            this._kbCursor = {window: global.display.focus_window, y, height};
+            this._kbCursor = {window: global.display.focus_window, focus: Main.inputMethod.currentFocus, y, height};
             this._kbSlideSoon();
         }, this);
         // a menu opened on a window slid over the keys: drawn slid with it from its first frame
@@ -514,16 +514,15 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         return [h, h];
     }
 
-    // A window the keys slide over (keyboardSlides) is slid, not fitted. A terminal that is not one (taken out of
-    // keyboard-slide-apps) is fitted above the keys at once, and grows back at once: the shell's size-change animation
-    // of the unmaximize and the maximize after it stretched Console's text down the screen and back. (Left full screen
-    // with the keyboard over it instead, a terminal full of output had its prompt under the keys: owner, 11-21, "shrink
-    // console above keyboard".) Other windows keep the animation.
+    // The keys go over the window (_kbSlideStart): it is slid, never resized. A window of an app taken out of that
+    // (keyboardFits) is fitted above the keys at once, and grows back at once: the shell's size-change animation of the
+    // unmaximize and the maximize after it stretched a terminal's text down the screen and back. Other windows keep
+    // the animation.
     _animateWindow(window, show) {
-        // an app that has the keys over its window (keyboardOverlays): left as it is
+        // an app that has the keys over its window with no slide (keyboardOverlays): left as it is
         if (show && keyboardOverlays(window))
             return;
-        if (show && window && !window.__keyboardMoved && keyboardSlides(window)) {
+        if (show && window && !window.__keyboardMoved && !keyboardFits(window)) {
             this._kbSlideStart(window);
             return;
         }
@@ -543,9 +542,11 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
     }
 
     // The window in front slid up over the keys, as the keyboard comes up with them, until the text cursor's line is
-    // SLIDE_MARGIN_DP above the keys' top edge, and no further than the window's bottom over it; with no cursor known,
-    // that far. It follows the cursor while the keyboard is up (a terminal's output takes it down the screen, `clear`
-    // back up), and the keyboard's own changes of height. The window keeps its size: nothing in it is laid out again.
+    // SLIDE_MARGIN_DP above the keys' top edge, and no further than the window's bottom over it; with the line in
+    // view, or no cursor known (the field's client has not sent its rectangle, or never does), it stays where it is,
+    // and moves when a rectangle comes. It follows the cursor while the keyboard is up (a terminal's output takes it
+    // down the screen, `clear` back up), and the keyboard's own changes of height. The window keeps its size: nothing
+    // in it is laid out again.
     _kbSlideStart(window) {
         if (this._kbSlide?.window !== window) {
             this._kbSlideEnd();
@@ -587,9 +588,11 @@ class VibeosKeyboard extends KeyboardUI.Keyboard {
         const top = monitor.y + monitor.height - this.height;
         const frame = window.get_frame_rect();
         const covered = Math.max(0, frame.y + frame.height - top);
-        const cursor = this._kbCursor?.window === window && this._kbCursor.height > 0 ? this._kbCursor : null;
+        // the rectangle of the field that has the focus now, in this window: not one an earlier field sent
+        const cursor = this._kbCursor?.window === window && this._kbCursor.focus === Main.inputMethod.currentFocus &&
+            this._kbCursor.height > 0 ? this._kbCursor : null;
         const shift = cursor
-            ? Math.min(covered, Math.max(0, cursor.y + cursor.height + dp(SLIDE_MARGIN_DP) - top)) : covered;
+            ? Math.min(covered, Math.max(0, cursor.y + cursor.height + dp(SLIDE_MARGIN_DP) - top)) : 0;
         slideWindow(actor, -Math.round(shift), SHOW_MS, Clutter.AnimationMode.EASE_OUT_CUBIC);
     }
 
@@ -1501,7 +1504,7 @@ function vibeosSettings() {
     return schema?.has_key('keyboard') ? new Gio.Settings({settings_schema: schema}) : null;
 }
 
-// vibeos.Shell, for the keys below and keyboard-slide-apps (keyboardSlides)
+// vibeos.Shell, for the keys below and keyboard-fit-apps (keyboardFits)
 let shellSettings = null;
 
 // Settings > Keyboard > Text correction: the strip's words, auto-correction and the next word's suggestions (on where
