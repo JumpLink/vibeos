@@ -9,6 +9,9 @@ package_extract_file("device-sums.txt", "/tmp/vibeos-dsums.txt");
 if run_program("/system/bin/sh", "/tmp/vibeos-dinstall.sh", "find") != 0 then
     abort("ERROR: " + file_getprop("/tmp/vibeos.prop", "error"));
 endif;
+if file_getprop("/tmp/vibeos.prop", "ready") != "" then
+    ui_print(file_getprop("/tmp/vibeos.prop", "ready"));
+else
 set_progress(0.050000);
 ui_print("- unpacking the device files");
 package_extract_file("payload.tar", "/tmp/vibeos-payload.tar") ||
@@ -30,3 +33,4 @@ set_progress(1.000000);
 ui_print("Done. Login: user, password 147147.");
 ui_print("First boot: the device packages install, then one restart.");
 @DONE@
+endif;

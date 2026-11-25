@@ -9,7 +9,11 @@
 #         and a loader.conf whose default entry boots /vmlinuz-mobian with root=LABEL=vibeos
 #   s5e   linux reads the Android image at 34 MiB of recovery, lineage_recovery the one at 4 MiB, both Android
 #         images in recovery.img; the rescue entry adds gts4lv.debug
-# The folder's name says the device (s10e, poco, s5e); any other folder is skipped.
+#   s20   (BOOT = boot/boot.img: an Android image whose kernel is the shim with U-Boot, whose ramdisk is a FIT) bootcmd
+#         and VibeOS's menu entry boot that FIT with r8s_args, which name the partition vibeos and carry no
+#         r8s.debug; "Rescue shell (USB)" boots it with r8s_args_rescue, which carry r8s.debug; the menu keeps
+#         LineageOS Recovery; the FIT holds a kernel, an fdt and the configuration r8s
+# The folder's name says the device (s10e, poco, s5e, s20); any other folder is skipped.
 set -u
 F=0
 ok() { echo "  ok: $*"; }
@@ -86,6 +90,41 @@ for D in "$@"; do
 				ok "$v: the Android image at $m MiB of recovery (img_off $o)" || bad "$v: img_off '$o', or no Android image at $m MiB"
 		done
 		has linux_rescue gts4lv.debug && ok "the rescue entry passes gts4lv.debug" || bad "linux_rescue: $(var linux_rescue)"
+		;;
+	s20)
+		env_of "$D/boot/boot.img" > "$E" || { bad "no environment in boot/boot.img"; continue; }
+		has bootcmd 'run r8s_boot' && ok "bootcmd boots r8s_boot" || bad "bootcmd: $(var bootcmd)"
+		for x in r8s_boot:r8s_args r8s_rescue:r8s_args_rescue; do
+			has ${x%%:*} "bootargs \"\${${x#*:}}\"" && has ${x%%:*} 'bootm ${prevbl_initrd_start_addr}' &&
+				ok "${x%%:*} boots the boot image's FIT with ${x#*:}" || bad "${x%%:*}: $(var ${x%%:*} | cut -c1-160)"
+		done
+		has r8s_args r8s.root=vibeos && ! has r8s_args r8s.debug && ok "r8s_args: the partition named vibeos, no r8s.debug" ||
+			bad "r8s_args: $(var r8s_args)"
+		has r8s_args_rescue r8s.debug && ok "r8s_args_rescue: r8s.debug (the initramfs's shells)" || bad "r8s_args_rescue: $(var r8s_args_rescue)"
+		grep -q '^bootmenu_[0-9]*=VibeOS=run r8s_boot$' "$E" && grep -q '^bootmenu_[0-9]*=Rescue shell (USB)=run r8s_rescue$' "$E" &&
+			grep -q '^bootmenu_[0-9]*=Lineage Recovery=run reboot_recovery$' "$E" &&
+			ok "the menu: VibeOS, Rescue shell (USB), Lineage Recovery" || bad "the menu: $(grep '^bootmenu_[0-9]' "$E" | tr '\n' ';')"
+		python3 -I - "$D/boot/boot.img" <<'EOF' && ok "the ramdisk is a FIT: kernel, fdt, configuration r8s" || bad "the ramdisk is no FIT of a kernel and an fdt"
+import struct, sys
+d = open(sys.argv[1], 'rb').read()
+assert d[:8] == b'ANDROID!'
+ks, ka, rs = struct.unpack_from('<III', d, 8); ps, = struct.unpack_from('<I', d, 36)
+r = d[ps + -(-ks // ps) * ps:][:rs]
+assert r[:4] == bytes.fromhex('d00dfeed')
+off_struct, off_strings = struct.unpack_from('>II', r, 8)
+names, i = [], off_struct
+while True:
+    tok, = struct.unpack_from('>I', r, i); i += 4
+    if tok == 1:
+        e = r.index(b'\0', i); names.append(r[i:e].decode()); i = (e + 4) & ~3
+    elif tok == 3:
+        ln, = struct.unpack_from('>I', r, i); i = (i + 8 + ln + 3) & ~3
+    elif tok in (2, 4):
+        continue
+    else:
+        break
+assert {'images', 'kernel', 'fdt', 'configurations', 'r8s'} <= set(names), names
+EOF
 		;;
 	*) echo "  (skipped: no U-Boot check for $DEV)" ;;
 	esac

@@ -52,14 +52,9 @@ ExecStart=/usr/bin/busybox devmem 0x1586085c 32 0x52380000
 [Install]
 WantedBy=multi-user.target
 EOF
-# r8s-touchlog: copied out of build-rootfs.sh itself, so it stays byte for byte the S20's
+# copied out of build-rootfs.sh itself, so they stay byte for byte the S20's. Not its r8s-touchlog (every touch,
+# with its place on the screen, to a log: never in a public image, 2026-11-24)
 K=$G/kit/rootfs/build-rootfs.sh
-install -d "$P/usr/local/sbin"
-sed -n "/^cat > \"\$M\/usr\/local\/sbin\/r8s-touchlog\" <<'EOF'\$/,/^EOF\$/p" "$K" | sed '1d;$d' > "$P/usr/local/sbin/r8s-touchlog"
-chmod 755 "$P/usr/local/sbin/r8s-touchlog"
-head -n 1 "$P/usr/local/sbin/r8s-touchlog" | grep -q '^#!/usr/bin/python3' || { echo "r8s-touchlog not extracted" >&2; exit 1; }
-sed -n "/^cat > \"\$M\/etc\/systemd\/system\/r8s-touchlog.service\" <<'EOF'\$/,/^EOF\$/p" "$K" | sed '1d;$d' > "$P/etc/systemd/system/r8s-touchlog.service"
-grep -q '^ExecStart=/usr/local/sbin/r8s-touchlog' "$P/etc/systemd/system/r8s-touchlog.service" || { echo "r8s-touchlog.service not extracted" >&2; exit 1; }
 for x in 61-r8s-partlabel.rules 61-r8s-sensors.rules; do
 	sed -n "/^cat > \"\$M\/etc\/udev\/rules.d\/$x\" <<'EOF'\$/,/^EOF\$/p" "$K" | sed '1d;$d' | install -D -m 644 /dev/stdin "$P/etc/udev/rules.d/$x"
 	[ -s "$P/etc/udev/rules.d/$x" ] || { echo "$x not extracted" >&2; exit 1; }
@@ -110,10 +105,11 @@ install -D -m 755 "$SL/r8s-sleepd.arm64" "$P/usr/local/sbin/r8s-sleepd"
 install -D -m 644 "$SL/r8s-sleepd.service" "$P/etc/systemd/system/r8s-sleepd.service"
 install -D -m 644 "$SL/r8s-sleepd.conf" "$P/etc/r8s-sleepd.conf"
 install -D -m 644 "$SL/r8s-mem-sleep.conf" "$P/etc/tmpfiles.d/r8s-mem-sleep.conf"
-install -D -m 644 "$SL/README.md" "$P/usr/local/share/doc/r8s-sleep/README.md"
+# (not its README.md: it names the machine it was built on)
 # the S5123 modem stack (G780F/kit/modem, install-modem.sh's set; s5123-cp.ko is in the modules above). It boots
 # the CP from the radio partition, read only, with the phone's own NV copy in /root/modem-private, which is that
-# phone's private data and never in this package: without it the unit does not start (ConditionPathExists).
+# phone's private data and never in this package: r8s-efs-import makes it from the phone's own EFS (below), and
+# without it the unit does not start (ConditionPathExists).
 M5=$G/kit/modem
 for f in cp-boot.sh cp-gpio.sh cp-ipc cp-spiboot.py gpio-line.py cpd.py; do
 	install -D -m 644 "$M5/tools/$f" "$P/usr/local/lib/s5123-cp/$f"
@@ -121,3 +117,58 @@ done
 chmod 755 "$P/usr/local/lib/s5123-cp/cp-boot.sh" "$P/usr/local/lib/s5123-cp/cp-gpio.sh" "$P/usr/local/lib/s5123-cp/cp-ipc"
 install -D -m 644 "$M5/udev/78-s5123-cp-net.rules" "$P/etc/udev/rules.d/78-s5123-cp-net.rules"
 install -D -m 644 "$M5/systemd/s5123-modem.service" "$P/etc/systemd/system/s5123-modem.service"
+# r8s-efs-import: the phone's own modem NV data and Wi-Fi MAC, read from its EFS partition, never written
+install -D -m 755 /dev/stdin "$P/usr/local/sbin/r8s-efs-import" <<'EOF'
+#!/bin/sh
+# r8s-efs-import: this phone's own modem NV data and Wi-Fi MAC, from its EFS partition (Samsung's, where Android
+# keeps them). EFS is never mounted and never written: its node is set read-only first, and debugfs only reads.
+#   NV   /nv_data.bin, once: to /root/modem-private/nv_data.bin (0600), the copy s5123-modem boots the modem with
+#        and cpd keeps its NV writes in; used only when EFS's nv_data.bin.md5 (MD5 of the data and
+#        "Samsung_Android_RIL") vouches for it. Without it the modem unit does not start.
+#   MAC  /wifi/.mac.info, every boot: NetworkManager's cloned MAC for the Wi-Fi (in /run: nothing of it is kept)
+# Prints neither: one line when one of them is missing, at most.
+set -u
+EFS=/dev/disk/by-partlabel/efs
+[ -b $EFS ] || { echo "no EFS partition" >&2; exit 0; }
+blockdev --setro "$(readlink -f $EFS)" 2> /dev/null || true
+P=/root/modem-private
+if [ ! -s $P/nv_data.bin ]; then
+	umask 077
+	mkdir -p $P
+	N=$P/.nv_data.bin.new
+	rm -f $N
+	debugfs -R "dump /nv_data.bin $N" $EFS > /dev/null 2>&1
+	W=$(debugfs -R "cat /nv_data.bin.md5" $EFS 2> /dev/null | tr -d '\n\r ' | tr A-F a-f)
+	H=$( { cat $N 2> /dev/null; printf Samsung_Android_RIL; } | md5sum | cut -c1-32)
+	if [ -s $N ] && [ ${#W} = 32 ] && [ "$H" = "$W" ]; then
+		mv $N $P/nv_data.bin
+	else
+		rm -f $N; echo "no modem NV data in EFS that its checksum vouches for: the modem stays off" >&2
+	fi
+fi
+MAC=$(debugfs -R "cat /wifi/.mac.info" $EFS 2> /dev/null | tr -d '\n\r ' | tr A-F a-f)
+if echo "$MAC" | grep -Eq '^([0-9a-f]{2}:){5}[0-9a-f]{2}$'; then
+	mkdir -p /run/NetworkManager/conf.d
+	printf '[connection-r8s-wifi-mac]\nmatch-device=driver:ath11k_pci\nwifi.cloned-mac-address=%s\n' "$MAC" \
+		> /run/NetworkManager/conf.d/90-r8s-wifi-mac.conf
+else
+	echo "no Wi-Fi MAC in EFS: the chip's own" >&2
+fi
+exit 0
+EOF
+install -D -m 644 /dev/stdin "$P/etc/systemd/system/r8s-efs-import.service" <<'EOF'
+[Unit]
+Description=r8s: this phone's own modem NV data and Wi-Fi MAC, read from EFS (never written)
+Before=s5123-modem.service NetworkManager.service
+After=local-fs.target
+Wants=dev-disk-by\x2dpartlabel-efs.device
+After=dev-disk-by\x2dpartlabel-efs.device
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/r8s-efs-import
+
+[Install]
+WantedBy=multi-user.target NetworkManager.service
+EOF
+sh -n "$P/usr/local/sbin/r8s-efs-import"

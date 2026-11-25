@@ -1,5 +1,5 @@
 #!/bin/sh
-# build-zips.sh system|s10e|poco|s5e: the LineageOS recovery zips of VibeOS, from the built pieces:
+# build-zips.sh system|s10e|poco|s5e|s20: the LineageOS recovery zips of VibeOS, from the built pieces:
 #   system  OUT/system/vibeos-system-VERSION-arm64.zip: rootfs.img (OUT/system/rootfs.img) + the generic installer;
 #           VERSION is the one the image says (/etc/vibeos/system-image)
 #   DEVICE  OUT/DEVICE/vibeos-device-DEVICE-VERSION.zip: payload.tar, debs/, the boot pieces + the device installer;
@@ -8,7 +8,7 @@
 # one back against it. Stored (zip -0) for the big images: recovery streams them to the device.
 set -eu
 umask 022	# the modes stored in the zip, whoever builds it (the 0.1.3 zips were built as root)
-WHAT=${1:?system|s10e|poco|s5e}
+WHAT=${1:?system|s10e|poco|s5e|s20}
 T=$(cd "$(dirname "$0")" && pwd)
 [ ! -f "$T/local.conf" ] || . "$T/local.conf"	# this machine's settings (local.conf.example)
 O=${VIBEOS_OUT:?set VIBEOS_OUT (image/local.conf): the directory builds, work files and logs go to}
@@ -68,7 +68,7 @@ system)
 	OUTZ=$S/vibeos-system-$SV-arm64.zip
 	FILES="META-INF vibeos-lib.sh install.sh vibeos-part vibeos-sums.txt $(cd "$W" && ls rootfs.img.[0-9] | tr '\n' ' ')"
 	;;
-s10e|poco|s5e)
+s10e|poco|s5e|s20)
 	D=${DEV_DIR:-$O/$WHAT}
 	[ -s "$D/payload.tar" ] || { echo "no $D/payload.tar: build-device.sh $WHAT first" >&2; exit 1; }
 	set -- "$D"/debs/vibeos-device-${WHAT}_*_arm64.deb
@@ -119,6 +119,19 @@ package_extract_file("keepmisc", "/tmp/vibeos-km");'
 		BOOTFILES='package_extract_file("recovery.img", "/tmp/vibeos-recovery.img") || abort("ERROR: could not unpack the recovery image");'
 		DONE='ui_print("Reboot system now starts Linux; the boot menu also offers Android.");'
 		BOOTF="recovery.img extents keepmisc dmlinear" ;;
+	s20)
+		NAME="Galaxy S20 FE" CODES=r8s
+		ASSERT='getprop("ro.product.device") == "r8s" || getprop("ro.build.product") == "r8s"'
+		# BOOT: the shim with U-Boot, the FIT of Linux; RECOVERY stays LineageOS Recovery's
+		cp "$D/boot/boot.img" "$D/boot/s10e-logo" "$W/"; cp -r "$D/boot/boot-logo" "$W/boot-logo"
+		sum boot "$W/boot.img" >> "$W/device-sums.txt"
+		TOOLS=
+		BOOTFILES='package_extract_file("boot.img", "/tmp/vibeos-boot.img") || abort("ERROR: could not unpack the boot image");
+package_extract_file("s10e-logo", "/tmp/vibeos-logo");
+package_extract_dir("boot-logo", "/tmp/vibeos-boot-logo");'
+		DONE='ui_print("Power on starts VibeOS; Volume Down at the logo: the boot menu (LineageOS Recovery). Restarting.");
+run_program("/system/bin/setprop", "sys.powerctl", "reboot");'
+		BOOTF="boot.img s10e-logo boot-logo" ;;
 	esac
 	python3 -I - "$Z/device/updater-script.in" "$W/META-INF/com/google/android/updater-script" "$NAME" "$CODES" "$ASSERT" "$TOOLS" "$BOOTFILES" "$DONE" "$V" <<'EOF'
 import sys

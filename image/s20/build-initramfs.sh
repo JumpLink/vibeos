@@ -9,6 +9,9 @@
 # The binaries come from Debian's arm64 packages in S20_INITRAMFS_DEBS (a directory of .debs: busybox-static,
 # dropbear-bin, kexec-tools, e2fsprogs and their libraries), unpacked into OUT/debs-root. No SSH key unless DEV=1:
 # then root/.ssh/authorized_keys = SSH_PUBKEY (a developer's own boot image, never a published one).
+# REGDB_FROM=SYSTEM.img: wireless-regdb's upstream-signed regulatory.db and .p7s from that system image (read with
+# debugfs, checked against the package's md5sums) as /lib/firmware/regulatory.db{,.p7s}: the built-in cfg80211 reads
+# them before the root is there (without them Wi-Fi starts in the world domain).
 # Paths in OUT are relative to nothing on this machine: point CONFIG_INITRAMFS_SOURCE at OUT relative to the kernel's
 # build directory (the build's IKCONFIG embeds the line).
 set -eu
@@ -60,6 +63,19 @@ if [ "$DEV" = 1 ]; then
 	cp "$SSH_PUBKEY" "$R/root/.ssh/authorized_keys"
 	chmod 700 "$R/root/.ssh"; chmod 600 "$R/root/.ssh/authorized_keys"
 	echo "DEV=1: root/.ssh/authorized_keys from $SSH_PUBKEY (a developer's boot image: never publish it)"
+fi
+if [ -n "${REGDB_FROM:-}" ]; then
+	DF=$(command -v debugfs || echo /sbin/debugfs)
+	mkdir -p "$R/lib/firmware"
+	"$DF" -R "cat /var/lib/dpkg/info/wireless-regdb.md5sums" "$REGDB_FROM" 2> /dev/null > "$OUT/regdb.md5"
+	for f in regulatory.db regulatory.db.p7s; do
+		"$DF" -R "dump /usr/lib/firmware/$f-upstream $R/lib/firmware/$f" "$REGDB_FROM" 2> /dev/null
+		m=$(awk -v p="usr/lib/firmware/$f-upstream" '$2 == p {print $1}' "$OUT/regdb.md5")
+		[ -n "$m" ] && [ "$(md5sum < "$R/lib/firmware/$f" | cut -d' ' -f1)" = "$m" ] || { echo "$f-upstream: not wireless-regdb's" >&2; exit 1; }
+		chmod 644 "$R/lib/firmware/$f"
+	done
+	rm -f "$OUT/regdb.md5"
+	echo "regulatory.db: wireless-regdb's upstream-signed copy, $(sha256sum < "$R/lib/firmware/regulatory.db" | cut -c1-16)"
 fi
 printf 'nod /dev/console 600 0 0 c 5 1\nnod /dev/null 666 0 0 c 1 3\n' > "$OUT/extra.list"
 # what a published kernel must not carry: a key, or this machine's names and paths in a text file
