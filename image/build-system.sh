@@ -1,5 +1,5 @@
 #!/bin/sh
-# build-system.sh: the generic VibeOS 0.1.3 system image (arm64, no kernel, no modules, no device firmware), made
+# build-system.sh: the generic VibeOS system image (arm64, no kernel, no modules, no device firmware), made
 # from a COPY of a base image: VibeOS goes in.
 #
 #   sudo image/build-system.sh WORK.img
@@ -8,8 +8,9 @@
 #   - build-base.sh's, from the Debian and Mobian archives alone (/etc/vibeos/base says so): step 2 has nothing to do
 #   - the S10e clean r7 image, the 0.1.3 release's base, the way the S20 FE's root was made
 #     (G780F/kit/rootfs/build-rootfs.sh): its S10e device layer comes out in step 2 (STAGE needed)
-# Inputs (environment, defaults below): VDEBS the 0.1.3 build's .debs; MUTTER, SPEECH (mutter 51.0-3+gp1 and the
-# speech models, carried since 0.1.1: build-mutter.sh, tools/vibeos-dictate-speech/build-debs.sh); ART (the
+# Inputs (environment, defaults below): SYSTEM_VERSION the release (default 0.1.4), VDEBS its .debs (1:SYSTEM_VERSION);
+# MUTTER, SPEECH (mutter 51.0-3+gp1 and the speech models, carried since 0.1.1: build-mutter.sh,
+# tools/vibeos-dictate-speech/build-debs.sh); ART (the
 # third-party icon packs and parallax sets: ROM only, never in the repo or a release; optional); STAGE (the S10e
 # device stage, whose every file is the device layer to remove: the r7 base only); MOBILE (GNOME Shell mobile with
 # libshell patch 0005, as on the S10e and the Poco since 11-17: build-mobile.sh); KIT (the Poco kit: home layout,
@@ -21,13 +22,14 @@
 #      decides)
 #   3. generic identity: fstab LABEL=vibeos, hostname vibeos, no machine-info, no SSH host keys and no snakeoil
 #      key (made on the first boot), nothing of the machine the base was built on (its resolv.conf, its name in
-#      exim4's settings); the first-boot units every device shares (grow the root; install the device package)
-#   4. VibeOS 0.1.3 (apt in an arm64 chroot, local .debs + Debian for new dependencies: mpv, libmpv2): every
+#      exim4's settings); the first-boot units every device shares (grow the root; install the device package);
+#      a developer image only (VIBEOS_DEV=1): the USB network on the gadget port, which a release image never has
+#   4. VibeOS SYSTEM_VERSION (apt in an arm64 chroot, local .debs + Debian for new dependencies: mpv, libmpv2): every
 #      package of the build except -dev, -dbgsym and the neo-* transitional ones; mutter gp1 held; GNOME's own
 #      apps out (the ROM list), Showtime out, GNOME Settings out (vibeos-settings replaces it), Files and Vim
 #      hidden; the home screen and the drawer list of the POCO ROM (Showtime's place: Video Player); user's
 #      session vibeos
-#   5. checks, cleans up, labels the file system vibeos (new UUID), shrinks it.
+#   5. checks (a release image: no developer unit in it), cleans up, labels the file system vibeos (new UUID), shrinks it.
 # Logs: LOGS/system-<time>/.
 set -eu
 IMG=${1:?WORK.img}
@@ -42,13 +44,17 @@ T=$(cd "$(dirname "$0")" && pwd)
 [ ! -f "$T/local.conf" ] || . "$T/local.conf"	# this machine's settings (local.conf.example)
 [ -z "${BASE_ORIG:-}" ] || [ "$(readlink -f "$IMG")" != "$(readlink -f "$BASE_ORIG")" ] || { echo "refusing: $IMG is BASE_ORIG (work on a copy)" >&2; exit 1; }
 O=${VIBEOS_OUT:?set VIBEOS_OUT (image/local.conf): the directory builds, work files and logs go to}
-VDEBS=${VDEBS:?set VDEBS: the directory with the 1:0.1.3 .debs}
+SV=${SYSTEM_VERSION:-0.1.4}	# the VibeOS release the image carries: VDEBS holds its packages (1:SV)
+case $SV in [0-9]*.[0-9]*.[0-9]*) ;; *) echo "SYSTEM_VERSION $SV: not a release number" >&2; exit 1 ;; esac
+VDEBS=${VDEBS:?set VDEBS: the directory with the 1:$SV .debs}
 MUTTER=${MUTTER:?set MUTTER: the directory with mutter 51.0-3+gp1}
 SPEECH=${SPEECH:?set SPEECH: the directory with the vibeos-dictate-* .debs}
 ART=${ART:-}	# the third-party icon packs and parallax sets (not in this repository): left out when unset
 STAGE=${STAGE:-}	# the S10e device stage: needed only for the r7 base
 MOBILE=${MOBILE:?set MOBILE: the GNOME Shell mobile tar (opt/gnome-mobile)}
 KIT=${KIT:-$T/kit}
+DEV=${VIBEOS_DEV:-0}	# 1: a developer image, with the debugging ways in (vibeos-usb-net); 0: a release image, without
+case $DEV in 0) VARIANT=release ;; 1) VARIANT=dev ;; *) echo "VIBEOS_DEV is 0 or 1, not $DEV" >&2; exit 1 ;; esac
 FORBID="gsm2sip waydroid ${FORBID_EXTRA:-}"	# never in an image: these package and file names
 L=$O/logs/system-$(date +%Y%m%d-%H%M%S); mkdir -p "$L"
 M=$O/work/mnt-rw
@@ -63,10 +69,10 @@ mountpoint -q "$M" 2>/dev/null && { echo "$M is mounted already" >&2; exit 1; }
 
 # the package set, before anything changes
 P=$L/debs; mkdir -p "$P"
-for f in "$VDEBS"/*_1:0.1.3_*.deb "$VDEBS"/*_0.1.3_*.deb; do
+for f in "$VDEBS"/*_1:${SV}_*.deb "$VDEBS"/*_${SV}_*.deb; do
 	[ -f "$f" ] || continue
 	p=$(dpkg-deb -f "$f" Package); v=$(dpkg-deb -f "$f" Version)
-	[ "$v" = 1:0.1.3 ] || { echo "$f: version $v, not 1:0.1.3" >&2; exit 1; }
+	[ "$v" = 1:$SV ] || { echo "$f: version $v, not 1:$SV" >&2; exit 1; }
 	case $p in *-dbgsym|*-dev|neo-*) continue ;; esac
 	cp "$f" "$P/"
 done
@@ -113,6 +119,7 @@ else
 	echo "neither build-base.sh's base (/etc/vibeos/base) nor the S10e clean image (hostname)" >&2; exit 1
 fi
 log "base: $BASE"
+log "variant: $VARIANT (VIBEOS_DEV=$DEV)"
 
 # 2. the S10e's device layer (the r7 base; build-base.sh's has none)
 if [ "$BASEKIND" = s10e ]; then
@@ -167,12 +174,21 @@ rmv /etc/ssl/certs/ssl-cert-snakeoil.pem
 install -d "$M/usr/local/sbin" "$M/etc/vibeos" "$M/var/lib/vibeos/device"
 install -m 755 "$T/rootfs/vibeos-growroot" "$M/usr/local/sbin/vibeos-growroot"
 install -m 755 "$T/rootfs/vibeos-device-setup" "$M/usr/local/sbin/vibeos-device-setup"
-for u in vibeos-growroot vibeos-device-setup vibeos-ssh-keygen vibeos-ssl-cert; do
+UNITS="vibeos-growroot vibeos-device-setup vibeos-ssh-keygen vibeos-ssl-cert"
+# a developer image only: the USB network (172.16.42.1 on the gadget port, a DHCP server for the PC) is a way in
+# that needs no Wi-Fi and no unlocked screen, which a release image must not open
+if [ "$DEV" = 1 ]; then
+	install -m 755 "$T/rootfs/vibeos-usb-net" "$M/usr/local/sbin/vibeos-usb-net"
+	install -D -m 644 "$T/rootfs/vibeos-usb-net.nm.conf" "$M/etc/NetworkManager/conf.d/vibeos-usb-net.conf"
+	UNITS="$UNITS vibeos-usb-net"
+fi
+for u in $UNITS; do
 	install -m 644 "$T/rootfs/$u.service" "$M/etc/systemd/system/$u.service"
 	mkdir -p "$M/etc/systemd/system/multi-user.target.wants"
 	ln -sf ../$u.service "$M/etc/systemd/system/multi-user.target.wants/$u.service"
 done
 add "first boot: vibeos-growroot (root fills its partition or file), vibeos-device-setup (the device package, offline, before GDM), vibeos-ssh-keygen, vibeos-ssl-cert"
+[ "$DEV" = 0 ] || add "developer image: every boot vibeos-usb-net (USB network 172.16.42.1)"
 
 # 4. VibeOS, in an arm64 chroot (qemu binfmt)
 for d in proc sys dev dev/pts run; do mkdir -p "$M/$d"; done
@@ -219,6 +235,17 @@ for d in poco s5e; do
 	log "downloads for $d: $(ls "$O/work/downloads/$d" | wc -l) of $(echo $list | wc -w)$( [ -s "$L/download-$d-missing.txt" ] && echo ", missing: $(tr '\n' ' ' < "$L/download-$d-missing.txt")")"
 done
 [ -z "${DOWNLOAD_ONLY:-}" ] || { log "DOWNLOAD_ONLY: stopping after the downloads"; exit 0; }
+# Debian's evolution-data-server where it is (EDS_HOLD, the list releases.html gives for 0.1.4), for the releases built
+# against EDS 3.56, every image's (0.1.4 and before): Debian unstable's 3.62 would take their apps with it. Exactly the
+# installed part of the list, held before the plan: a dependency that needs a newer EDS then stops the build here
+# instead of upgrading it. 0.1.4.1 and later are built against 3.62 and their notes lift the hold: nothing is held, and
+# the plan takes 3.62 with them (ALLOW_UPGRADES)
+case $SV in
+0.1.[0-4]) EDS_HOLD=${EDS_HOLD-evolution-data-server evolution-data-server-common libebook-1.2-21t64 libecal-2.0-3 libedata-book-1.2-27t64 libedata-cal-2.0-2t64 libebackend-1.2-11t64 libedataserverui-1.2-4t64 libedataserverui4-1.0-0t64 gir1.2-camel-1.2 gir1.2-ecal-2.0 gir1.2-edataserver-1.2 libfolks26 libfolks-eds26 folks-common} ;;
+*) EDS_HOLD=${EDS_HOLD-} ;;
+esac
+EH=$(for p in $EDS_HOLD; do [ "$($CH dpkg-query -W -f '${db:Status-Abbrev}' "$p" 2>/dev/null)" = "ii " ] && echo "$p"; done | tr '\n' ' ')
+[ -z "$EH" ] || { $CH apt-mark hold $EH > /dev/null; add "held: $EH(Debian's EDS, which VibeOS $SV is built against)"; }
 $CH apt-get -s -q --no-install-recommends install $LOCAL $NEW showtime- > "$L/apt-plan.txt" 2>&1 || { tail -30 "$L/apt-plan.txt" >&2; exit 1; }
 # removals: exactly Showtime (the brief: out) and GNOME Settings (vibeos-settings Conflicts/Replaces/Provides it),
 # and with it the gnome-core metapackage (it Depends on gnome-control-center >= 1:51; what it pulled in is marked
@@ -250,7 +277,7 @@ done
 $CH apt-mark manual $NEW > /dev/null
 AR=$($CH apt-get -s -q autoremove 2>/dev/null | sed -n 's/^Remv \([^ :]*\).*/\1/p' | tr '\n' ' ')
 [ -z "$AR" ] || { $CH apt-mark manual $AR > /dev/null; echo "marked manual (autoremove would have taken them with gnome-core gone): $AR" >> "$L/removed.txt"; }
-add "VibeOS 0.1.3: $(echo $OURS | wc -w) packages (debs.sha256), plus $NEW from Debian; gnome-control-center, showtime (and the gnome-core metapackage) removed, gnome-control-center-data kept"
+add "VibeOS $SV: $(echo $OURS | wc -w) packages (debs.sha256), plus $NEW from Debian; gnome-control-center, showtime (and the gnome-core metapackage) removed, gnome-control-center-data kept"
 HOLD=$(echo "$OURS" | grep mutter | tr '\n' ' ')
 $CH apt-mark hold $HOLD > /dev/null; add "held: $HOLD(VibeOS's mutter build)"
 # GNOME's own apps out (the ROM's list, as the S10e/POCO/S20): exactly the installed part of it, or nothing
@@ -304,7 +331,7 @@ else sed -i '/^\[User\]/a Session=vibeos' "$F"; fi
 chmod 600 "$F"; add "user's session: vibeos (AccountsService)"
 $CH glib-compile-schemas /usr/share/glib-2.0/schemas
 # what the image says about itself
-{ echo "VERSION=1:0.1.3"; echo "BUILT=$(date -u +%Y-%m-%dT%H:%MZ)"; echo "BASE=$BASE"; } > "$M/etc/vibeos/system-image"
+{ echo "VERSION=1:$SV"; echo "BUILT=$(date -u +%Y-%m-%dT%H:%MZ)"; echo "BASE=$BASE"; echo "VARIANT=$VARIANT"; } > "$M/etc/vibeos/system-image"
 $CH dpkg-query -W -f '${Package} ${Version} ${db:Status-Abbrev}\n' > "$L/installed.txt"
 # every file the image's packages own: build-device.sh diverts the ones a device package ships too (SYSFILES)
 cat "$M"/var/lib/dpkg/info/*.list | LC_ALL=C sort -u > "$L/packaged-final.txt"
@@ -319,6 +346,11 @@ done
 rm -rf "$M"/var/lib/swcatalog/icons/debian-* "$M"/var/lib/swcatalog/yaml/*
 for w in $FORBID; do find "$M" -xdev -iname "*$w*"; done > "$L/forbidden.txt"
 [ ! -s "$L/forbidden.txt" ] || { echo "forbidden files, see $L/forbidden.txt" >&2; exit 1; }
+# a release image: none of the developer image's ways in, under any name the units or their files have
+if [ "$DEV" = 0 ]; then
+	find "$M" -xdev -name 'vibeos-usb-net*' > "$L/dev-only.txt"
+	[ ! -s "$L/dev-only.txt" ] || { echo "a release image with developer files, see $L/dev-only.txt" >&2; exit 1; }
+fi
 grep -q '^video/mp4=vibeos.Video.desktop' "$M/etc/xdg/mimeapps.list" || { echo "Video Player is not the default for video/mp4" >&2; exit 1; }
 # the build machine's name: in no setting a maintainer script writes it to
 case ${VIBEOS_BUILD_HOST:-} in ""|vibeos|localhost|debian) ;; *)

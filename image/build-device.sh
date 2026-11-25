@@ -1,6 +1,6 @@
 #!/bin/sh
-# build-device.sh DEVICE: one device's half of VibeOS 0.1.3 (s10e, poco, s5e, s20), into OUT/DEVICE/:
-#   vibeos-device-DEVICE_0.1.3_arm64.deb  the device layer as a package: the kernel's modules, ALL the device's
+# build-device.sh DEVICE: one device's half of VibeOS (s10e, poco, s5e, s20), into OUT/DEVICE/:
+#   vibeos-device-DEVICE_V_arm64.deb    the device layer as a package (V below): the kernel's modules, ALL the device's
 #                                         firmware, its units, udev/modprobe/UCM/sensor/GPU settings, its splash;
 #                                         the kernel too where it lives in the root file system (S10e: /boot/s10e)
 #   debs/                                 that package, plus the system packages the device runs in its own build
@@ -24,11 +24,17 @@ FORBID="gsm2sip waydroid ${FORBID_EXTRA:-}"	# never in an image: these package a
 OUT=${TEST_OUT:-$O/$DEV}	# TEST_OUT, TEST_W: a test build elsewhere, without the downloaded packages
 W=${TEST_W:-$O/work/device-$DEV}
 L=$O/logs/device-$DEV-$(date +%Y%m%d-%H%M%S); mkdir -p "$L"
-V=0.1.3
+# V: the release of the system image this goes with (SYSIMG's /etc/vibeos/system-image, VERSION=1:X.Y.Z, read with
+# debugfs: the system the zips' lanes run it with, whose packaged files SYSFILES lists), or DEVICE_VERSION
+SYSIMG=${SYSIMG:-$O/system/rootfs.img}
+SV=$("$(command -v debugfs || echo /sbin/debugfs)" -R "cat /etc/vibeos/system-image" "$SYSIMG" 2>/dev/null | sed -n 's/^VERSION=1:\([0-9][0-9.]*\)$/\1/p')
+V=${DEVICE_VERSION:-$SV}
+echo "$V" | grep -Eq '^[0-9]+(\.[0-9]+)+(\+[0-9]+)?$' ||
+	{ echo "no version: $SYSIMG has no VERSION=1:X.Y.Z in /etc/vibeos/system-image (or set DEVICE_VERSION)" >&2; exit 1; }
 # 0.1.3+1 (2026-11-23): the S10e's and the S5e's initramfs always start Mobian, the oneshots ahead of gdm get start
 # timeouts, and the POCO's package lost the restart into recovery and Android and checks its root with fsck -y.
 # Above the archive's 0.1.3, whose POCO package would bring that restart back (every restart into recovery)
-case $DEV in s10e|s5e|poco) V=0.1.3+1 ;; esac
+[ "$V" != 0.1.3 ] || case $DEV in s10e|s5e|poco) V=0.1.3+1 ;; esac
 P=$W/pkg
 log() { echo "build-device $DEV: $*" | tee -a "$L/build.txt"; }
 [ ! -e "$OUT" ] || { echo "$OUT exists: move it aside first" >&2; exit 1; }
@@ -372,14 +378,18 @@ s5e)
 	# The Tab S5e: device stage device-20261111-dual (device.sh, read from the tablet 11-11; its firmware from
 	# the tablet's vendor/modem partitions), with the tablet's kernel since 11-19 (7.2.15-gts4lv-uc: slot image
 	# linux-k11-uc.img e57e0831, modules from that build's modules_install) and the two device files the tablet
-	# changed since (touchboost.py 4d633e7c, gts4lv-powerkey hand-off) from work-20261119/tabk
+	# changed since, from work-20261119/tabk: touchboost.py 4d633e7c, and gts4lv-powerkey as the tablet runs it
+	# on 11-24 (5ef44a11: radios left as they are for a sleep since 11-20, the power key passed on to the shell,
+	# and only the upside-down portrait swaps the volume keys, as the volume slider is vertical)
 	ST=${S5E_STAGE:?set S5E_STAGE}
 	TK=${S5E_TABK:?set S5E_TABK}
+	[ "$(sha256sum < "$TK/gts4lv-powerkey.20261124" | cut -c1-16)" = 5ef44a117b8b5dda ] ||
+		{ echo "$TK/gts4lv-powerkey.20261124: not the tablet's of 11-24 (5ef44a11)" >&2; exit 1; }
 	(cd "$ST/root" && tar -cf - .) | tar -C "$P" -xpf - --no-same-owner
 	KVER=7.2.15-gts4lv-uc
 	rm -rf "$P/usr/lib/modules"; modules $KVER "${S5E_MODULES:?set S5E_MODULES}"
 	for f in $(cd "$P" && find . -name touchboost.py | sed 's|^\./||'); do install -m 755 "$TK/touchboost.py" "$P/$f"; log "/$f <- tabk/touchboost.py"; done
-	for f in $(cd "$P" && find . -name gts4lv-powerkey -type f | sed 's|^\./||'); do install -m 755 "$TK/gts4lv-powerkey.handoff" "$P/$f"; log "/$f <- tabk/gts4lv-powerkey.handoff"; done
+	for f in $(cd "$P" && find . -name gts4lv-powerkey -type f | sed 's|^\./||'); do install -m 755 "$TK/gts4lv-powerkey.20261124" "$P/$f"; log "/$f <- tabk/gts4lv-powerkey.20261124"; done
 	(cd "$P/usr/lib/firmware" && find . -type f | sed 's|^\./||') > "$L/stage-firmware.txt"
 	echo "stage firmware: $(wc -l < "$L/stage-firmware.txt") files from $ST/root (the tablet's vendor/modem partitions, 11-11)" >> "$L/firmware.txt"
 	for u in $(sed -e 's/#.*//' "$ST/enable"); do
@@ -515,57 +525,87 @@ EOF
 	DESC="Galaxy Tab S5e (gts4lv): kernel 7.2.15-gts4lv-uc modules (the kernel is in the recovery partition behind U-Boot), the tablet's firmware, modem, audio, touch, power key, USB/OTG, sensors and boot settings"
 	;;
 s20)
-	# The Galaxy S20 FE: BOOT = out/boot-r8s-ub13.img (4a82c5e3; in BOOT since 11-20 19:52 after the #51 check);
-	# its modules = the #51 build tree's own (build/, Image = Image-47 beedd019 byte for byte), as modules_install
-	# would install them; the r8s settings of kit/rootfs/build-rootfs.sh step 3; the Wi-Fi/BT firmware of
-	# kit/wifi-fw (install-radio-fw.sh's set)
+	# The Galaxy S20 FE on the whole phone (owner, 2026-11-24): the system zip makes all of userdata the partition
+	# named vibeos; LineageOS Recovery stays in RECOVERY, the way back. BOOT = S20_BOOT: the stock BOOT's header and
+	# DT table, the shim with U-Boot (branch r8s-ub13: ub13 with r8s.debug on "Rescue shell (USB)") as its kernel, and
+	# a FIT of the release kernel, its initramfs (s20/build-initramfs.sh) built in, as its ramdisk. s20/check-boot.py
+	# holds it to that: the U-Boot entries, the FIT's kernel = S20_KBUILD's Image byte for byte (the build whose
+	# modules this package carries), its initramfs's /init = s20/init, no key in it. TEST_OUT with S20_TEST_BOOT=1:
+	# a harness build that ships a boot image failing those checks (never one to publish)
 	G=${S20_DIR:?set S20_DIR}
-	KVER=7.2.15-r8s+
-	[ "$(sha256sum < "$G/build/arch/arm64/boot/Image" | cut -c1-16)" = beedd01959941df2 ] || { echo "build/ Image is not #51" >&2; exit 1; }
-	REGDB_KERNEL=$G/build/arch/arm64/boot/Image
+	KB=${S20_KBUILD:?set S20_KBUILD: the build directory of the release kernel}
+	SB=${S20_BOOT:?set S20_BOOT: the boot image}
+	KVER=$(cat "$KB/include/config/kernel.release")
+	if ! python3 -I "$T/s20/check-boot.py" "$SB" "$KB/arch/arm64/boot/Image" "$T/s20/init" > "$L/check-boot.txt"; then
+		if [ -n "${TEST_OUT:-}" ] && [ "${S20_TEST_BOOT:-}" = 1 ]; then
+			log "S20_TEST_BOOT: a boot image that fails s20/check-boot.py, for the harness only: $(grep FAIL "$L/check-boot.txt" | tr '\n' ' ')"
+		else
+			cat "$L/check-boot.txt" >&2; echo "$SB is not a boot image to publish (s20/check-boot.py)" >&2; exit 1
+		fi
+	fi
+	REGDB_KERNEL=$KB/arch/arm64/boot/Image
+	! grep -q '^ok: the regulatory database' "$L/check-boot.txt" || REGDB_RD=done
 	MS=$W/modstage/lib/modules/$KVER
 	mkdir -p "$MS"
 	while read -r o; do
 		k=${o%.o}.ko
-		install -D -m 644 "$G/build/$k" "$MS/kernel/$k"
+		install -D -m 644 "$KB/$k" "$MS/kernel/$k"
 		aarch64-linux-gnu-strip --strip-debug "$MS/kernel/$k"
-	done < "$G/build/modules.order"
-	cp "$G/build/modules.order" "$G/build/modules.builtin" "$G/build/modules.builtin.modinfo" "$MS/"
+	done < "$KB/modules.order"
+	cp "$KB/modules.order" "$KB/modules.builtin" "$KB/modules.builtin.modinfo" "$MS/"
 	sed -i 's/\.o$/.ko/; s|^|kernel/|' "$MS/modules.order"
+	# the sensor hub's driver is built in that tree (the phone's updates/bcm4775-shub.ko is the same module, 11-24)
+	[ -f "$MS/kernel/drivers/iio/common/bcm4775_shub/bcm4775-shub.ko" ] || { echo "$KB builds no bcm4775-shub.ko" >&2; exit 1; }
 	modules "$KVER" "$W/modstage/lib/modules"
-	fw "$G/kit/wifi-fw/linux-firmware" amss.bin m3.bin board-2.bin Notice.txt
-	for f in amss.bin m3.bin board-2.bin Notice.txt; do mkdir -p "$P/usr/lib/firmware/ath11k/QCA6390/hw2.0"; mv "$P/usr/lib/firmware/$f" "$P/usr/lib/firmware/ath11k/QCA6390/hw2.0/$f"; done
-	fw "$G/kit/wifi-fw/vendor" htbtfw20.tlv htnv20.bin
-	mkdir -p "$P/usr/lib/firmware/qca"; mv "$P/usr/lib/firmware/htbtfw20.tlv" "$P/usr/lib/firmware/htnv20.bin" "$P/usr/lib/firmware/qca/"
-	sh "$T/s20-files.sh" "$P"
-	enable r8s-usb-net.service r8s-boot-ok.service r8s-touchlog.service r8s-sleepd.service s5123-modem.service
-	# OpenSSH on port 22 (the S20's way in: the initramfs dropbear stops at switch_root); root by key only, and no
-	# key is in this package (the S20 install script puts the dev PC's in)
-	POSTINST_EXTRA="$POSTINST_EXTRA ssh.service"
-	# no swap line: since 11-20 the S20's old super is Lineage's again, and its fstab has the root only
+	# Wi-Fi (QCA6390, ath11k): linux-firmware's amss.bin and m3.bin, and Samsung's board file (the stock vendor
+	# image's /firmware/qca6390/bdwlan.elf) as board.bin; no board-2.bin, which ath11k would read first. The phone's
+	# set since 2026-11-18, file for file (amss.bin 8ab2a064, m3.bin 1921d25e, board.bin 9fe8b78f)
+	A11=usr/lib/firmware/ath11k/QCA6390/hw2.0
+	for f in amss.bin:8ab2a06422e39890 m3.bin:1921d25edb52f90a Notice.txt:; do
+		[ -z "${f#*:}" ] || [ "$(sha256sum < "$G/kit/wifi-fw/linux-firmware/${f%%:*}" | cut -c1-16)" = "${f#*:}" ] ||
+			{ echo "kit/wifi-fw/linux-firmware/${f%%:*} is not the phone's (${f#*:})" >&2; exit 1; }
+		f=${f%%:*}
+		install -D -m 644 "$G/kit/wifi-fw/linux-firmware/$f" "$P/$A11/$f"
+		echo "$A11/$f $(sha256sum < "$P/$A11/$f" | cut -c1-16) $G/kit/wifi-fw/linux-firmware (linux-firmware)" >> "$L/firmware.txt"
+	done
+	[ "$(sha256sum < "$G/kit/wifi-fw/vendor/bdwlan.elf" | cut -c1-16)" = 9fe8b78f8d831693 ] || { echo "kit/wifi-fw/vendor/bdwlan.elf is not the stock one" >&2; exit 1; }
+	install -D -m 644 "$G/kit/wifi-fw/vendor/bdwlan.elf" "$P/$A11/board.bin"
+	echo "$A11/board.bin 9fe8b78f8d831693 the stock vendor image's /firmware/qca6390/bdwlan.elf" >> "$L/firmware.txt"
+	# the sensor hub's patch (HUBB23030400, BCM4775 A1): LineageOS's kernel source, lineage-24.0 97369af7,
+	# drivers/sensorhub/brcm/bbdpl/r_os/bbd_patch_file_r8.h, its C strings as the text they hold (bcm4775-shub.ko
+	# asks for brcm/bcm4775b1-shub-r8s.patch); the same bytes as the phone's
+	[ "$(sha256sum < "${S20_SHUB:?set S20_SHUB}" | cut -c1-16)" = 3b2a01e5dffdeabd ] || { echo "$S20_SHUB is not HUBB23030400 (3b2a01e5)" >&2; exit 1; }
+	install -D -m 644 "$S20_SHUB" "$P/usr/lib/firmware/brcm/bcm4775b1-shub-r8s.patch"
+	echo "usr/lib/firmware/brcm/bcm4775b1-shub-r8s.patch 3b2a01e5dffdeabd github.com/LineageOS/android_kernel_samsung_universal9830 97369af7bbd66581d3e993fea083f3eed02d3c20 drivers/sensorhub/brcm/bbdpl/r_os/bbd_patch_file_r8.h" >> "$L/firmware.txt"
+	# Bluetooth's files (the stock vendor image's htbtfw20.tlv, htnv20.bin) wait until Bluetooth works (owner)
+	S10E_STAGE=${S10E_STAGE:?set S10E_STAGE} S20_DIR=$G S20_SLEEP=${S20_SLEEP:?set S20_SLEEP} sh "$T/s20-files.sh" "$P"
+	enable r8s-usb-net.service r8s-boot-ok.service r8s-sleepd.service s5123-modem.service r8s-efs-import.service
+	not_held r8s-efs-import.service 1min "Ordered before NetworkManager, which gdm waits for (network.target, systemd-user-sessions)."
+	# no swap line: since 11-20 the S20's old super is Lineage's again, and its fstab has the root only. No ssh:
+	# the system image's stays off, as on every other device. neard: the image has none, but NFC does not work here
+	# (the release kernel's s3fwrn5 leaves the RF calibration off), so one installed later stays off too
 	mask console-setup.service keyboard-setup.service exim4.service lm-sensors.service systemd-binfmt.service \
-		proc-sys-fs-binfmt_misc.automount proc-sys-fs-binfmt_misc.mount
+		proc-sys-fs-binfmt_misc.automount proc-sys-fs-binfmt_misc.mount neard.service
 	identity r8s "Galaxy S20 FE" Samsung "Galaxy S20 FE"
 	video h264,hevc		# MFC; VP9 not tried yet
-	cp "$G/out/boot-r8s-ub13.img" "$W/boot/boot-r8s-ub13.img"
-	[ "$(sha256sum < "$W/boot/boot-r8s-ub13.img" | cut -c1-16)" = 4a82c5e3c5db7ab4 ] || { echo "ub13 is not 4a82c5e3" >&2; exit 1; }
-	# the power-on logo, which s20-install-from-pc.sh puts into up_param as the S10e's device zip does: src/s10e-logo
-	# (the same tar rewrite; up_param is the S10e's format) and the S20's pictures, logo.jpg being the S10e's swirl
-	# at 1080x2400; on the S20 since 11-17 (up_param abf985d0)
+	cp "$SB" "$W/boot/boot.img"
+	# the power-on logo, which the device zip puts into up_param as the S10e's does: src/s10e-logo (the same tar
+	# rewrite; up_param is the S10e's format) and the S20's pictures, logo.jpg being the S10e's swirl at 1080x2400;
+	# on the S20 since 11-17 (up_param abf985d0)
 	[ "$(od -An -tx1 -j 16 -N 4 "$T/src/s10e-logo" 2>/dev/null | tr -d ' \n')" = 0200b700 ] ||
 		{ echo "no static aarch64 $T/src/s10e-logo: make -C $T/src" >&2; exit 1; }
 	cp "$T/src/s10e-logo" "$W/boot/s10e-logo"; mkdir -p "$W/boot/boot-logo"
 	cp "$G/boot-logo/logo.jpg" "$G/boot-logo/svb_orange.jpg" "$G/boot-logo/booting_warning.jpg" "$W/boot/boot-logo/"
 	[ "$(cd "$W/boot/boot-logo" && cat logo.jpg svb_orange.jpg booting_warning.jpg | sha256sum | cut -c1-16)" = e05fc7e1b43ad160 ] ||
 		{ echo "$G/boot-logo: not the S20's pictures of 11-17" >&2; exit 1; }
-	DESC="Galaxy S20 FE (r8s, G780F): the modules of kernel #51 (7.2.15-r8s+, in BOOT with U-Boot ub13), Wi-Fi and Bluetooth firmware, the modem stack, sleep, the quiet boot, the r8s settings (USB network, watchdog, sensors, UCM, panel cutout, GPU)"
+	DESC="Galaxy S20 FE (r8s, G780F): the modules of kernel $KVER (in BOOT with U-Boot), Wi-Fi and sensor-hub firmware, the modem stack with the phone's own NV and Wi-Fi MAC read from its EFS, sleep, the quiet boot, the r8s settings (USB network, watchdog, sensors, UCM, panel cutout, GPU)"
 	;;
 *) echo "unknown device $DEV" >&2; exit 1 ;;
 esac
 
 # the regulatory database (see regdb_cpio): the signers this kernel's cfg80211 trusts, and a built-in cfg80211 must
-# have its initramfs carry the database. The S20's initramfs is built into its kernel (BOOT 4a82c5e3, not rebuilt
-# here): it boots in the world domain until a kernel with CONFIG_EXTRA_FIRMWARE or a ramdisk in its FIT
+# have its initramfs carry the database. The S20's initramfs is built into its kernel (in S20_BOOT, not built
+# here): s20/build-initramfs.sh puts the database in with REGDB_FROM, and s20/check-boot.py says whether it is there
 CF=$(find "$P/usr/lib/modules/$KVER" -name 'cfg80211.ko*' | head -n 1)
 if grep -Eq '(^|/)net/wireless/cfg80211\.ko$' "$P/usr/lib/modules/$KVER/modules.builtin"; then
 	RB=built-in; RK=$REGDB_KERNEL
@@ -579,7 +619,7 @@ RS=$(signers "$RK")
 log "cfg80211: $RB, trusts the upstream wireless-regdb signers: the postinst selects regulatory.db-upstream"
 if [ $RB = built-in ] && [ "$REGDB_RD" != done ]; then
 	[ $DEV = s20 ] || { echo "cfg80211 is built in, and no initramfs got regulatory.db" >&2; exit 1; }
-	log "NOTE: cfg80211 is built in, and the S20's initramfs is inside its kernel: no regulatory.db at boot (the world domain)"
+	log "NOTE: cfg80211 is built in, and the S20's initramfs (in its kernel) has no regulatory.db: the world domain (s20/build-initramfs.sh REGDB_FROM)"
 fi
 REGDB_SH='# Wi-Fi: this kernel trusts the upstream wireless-regdb signers only, not Debian'"'"'s re-signed copy
 	if [ -e /lib/firmware/regulatory.db-upstream ]; then
@@ -636,15 +676,15 @@ exit 0
 EOF
 chmod 755 "$P/DEBIAN/postinst"
 # vibeos-growroot (the system's, the first boot) is a oneshot, and vibeos-device-setup, ordered before gdm, waits for it
-case $DEV in s10e|s5e|poco)
+case $DEV in s10e|s5e|poco|s20)
 	not_held vibeos-growroot.service 10min "The system's first-boot grow; vibeos-device-setup, ordered before gdm, comes after it." ;;
 esac
 # /etc/vibeos/android: how the shell's power menu restarts into Android (one line; no file, no menu item):
 # reboot=ARG (systemctl reboot --reboot-argument=ARG) or helper=PATH (run with pkexec). The POCO has none since
-# 2026-11-23 (VibeOS on the whole phone); its helper until then (surya-boot-android) is in git history
+# 2026-11-23 (VibeOS on the whole phone); its helper until then (surya-boot-android) is in git history. Nor the S20
+# since 2026-11-24 (the whole phone; its RECOVERY holds LineageOS Recovery, no Android)
 case $DEV in
 s10e) A=reboot=android ;;		# S-Boot's normal boot (DT reboot-mode mode-android), LineageOS in boot
-s20)  A=reboot=recovery ;;		# its RECOVERY partition holds LineageOS's boot image
 s5e)  A=helper=/usr/local/sbin/gts4lv-boot-android	# the stage's, polkit de.gts4lv.boot-android
       [ -x "$P/usr/local/sbin/gts4lv-boot-android" ] && [ -f "$P/usr/share/polkit-1/actions/de.gts4lv.boot-android.policy" ] ||
 	{ echo "no gts4lv-boot-android in the S5e stage" >&2; exit 1; } ;;

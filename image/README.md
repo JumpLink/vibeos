@@ -9,16 +9,17 @@ same session, with `adb sideload`.
 | `build-base.sh` | the base image the system image starts from: Debian sid and Mobian staging with `mmdebstrap` (`base/`: the package list, the apt pin) |
 | `build-chroot.sh`, `build-mutter.sh`, `build-mobile.sh` | an arm64 build chroot; mutter 51.0-3+gp1 in it (`MUTTER`); GNOME Shell mobile in `/opt/gnome-mobile` (`MOBILE`) |
 | `build-system.sh` | the system image (root file system): Debian sid, GNOME Shell mobile, VibeOS's packages, the first-boot units |
-| `build-zips.sh` | the zips: `system`, or a device (`s10e`, `s5e`, `poco`) from what `build-device.sh` made |
+| `build-zips.sh` | the zips: `system`, or a device (`s10e`, `s5e`, `poco`, `s20`) from what `build-device.sh` made |
 | `build-device.sh` | the device half of our four devices (S10e, POCO X3 NFC, Tab S5e, S20 FE): device package, payload, boot images |
 | `build-apt-device.sh` | a device folder's package split for the apt archive: `vibeos-device-DEVICE`, `vibeos-kernel-KVER` (the modules), `vibeos-kernel-DEVICE` |
 | `nura/` | `nura-to-vibeos`: a device zip for any phone [Nura](https://nura.eco) (postmarketOS) has a build for |
 | `zip/` | the installers that run in recovery: `system-install.sh`, `device-install.sh`, `vibeos-lib.sh` (shared), the updater-scripts |
-| `rootfs/` | what every system image starts with: `vibeos-growroot`, `vibeos-device-setup`, the SSH host-key and snakeoil-certificate units |
+| `rootfs/` | what every system image starts with: `vibeos-growroot`, `vibeos-device-setup`, the SSH host-key and snakeoil-certificate units, `vibeos-usb-net` (USB network 172.16.42.1 on the gadget port: developer images only, `VIBEOS_DEV=1`) |
 | `kit/` | the home screen (`home-layout.json`, `90-rom-home.gschema.override`), the GNOME apps removed, the shell drop-in |
+| `s20/` | the Galaxy S20 FE's initramfs, built into its kernel (`init`, `build-initramfs.sh`, `reboot2.c`), and its boot image: `make-boot.sh` makes it, `check-boot.py` checks what it starts |
 | `src/` | `s10e-part` (the zips' GPT tool, `vibeos-part` in the zip) and `s10e-logo` (the S10e's power-on logo): `make -C image/src` |
 | `get-update-binary.sh` | LineageOS's updater out of a LineageOS build zip (not in this repository: it is LineageOS's) |
-| `test/` | `zip-test.sh`: the zips run by LineageOS's real updater on fake disks; `setup-test.sh`: the first boot's device setup in a chroot; `compare-rootfs.sh`: two system images' packages, /etc and /opt side by side; `qemu-boot.sh`: a system image booted in qemu (virt) up to the session; `device-audit.sh`: what a device folder would publish of the build machine, kernels decompressed first |
+| `test/` | `usbnet-test.sh`: `vibeos-usb-net` against a fake configfs on the host; `zip-test.sh`: the zips run by LineageOS's real updater on fake disks; `setup-test.sh`: the first boot's device setup in a chroot; `compare-rootfs.sh`: two system images' packages, /etc and /opt side by side; `qemu-boot.sh`: a system image booted in qemu (virt) up to the session; `device-audit.sh`: what a device folder would publish of the build machine, kernels decompressed first |
 | `local.conf.example` | the settings every script reads from `image/local.conf` (git ignores it) |
 
 ## How an installation works
@@ -151,11 +152,25 @@ an `/etc` that differs only in the three items above.
 **A phone Nura has a build for**, whichever flavour (Phosh, GNOME Mobile, Plasma Mobile): `nura/nura-to-vibeos`, see
 [nura/README.md](nura/README.md).
 
-**Our four devices**: `sudo image/build-device.sh s10e|poco|s5e|s20`, then `image/build-zips.sh s10e|poco|s5e`.
+**Our four devices**: `sudo image/build-device.sh s10e|poco|s5e|s20`, then `image/build-zips.sh s10e|poco|s5e|s20`.
 Its inputs are device stages of our own phones (a kernel build and its modules, firmware read from the phone's own
 vendor and modem partitions, U-Boot builds, the device's units and settings), named in `local.conf.example`. They are
 not in this repository, so the script is a record of how those zips are put together rather than something to run
-elsewhere. The S20 FE has no device zip: it installs from a PC over its rescue shell (`s20-install-from-pc.sh`).
+elsewhere. A device zip has the version of the system image it is built against (`SYSIMG`'s
+`/etc/vibeos/system-image`; `DEVICE_VERSION` overrides it).
+
+**The S20 FE** takes the whole phone: its system zip makes all of `userdata` the partition named `vibeos`, and the
+device zip writes BOOT and the power-on logo in `up_param`. Only that device zip makes the phone start afterwards, so
+it runs first as well: with no VibeOS system on the phone it checks the phone, changes nothing and leaves a note in
+recovery's `/tmp`, and only with that note does the system zip offer the whole phone (it refuses otherwise). The
+order is device zip, system zip, device zip again, in one recovery session. LineageOS Recovery stays in RECOVERY, the way back
+(Volume Down at power-on: U-Boot's menu). BOOT is `s20/make-boot.sh`'s: the stock BOOT's header and DT table, the
+shim with U-Boot (branch `r8s-ub13`) as its kernel, and a FIT of the release kernel, with `s20/build-initramfs.sh`'s
+initramfs built in, as its ramdisk. `s20/check-boot.py` holds it to what a public image must start: U-Boot's normal
+entry names `vibeos` without `r8s.debug`, the FIT's kernel is the one whose modules the package carries, its
+`/init` is `s20/init`, and it carries the regulatory database and no SSH key. On the first boot `r8s-efs-import`
+reads the phone's own modem NV data (once, only when EFS's checksum vouches for it) and Wi-Fi MAC (every boot, into
+`/run`) from EFS, which it sets read-only and never mounts.
 
 **The same for the apt archive**: `image/build-apt-device.sh s10e|s5e|poco DEVDIR OUTDIR` splits the folder's
 `vibeos-device-DEVICE` (version 0.1.3+1 in the 0.1.3 zips, no epoch) into `vibeos-device-DEVICE` 1:0.1.4 (firmware,
@@ -172,10 +187,13 @@ loses the ESP hooks (an initrd built on the phone, copied to the ESP, kills the 
 
 `test/zip-test.sh SYSZIP DEVZIP PRE SYSKEYS -- DEVICE` runs the system zip and then a device zip in one chroot of
 LineageOS recovery's ramdisk (mksh and toybox under qemu-user), each with its own update-binary and updater-script as
-recovery runs them, on a loop device with 4096-byte sectors holding an S10e-shaped GPT. It checks every partition
+recovery runs them, on a loop device with 4096-byte sectors holding an S10e-shaped GPT (`S20=1` or DEVICE `s20`:
+the S20 FE's, `OUT/work/test/sda-real-s20.img`, where `fresh`, `existing` and `wholed` are the cases; `PREDEV=1` runs
+its device zip once before the system zip, `EXPECT=refused` checks the system zip refuses without that run). It checks every partition
 the zips may write and that the others are untouched, the root's file system and its sums, the boot pieces byte for
 byte, and that nothing identifying was printed. It needs `OUT/work/test/sda-real.img` (a sparse copy of an S10e's
-`sda` with only its GPT) and `OUT/work/test/r` (`nura/test/recovery-chroot.py RECOVERY.img OUT/work/test/r` from a
+`sda` with only its GPT; `test/gpt-model.py FIRST OUT` makes one from a phone's first sectors, with every GUID
+replaced and nothing past the table copied) and `OUT/work/test/r` (`nura/test/recovery-chroot.py RECOVERY.img OUT/work/test/r` from a
 LineageOS recovery image), qemu-user-static with binfmt, and `sudo -n`. Two second sessions on the same disk:
 `AGAIN=KEYS` runs the system zip alone (after an S5e image install, the old extent list at the end of recovery must
 be gone and the rest of recovery untouched; `TAIL_OUT` keeps that tail for `init-test.sh`), and `NEWDEV=ZIP` runs a
@@ -215,7 +233,11 @@ for everything that touches hardware (`test/init-case.py` runs one case). A norm
 died (a leftover boot-attempt marker or pstore record) must reach Mobian, the rescue entry must stay. On the S5e's
 image layout a list that holds and maps an ext4 file system that fits it must start; no list (`INIT_RECOVERY_TAIL`:
 the tail `zip-test.sh` kept), a list past the end of userdata and a list that maps no file system must stay, say to
-install the device zip, and never check, mount or grow anything.
+install the device zip, and never check, mount or grow anything. The S20 FE's initramfs is built into its kernel:
+`s20/build-initramfs.sh OUT` makes it (`s20/init`, static busybox, dropbear, kexec, e2fsprogs; no SSH key unless
+`DEV=1`; with `REGDB_FROM=SYSTEM.img` wireless-regdb's regulatory database, which the built-in cfg80211 reads), and `init-test.sh OUT` runs that tree: the normal entry must start the partition named `vibeos` with no
+shell, `r8s.debug` (U-Boot's "Rescue shell (USB)") must bring up telnet and SSH, and every start that stays must say
+how to get a shell rather than open one.
 
 `test/compare-rootfs.sh NEW.img REF.img OUTDIR` mounts two system images read-only and writes what differs to
 OUTDIR: the packages and their versions, the manually installed ones, `/etc` and `/opt/gnome-mobile` file by file

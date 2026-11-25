@@ -514,7 +514,8 @@ if [ -n "$NL" ]; then
 	dbg() { debugfs -R "$1" $RD 2>/dev/null; }
 	IT=$(dbg "cat /etc/vibeos/installed-to" | tr '\n' ' ')
 	echo "$IT" | grep -q "kind=nested name=linux mode=$EXP_MODE " && echo "$IT" | grep -q 'device=surya' && ok "installed-to: $IT" || bad "installed-to: '$IT'"
-	dbg "cat /etc/vibeos/system-image" | grep -q '^VERSION=1:0.1.3' && ok "system-image 1:0.1.3" || bad "system-image"
+	SVX=$(basename $SYSZIP | sed -n 's/^vibeos-system-\([0-9][0-9.]*\)-arm64.*/\1/p')
+	dbg "cat /etc/vibeos/system-image" | grep -qx "VERSION=1:${SVX:-0.1.3}" && ok "system-image 1:${SVX:-0.1.3}" || bad "system-image"
 	dbg "stat /old-root-marker" | grep -q '^Inode:' && bad "the old root's file is still there" || ok "no file of an earlier root"
 	if [ "${DRC:-}" = 0 ]; then
 		DD=$(dbg "ls /var/lib/vibeos/device/debs" | tr -s ' ' '\n' | grep '\.deb$' | sort | tr '\n' ' ')

@@ -4,11 +4,15 @@
 
    Usage:
      s10e-part [--sector-size N] show       DISK
-     s10e-part [--sector-size N] plan       DISK LINUX_GIB
-     s10e-part [--sector-size N] apply      DISK LINUX_GIB
-     s10e-part [--sector-size N] plan-whole DISK
-     s10e-part [--sector-size N] whole      DISK
+     s10e-part [--sector-size N] [--name NAME] plan       DISK LINUX_GIB
+     s10e-part [--sector-size N] [--name NAME] apply      DISK LINUX_GIB
+     s10e-part [--sector-size N] [--name NAME] plan-whole DISK
+     s10e-part [--sector-size N] [--name NAME] whole      DISK
      s10e-part [--sector-size N] nest       PARTITION ESP_MIB
+
+   --name NAME: the partition plan/apply and whole make (and look for) is
+   NAME instead of 'linux' (the S20 FE's boot looks for 'vibeos'): lower
+   case letters, digits and '_', up to 36, never 'userdata'.
 
    It is deliberately narrow.  apply only ever shrinks the last partition,
    'userdata', and adds one partition, 'linux', in the space freed behind
@@ -63,6 +67,9 @@
 #define MIN_LINUX_GIB 8
 #define MIN_USERDATA (UINT64_C (16) * GIB)
 #define NAME_UNITS 36           /* UTF-16 code units in an entry name */
+
+/* the name of the partition apply and whole make: --name, or 'linux' */
+static const char *pname = "linux";
 
 /* 0FC63DAF-8483-4772-8E79-3D69D8477DE4, in the on-disk mixed-endian
    byte order (first three fields little-endian).  */
@@ -563,7 +570,7 @@ cmd_plan (struct disk *d, const char *gib_arg, int apply)
   load_primary (d, &g);
 
   /* A re-flash finds the partition from last time and reuses it.  */
-  lx = find_named (&g, "linux");
+  lx = find_named (&g, pname);
   if (lx >= 0)
     {
       printf ("exists %d\n", lx + 1);
@@ -633,8 +640,8 @@ cmd_plan (struct disk *d, const char *gib_arg, int apply)
   fmt_size ((lx_end - lx_start + 1) * d->ss, sz2);
   printf ("userdata (#%d): %" PRIu64 "-%" PRIu64 " -> %" PRIu64 "-%" PRIu64
           " (%s)\n", ud + 1, ud_start, ud_end, ud_start, new_ud_end, sz1);
-  printf ("linux    (#%d): %" PRIu64 "-%" PRIu64 " (%s)\n",
-          slot + 1, lx_start, lx_end, sz2);
+  printf ("%-8s (#%d): %" PRIu64 "-%" PRIu64 " (%s)\n",
+          pname, slot + 1, lx_start, lx_end, sz2);
   printf ("backup GPT: %s\n", have_backup ? "present, will be updated"
           : "none, disk end left alone");
 
@@ -650,7 +657,7 @@ cmd_plan (struct disk *d, const char *gib_arg, int apply)
   {
     uint8_t *e = entry (&g, (uint32_t) slot);
     uint8_t *ue = entry (&g, (uint32_t) ud);
-    static const char nm[] = "linux";
+    const char *nm = pname;
     uint32_t ecrc;
 
     put64 (ue + 40, new_ud_end);
@@ -742,18 +749,18 @@ cmd_whole (struct disk *d, int apply)
   ud_start = entry_start (&g, (uint32_t) ud);
   ud_end = entry_end (&g, (uint32_t) ud);
 
-  lx = find_named (&g, "linux");
+  lx = find_named (&g, pname);
   if (lx >= 0)
     {
       lx_start = entry_start (&g, (uint32_t) lx);
       lx_end = entry_end (&g, (uint32_t) lx);
       if (memcmp (entry (&g, (uint32_t) lx), linux_type, 16) != 0)
-        die (1, "partition %d is named 'linux' but is not of the Linux"
-             " file system type; refusing", lx + 1);
+        die (1, "partition %d is named '%s' but is not of the Linux"
+             " file system type; refusing", lx + 1, pname);
       if (lx_start <= ud_end)
-        die (1, "'linux' (#%d, %" PRIu64 "-%" PRIu64 ") is not behind"
-             " userdata (ends at %" PRIu64 "); refusing", lx + 1, lx_start,
-             lx_end, ud_end);
+        die (1, "'%s' (#%d, %" PRIu64 "-%" PRIu64 ") is not behind"
+             " userdata (ends at %" PRIu64 "); refusing", pname, lx + 1,
+             lx_start, lx_end, ud_end);
     }
 
   /* Nothing but that linux may end at or after userdata's start.  */
@@ -768,7 +775,7 @@ cmd_whole (struct disk *d, int apply)
   if (new_end < ud_end)
     die (1, "userdata ends after the last usable LBA");
   if ((new_end - ud_start + 1) * d->ss < MIN_LINUX_GIB * GIB)
-    die (1, "linux would be smaller than %d GiB", MIN_LINUX_GIB);
+    die (1, "%s would be smaller than %d GiB", pname, MIN_LINUX_GIB);
 
   /* the backup, as in apply: kept in step only when it is really there */
   why = gpt_load (d, g.alt, &b);
@@ -785,14 +792,14 @@ cmd_whole (struct disk *d, int apply)
   if (lx >= 0)
     {
       fmt_size ((lx_end - lx_start + 1) * d->ss, sz1);
-      printf ("linux    (#%d): %" PRIu64 "-%" PRIu64 " (%s) -> deleted\n",
-              lx + 1, lx_start, lx_end, sz1);
+      printf ("%-8s (#%d): %" PRIu64 "-%" PRIu64 " (%s) -> deleted\n",
+              pname, lx + 1, lx_start, lx_end, sz1);
     }
   fmt_size ((ud_end - ud_start + 1) * d->ss, sz1);
   fmt_size ((new_end - ud_start + 1) * d->ss, sz2);
-  printf ("userdata (#%d): %" PRIu64 "-%" PRIu64 " (%s) -> linux %" PRIu64
-          "-%" PRIu64 " (%s)\n", ud + 1, ud_start, ud_end, sz1, ud_start,
-          new_end, sz2);
+  printf ("userdata (#%d): %" PRIu64 "-%" PRIu64 " (%s) -> %s %" PRIu64
+          "-%" PRIu64 " (%s)\n", ud + 1, ud_start, ud_end, sz1, pname,
+          ud_start, new_end, sz2);
   printf ("backup GPT: %s\n", have_backup ? "present, will be updated"
           : "none, disk end left alone");
 
@@ -807,7 +814,7 @@ cmd_whole (struct disk *d, int apply)
   /* ---- every check passed: build the new table in memory ---- */
   {
     uint8_t *ue = entry (&g, (uint32_t) ud);
-    static const char nm[] = "linux";
+    const char *nm = pname;
     uint32_t ecrc;
 
     if (lx >= 0)
@@ -1019,13 +1026,14 @@ static void __attribute__ ((noreturn))
 usage (void)
 {
   fputs ("usage: s10e-part [--sector-size N] show DISK\n"
-         "       s10e-part [--sector-size N] plan DISK LINUX_GIB\n"
-         "       s10e-part [--sector-size N] apply DISK LINUX_GIB\n"
-         "       s10e-part [--sector-size N] plan-whole DISK\n"
-         "       s10e-part [--sector-size N] whole DISK\n"
+         "       s10e-part [--sector-size N] [--name NAME] plan DISK LINUX_GIB\n"
+         "       s10e-part [--sector-size N] [--name NAME] apply DISK LINUX_GIB\n"
+         "       s10e-part [--sector-size N] [--name NAME] plan-whole DISK\n"
+         "       s10e-part [--sector-size N] [--name NAME] whole DISK\n"
          "       s10e-part [--sector-size N] nest PARTITION ESP_MIB\n"
          "--sector-size only applies to image files (default 4096);\n"
-         "a block device's own size is always used.\n", stderr);
+         "a block device's own size is always used.\n"
+         "--name: the partition made instead of 'linux'.\n", stderr);
   exit (1);
 }
 
@@ -1046,6 +1054,21 @@ main (int argc, char **argv)
         die (1, "bad --sector-size '%s'", argv[a + 1]);
       ss_opt = (uint32_t) v;
       a += 2;
+    }
+  if (a + 1 < argc && strcmp (argv[a], "--name") == 0)
+    {
+      const char *n = argv[a + 1];
+      size_t k = strlen (n);
+
+      if (k == 0 || k > NAME_UNITS
+          || strspn (n, "abcdefghijklmnopqrstuvwxyz0123456789_") != k
+          || strcmp (n, "userdata") == 0)
+        die (1, "bad --name '%s' (a-z, 0-9, '_', up to %d; not userdata)",
+             n, NAME_UNITS);
+      pname = n;
+      a += 2;
+      if (argc - a < 2 || strcmp (argv[a], "show") == 0 || strcmp (argv[a], "nest") == 0)
+        usage ();
     }
   if (argc - a < 2)
     usage ();

@@ -23,7 +23,21 @@ case $DEV in
 s10e) KINDS=part ;;		# U-Boot boots the partition named linux
 poco) KINDS=nested ;;		# U-Boot (in BOOT) boots the GPT inside the partition named linux
 s5e)  KINDS=image ;;		# the initramfs maps the image file in Android's data by its extents
+s20)  KINDS=part ;;		# the initramfs (in the kernel U-Boot starts from BOOT) boots the partition named vibeos
 esac
+# the power-on logo (s10e-logo: up_param's logo.jpg and the two unlocked-bootloader warnings from boot-logo/, every
+# other picture kept; never a reason to fail): the S10e's and the S20's
+put_logo() {
+	chmod 755 $T-logo
+	[ -b $BY/up_param ] || return 0
+	OUT=$($T-logo apply $BY/up_param $T-boot-logo 2> $T-logo.err)
+	case $?:$OUT in
+	0:same) say "  the power-on logo is Debian's already" ;;
+	0:written*) say "  Debian's power-on logo" ;;
+	1:*) say "  power-on logo left as it was: $(cat $T-logo.err)" ;;
+	*) say "  WARNING: the power-on logo did not write: $(cat $T-logo.err)" ;;
+	esac
+}
 
 # the Tab S5e's root, an image file in Android's data, is opened the way its initramfs opens it: dm-linear over the
 # file's extents on userdata, never through Android's file system (Linux writes to those blocks directly, and the
@@ -59,11 +73,28 @@ open_image_raw() {
 case "$ACTION" in
 find)
 	[ -n "$BY" ] || die "no partitions by name"
+	# "ready" is only this run's (updater-script reads it: the S20's first run below)
+	[ ! -f $P ] || { grep -v '^ready=' $P > $T-prop.new; cat $T-prop.new > $P; rm -f $T-prop.new; }
 	find_root
+	if [ -z "$KIND" ] && [ $DEV = s20 ]; then
+		# The S20 FE's first run, before the system zip: the phone checked (userdata, a BOOT that holds the boot
+		# image, up_param) and nothing written to it; S20READY lets the system zip offer the whole phone (see
+		# system-install.sh), and the second run of this zip, after the system zip, installs
+		[ -e $BY/userdata ] || die "no VibeOS system and no userdata: nothing this zip can install onto"
+		b=$(part boot) || die "no boot partition"
+		IB=$(grep '^boot ' $SUMS | cut -d' ' -f2)
+		[ -n "$IB" ] && [ $(($(blocks4k $b) * 4096)) -ge $IB ] || die "the boot partition is smaller than the boot image"
+		[ -b $BY/up_param ] || say "  (no up_param: the power-on logo will stay as it is)"
+		echo device=s20 > /tmp/vibeos-ready-s20 || die "cannot write /tmp/vibeos-ready-s20"
+		say "  this phone can take VibeOS; nothing was changed"
+		put ready "Now: Apply update, the VibeOS system zip (Whole device: it ERASES Android data), then this zip again."
+		exit 0
+	fi
 	[ -n "$KIND" ] || die "no VibeOS system on this device: install the VibeOS system zip first"
 	what() { case $1 in image) echo "an image file" ;; nested) echo "the root inside a partition's own GPT" ;; *) echo "a partition" ;; esac; }
 	[ "$KIND" = "$KINDS" ] || die "the system is in $(what $KIND) ($NAME$IMGF); this device boots only $(what $KINDS): install the VibeOS system zip again and choose that. Nothing was changed"
 	[ $DEV != s10e ] || [ "$NAME" = linux ] || die "the system is in '$NAME'; the S10e boots only the partition named linux"
+	[ $DEV != s20 ] || [ "$NAME" = vibeos ] || die "the system is in '$NAME'; the S20 FE boots only the partition named vibeos"
 	put kind $KIND; put name "$NAME"; put image "$IMGF"; put dev "$DEVP"
 	say "  the system: $(case $KIND in image) echo "$IMGF" ;; nested) echo "the root inside '$NAME'" ;; *) echo "partition '$NAME'" ;; esac)"
 	;;
@@ -121,16 +152,7 @@ boot)
 		# boot-logo/, every other picture kept; not a reason to fail). Then U-Boot to boot when Android is gone
 		# (no userdata: a whole-phone install), and to recovery, last: until then a failure leaves LineageOS
 		# recovery to try again. Each read back.
-		chmod 755 $T-logo
-		if [ -b $BY/up_param ]; then
-			OUT=$($T-logo apply $BY/up_param $T-boot-logo 2> $T-logo.err)
-			case $?:$OUT in
-			0:same) say "  the power-on logo is Debian's already" ;;
-			0:written*) say "  Debian's power-on logo" ;;
-			1:*) say "  power-on logo left as it was: $(cat $T-logo.err)" ;;
-			*) say "  WARNING: the power-on logo did not write: $(cat $T-logo.err)" ;;
-			esac
-		fi
+		put_logo
 		UB=$(($(grep '^uboot ' $SUMS | cut -d' ' -f2) / 4096))
 		[ $UB -gt 0 ] || die "no sum for uboot"
 		# (in the session of a whole-device install userdata keeps its by-name link until the next boot)
@@ -192,6 +214,25 @@ boot)
 		r=$(part recovery) && OB=$(grep '^oldrecovery ' $SUMS | cut -d' ' -f2) && [ -n "$OB" ] &&
 			[ "$(head -c $OB $r | sha256sum | cut -d' ' -f1)" = "$(grep '^oldrecovery ' $SUMS | cut -d' ' -f3)" ] &&
 			say "  NOTE: recovery still holds the earlier U-Boot: flash LineageOS's recovery.img there with fastboot"
+		;;
+	s20)
+		# The power-on logo, then BOOT, last (until then a failure leaves BOOT as it was, and LineageOS Recovery to
+		# try again): the boot image (the stock header and DT table, the shim with U-Boot as its kernel, the FIT of
+		# Linux, its initramfs built in, as its ramdisk), the rest of BOOT zeros, read back. RECOVERY is not written:
+		# LineageOS Recovery stays there, the way back (U-Boot's menu: Volume Down at power-on). Nor dtbo: S-Boot
+		# lays it over that DT table and hands U-Boot the memory and bootargs from the result
+		put_logo
+		b=$(part boot) || die "no boot partition"
+		guard $b
+		IB=$(grep '^boot ' $SUMS | cut -d' ' -f2)
+		[ -n "$IB" ] && [ $((IB % 4096)) = 0 ] || die "no sum for boot"
+		n=$(blocks4k $b)
+		[ $((n * 4096)) -ge $IB ] || die "the boot partition ($n blocks) is smaller than the boot image ($IB bytes)"
+		say "  U-Boot and Linux to boot"
+		dd if=$T-boot.img of=$b bs=1048576 2>/dev/null || die "cannot write the boot partition"
+		[ $((n * 4096)) = $IB ] || dd if=/dev/zero of=$b bs=4096 seek=$((IB / 4096)) count=$((n - IB / 4096)) 2>/dev/null ||
+			die "cannot clear the rest of boot"
+		check $b boot $SUMS
 		;;
 	s5e)
 		# The recovery partition: U-Boot (dual boot) and LineageOS recovery in its first 34 MiB, Linux (kernel

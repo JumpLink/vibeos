@@ -42,7 +42,8 @@ libgmobile0
 libgmobile-common
 gir1.2-gm-0
 gir1.2-manette-0.2
-# what GNOME Shell mobile (/opt/gnome-mobile) imports and Debian's gnome-shell does not pull in, and the terminal
+# what GNOME Shell mobile (/opt/gnome-mobile) imports and Debian's gnome-shell does not pull in. No terminal here: since
+# 0.1.4.1 VibeOS's own (vibeos-terminal) takes GNOME Console's place
 gir1.2-camel-1.2
 gir1.2-colord-1.0
 gir1.2-ecal-2.0
@@ -58,4 +59,3 @@ gir1.2-ical-3.0
 gir1.2-lfb-0.0
 libgnome-desktop-3-21
 libgnome-menu-3-0
-gnome-console

@@ -10,8 +10,14 @@
 #            underscores between them): see the end
 #   NEWDEV   (environment) a device zip for a second session on the same disk, alone, over the system the first one
 #            installed (a phone already on VibeOS): see the end
-#   DEVICE   s10e | s5e (DEVZIP's device; "-" runs no device zip). The POCO's zips: zip-test-poco.sh (its device
-#            zip writes boot, dtbo and vbmeta of the POCO's sizes, which this S10e table cannot hold)
+#   DEVICE   s10e | s5e | s20 (DEVZIP's device; "-" runs no device zip). The POCO's zips: zip-test-poco.sh (its
+#            device zip writes boot, dtbo and vbmeta of the POCO's sizes, which this S10e table cannot hold)
+#   s20 (DEVICE, or S20=1 with "-"): the Galaxy S20 FE's table instead (work/test/sda-real-s20.img: gpt-model.py
+#            of the first MiB of a stock S20's UFS LUN 0, its GUIDs replaced), getprop answering r8s, and its
+#            partition named vibeos: PRE fresh, existing (an empty "vibeos" #33) or wholed (userdata is "vibeos").
+#            Its whole-phone install needs the device zip's first run before the system zip (PREDEV=1: it must
+#            change nothing and leave /tmp/vibeos-ready-s20); without it the system zip must refuse
+#            (EXPECT=refused: no keys, the table and every partition as they were, the error naming the device zip)
 # The test zips differ from the real ones in: vibeos-part (an x86-64 static build of the same source: qemu-user does
 # not pass BLKPG_RESIZE_PARTITION), one line of vibeos-lib.sh (BY: the loop device's by-name links), and in the
 # device zip's updater-script the device check and the final setprop. Touches only work/test and its loop/dm devices.
@@ -29,24 +35,35 @@ KEYS=
 while [ $# -gt 0 ] && [ "$1" != -- ]; do KEYS="$KEYS $1"; shift; done
 shift; DEVICE=${1:--}
 case $DEVICE in
-s10e|s5e|-) ;;
+s10e|s5e|s20|-) ;;
 poco) echo "the POCO's zips: zip-test-poco.sh (a POCO-shaped disk; its case existing is this table's nested)" >&2; exit 2 ;;
-*) echo "DEVICE: s10e | s5e | -" >&2; exit 2 ;;
+*) echo "DEVICE: s10e | s5e | s20 | -" >&2; exit 2 ;;
 esac
+# the table's partitions: efs, sec_efs and radio (EFSN), up_param, boot, recovery, misc, metadata, userdata, the one
+# PRE existing makes (PNEW); the name the installers give VibeOS's partition (PNAME; HOSTN: the GPT tool's option)
+GPTM=sda-real.img EFSN="3 7 16" PUP=5 PBOOT=14 PREC=15 PMISC=19 PMETA=29 PUD=31 PNEW=32 PNAME=linux HOSTN= TABLE=s10e
+BYN="3:efs 5:up_param 7:sec_efs 14:boot 15:recovery 16:radio 19:misc 29:omr 31:userdata"
+if [ $DEVICE = s20 ] || [ "${S20:-}" = 1 ]; then
+	GPTM=sda-real-s20.img EFSN="1 2 15" PUP=4 PBOOT=13 PREC=14 PMISC=19 PMETA=25 PUD=32 PNEW=33 PNAME=vibeos HOSTN="--name vibeos" TABLE=s20
+	BYN="1:efs 2:sec_efs 3:param 4:up_param 13:boot 14:recovery 15:radio 19:misc 25:metadata 32:userdata"
+	case $PRE in fresh|existing|wholed) ;; *) echo "the S20's table: PRE fresh, existing or wholed" >&2; exit 2 ;; esac
+fi
 [ "$DEVZIP" = - ] || DEVZIP=$(realpath $DEVZIP)
 [ -z "${AGAIN:-}" ] || [ -z "${NEWDEV:-}" ] || { echo "AGAIN or NEWDEV, not both" >&2; exit 2; }
 [ -z "${NEWDEV:-}" ] || { NEWDEV=$(realpath $NEWDEV); [ "$DEVZIP" != - ] || { echo "NEWDEV needs a first device zip" >&2; exit 2; }; }
-HOST=$W/s10e-part-x86static
+HOST=${ZT_PART:-$W/s10e-part-x86static}	# ZT_PART: another static x86-64 build of src/s10e-part.c
+[ -s $W/$GPTM ] || { echo "no $W/$GPTM (test/gpt-model.py makes the S20's)" >&2; exit 2; }
 F=$W/t${ID:+-$ID}; rm -rf $F; mkdir -p $F
 [ -z "$ID" ] || [ -d $R ] || { sudo -n rsync -a --exclude='/sideload/*' --exclude='/tmp/*' $W/r/ $R.new/ && sudo -n mv $R.new $R; } || exit 1
 FAILS=0
 ok() { echo "  ok: $*"; }
 bad() { echo "  FAIL: $*"; FAILS=$((FAILS + 1)); }
-L= WATCH=
+L= WATCH= HOLD=
 VTD=vtdata$$ VTM=vtmeta$$ VTT=vibeostest$$	# dm names of this run only
 inchroot() { sudo -n sh -c 'for p in /proc/[0-9]*; do case "$(readlink $p/root 2>/dev/null)" in '"$R"'|'"$R"'/*) echo ${p#/proc/} ;; esac; done'; }
 cleanup() {
 	set +e
+	unhold
 	[ -n "$WATCH" ] && kill $WATCH 2>/dev/null
 	for k in $(inchroot); do sudo -n kill -9 $k 2>/dev/null; done
 	sleep 1
@@ -67,11 +84,11 @@ cleanup() {
 }
 trap cleanup EXIT
 echo "==== $(basename $SYSZIP) + $(basename $DEVZIP) pre=$PRE keys=[$KEYS ] device=$DEVICE"
-rm -f $D; cp --sparse=always $W/sda-real.img $D
+rm -f $D; cp --sparse=always $W/$GPTM $D
 case $PRE in
 fresh) ;;
-existing|nested) $HOST apply $D 40 | tail -n1 | sed 's/^/  pre: /' ;;
-wholed) $HOST whole $D | tail -n1 | sed 's/^/  pre: /' ;;
+existing|nested) $HOST $HOSTN apply $D 40 | tail -n1 | sed 's/^/  pre: /' ;;
+wholed) $HOST $HOSTN whole $D | tail -n1 | sed 's/^/  pre: /' ;;
 esac
 L=$(sudo -n losetup -f --show -P --sector-size 4096 $D) || exit 1
 case $L in /dev/loop[0-9]*) ;; *) echo "losetup gave $L" >&2; exit 1 ;; esac
@@ -83,9 +100,9 @@ if [ $PRE = nested ]; then
 		sudo -n sfdisk -q $(p 32) > /dev/null || { echo "sfdisk failed" >&2; exit 1; }
 	ok "pre: #32 carries a GPT (ESP 480 MiB at block 2048, root 10 GiB at block 124928)"
 fi
-for n in 14 15; do sudo -n dd if=/dev/urandom of=$(p $n) bs=1M count=1 status=none; done
-sudo -n dd if=/dev/zero of=$(p 19) bs=1M count=1 status=none	# misc: no bootloader message (recovery cleared it)
-for n in 3 7 16; do sudo -n dd if=/dev/urandom of=$(p $n) bs=1M count=1 status=none; done	# efs sec_efs radio
+for n in $PBOOT $PREC; do sudo -n dd if=/dev/urandom of=$(p $n) bs=1M count=1 status=none; done
+sudo -n dd if=/dev/zero of=$(p $PMISC) bs=1M count=1 status=none	# misc: no bootloader message (recovery cleared it)
+for n in $EFSN; do sudo -n dd if=/dev/urandom of=$(p $n) bs=1M count=1 status=none; done	# efs sec_efs radio
 # up_param: a copy of an S10e's (UP_PARAM_IMG), or a stand-in tar with the three pictures the device zip replaces
 UPP=${UP_PARAM_IMG:-}
 if [ -z "$UPP" ]; then
@@ -93,21 +110,21 @@ if [ -z "$UPP" ]; then
 	for j in logo.jpg svb_orange.jpg booting_warning.jpg other.jpg; do head -c 4096 /dev/urandom > $W/upp/$j; done
 	tar -C $W/upp -cf $UPP logo.jpg svb_orange.jpg booting_warning.jpg other.jpg
 fi
-sudo -n dd if=$UPP of=$(p 5) bs=1M status=none conv=fsync
+sudo -n dd if=$UPP of=$(p $PUP) bs=1M status=none conv=fsync
 UPB=$W/up_param-before.img UPA=$W/up_param-after.img
-sudo -n dd if=$(p 5) of=$UPB bs=1M status=none
+sudo -n dd if=$(p $PUP) of=$UPB bs=1M status=none
 sumof() { sudo -n dd if=$1 bs=1M count=${2:-8} status=none | sha256sum | cut -d' ' -f1; }
 declare -A BEFORE
-for n in $(seq 1 32); do [ -b $(p $n) ] && BEFORE[$n]=$(sumof $(p $n)); done
+for n in $(seq 1 40); do [ -b $(p $n) ] && BEFORE[$n]=$(sumof $(p $n)); done
 dm2() { local n=$(sudo -n blockdev --getsz $2) h; h=$((n / 2)); printf '0 %s linear %s 0\n%s %s linear %s %s\n' $h $2 $h $((n - h)) $2 $h | sudo -n dmsetup create $1; }
-UDN=31; [ $PRE = wholed ] && UDN=
+UDN=$PUD; [ $PRE = wholed ] && UDN=
 if [ -n "$UDN" ]; then
 	# Android's data: ext4 here (the S10e's is f2fs; the Tab S5e's ext4, which its image file needs)
-	dm2 $VTD $(p 31) && sudo -n udevadm settle && sudo -n mkfs.ext4 -q -F -E nodiscard /dev/mapper/$VTD &&
+	dm2 $VTD $(p $PUD) && sudo -n udevadm settle && sudo -n mkfs.ext4 -q -F -E nodiscard /dev/mapper/$VTD &&
 		sudo -n mount /dev/mapper/$VTD $R/data && sudo -n mkdir -p $R/data/media/0 || { echo "harness: no /data on vtdata" >&2; exit 1; }
 	echo "  (harness: /data on $VTD)"
 fi
-dm2 $VTM $(p 29) && sudo -n udevadm settle && sudo -n mkfs.ext4 -q -F /dev/mapper/$VTM &&
+dm2 $VTM $(p $PMETA) && sudo -n udevadm settle && sudo -n mkfs.ext4 -q -F /dev/mapper/$VTM &&
 	sudo -n mount /dev/mapper/$VTM $R/metadata || { echo "harness: no /metadata on vtmeta" >&2; exit 1; }
 # on the phone an unmount lets go of the partition; here the dm device would hold it (make_f2fs and mke2fs refuse
 # a device in use), so it goes once the installer has unmounted its file system
@@ -117,7 +134,7 @@ dm2 $VTM $(p 29) && sudo -n udevadm settle && sudo -n mkfs.ext4 -q -F /dev/mappe
 	until sudo -n dmsetup remove ${m#*:} 2>/dev/null; do sleep 0.2; done
 	# what the dm device wrote went past the partition's own page cache, which still holds the blocks the sums
 	# above read: dropped, as a phone (one block device for /data, no dm in between) never needs
-	sudo -n blockdev --flushbufs $(p $( [ ${m%%:*} = data ] && echo 31 || echo 29))
+	sudo -n blockdev --flushbufs $(p $( [ ${m%%:*} = data ] && echo $PUD || echo $PMETA))
 	echo "  (harness: ${m%%:*} unmounted by the installer, ${m#*:} released)"
 	# a later mount of /data (the S5e's device zip) sees userdata itself
   done ) &
@@ -127,21 +144,50 @@ sudo -n mount -t tmpfs -o size=3g,mode=1777 tmpfs $R/tmp
 sudo -n mkdir -p $R/t/bin $R/t/by-name; sudo -n chown -R $(id -u):$(id -g) $R/t $R/tmp
 sudo -n sh -c "rm -rf $R/t/by-name/*"
 # by-name as ueventd made it at boot: a partition the install makes or renames gets no link in this session
-BYN="3:efs 5:up_param 7:sec_efs 14:boot 15:recovery 16:radio 19:misc 29:omr 31:userdata"
-case $PRE in existing|nested) BYN="$BYN 32:linux" ;; wholed) BYN=$(echo $BYN | sed 's/31:userdata/31:linux/') ;; esac
-for n in $BYN; do ln -sfn $(p ${n%%:*}) $R/t/by-name/${n#*:}; done
+case $PRE in existing|nested) BYN="$BYN $PNEW:$PNAME" ;; wholed) BYN=$(echo $BYN | sed "s/$PUD:userdata/$PUD:$PNAME/") ;; esac
+# The links lead to nodes of the harness's own in recovery's /tmp, named as the kernel names the partitions
+# (vtblk/loop0pN), not to /dev/loop0pN: recovery's toybox umount frees the loop device of any file system whose
+# device name starts with /dev/loop (LOOP_CLR_FD), and on the S10e's second session (AGAIN, 2026-11-24) the system
+# zip's umount of the /data it had mounted from /dev/loop0p31 took the whole fake disk with it. A phone's partitions
+# are never loop devices. vtblk () makes them again at a session's start and after each zip, as ueventd does after a
+# table re-read: the system zip's new and whole re-read the table, the kernel gives every partition a new minor, and
+# a node left from before points at nothing (the S20's device zip, 2026-11-24: "cannot write the boot partition") or,
+# once a minor is given out again, at another partition
+vtblk() {
+	local n mm old
+	old=$(ls -l $R/tmp/vtblk 2>/dev/null | awk '/^b/{print $NF, $5, $6}')
+	sudo -n rm -rf $R/tmp/vtblk; sudo -n mkdir -p $R/tmp/vtblk
+	for n in $(seq 1 40); do
+		[ -b $(p $n) ] || continue
+		mm=$(stat -L -c '%t %T' $(p $n))
+		sudo -n mknod $R/tmp/vtblk/${L##*/}p$n b $((0x${mm% *})) $((0x${mm#* })) || exit 1
+	done
+	[ -z "$old" ] || [ "$old" = "$(ls -l $R/tmp/vtblk | awk '/^b/{print $NF, $5, $6}')" ] ||
+		echo "  (harness: the partitions' numbers changed: their nodes made again)"
+}
+vtblk
+for n in $BYN; do ln -sfn /tmp/vtblk/${L##*/}p${n%%:*} $R/t/by-name/${n#*:}; done
+# Recovery always has partitions in use, so nothing re-reads the table during its session (BLKRRPART fails with
+# EBUSY): vibeos-part edits the kernel's table in place with BLKPG, and every other partition keeps its node. The
+# host's udev re-reads a disk whose writer closed it, which gives every partition a new minor in the middle of a zip
+# (the S10e's new partition, 2026-11-24: "cannot format userdata" on a node from before). A reader on partition 1 for
+# each session keeps it from doing that, as recovery's mounts do; the checks from the host let go of it first
+hold() { sudo -n sh -c "exec sleep infinity < $(p 1)" & HOLD=$!; sleep 1; }
+unhold() { [ -z "$HOLD" ] || { kill $HOLD 2>/dev/null; wait $HOLD 2>/dev/null; HOLD=; }; }
+hold
 # a second recovery session (AGAIN, NEWDEV), as after a restart: the device zip's dm map over userdata (the Tab
 # S5e's root, opened by its extents, which the zip leaves in place) is gone, and ueventd links the same partitions
-# by the names they have now, the one the first session made or renamed to linux among them
+# by the names they have now, the one the first session made or renamed to linux (vibeos) among them
 new_session() {
 	local n nm d
+	vtblk; hold
 	for d in $(sudo -n dmsetup ls 2>/dev/null | awk '/^vibeos[0-9]/{print $1}'); do
 		sudo -n dmsetup deps -o devname $d 2>/dev/null | grep -q "(${L##*/}p" && sudo -n dmsetup remove $d && echo "  (harness: the restart drops the zip's dm map $d)"
 	done
 	sudo -n sh -c "rm -rf $R/t/by-name/*"
-	for n in $( { for x in $BYN; do echo ${x%%:*}; done; $HOST show $D | awk '$6=="linux"{print $1}'; } | sort -nu); do
+	for n in $( { for x in $BYN; do echo ${x%%:*}; done; $HOST show $D | awk -v n=$PNAME '$6==n{print $1}'; } | sort -nu); do
 		nm=$($HOST show $D | awk -v n=$n '$1==n{print $6}')
-		[ -z "$nm" ] || ln -sfn $(p $n) $R/t/by-name/$nm
+		[ -z "$nm" ] || ln -sfn /tmp/vtblk/${L##*/}p$n $R/t/by-name/$nm
 	done
 	echo "  (harness: by-name in the new session: $(ls $R/t/by-name | tr '\n' ' '))"
 }
@@ -158,6 +204,11 @@ esac
 echo "/dev/input/event2: EV_SYN       SYN_REPORT           00000000"
 EOF
 chmod 755 $R/t/bin/getevent
+rm -f $R/t/bin/getprop
+if [ $TABLE = s20 ]; then
+	printf '#!/system/bin/sh\ncase $1 in ro.product.device|ro.build.product) echo r8s ;; *) exec /system/bin/getprop "$@" ;; esac\n' > $R/t/bin/getprop
+	chmod 755 $R/t/bin/getprop
+fi
 : > $R/t/keys; for k in $KEYS; do echo $k >> $R/t/keys; done
 # the test copies of the zips
 redirect_lib() {
@@ -186,7 +237,7 @@ prep_dev() {	# ZIP NAME: the test copy of a device zip, /sideload/NAME.zip
 	(cd $Y && unzip -q -o $1 vibeos-lib.sh META-INF/com/google/android/updater-script)
 	redirect_lib $Y/vibeos-lib.sh
 	U=$Y/META-INF/com/google/android/updater-script
-	sed -i -e 's#^assert(.*#assert("x" == "x" ||#' -e 's#^run_program("/system/bin/setprop", "sys.powerctl", "reboot,recovery");$#run_program("/system/bin/echo", "TEST: here recovery would restart");#' $U
+	sed -i -e 's#^assert(.*#assert("x" == "x" ||#' -e 's#^run_program("/system/bin/setprop", "sys.powerctl", "reboot\(,recovery\)\{0,1\}");$#run_program("/system/bin/echo", "TEST: here recovery would restart");#' $U
 	grep -q '^assert("x" == "x" ||' $U && ! grep -q setprop $U || { echo "updater-script not redirected" >&2; exit 1; }
 	# dmlinear: qemu-user garbles DM_TABLE_LOAD; an x86-64 static build of the same source runs here
 	X=; unzip -Z1 $1 | grep -qx dmlinear && { cp $W/dmlinear-x86static $Y/dmlinear; X=dmlinear; }
@@ -204,19 +255,47 @@ run() {	# ZIP LABEL
 	grep -v -E 'linker|realpath|^$' $F/$2.err | tail -n 6 | sed 's/^/  stderr: /'
 	return $RC
 }
+# partitions changed since BEFORE but userdata and metadata (the harness makes their file systems after it)
+changed() { local n ch=; for n in $(seq 1 40); do [ -n "${BEFORE[$n]:-}" ] || continue
+	case $n in $PUD|$PMETA) continue ;; esac; [ "$(sumof $(p $n))" = "${BEFORE[$n]}" ] || ch="$ch $n"; done; echo "$ch"; }
+SHOW0=$($HOST show $D)
+if [ -n "${PREDEV:-}" ]; then
+	[ "$DEVZIP" != - ] || { echo "PREDEV needs a device zip" >&2; exit 2; }
+	echo "---- pre: the device zip before the system zip"
+	run dev.zip predevice; PRC=$?
+	[ $PRC = 0 ] && ok "pre: device zip succeeded" || bad "pre: device zip failed: $(grep '^error=' $R/tmp/vibeos.prop)"
+	grep -qx device=s20 $R/tmp/vibeos-ready-s20 2>/dev/null && ok "pre: /tmp/vibeos-ready-s20" || bad "pre: no /tmp/vibeos-ready-s20"
+	sed -n 's/^ui_print \?//p' $F/predevice.screen | grep -q 'the VibeOS system zip' && ok "pre: it says the system zip comes next" || bad "pre: no word of the system zip"
+	sudo -n blockdev --flushbufs $L
+	ch=$(changed); [ -z "$ch" ] && [ "$($HOST show $D)" = "$SHOW0" ] && ok "pre: the table and every partition as they were" || bad "pre: changed: table or$ch"
+	echo "---- the system zip"
+fi
 run sys.zip system; SRC=$?
 echo "  prop: $(tr '\n' ' ' < $R/tmp/vibeos.prop)"
+if [ "${EXPECT:-}" = refused ]; then
+	[ -z "$(cat $R/t/keys)" ] && ok "every key was read" || bad "keys left over: $(cat $R/t/keys | tr '\n' ' ')"
+	[ $SRC != 0 ] && grep -q '^error=.*device zip' $R/tmp/vibeos.prop && ok "system zip refused: $(grep '^error=' $R/tmp/vibeos.prop | cut -c7-90)..." ||
+		bad "system zip not refused (exit $SRC): $(grep '^error=' $R/tmp/vibeos.prop)"
+	[ ! -e $R/tmp/vibeos-ready-s20 ] || bad "a /tmp/vibeos-ready-s20 that no device zip wrote"
+	for k in $(inchroot); do bad "left a process: $(tr '\0' ' ' < /proc/$k/cmdline)"; sudo -n kill -9 $k; done
+	for m in dev sys proc; do sudo -n umount $R/$m; done
+	sudo -n blockdev --flushbufs $L
+	ch=$(changed); [ -z "$ch" ] && [ "$($HOST show $D)" = "$SHOW0" ] && ok "the table and every partition as they were" || bad "changed: table or$ch"
+	echo "== $FAILS failures"
+	exit $((FAILS > 0))
+fi
 [ -z "$(cat $R/t/keys)" ] && ok "every key was read" || bad "keys left over: $(cat $R/t/keys | tr '\n' ' ')"
 [ $SRC = 0 ] && ok "system zip succeeded" || bad "system zip failed: $(grep '^error=' $R/tmp/vibeos.prop)"
 DRC=-
+vtblk
 if [ $SRC = 0 ] && [ "$DEVZIP" != - ]; then run dev.zip device; DRC=$?; [ $DRC = 0 ] && ok "device zip succeeded" || bad "device zip failed: $(grep '^error=' $R/tmp/vibeos.prop)"; fi
 # data_free WHAT STRICT: Android's data can still be mounted in this session: nothing of the zips' holds userdata
 # (the Tab S5e's device zip opens its image file by a dm map over it, and must remove it), and, after an image install,
 # it mounts. Not STRICT (the first session's older device zip under NEWDEV): said, not failed
 data_free() {
 	local h held=
-	[ "$($HOST show $D | awk '$1==31{print $6}')" = userdata ] || return 0
-	for h in $(ls /sys/class/block/${L##*/}p31/holders 2>/dev/null); do
+	[ "$($HOST show $D | awk -v n=$PUD '$1==n{print $6}')" = userdata ] || return 0
+	for h in $(ls /sys/class/block/${L##*/}p$PUD/holders 2>/dev/null); do
 		[ "$(cat /sys/class/block/$h/dm/name 2>/dev/null)" = $VTD ] || held="$held $h($(cat /sys/class/block/$h/dm/name 2>/dev/null))"
 	done
 	if [ -n "$held" ]; then
@@ -227,7 +306,7 @@ data_free() {
 	ok "$1: userdata held by nothing of the zips"
 	if [ "$(grep '^kind=' $R/tmp/vibeos.prop | tail -n1 | cut -d= -f2)" = image ]; then
 		mkdir -p $F/mdata
-		if sudo -n mount -o ro $(p 31) $F/mdata 2>/dev/null; then sudo -n umount $F/mdata; ok "$1: Android's data mounts in the same session"
+		if sudo -n mount -o ro $(p $PUD) $F/mdata 2>/dev/null; then sudo -n umount $F/mdata; ok "$1: Android's data mounts in the same session"
 		else bad "$1: Android's data does not mount in the same session"; fi
 	fi
 }
@@ -237,26 +316,27 @@ for m in dev sys proc; do sudo -n umount $R/$m; done
 prop() { grep "^$1=" $R/tmp/vibeos.prop 2>/dev/null | tail -n1 | cut -d= -f2-; }
 KIND=$(prop kind) MODE=$(prop mode)
 # ---- checks from the host
+unhold
 sudo -n blockdev --flushbufs $L; sudo -n blockdev --rereadpt $L 2>/dev/null; sudo -n udevadm settle; sleep 1
 SHOW=$($HOST show $D)
-echo "  table: $(echo "$SHOW" | grep -E ' (userdata|linux) ' | awk '{printf "#%s %s %s %s; ", $1, $6, $4, $5}')"
-for n in 3 7 16; do [ "$(sumof $(p $n))" = "${BEFORE[$n]}" ] || bad "partition $n (efs/sec_efs/radio) changed"; done
+echo "  table: $(echo "$SHOW" | grep -E " (userdata|$PNAME) " | awk '{printf "#%s %s %s %s; ", $1, $6, $4, $5}')"
+for n in $EFSN; do [ "$(sumof $(p $n))" = "${BEFORE[$n]}" ] || bad "partition $n (efs/sec_efs/radio) changed"; done
 ok "efs, sec_efs, radio untouched"
 grep -i -E '([0-9a-f]{2}:){5}[0-9a-f]{2}|imei|serial' $F/*.screen && bad "an identifier on the screen" || ok "no identifiers on the screen"
 # the root, as the device would see it
 RD=
 case $KIND in
-part) RD=$(p $(echo "$SHOW" | awk '$6=="linux"{print $1}')) ;;
+part) RD=$(p $(echo "$SHOW" | awk -v n=$PNAME '$6==n{print $1}')) ;;
 nested) RD=$(sudo -n losetup -f --show -o $((124928 * 4096)) --sizelimit $((2621440 * 4096)) $(p 32)) ;;
 image)
 	# as the Tab S5e's initramfs: the extents the device zip wrote at the end of recovery, dm-linear over userdata
 	if [ "$DRC" = 0 ]; then
-		RP=$(p 15); n=$(cat /sys/class/block/$(basename $RP)/size)
+		RP=$(p $PREC); n=$(cat /sys/class/block/$(basename $RP)/size)
 		sudo -n dd if=$RP bs=512 skip=$((n - 1024)) count=1024 status=none | tr -d '\000' > $F/tail.txt
 		[ "$(head -n1 $F/tail.txt)" = "GTS4LV-EXTENTS 1" ] && grep -qx END $F/tail.txt && ok "extent list at the end of recovery ($(($(wc -l < $F/tail.txt) - 2)) extents)" || bad "no extent list"
-		sed '1d;/^END$/d' $F/tail.txt | awk -v d=$(p 31) 'BEGIN{s=0} {printf "%d %d linear %s %d\n", s, $3/512, d, $2/512; s+=$3/512}' | sudo -n dmsetup create $VTT && RD=/dev/mapper/$VTT
+		sed '1d;/^END$/d' $F/tail.txt | awk -v d=$(p $PUD) 'BEGIN{s=0} {printf "%d %d linear %s %d\n", s, $3/512, d, $2/512; s+=$3/512}' | sudo -n dmsetup create $VTT && RD=/dev/mapper/$VTT
 	else
-		sudo -n mount -o ro $(p 31) $F/m 2>/dev/null || { mkdir -p $F/m; sudo -n mount -o ro $(p 31) $F/m; }
+		sudo -n mount -o ro $(p $PUD) $F/m 2>/dev/null || { mkdir -p $F/m; sudo -n mount -o ro $(p $PUD) $F/m; }
 		RD=$(sudo -n losetup -f --show -r $F/m/lost+found/vibeos/rootfs.img)
 	fi ;;
 esac
@@ -281,22 +361,38 @@ fi
 case $KIND in nested) sudo -n losetup -d $RD ;; image) [ "$DRC" = 0 ] && sudo -n dmsetup remove $VTT || { sudo -n losetup -d $RD; sudo -n umount $F/m; } ;; esac
 # what the system zip did to the table and Android's data
 case $MODE in
-new) echo "$SHOW" | grep -q ' 32 .* linux ' && ok "new linux #32" || bad "no linux #32"
-     [ "$(sudo -n dd if=$(p 31) bs=1 skip=1080 count=2 status=none | od -An -tx1 | tr -d ' ')" = 53ef ] && ok "userdata formatted again (ext4, as it was)" || bad "userdata not formatted" ;;
-whole) [ "$(echo "$SHOW" | awk '$6=="linux"{print $1}')" = 31 ] && ! echo "$SHOW" | grep -q ' userdata ' && ok "userdata became linux #31" || bad "table" ;;
-existing|image) [ "$(echo "$SHOW" | grep -c ' linux ')" = "$( [ $PRE = fresh ] && echo 0 || echo 1)" ] && ok "table unchanged" || bad "table changed" ;;
+new) echo "$SHOW" | grep -q " $PNEW .* $PNAME " && ok "new $PNAME #$PNEW" || bad "no $PNAME #$PNEW"
+     [ "$(sudo -n dd if=$(p $PUD) bs=1 skip=1080 count=2 status=none | od -An -tx1 | tr -d ' ')" = 53ef ] && ok "userdata formatted again (ext4, as it was)" || bad "userdata not formatted" ;;
+whole) [ "$(echo "$SHOW" | awk -v n=$PNAME '$6==n{print $1}')" = $PUD ] && ! echo "$SHOW" | grep -q ' userdata ' && ok "userdata became $PNAME #$PUD" || bad "table" ;;
+existing|image) [ "$(echo "$SHOW" | grep -c " $PNAME ")" = "$( [ $PRE = fresh ] && echo 0 || echo 1)" ] && ok "table unchanged" || bad "table changed" ;;
 esac
 # the boot pieces
 same() { [ "$(sudo -n head -c $3 $1 | sha256sum)" = "$(unzip -p $DEVZIP $2 | head -c $3 | sha256sum)" ]; }
 if [ "$DRC" = 0 ]; then
 	case $DEVICE in
-	s10e)
-		same $(p 15) uboot.img 4194304 && ok "recovery = U-Boot" || bad "recovery"
-		if [ $MODE = whole ] || [ $PRE = wholed ]; then same $(p 14) uboot.img 4194304 && ok "boot = U-Boot (no Android)" || bad "boot"
-		else [ "$(sumof $(p 14))" = "${BEFORE[14]}" ] && ok "boot (Android's) untouched" || bad "boot changed"; fi
+	s10e|s20)
+		if [ $DEVICE = s10e ]; then
+			same $(p $PREC) uboot.img 4194304 && ok "recovery = U-Boot" || bad "recovery"
+			if [ $MODE = whole ] || [ $PRE = wholed ]; then same $(p $PBOOT) uboot.img 4194304 && ok "boot = U-Boot (no Android)" || bad "boot"
+			else [ "$(sumof $(p $PBOOT))" = "${BEFORE[$PBOOT]}" ] && ok "boot (Android's) untouched" || bad "boot changed"; fi
+		else
+			# the S20: BOOT = the zip's boot image (U-Boot and the kernel), the rest of BOOT zeros; LineageOS Recovery
+			# stays in RECOVERY; nothing else of the table changes but userdata (now vibeos), up_param and the
+			# harness's metadata
+			BB=$(unzip -p $DEVZIP boot.img | wc -c)
+			same $(p $PBOOT) boot.img $BB && [ -z "$(sudo -n tail -c +$((BB + 1)) $(p $PBOOT) | tr -d '\000' | head -c 1)" ] &&
+				ok "boot = the zip's boot.img ($BB bytes), the rest zeros" || bad "boot"
+			[ "$(sumof $(p $PREC))" = "${BEFORE[$PREC]}" ] && ok "recovery (LineageOS Recovery) untouched" || bad "recovery changed"
+			ch=; for n in $(seq 1 40); do
+				[ -n "${BEFORE[$n]:-}" ] || continue
+				case $n in $PBOOT|$PUP|$PMETA|$PUD|$PNEW) continue ;; esac
+				[ "$(sumof $(p $n))" = "${BEFORE[$n]}" ] || ch="$ch $n"
+			done
+			[ -z "$ch" ] && ok "every other partition untouched" || bad "partitions changed:$ch"
+		fi
 		# up_param, byte for byte: the zip's three pictures in, every other one, the order and the last KiB as before;
 		# an up_param that had them already is not written at all
-		sudo -n dd if=$(p 5) of=$UPA bs=1M status=none
+		sudo -n dd if=$(p $PUP) of=$UPA bs=1M status=none
 		pics() { local k=0 j; for j in logo.jpg svb_orange.jpg booting_warning.jpg; do
 			[ "$(tar -xOf $1 $j 2>/dev/null | sha256sum)" = "$(unzip -p $DEVZIP boot-logo/$j | sha256sum)" ] && k=$((k + 1)); done; echo $k; }
 		if [ "$(pics $UPB)" = 3 ]; then
@@ -312,8 +408,8 @@ if [ "$DRC" = 0 ]; then
 		fi ;;
 	s5e)
 		RB=$(unzip -p $DEVZIP recovery.img | wc -c)
-		same $(p 15) recovery.img $RB && ok "recovery = U-Boot + LineageOS recovery + Linux ($RB bytes)" || bad "recovery"
-		[ "$(sudo -n dd if=$(p 19) bs=32 count=1 status=none | tr -d '\000')" = boot-recovery ] && ok "misc: boot-recovery (keepmisc)" || bad "misc" ;;
+		same $(p $PREC) recovery.img $RB && ok "recovery = U-Boot + LineageOS recovery + Linux ($RB bytes)" || bad "recovery"
+		[ "$(sudo -n dd if=$(p $PMISC) bs=32 count=1 status=none | tr -d '\000')" = boot-recovery ] && ok "misc: boot-recovery (keepmisc)" || bad "misc" ;;
 	esac
 fi
 # AGAIN="KEYS": a second recovery session on this disk, the system zip alone, as when the device zip is left out or
@@ -323,11 +419,11 @@ fi
 if [ -n "${AGAIN:-}" ]; then
 	AGAIN=$(echo "$AGAIN" | tr '_,' '  ')
 	echo "---- again: the system zip alone, keys [$AGAIN ]"
-	RP=$(p 15); n=$(cat /sys/class/block/$(basename $RP)/size)
+	RP=$(p $PREC); n=$(cat /sys/class/block/$(basename $RP)/size)
 	tail512() { sudo -n dd if=$RP bs=512 skip=$((n - 1024)) count=1024 status=none; }
-	HAD=; [ "$(tail512 | head -c 14)" = GTS4LV-EXTENTS ] && HAD=1
+	HAD=; [ "$(tail512 | head -c 14 | tr -d '\000')" = GTS4LV-EXTENTS ] && HAD=1
 	B15=$(sudo -n head -c $((n * 512 - 524288)) $RP | sha256sum)
-	B19=$(sumof $(p 19))
+	B19=$(sumof $(p $PMISC))
 	sudo -n cp $R/tmp/vibeos.prop $F/vibeos-1.prop 2>/dev/null
 	sudo -n umount $R/tmp
 	sudo -n mount -t tmpfs -o size=3g,mode=1777 tmpfs $R/tmp; sudo -n chown $(id -u):$(id -g) $R/tmp
@@ -350,10 +446,10 @@ if [ -n "${AGAIN:-}" ]; then
 		echo "  (again: there was no extent list in recovery)"
 	fi
 	[ "$(sudo -n head -c $((n * 512 - 524288)) $RP | sha256sum)" = "$B15" ] && ok "again: the rest of recovery untouched" || bad "again: recovery changed before its last 512 KiB"
-	[ "$(sumof $(p 19))" = "$B19" ] && ok "again: misc untouched" || bad "again: misc changed"
-	for n2 in 3 7 16; do [ "$(sumof $(p $n2))" = "${BEFORE[$n2]}" ] || bad "again: partition $n2 (efs/sec_efs/radio) changed"; done
+	[ "$(sumof $(p $PMISC))" = "$B19" ] && ok "again: misc untouched" || bad "again: misc changed"
+	for n2 in $EFSN; do [ "$(sumof $(p $n2))" = "${BEFORE[$n2]}" ] || bad "again: partition $n2 (efs/sec_efs/radio) changed"; done
 	if [ "$(prop kind)" = image ]; then
-		mkdir -p $F/m2; sudo -n mount -o ro $(p 31) $F/m2 && {
+		mkdir -p $F/m2; sudo -n mount -o ro $(p $PUD) $F/m2 && {
 			IF=$F/m2/lost+found/vibeos/rootfs.img
 			sudo -n lsattr $IF 2>/dev/null | cut -d' ' -f1 | grep -q i && ok "again: the new image file is pinned" || bad "again: no pinned image file"
 			RD2=$(sudo -n losetup -f --show -r $IF) && { LBL=$(sudo -n blkid -o value -s LABEL $RD2); sudo -n losetup -d $RD2; }
@@ -369,18 +465,18 @@ fi
 open_rd() {	# TAG: the root as the device sees it, in RD
 	RD=
 	case $KIND in
-	part) RD=$(p $($HOST show $D | awk '$6=="linux"{print $1}')) ;;
+	part) RD=$(p $($HOST show $D | awk -v n=$PNAME '$6==n{print $1}')) ;;
 	image)
-		local RP=$(p 15) n
+		local RP=$(p $PREC) n
 		n=$(cat /sys/class/block/$(basename $RP)/size)
 		sudo -n dd if=$RP bs=512 skip=$((n - 1024)) count=1024 status=none | tr -d '\000' > $F/tail-$1.txt
 		[ "$(head -n1 $F/tail-$1.txt)" = "GTS4LV-EXTENTS 1" ] && grep -qx END $F/tail-$1.txt || return 1
-		sed '1d;/^END$/d' $F/tail-$1.txt | awk -v d=$(p 31) 'BEGIN{s=0} {printf "%d %d linear %s %d\n", s, $3/512, d, $2/512; s+=$3/512}' |
+		sed '1d;/^END$/d' $F/tail-$1.txt | awk -v d=$(p $PUD) 'BEGIN{s=0} {printf "%d %d linear %s %d\n", s, $3/512, d, $2/512; s+=$3/512}' |
 			sudo -n dmsetup create $VTT && RD=/dev/mapper/$VTT ;;
 	esac
 	[ -n "$RD" ]
 }
-close_rd() { [ $KIND != image ] || sudo -n dmsetup remove $VTT; sudo -n blockdev --flushbufs $(p 31) 2>/dev/null; sudo -n blockdev --flushbufs $L; }
+close_rd() { [ $KIND != image ] || sudo -n dmsetup remove $VTT; sudo -n blockdev --flushbufs $(p $PUD) 2>/dev/null; sudo -n blockdev --flushbufs $L; }
 marks() {	# the planted files and two of the system's, with owner, mode and content, from the root mounted at $F/mr
 	sudo -n sh -c "cd $F/mr && for f in home/user/vibeos-test-marker etc/NetworkManager/system-connections/vibeos-test.nmconnection \
 		etc/vibeos/installed-to etc/vibeos/system-image; do echo \"\$f \$(stat -c '%u:%g %a' \$f) \$(sha256sum < \$f | cut -d' ' -f1)\"; done"
@@ -416,9 +512,9 @@ if [ -n "${NEWDEV:-}" ]; then
 		[ $DRC2 != 0 ] || data_free "newdev: after the device zip" strict
 		echo "  newdev prop: $(tr '\n' ' ' < $R/tmp/vibeos.prop)"
 		grep -i -E '([0-9a-f]{2}:){5}[0-9a-f]{2}|imei|serial' $F/device2.screen && bad "newdev: an identifier on the screen" || true
-		[ "$(sudo -n dd if=$(p 19) bs=32 count=1 status=none | tr -d '\000')" = "$( [ $DEVICE = s5e ] && echo boot-recovery)" ] ||
-			bad "newdev: misc: '$(sudo -n dd if=$(p 19) bs=32 count=1 status=none | tr -d '\000')'"
-		for n2 in 3 7 16; do [ "$(sumof $(p $n2))" = "${BEFORE[$n2]}" ] || bad "newdev: partition $n2 (efs/sec_efs/radio) changed"; done
+		[ "$(sudo -n dd if=$(p $PMISC) bs=32 count=1 status=none | tr -d '\000')" = "$( [ $DEVICE = s5e ] && echo boot-recovery)" ] ||
+			bad "newdev: misc: '$(sudo -n dd if=$(p $PMISC) bs=32 count=1 status=none | tr -d '\000')'"
+		for n2 in $EFSN; do [ "$(sumof $(p $n2))" = "${BEFORE[$n2]}" ] || bad "newdev: partition $n2 (efs/sec_efs/radio) changed"; done
 		if [ $DRC2 = 0 ] && open_rd after && sudo -n mount -o ro -t ext4 $RD $F/mr; then
 			marks > $F/marks-after.txt; sudo -n umount $F/mr
 			cmp -s $F/marks-before.txt $F/marks-after.txt && ok "newdev: the user's file and NetworkManager connection kept (owner, mode, content), installed-to and system-image too" ||
@@ -458,9 +554,12 @@ EOF
 			bad "newdev: the root does not open or mount after it"
 		fi
 		case $DEVICE in
-		s10e) DEVZIP=$NEWDEV same $(p 15) uboot.img 4194304 && ok "newdev: recovery = the new zip's U-Boot" || bad "newdev: recovery" ;;
+		s10e) DEVZIP=$NEWDEV same $(p $PREC) uboot.img 4194304 && ok "newdev: recovery = the new zip's U-Boot" || bad "newdev: recovery" ;;
+		s20) BB=$(unzip -p $NEWDEV boot.img | wc -c)
+			DEVZIP=$NEWDEV same $(p $PBOOT) boot.img $BB && ok "newdev: boot = the new zip's boot.img" || bad "newdev: boot"
+			[ "$(sumof $(p $PREC))" = "${BEFORE[$PREC]}" ] && ok "newdev: recovery (LineageOS Recovery) untouched" || bad "newdev: recovery changed" ;;
 		s5e) RB=$(unzip -p $NEWDEV recovery.img | wc -c)
-			DEVZIP=$NEWDEV same $(p 15) recovery.img $RB && ok "newdev: recovery = the new zip's U-Boot + LineageOS recovery + Linux" || bad "newdev: recovery"
+			DEVZIP=$NEWDEV same $(p $PREC) recovery.img $RB && ok "newdev: recovery = the new zip's U-Boot + LineageOS recovery + Linux" || bad "newdev: recovery"
 			[ "$(unzip -p $NEWDEV recovery.img | sha256sum)" != "$(unzip -p $DEVZIP recovery.img | sha256sum)" ] && ok "newdev: (its recovery.img differs from the first zip's: the new init)" ;;
 		esac
 	fi
