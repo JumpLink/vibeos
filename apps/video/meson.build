@@ -5,9 +5,9 @@ add_project_arguments('-Wno-unused-parameter', '-Wno-missing-field-initializers'
                       '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')), language: 'c')
 
 # mpv plays (libmpv, its OpenGL renderer through epoxy); the window, its colours and its text are libvibeos's; ICU
-# names the tracks' languages
+# names the tracks' languages, and PulseAudio's client library sets the volume
 deps = [dependency('gtk4', version: '>= 4.14'), dependency('vibeos-1'), dependency('mpv'), dependency('epoxy'),
-        dependency('icu-uc'), meson.get_compiler('c').find_library('m')]
+        dependency('icu-uc'), dependency('libpulse-mainloop-glib'), meson.get_compiler('c').find_library('m')]
 
 executable('vibeos-video', 'main.c', dependencies: deps, install: true)
 i18n = import('i18n')

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-video\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 01:45+0100\n"
+"POT-Creation-Date: 2026-11-25 02:37+0100\n"
 "PO-Revision-Date: 2026-11-24 16:54+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Russian\n"
@@ -107,6 +107,14 @@ msgstr "В полноэкранном режиме не показывать в�
 #: main.c
 msgid "Settings"
 msgstr "Настройки"
+
+#: main.c
+msgid "Volume"
+msgstr "Громкость"
+
+#: main.c
+msgid "Brightness"
+msgstr "Яркость"
 
 #: main.c
 msgid "Back"
