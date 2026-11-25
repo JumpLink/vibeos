@@ -1,5 +1,6 @@
 /* cam-storage: see cam-storage.h. */
 #include "cam-storage.h"
+#include "cam-startup.h"
 
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <gio/gio.h>
@@ -251,7 +252,13 @@ thumbnail_thread (GTask *task, gpointer object, gpointer data, GCancellable *can
   int w = 0, h = 0;
 
   if (g_str_has_suffix (path, ".mp4"))
-    source = video_first_frame (path, &error);
+    {
+      /* a video's picture is GStreamer's; the thumbnail is asked for again when it has started */
+      if (cam_gst_ready ())
+        source = video_first_frame (path, &error);
+      else
+        g_set_error (&error, G_IO_ERROR, G_IO_ERROR_PENDING, "GStreamer has not started yet");
+    }
   else if (gdk_pixbuf_get_file_info (path, &w, &h))
     {
       /* decoded at the size it is shown, as Coil does */

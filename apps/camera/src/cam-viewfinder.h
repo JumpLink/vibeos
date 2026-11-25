@@ -25,6 +25,8 @@ typedef enum {
 G_DECLARE_FINAL_TYPE (CamViewfinder, cam_viewfinder, CAM, VIEWFINDER, GtkWidget)
 
 GtkWidget *cam_viewfinder_new          (GdkPaintable *paintable);
+/* the picture to show, once there is one (NULL until then: black) */
+void       cam_viewfinder_set_paintable (CamViewfinder *self, GdkPaintable *paintable);
 /* the frames' clockwise turn to upright, the mirror, contain or cover, and the frame size to expect */
 void       cam_viewfinder_set_geometry (CamViewfinder *self, int orientation, gboolean mirror, gboolean cover,
                                         int width, int height);

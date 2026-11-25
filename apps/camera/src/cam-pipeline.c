@@ -589,8 +589,6 @@ cam_pipeline_new (GError **error)
   gst_object_unref (self->rec_flip);
   gst_object_unref (self->rec_sink);
 
-  /* on the main thread, as gtk4paintablesink wants */
-  g_object_get (self->view, "paintable", &self->paintable, NULL);
   self->clock = gst_system_clock_obtain ();
   gst_pipeline_use_clock (GST_PIPELINE (self->pipeline), self->clock);
 
@@ -607,6 +605,9 @@ cam_pipeline_new (GError **error)
 GdkPaintable *
 cam_pipeline_get_paintable (CamPipeline *self)
 {
+  /* asked for on the main thread, as gtk4paintablesink wants (the pipeline itself is built on another) */
+  if (!self->paintable)
+    g_object_get (self->view, "paintable", &self->paintable, NULL);
   return self->paintable;
 }
 

@@ -30,8 +30,10 @@ typedef enum {
 #define CAM_TYPE_PIPELINE (cam_pipeline_get_type ())
 G_DECLARE_FINAL_TYPE (CamPipeline, cam_pipeline, CAM, PIPELINE, GObject)
 
-/* NULL if GStreamer lacks an element it needs (the message says which) */
+/* NULL if GStreamer lacks an element it needs (the message says which). May run on any thread (cam-startup.h);
+ * everything after it, and its signals, belong to the main thread. */
 CamPipeline  *cam_pipeline_new            (GError **error);
+/* the viewfinder's picture; main thread only */
 GdkPaintable *cam_pipeline_get_paintable  (CamPipeline *self);
 
 /* Streams `camera_id` at width × height (the source's own frame rate), or keeps streaming if it does already.

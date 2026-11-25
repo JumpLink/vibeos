@@ -274,7 +274,9 @@ const char *
 cam_flash_led (void)
 {
   static const char *const functions[] = { "torch", "flash" };
+  static GMutex lock;
   static gboolean looked;
+  g_autoptr(GMutexLocker) locker = g_mutex_locker_new (&lock);
 
   if (looked)
     return led_name;

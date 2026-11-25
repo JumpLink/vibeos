@@ -28,6 +28,14 @@ window.vibeos.cam-window {
   color: @cam_white;
 }
 
+/* the viewfinder's notice while there is no stream: what is being waited for, or what is missing */
+.cam-notice {
+  font-family: "VibeOS Roboto", Roboto, sans-serif;
+  font-size: 16sp;
+  font-weight: 400;
+  color: @cam_white;
+}
+
 /* the recording's duration: a red pill */
 .cam-duration {
   background-color: @cam_rec_red;

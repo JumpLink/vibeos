@@ -1,5 +1,6 @@
 /* cam-sounds: see cam-sounds.h. */
 #include "cam-sounds.h"
+#include "cam-startup.h"
 
 #include <gio/gio.h>
 #include <gst/gst.h>
@@ -83,6 +84,8 @@ cam_sounds_play (CamSound sound, gboolean setting)
   gboolean muted = g_strcmp0 (g_getenv ("VIBEOS_CAMERA_SOUND_MUTE"), "1") == 0;
   GstElement *player;
 
+  if (!cam_gst_ready ())
+    return FALSE;
   /* the muted test plays whatever the profile says */
   if (!muted && (!setting || silenced ()))
     return FALSE;

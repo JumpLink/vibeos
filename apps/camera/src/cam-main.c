@@ -5,13 +5,15 @@
  * knows a phone: the cameras, their facing and rotation come from libcamera, the flash from the LED class, the
  * encoder from a measurement (cam-encoder.h). The app's settings are GSettings vibeos.Camera.
  *
- * `vibeos-camera --probe-encoder ELEMENT` is the encoder measurement's child process (cam-encoder.h). */
+ * `vibeos-camera --probe-encoder ELEMENT` is the encoder measurement's child process (cam-encoder.h).
+ *
+ * Nothing of GStreamer runs here: gst_init may wait on a driver, so the window comes first and the start follows on
+ * a thread of its own (cam-startup.h). */
 #include "cam-encoder.h"
 #include "cam-window.h"
 
 #include <glib/gi18n.h>
 #include <glib-unix.h>
-#include <gst/gst.h>
 #include <locale.h>
 #include <vibeos.h>
 #include <pango/pangocairo.h>
@@ -54,7 +56,9 @@ on_activate (GApplication *app, gpointer data)
 {
   GtkWindow *window = gtk_application_get_active_window (GTK_APPLICATION (app));
 
-  if (!window)
+  if (window)
+    cam_window_activated (window);
+  else
     window = cam_window_new (GTK_APPLICATION (app));
   gtk_window_present (window);
 }
@@ -97,7 +101,6 @@ main (int argc, char **argv)
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
   textdomain (GETTEXT_PACKAGE);
-  gst_init (&argc, &argv);
 
   app = gtk_application_new (APP_ID, G_APPLICATION_DEFAULT_FLAGS);
   g_action_map_add_action_entries (G_ACTION_MAP (app), actions, G_N_ELEMENTS (actions), app);

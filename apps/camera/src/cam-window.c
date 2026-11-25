@@ -12,6 +12,7 @@
 #include "cam-sensors.h"
 #include "cam-settings.h"
 #include "cam-sounds.h"
+#include "cam-startup.h"
 #include "cam-storage.h"
 #include "cam-viewfinder.h"
 #include "cam-widgets.h"
@@ -28,6 +29,8 @@
 #define BITRATE_1080      16000000 /* the live app's 1080p files, ≈ 16 Mbit/s */
 #define BITRATE_720       8000000
 #define INDEFINITE        G_MAXINT /* a snackbar that stays */
+#define SETUP_TIMEOUT_S   10       /* GStreamer, libcamera and the pipeline: then the window says so and goes on */
+#define NOTICE_MARGIN     32       /* the viewfinder's notice keeps this far from its sides */
 
 typedef enum {
   ST_IDLE,
@@ -47,6 +50,15 @@ typedef enum {
 typedef struct {
   GtkWidget *button, *rotator, *icon, *label;
 } ProButton;
+
+/* how far the start of GStreamer and the cameras has got (cam-startup.h) */
+typedef enum {
+  SETUP_STARTING,
+  SETUP_READY,
+  SETUP_NO_CAMERA,              /* libcamera lists none, or did not answer in time */
+  SETUP_STUCK,                  /* gst_init itself did not return in time */
+  SETUP_FAILED,                 /* GStreamer lacks a piece the stream needs */
+} CamSetup;
 
 #define CAM_TYPE_VIEW (cam_view_get_type ())
 G_DECLARE_FINAL_TYPE (CamView, cam_view, CAM, VIEW, GtkWidget)
@@ -72,6 +84,7 @@ struct _CamView {
   ProButton  p_aspect, p_quality, p_fps, p_hdr, p_mic, p_timer, p_grid, p_settings;
   /* over the whole window */
   GtkWidget *settings_page, *toast, *white;
+  GtkWidget *notice;                    /* over the viewfinder while there is no stream to show */
 
   /* state */
   CamMode    mode;
@@ -87,6 +100,11 @@ struct _CamView {
   CamLed     led;                       /* what the LED was last set to */
   int        orientation;
   int        display_rotation;          /* the turn the shell laid the screen out for (cam-sensors.h) */
+
+  /* the start: GStreamer, the cameras and the pipeline come from a thread of their own */
+  CamSetup   setup;
+  gboolean   setup_busy;                /* a run is out, however long it takes */
+  guint      setup_timer;
 
   /* the stream */
   gboolean   running;
@@ -126,6 +144,7 @@ static void update_flash (CamView *self);
 static void sync_running (CamView *self);
 static void take_photo (CamView *self);
 static void start_video (CamView *self);
+static void retry_setup (CamView *self);
 
 /* ---- small helpers --------------------------------------------------------------------------------------------- */
 
@@ -467,7 +486,8 @@ apply_zoom (CamView *self, double ratio, gboolean show_slider)
 
   self->zoom = CLAMP (ratio, 1, ZOOM_MAX);
   cam_viewfinder_set_zoom (CAM_VIEWFINDER (self->viewfinder), self->zoom);
-  cam_pipeline_set_zoom (self->pipeline, self->zoom);
+  if (self->pipeline)
+    cam_pipeline_set_zoom (self->pipeline, self->zoom);
   text = g_strdup_printf ("%.1fx", self->zoom);
   cam_zoom_slider_set (CAM_ZOOM_SLIDER (self->zoom_slider), zoom_progress (self->zoom), text);
   if (show_slider)
@@ -865,7 +885,7 @@ on_display_rotation (CamSensors *sensors, GParamSpec *pspec, CamView *self)
   cam_viewfinder_set_leveler (CAM_VIEWFINDER (self->viewfinder), g_settings_get_boolean (self->settings, "leveler")
                                                                    && cam_sensors_has_tilt (self->sensors),
                               ui_tilt (self));
-  if (self->camera && cam_pipeline_is_streaming (self->pipeline))
+  if (self->camera && self->pipeline && cam_pipeline_is_streaming (self->pipeline))
     {
       cam_pipeline_get_size (self->pipeline, &width, &height);
       cam_viewfinder_set_geometry (CAM_VIEWFINDER (self->viewfinder), preview_turn (self), is_front (self),
@@ -881,6 +901,7 @@ update_controls (CamView *self)
   gboolean idle = self->state == ST_IDLE;
   gboolean recording = self->state == ST_RECORDING || self->state == ST_PAUSED;
   gboolean facings = FALSE;
+  gboolean ready = self->camera && self->pipeline;
 
   for (CamFacing f = CAM_FACING_BACK; f <= CAM_FACING_EXTERNAL; f++)
     if (f != self->facing && cam_devices_main_for (self->cameras, f))
@@ -892,11 +913,11 @@ update_controls (CamView *self)
   gtk_widget_set_sensitive (self->gallery, idle);
   /* the shutter: none in SCAN; in photo mode disabled during the countdown; in video mode it cancels or stops */
   gtk_widget_set_visible (self->shutter, self->mode != CAM_MODE_SCAN);
-  gtk_widget_set_sensitive (self->shutter, self->mode == CAM_MODE_VIDEO ? self->state != ST_PRE_RECORDING
-                                                                        : idle && !self->taking);
+  gtk_widget_set_sensitive (self->shutter, ready && (self->mode == CAM_MODE_VIDEO ? self->state != ST_PRE_RECORDING
+                                                                                  : idle && !self->taking));
   gtk_widget_set_visible (self->pro_button, self->mode != CAM_MODE_SCAN);
   /* flash: idle, or recording in video mode for the torch */
-  gtk_widget_set_sensitive (self->flash_button, idle || (self->mode == CAM_MODE_VIDEO && recording));
+  gtk_widget_set_sensitive (self->flash_button, ready && (idle || (self->mode == CAM_MODE_VIDEO && recording)));
   gtk_widget_set_sensitive (self->lenses, idle || recording);
   cam_mode_selector_set_recording (CAM_MODE_SELECTOR (self->modes), recording);
   update_pro_row (self);
@@ -1164,6 +1185,12 @@ on_fling (CamViewfinder *viewfinder, int direction, CamView *self)
 static void
 on_tapped (CamViewfinder *viewfinder, double x, double y, CamView *self)
 {
+  /* a tap on the notice asks again */
+  if (self->setup != SETUP_READY)
+    {
+      retry_setup (self);
+      return;
+    }
   slide_pro (self, FALSE);
   /* the camera's AF has no windows here: the search restarts for the whole frame, the ring shows where tapped;
    * a fixed-focus camera shows no ring */
@@ -1605,10 +1632,14 @@ sync_running (CamView *self)
    * stop the cameras"). Shown alone is not enough: recents (like GNOME's overview) shows every window live, which
    * wakes a suspended one, so a camera left in the background opened its sensor each time recents opened (the
    * focus motor clicked). Recents, the shade or another app over the camera take the focus and stop it too. */
-  gboolean run = !self->closing && !self->in_settings && self->camera && self->window
+  gboolean run = !self->closing && !self->in_settings && self->camera && self->pipeline && self->window
                  && gtk_widget_get_mapped (GTK_WIDGET (self)) && !gtk_window_is_suspended (self->window)
                  && gtk_window_is_active (self->window);
 
+  /* shown and in front again: a start that found no camera looks again */
+  if (!self->camera && !self->closing && self->window && gtk_widget_get_mapped (GTK_WIDGET (self))
+      && !gtk_window_is_suspended (self->window) && gtk_window_is_active (self->window))
+    retry_setup (self);
   if (run == self->running)
     {
       sync_shell (self);
@@ -1642,7 +1673,8 @@ sync_running (CamView *self)
       if (self->inhibit)
         gtk_application_uninhibit (self->app, self->inhibit);
       self->inhibit = 0;
-      cam_pipeline_stop (self->pipeline);
+      if (self->pipeline)
+        cam_pipeline_stop (self->pipeline);
       g_clear_pointer (&self->bound_id, g_free);
       cam_viewfinder_thaw (CAM_VIEWFINDER (self->viewfinder));
     }
@@ -1657,6 +1689,19 @@ on_window_state (GtkWindow *window, GParamSpec *pspec, CamView *self)
   sync_running (self);
 }
 
+/* the Settings rows this phone and its cameras have; again when the cameras or the encoder are known */
+static void
+update_settings_rows (CamView *self)
+{
+  cam_settings_set_rows (CAM_SETTINGS (self->settings_page),
+                         (can_record (self) ? CAM_SETTINGS_VIDEO : 0)
+                         | (self->bright_hook ? CAM_SETTINGS_BRIGHT : 0)
+                         | (cam_sensors_can_locate (self->sensors) ? CAM_SETTINGS_LOCATION : 0)
+                         | (cam_sensors_has_tilt (self->sensors) ? CAM_SETTINGS_LEVELER : 0)
+                         | (shell_has (self, "TakeVolumeKeys") ? CAM_SETTINGS_GESTURES : 0)
+                         | (cam_devices_main_for (self->cameras, CAM_FACING_FRONT) ? CAM_SETTINGS_FRONT : 0));
+}
+
 static void
 on_encoder (gpointer data)
 {
@@ -1665,13 +1710,7 @@ on_encoder (gpointer data)
 
   g_message ("encoder: %s (720p %s, 1080p %s)", encoder && encoder->element ? encoder->element : "none",
              encoder && encoder->hd ? "yes" : "no", encoder && encoder->fhd ? "yes" : "no");
-  cam_settings_set_rows (CAM_SETTINGS (self->settings_page),
-                         (can_record (self) ? CAM_SETTINGS_VIDEO : 0)
-                         | (self->bright_hook ? CAM_SETTINGS_BRIGHT : 0)
-                         | (cam_sensors_can_locate (self->sensors) ? CAM_SETTINGS_LOCATION : 0)
-                         | (cam_sensors_has_tilt (self->sensors) ? CAM_SETTINGS_LEVELER : 0)
-                         | (shell_has (self, "TakeVolumeKeys") ? CAM_SETTINGS_GESTURES : 0)
-                         | (cam_devices_main_for (self->cameras, CAM_FACING_FRONT) ? CAM_SETTINGS_FRONT : 0));
+  update_settings_rows (self);
   if (self->mode == CAM_MODE_VIDEO && !can_record (self))
     set_mode (self, CAM_MODE_PHOTO, FALSE);
   else
@@ -1729,6 +1768,16 @@ place (GtkWidget *child, double x, double y, int w, int h)
   gtk_widget_allocate (child, w, h, -1, gsk_transform_translate (NULL, &GRAPHENE_POINT_INIT (x, y)));
 }
 
+/* the notice in the middle of the viewfinder, as wide as the viewfinder less its margins and as tall as its text */
+static void
+place_notice (CamView *self, int vf_w, int vf_h)
+{
+  int w = MAX (1, vf_w - 2 * NOTICE_MARGIN), h = 0;
+
+  gtk_widget_measure (self->notice, GTK_ORIENTATION_VERTICAL, w, &h, NULL, NULL, NULL);
+  place (self->notice, NOTICE_MARGIN, (vf_h - h) / 2.0, w, h);
+}
+
 static void
 place_island (CamView *self, int vf_w, int vf_h)
 {
@@ -1763,6 +1812,8 @@ allocate_landscape (CamView *self, int width, int height)
   if (gtk_widget_get_visible (self->settings_page))
     place (self->settings_page, 0, 0, width, height);
   place (self->viewfinder, 0, 0, vf_w, height);
+  if (gtk_widget_get_visible (self->notice))
+    place_notice (self, vf_w, height);
   cam_viewfinder_get_picture (CAM_VIEWFINDER (self->viewfinder), &picture);
   if (picture.size.width <= 0)
     picture = GRAPHENE_RECT_INIT (0, 0, vf_w, height);
@@ -1826,6 +1877,8 @@ cam_view_size_allocate (GtkWidget *widget, int width, int height, int baseline)
   if (gtk_widget_get_visible (self->settings_page))
     place (self->settings_page, 0, 0, width, height);
   place (self->viewfinder, 0, 0, width, vf_h);
+  if (gtk_widget_get_visible (self->notice))
+    place_notice (self, width, vf_h);
   /* the countdown over the preview's picture, not the screen */
   cam_viewfinder_get_picture (CAM_VIEWFINDER (self->viewfinder), &picture);
   if (picture.size.width <= 0)
@@ -1889,6 +1942,7 @@ cam_view_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     }
   gtk_snapshot_append_color (snapshot, &black, &GRAPHENE_RECT_INIT (0, 0, width, height));
   gtk_widget_snapshot_child (widget, self->viewfinder, snapshot);
+  gtk_widget_snapshot_child (widget, self->notice, snapshot);
   gtk_widget_snapshot_child (widget, self->countdown, snapshot);
   gtk_widget_snapshot_child (widget, self->island, snapshot);
   gtk_widget_snapshot_child (widget, self->zoom_slider, snapshot);
@@ -1974,6 +2028,7 @@ cam_view_dispose (GObject *object)
   g_cancellable_cancel (self->cancel);
   g_cancellable_cancel (self->thumb_cancel);
   g_clear_handle_id (&self->close_timer, g_source_remove);
+  g_clear_handle_id (&self->setup_timer, g_source_remove);
   g_clear_handle_id (&self->slider_hide, g_source_remove);
   g_clear_handle_id (&self->duration_timer, g_source_remove);
   g_clear_handle_id (&self->start_timer, g_source_remove);
@@ -2029,13 +2084,22 @@ build (CamView *self)
   GtkWidget *spacer;
   GtkWidget *scroller = gtk_scrolled_window_new ();
 
-  self->viewfinder = cam_viewfinder_new (cam_pipeline_get_paintable (self->pipeline));
+  /* the picture comes with the pipeline, built on another thread (cam-startup.h) */
+  self->viewfinder = cam_viewfinder_new (NULL);
   gtk_widget_set_parent (self->viewfinder, widget);
   g_signal_connect (self->viewfinder, "tapped", G_CALLBACK (on_tapped), self);
   g_signal_connect (self->viewfinder, "fling", G_CALLBACK (on_fling), self);
   g_signal_connect (self->viewfinder, "pinch-begin", G_CALLBACK (on_pinch_begin), self);
   g_signal_connect (self->viewfinder, "pinch", G_CALLBACK (on_pinch), self);
   g_signal_connect (self->viewfinder, "pinch-end", G_CALLBACK (on_pinch_end), self);
+
+  self->notice = gtk_label_new (NULL);
+  gtk_widget_add_css_class (self->notice, "cam-notice");
+  gtk_label_set_wrap (GTK_LABEL (self->notice), TRUE);
+  gtk_label_set_justify (GTK_LABEL (self->notice), GTK_JUSTIFY_CENTER);
+  gtk_widget_set_can_target (self->notice, FALSE);
+  gtk_widget_set_visible (self->notice, FALSE);
+  gtk_widget_set_parent (self->notice, widget);
 
   self->countdown = cam_countdown_new ();
   gtk_widget_set_parent (self->countdown, widget);
@@ -2104,8 +2168,7 @@ build (CamView *self)
   g_signal_connect (cam_rotator_get_child (CAM_ROTATOR (self->pause)), "clicked", G_CALLBACK (on_pause), self);
 
   self->modes = cam_mode_selector_new ();
-  cam_mode_selector_set_available (CAM_MODE_SELECTOR (self->modes), CAM_MODE_SCAN,
-                                   self->pipeline && cam_pipeline_can_scan (self->pipeline));
+  cam_mode_selector_set_available (CAM_MODE_SELECTOR (self->modes), CAM_MODE_SCAN, FALSE);
   gtk_widget_set_parent (self->modes, widget);
   g_signal_connect (self->modes, "mode-chosen", G_CALLBACK (on_mode_chosen), self);
 
@@ -2230,12 +2293,157 @@ on_ask_location (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
+/* ---- the start ------------------------------------------------------------------------------------------------- */
+
+/* what the viewfinder says while there is no stream: what is being waited for, or what is missing */
+static void
+update_notice (CamView *self)
+{
+  const char *text = NULL;
+
+  switch (self->setup)
+    {
+    case SETUP_STARTING:
+      /* TRANSLATORS: over the empty viewfinder while the camera is being found and opened */
+      text = _("Starting camera…");
+      break;
+    case SETUP_NO_CAMERA:
+      /* TRANSLATORS: over the empty viewfinder: the device has no camera, or none answered; a tap looks again */
+      text = _("No camera found");
+      break;
+    case SETUP_STUCK:
+      /* TRANSLATORS: over the empty viewfinder: the camera system did not start in time; a tap tries again */
+      text = _("The camera is not responding");
+      break;
+    case SETUP_FAILED:
+      text = _("There was an error while preparing the stream. Please report this to the developers.");
+      break;
+    case SETUP_READY:
+      break;
+    }
+  if (text)
+    gtk_label_set_text (GTK_LABEL (self->notice), text);
+  gtk_widget_set_visible (self->notice, text != NULL);
+  gtk_widget_queue_allocate (GTK_WIDGET (self));
+}
+
+static gboolean
+on_setup_timeout (gpointer data)
+{
+  CamView *self = data;
+
+  self->setup_timer = 0;
+  if (self->setup != SETUP_STARTING)
+    return G_SOURCE_REMOVE;
+  /* the run is left to finish: an answer that comes late still starts the camera */
+  self->setup = cam_gst_ready () ? SETUP_NO_CAMERA : SETUP_STUCK;
+  g_message ("camera: no answer in %d s (%s)", SETUP_TIMEOUT_S,
+             self->setup == SETUP_STUCK ? "GStreamer's start" : "the cameras");
+  update_notice (self);
+  update_controls (self);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+on_setup_done (GPtrArray *cameras, CamPipeline *pipeline, GError *error, gpointer data)
+{
+  CamView *self = data;
+
+  self->setup_busy = FALSE;
+  if (self->closing || self->setup == SETUP_READY)
+    {
+      g_ptr_array_unref (cameras);
+      g_clear_object (&pipeline);
+      g_clear_error (&error);
+      g_object_unref (self);
+      return;
+    }
+  g_clear_handle_id (&self->setup_timer, g_source_remove);
+  if (pipeline)
+    {
+      /* signals and the picture are the main thread's: the pipeline was only built elsewhere */
+      self->pipeline = pipeline;
+      g_signal_connect (self->pipeline, "streaming", G_CALLBACK (on_streaming), self);
+      g_signal_connect (self->pipeline, "error", G_CALLBACK (on_pipeline_error), self);
+      g_signal_connect (self->pipeline, "barcode", G_CALLBACK (on_barcode_found), self);
+      g_signal_connect (self->pipeline, "focused", G_CALLBACK (on_focused), self);
+      cam_viewfinder_set_paintable (CAM_VIEWFINDER (self->viewfinder), cam_pipeline_get_paintable (self->pipeline));
+      cam_mode_selector_set_available (CAM_MODE_SELECTOR (self->modes), CAM_MODE_SCAN,
+                                       cam_pipeline_can_scan (self->pipeline));
+      g_ptr_array_unref (self->cameras);
+      self->cameras = cameras;
+      self->setup = SETUP_READY;
+      update_notice (self);
+      /* the saved facing, mode and the rest, now that there are cameras to choose from */
+      restore (self);
+      update_settings_rows (self);
+      /* the encoder: measured once per kernel and GStreamer, in the background */
+      if (cam_encoder_get ())
+        on_encoder (g_object_ref (self));
+      else
+        cam_encoder_probe (G_CALLBACK (on_encoder), g_object_ref (self));
+      sync_running (self);
+    }
+  else
+    {
+      if (error)
+        {
+          g_warning ("camera: %s", error->message);
+          self->setup = SETUP_FAILED;
+        }
+      else
+        {
+          g_message ("camera: libcamera lists no camera");
+          self->setup = SETUP_NO_CAMERA;
+        }
+      g_ptr_array_unref (cameras);
+      g_clear_error (&error);
+      update_notice (self);
+      update_controls (self);
+    }
+  g_object_unref (self);
+}
+
+static void
+start_setup (CamView *self)
+{
+  self->setup = SETUP_STARTING;
+  update_notice (self);
+  update_controls (self);
+  g_clear_handle_id (&self->setup_timer, g_source_remove);
+  self->setup_timer = g_timeout_add_seconds (SETUP_TIMEOUT_S, on_setup_timeout, self);
+  /* a run still out (GStreamer's start, or libcamera, stuck) is waited for, not started over: gst_init cannot be
+   * called again while the first call is inside it */
+  if (self->setup_busy)
+    return;
+  self->setup_busy = TRUE;
+  cam_startup_run (on_setup_done, g_object_ref (self));
+}
+
+/* the window shown again, or a tap on the notice: look for the camera again where that can help */
+static void
+retry_setup (CamView *self)
+{
+  if (self->closing || (self->setup != SETUP_NO_CAMERA && self->setup != SETUP_STUCK))
+    return;
+  start_setup (self);
+}
+
+void
+cam_window_activated (GtkWindow *window)
+{
+  GtkWidget *content = vibeos_window_get_overlay (GTK_WIDGET (window))
+                       ? gtk_overlay_get_child (vibeos_window_get_overlay (GTK_WIDGET (window))) : NULL;
+
+  if (content && CAM_IS_VIEW (content))
+    retry_setup (CAM_VIEW (content));
+}
+
 GtkWindow *
 cam_window_new (GtkApplication *app)
 {
   GtkWindow *window = GTK_WINDOW (vibeos_window_new (app));
   CamView *self = g_object_new (CAM_TYPE_VIEW, NULL);
-  g_autoptr(GError) error = NULL;
   GtkOverlay *overlay;
   GtkEventController *keys = gtk_event_controller_key_new ();
   GSimpleAction *toast_action = g_simple_action_new ("toast", G_VARIANT_TYPE_STRING);
@@ -2249,8 +2457,8 @@ cam_window_new (GtkApplication *app)
   self->privacy = privacy_settings ();
   if (self->privacy)
     g_signal_connect (self->privacy, "changed::disable-camera", G_CALLBACK (on_camera_switch), self);
-  self->cameras = cam_devices_enumerate ();
-  self->pipeline = cam_pipeline_new (&error);
+  /* none until the start has listed them (a list that holds nothing, so nothing frees it) */
+  self->cameras = g_ptr_array_new ();
   self->sensors = cam_sensors_new ();
   self->storage = cam_storage_new ();
   self->bright_hook = shell_has (self, "KeepScreenBright");
@@ -2271,25 +2479,11 @@ cam_window_new (GtkApplication *app)
   g_action_map_add_action (G_ACTION_MAP (window), G_ACTION (toast_action));
   g_object_unref (toast_action);
 
-  if (!self->pipeline)
-    {
-      /* GStreamer lacks a piece (libcamerasrc, gtk4paintablesink, …): nothing can stream */
-      g_warning ("camera: %s", error->message);
-      self->pipeline = NULL;
-      self->closing = TRUE;
-      gtk_window_fullscreen (window);
-      toast (self, _("There was an error while preparing the stream. Please report this to the developers."));
-      self->close_timer = g_timeout_add (CAM_MS_TOAST + 300, on_close_timeout, self);
-      return window;
-    }
   build (self);
   restore (self);
+  update_settings_rows (self);
   self->display_rotation = cam_sensors_get_display_rotation (self->sensors);
   apply_orientation (self, FALSE);
-  g_signal_connect (self->pipeline, "streaming", G_CALLBACK (on_streaming), self);
-  g_signal_connect (self->pipeline, "error", G_CALLBACK (on_pipeline_error), self);
-  g_signal_connect (self->pipeline, "barcode", G_CALLBACK (on_barcode_found), self);
-  g_signal_connect (self->pipeline, "focused", G_CALLBACK (on_focused), self);
   g_signal_connect (self->sensors, "notify::orientation", G_CALLBACK (on_orientation), self);
   g_signal_connect (self->sensors, "notify::display-rotation", G_CALLBACK (on_display_rotation), self);
   g_signal_connect (self->sensors, "notify::thermal", G_CALLBACK (on_thermal), self);
@@ -2304,23 +2498,15 @@ cam_window_new (GtkApplication *app)
   g_signal_connect (keys, "key-pressed", G_CALLBACK (on_key), self);
   gtk_widget_add_controller (GTK_WIDGET (self), keys);
 
-  /* the encoder: measured once per kernel and GStreamer, in the background */
-  if (cam_encoder_get ())
-    on_encoder (g_object_ref (self));
-  else
-    cam_encoder_probe (G_CALLBACK (on_encoder), g_object_ref (self));
-
   gtk_window_fullscreen (window);
   if (camera_off (self))
     {
+      gtk_widget_set_visible (self->notice, FALSE);
       fail (self, _("Camera access is off. Turn it on in Settings, Security and privacy."));
       return window;
     }
-  if (!self->cameras->len)
-    {
-      fail (self, _("No cameras were found on the device, cannot start the app."));
-      return window;
-    }
+  /* the window is up first: GStreamer, the cameras and the stream follow, and the viewfinder says so meanwhile */
+  start_setup (self);
   save_location = g_settings_get_string (self->settings, "save-location");
   if (g_str_equal (save_location, "unset") && cam_sensors_can_locate (self->sensors))
     g_timeout_add_full (G_PRIORITY_DEFAULT, 500, on_ask_location, g_object_ref (self), g_object_unref);
