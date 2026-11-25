@@ -65,6 +65,7 @@ LOCALES = [
     ('fr', 'azerty', 'Français', 'Français'),
     ('it', 'qwerty', 'Italiano', 'Italiano'),
     ('es', 'spanish', 'Español', 'Español'),
+    ('pl', 'qwerty', 'Polski', 'Polski'),
     ('ru', 'east_slavic', 'Русский', 'Русский'),
     ('uk', 'east_slavic', 'Українська', 'Українська'),
     ('iw', 'hebrew', 'עברית', 'עברית'),
