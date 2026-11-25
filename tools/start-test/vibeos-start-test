@@ -1,0 +1,146 @@
+#!/bin/sh
+# Starts each VibeOS app where nothing it may wait for answers, and checks that it starts all the same: its window
+# draws its first frame within $START_LIMIT seconds (2) of the exec, and the app still answers on D-Bus, from its main
+# loop, $START_ALIVE seconds (14) after it, once the waits it bounds with a timeout have run out.
+#
+# Run as root, where the apps are installed (a device after the packages, or anywhere they are in /usr/bin). Each app
+# runs as nobody, in network, mount and PID namespaces of its own, with
+#  - no network (loopback only) and no system bus,
+#  - a /dev without camera, sound or GPU devices,
+#  - a session bus and a Broadway display of its own, and no PipeWire or PulseAudio,
+#  - GStreamer with an empty registry and a plugin scanner that never answers, so a gst_init never returns.
+# Nothing of it shows on the device's screen or reaches its session, and whatever the app started ends with its PID
+# namespace.
+#
+# Usage: vibeos-start-test [NAME...]   (NAMEs from the list below; all of them by default)
+# START_SHIM: the preload that reports the times, start-shim.so (from start-shim.c) next to this script by default
+set -u
+
+LIMIT=${START_LIMIT:-2}
+ALIVE=${START_ALIVE:-14}
+SHIM=${START_SHIM:-$(dirname "$(readlink -f "$0")")/start-shim.so}
+
+# NAME|command line|application ID|what is checked: "window" (the first frame) or "bus" (the application on the bus,
+# for a start that shows no window)
+APPS='browser|vibeos-browser|vibeos.Browser|window
+calculator|vibeos-calculator|vibeos.Calculator|window
+calendar|vibeos-calendar|vibeos.Calendar|window
+camera|vibeos-camera|vibeos.Camera|window
+clock|vibeos-clock|vibeos.Clock|window
+compass|vibeos-compass|vibeos.Compass|window
+contacts|vibeos-contacts|vibeos.Contacts|window
+dialer|vibeos-dialer|vibeos.Dialer|window
+dictate|vibeos-dictate|vibeos.Dictate|window
+vibe|vibeos-dictate --agent|vibeos.Agent|window
+vibe-background|vibeos-dictate --agent --background|vibeos.Agent|bus
+files|vibeos-files|vibeos.Files|window
+installer|vibeos-installer|vibeos.Installer|window
+messaging|vibeos-messaging|vibeos.Messaging|window
+navi|vibeos-navi|vibeos.Navi|window
+settings|vibeos-settings|vibeos.Settings|window
+software|vibeos-software|vibeos.Software|window
+terminal|vibeos-terminal|vibeos.Terminal|window
+video|vibeos-video|vibeos.Video|window
+weather|vibeos-weather|vibeos.Weather|window'
+
+[ "$(id -u)" = 0 ] || { echo "vibeos-start-test: run it as root (it makes namespaces and a /dev)" >&2; exit 2; }
+[ -r "$SHIM" ] || { echo "vibeos-start-test: no $SHIM (build it from start-shim.c)" >&2; exit 2; }
+for tool in unshare setpriv dbus-daemon gtk4-broadwayd busctl; do
+	command -v $tool > /dev/null || { echo "vibeos-start-test: $tool is missing" >&2; exit 2; }
+done
+
+W=$(mktemp -d /tmp/vibeos-start-test.XXXXXX) || exit 2
+trap 'rm -rf "$W"' EXIT
+cp "$SHIM" "$W/start-shim.so"
+chmod 755 "$W" "$W/start-shim.so"
+# the plugin scanner GStreamer runs to fill its registry, which never answers
+printf '#!/bin/sh\nexec sleep 100000\n' > "$W/gst-plugin-scanner"
+chmod 755 "$W/gst-plugin-scanner"
+
+# inside the namespaces, as root: loopback up, a /dev with only what any program needs, the system bus and the users'
+# runtime directories (PipeWire's, PulseAudio's and Wayland's sockets) hidden; then the rest as nobody
+cat > "$W/inside" <<'EOF'
+T=$1
+ip link set lo up 2> /dev/null
+mount -t tmpfs -o mode=755,nosuid tmpfs /dev
+for n in null:1:3 zero:1:5 full:1:7 random:1:8 urandom:1:9 tty:5:0; do
+	mknod -m 666 /dev/${n%%:*} c $(echo $n | cut -d: -f2) $(echo $n | cut -d: -f3)
+done
+mkdir /dev/pts /dev/shm
+mount -t devpts -o newinstance,ptmxmode=0666,mode=620 devpts /dev/pts
+ln -s pts/ptmx /dev/ptmx
+mount -t tmpfs -o mode=1777,nosuid,nodev tmpfs /dev/shm
+ln -s /proc/self/fd /dev/fd
+for d in /run/dbus /run/user /var/run/pulse; do
+	[ -d $d ] && mount -t tmpfs -o mode=755 tmpfs $d
+done
+exec setpriv --reuid=65534 --regid=65534 --clear-groups sh "$T/../as-nobody" "$@"
+EOF
+
+# as nobody: the session bus and the Broadway display, then the app, the D-Bus check after $ALIVE s, the app's end
+cat > "$W/as-nobody" <<'EOF'
+T=$1 id=$2 mode=$3 alive=$4
+shift 4
+cd "$T"
+mkdir -p home run config data cache
+chmod 700 run
+set -- env -i PATH=/usr/bin:/bin:/usr/sbin:/sbin HOME="$T/home" LANG=C.UTF-8 XDG_RUNTIME_DIR="$T/run" \
+	XDG_CONFIG_HOME="$T/config" XDG_DATA_HOME="$T/data" XDG_CACHE_HOME="$T/cache" \
+	DBUS_SESSION_BUS_ADDRESS="unix:path=$T/run/bus" DBUS_SYSTEM_BUS_ADDRESS="unix:path=$T/run/no-system-bus" \
+	GDK_BACKEND=broadway BROADWAY_DISPLAY=:5 GSK_RENDERER=cairo GSETTINGS_BACKEND=memory NO_AT_BRIDGE=1 GTK_A11Y=none \
+	GST_REGISTRY_1_0="$T/gst-registry.bin" GST_REGISTRY="$T/gst-registry.bin" \
+	GST_PLUGIN_SCANNER_1_0="$T/../gst-plugin-scanner" GST_PLUGIN_SCANNER="$T/../gst-plugin-scanner" "$@"
+# the services the app starts on its bus get the same surroundings, without the report
+"$@" dbus-daemon --session --address="unix:path=$T/run/bus" --nofork --nopidfile > "$T/bus.log" 2>&1 &
+"$@" gtk4-broadwayd --unixsocket="$T/run/broadway-http" :5 > "$T/broadway.log" 2>&1 &
+i=0
+while [ $i -lt 50 ] && { [ ! -S "$T/run/bus" ] || [ ! -S "$T/run/broadway6.socket" ]; }; do sleep 0.1; i=$((i + 1)); done
+"$@" LD_PRELOAD="$T/../start-shim.so" VIBEOS_START_REPORT="$T/report" $APP_COMMAND > "$T/app.log" 2>&1 &
+app=$!
+i=0
+while [ $i -lt $((alive * 10)) ] && kill -0 $app 2> /dev/null; do sleep 0.1; i=$((i + 1)); done
+if ! kill -0 $app 2> /dev/null; then
+	wait $app
+	echo "exit $?" >> "$T/report"
+fi
+# org.gtk.Actions is answered from the application's main loop, unlike org.freedesktop.DBus.Peer
+path=/$(echo "$id" | tr . /)
+if busctl --address="unix:path=$T/run/bus" --timeout=3 call "$id" "$path" org.gtk.Actions List > /dev/null 2>&1; then
+	echo "alive yes" >> "$T/report"
+else
+	echo "alive no" >> "$T/report"
+fi
+EOF
+
+value() { sed -n "s/^$2 //p" "$1" | head -1; }
+fail=0
+printf '%-16s %6s %6s %6s  %-5s  %s\n' NAME run map frame alive result
+echo "$APPS" | while IFS='|' read -r name command id mode; do
+	if [ $# -gt 0 ]; then
+		case " $* " in *" $name "*) ;; *) continue ;; esac
+	fi
+	T=$W/$name
+	mkdir -p "$T"
+	chown 65534:65534 "$T"
+	APP_COMMAND=$command unshare --net --mount --pid --fork --mount-proc --propagation private \
+		sh "$W/inside" "$T" "$id" "$mode" "$ALIVE" > "$T/inside.log" 2>&1
+	run=$(value "$T/report" run) map=$(value "$T/report" map) frame=$(value "$T/report" frame)
+	alive=$(value "$T/report" alive) ended=$(value "$T/report" exit)
+	if [ "$mode" = bus ]; then shown=$run; else shown=$frame; fi
+	if [ -n "$shown" ] && [ "$alive" = yes ] && awk "BEGIN { exit !($shown <= $LIMIT) }"; then
+		result=ok
+	else
+		result="FAIL"
+		[ -z "$shown" ] && result="$result (no ${mode})"
+		[ -n "$shown" ] && awk "BEGIN { exit !($shown > $LIMIT) }" && result="$result (over ${LIMIT} s)"
+		[ "$alive" = yes ] || result="$result (not answering after ${ALIVE} s)"
+		[ -n "$ended" ] && result="$result (ended: $ended)"
+		echo "--- $name: the end of its output" >> "$W/failed"
+		tail -5 "$T/app.log" >> "$W/failed"
+	fi
+	printf '%-16s %6s %6s %6s  %-5s  %s\n' "$name" "${run:--}" "${map:--}" "${frame:--}" "${alive:--}" "$result"
+done
+if [ -s "$W/failed" ]; then
+	cat "$W/failed"
+	exit 1
+fi
