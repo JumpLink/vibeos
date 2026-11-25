@@ -7,7 +7,6 @@ libm = cc.find_library('m')
 
 subdir('libspongy')
 subdir('libtonal')
-subdir('migrate-ids')
 subdir('vibeos-launcher')
 subdir('boost')
 subdir('auth')

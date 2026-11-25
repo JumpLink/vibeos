@@ -1,63 +1,10 @@
 #!/bin/sh
-# Before VibeOS the session was gnome-phone's (gnome-session --session=gnome-phone). A phone set up with it logs in
-# to that session: its user's Session in AccountsService, which GDM's automatic login uses. A GNOME Shell built by
-# hand into /opt is named for that session's shell unit (/etc/systemd/user/org.gnome.Shell@gnome-phone.service.d),
-# and the dock switcher's opt-in udev rule and settings have the old names too. All of it is carried over to the
-# vibeos session once, when this package is first installed, so the phone comes back to the same shell after the
-# reboot that follows the upgrade. The old files stay where they are.
-#
 # On every configure, and whenever a package changes /usr/share/applications (the trigger), GNOME's apps that a
 # VibeOS app replaces are hidden again from the app lists (vibeos-hide-replaced-apps).
 set -e
 
-OLD=gnome-phone
-NEW=vibeos
-
-# a user's session in AccountsService: through accounts-daemon when it runs, which would otherwise write its own copy
-# back over the file; the file itself when it does not
-carry_sessions() {
-    for f in /var/lib/AccountsService/users/*; do
-        [ -f "$f" ] || continue
-        user=$(basename "$f")
-        for key in Session XSession; do
-            grep -q "^$key=$OLD\$" "$f" || continue
-            uid=$(id -u "$user" 2>/dev/null) || continue
-            if busctl --system --timeout=10 call org.freedesktop.Accounts "/org/freedesktop/Accounts/User$uid" \
-                    org.freedesktop.Accounts.User "Set$key" s "$NEW" >/dev/null 2>&1 && \
-               [ "$(busctl --system get-property org.freedesktop.Accounts "/org/freedesktop/Accounts/User$uid" \
-                    org.freedesktop.Accounts.User "$key" 2>/dev/null)" = "s \"$NEW\"" ]; then
-                echo "$user: $key $NEW (was $OLD)"
-            else
-                sed -i "s/^$key=$OLD\$/$key=$NEW/" "$f"
-                echo "$user: $key $NEW in $f (was $OLD)"
-            fi
-        done
-    done
-}
-
-# a directory of /etc under its new name, when the new one is not there yet: the files copied, the old ones kept
-carry_dir() {
-    if [ -d "$1" ] && [ ! -e "$2" ]; then
-        cp -a "$1" "$2"
-        echo "$2: copied from $1"
-    fi
-}
-
 case "$1" in
-configure)
-    # the first install only: an upgrade of vibeos-session has nothing of gnome-phone's left to carry
-    if [ -z "$2" ]; then
-        carry_sessions || echo "could not carry the users' session over to $NEW" >&2
-        carry_dir "/etc/systemd/user/org.gnome.Shell@$OLD.service.d" "/etc/systemd/user/org.gnome.Shell@$NEW.service.d"
-        carry_dir /etc/neo-dock.d /etc/vibeos-dock.d
-        if [ -L /etc/udev/rules.d/71-neo-dock.rules ] && [ ! -e /etc/udev/rules.d/71-vibeos-dock.rules ]; then
-            ln -s /usr/share/vibeos-session/71-vibeos-dock.rules /etc/udev/rules.d/71-vibeos-dock.rules
-            echo "/etc/udev/rules.d/71-vibeos-dock.rules: linked, as 71-neo-dock.rules was"
-        fi
-    fi
-    /usr/libexec/vibeos-hide-replaced-apps || echo "could not hide GNOME's apps that VibeOS's replace" >&2
-    ;;
-triggered)
+configure|triggered)
     /usr/libexec/vibeos-hide-replaced-apps || echo "could not hide GNOME's apps that VibeOS's replace" >&2
     ;;
 esac

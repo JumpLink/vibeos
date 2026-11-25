@@ -3,7 +3,6 @@
  * renders again. Keys, shapes and colours are the GJS VibeOS's (iconrender.js), so its renders are reused. */
 #include "icons.h"
 #include "image.h"
-#include "legacy-ids.h"
 
 #include <cairo.h>
 #include <glib/gstdio.h>
@@ -258,23 +257,6 @@ current_pack (Icons *self)
   g_autofree char *map_path = g_build_filename (p->dir, "gnome-map.json", NULL);
   g_autofree char *filter_path = g_build_filename (p->dir, "appfilter.json", NULL);
   map_from (p->map, map_path, NULL, FALSE);
-  /* a pack made for 0.1.6 or older names our apps by the desktop ids they had then; an entry under the new id wins */
-  g_autoptr (GPtrArray) renamed = g_ptr_array_new ();
-  GHashTableIter iter;
-  gpointer key, value;
-  g_hash_table_iter_init (&iter, p->map);
-  while (g_hash_table_iter_next (&iter, &key, &value)) {
-    char *now = legacy_desktop_id (key);
-    if (now) {
-      g_ptr_array_add (renamed, now);
-      g_ptr_array_add (renamed, value);
-    }
-  }
-  for (guint i = 0; i < renamed->len; i += 2)
-    if (!g_hash_table_contains (p->map, renamed->pdata[i]))
-      g_hash_table_insert (p->map, renamed->pdata[i], g_strdup (renamed->pdata[i + 1]));
-    else
-      g_free (renamed->pdata[i]);
   /* our apps, before the Android mapping below adds waydroid.* keys (and distinct[] swaps Android's settings) */
   JsonNode *filter = read_json (filter_path);
   JsonObject *filter_o = filter && JSON_NODE_HOLDS_OBJECT (filter) ? json_node_get_object (filter) : NULL;

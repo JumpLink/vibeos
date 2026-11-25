@@ -124,7 +124,7 @@ model_set_hidden (Model *self, char **hidden)
 {
   g_hash_table_remove_all (self->hidden);
   for (char **h = hidden; h && *h; h++)
-    g_hash_table_add (self->hidden, apps_current_id (*h));
+    g_hash_table_add (self->hidden, g_strdup (*h));
 }
 
 static gboolean
@@ -230,7 +230,7 @@ json_ids (JsonArray *arr)
   for (guint i = 0; arr && i < json_array_get_length (arr); i++) {
     JsonNode *n = json_array_get_element (arr, i);
     const char *id = JSON_NODE_HOLDS_VALUE (n) ? json_node_get_string (n) : NULL;
-    g_ptr_array_add (list, id ? apps_current_id (id) : NULL);
+    g_ptr_array_add (list, g_strdup (id));
   }
   trim (list);
   return list;
@@ -273,8 +273,7 @@ fresh (Model *self, GHashTable *apps)
   }
   g_ptr_array_set_size (self->dock, 0);
   for (char **f = favs; f && *f && (int) self->dock->len < self->dock_size; f++) {
-    /* the upgrade put each renamed favourite's new id next to its old one: both are the same app now */
-    g_autofree char *id = apps_current_id (*f);
+    g_autofree char *id = g_strdup (*f);
     if (g_hash_table_contains (apps, id) && !g_ptr_array_find_with_equal_func (self->dock, id, g_str_equal, NULL))
       g_ptr_array_add (self->dock, g_steal_pointer (&id));
   }

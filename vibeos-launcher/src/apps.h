@@ -14,8 +14,3 @@ gint         app_compare     (gconstpointer a, gconstpointer b);   /* two GAppIn
  * places on the home screen go to "to" (model_reconcile). */
 extern const char *const apps_replaced[][2];
 extern const guint       apps_n_replaced;
-
-/* The desktop id to keep for one read from a layout or from hidden-from-home: the new name of an app that had
- * another id up to 0.1.6 (legacy-ids.h) once its renamed desktop file is installed and the old one is not, else the
- * id as it is. Layouts the user saved, a ROM's in /etc/xdg and the old ids in hidden-from-home all go through it. */
-char        *apps_current_id (const char *id);
