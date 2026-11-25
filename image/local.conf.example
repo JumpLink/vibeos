@@ -62,6 +62,9 @@ S20_BOOT=				# its boot image, s20/make-boot.sh's (build-device checks it with s
 S20_SHUB=				# the sensor hub's bcm4775b1-shub-r8s.patch (3b2a01e5): the C strings of LineageOS's
 					# universal9830 kernel, lineage-24.0 97369af7, drivers/sensorhub/brcm/bbdpl/r_os/bbd_patch_file_r8.h
 # DEVICE_VERSION=			# a device package's version instead of the system image's (SYSIMG)
+NABU_STAGE=				# Xiaomi Pad 5: device stage (root/, debs/ with debs.sha256, firmware.txt)
+NABU_MODULES=				# its kernel build's modules_install tree (lib/modules)
+NABU_BOOT=				# its boot_b image (b3)
 # SYSIMG=				# the system image whose upstream-signed regulatory.db goes into the initramfs of a
 					# kernel with cfg80211 built in (default: OUT/system/rootfs.img)
 # S10E_IMAGE=				# a rebuild of the S10e's kernel (the same release, so the stage's modules fit) for
