@@ -22,6 +22,10 @@ vibeos (1:0.1.5) unstable; urgency=medium
     closes, as the power key does, and wakes it to the lock screen when
     it opens, as Android has it (the Xiaomi Pad 5's and the Galaxy Tab
     S5e's). A closed cover no longer asks for a suspend.
+  * POCO X3 NFC: a call in an app (a SIP or a video call app) starts on
+    the earpiece, as on Android, and its Speaker button moves it to
+    the loudspeaker. The ringtone, the dial pad's tones, Vibe and Dictate
+    stay on the loudspeaker, and the user's own choice of output is kept.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
