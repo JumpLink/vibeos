@@ -17,7 +17,7 @@ add_project_arguments('-DNB_DATADIR="@0@"'.format(datadir), language: 'c')
 
 resources = gnome.compile_resources('browser-resources', 'src/browser.gresource.xml',
                                     source_dir: ['src', 'data/jelly-icons'])
-executable('vibeos-browser', 'src/main.c', 'src/nb-app.c', 'src/nb-tab.c', 'src/nb-urlbar.c', 'src/nb-suggest.c',
+executable('vibeos-browser', 'src/main.c', 'src/nb-video.c', 'src/nb-app.c', 'src/nb-tab.c', 'src/nb-urlbar.c', 'src/nb-suggest.c',
            'src/nb-menu.c', 'src/nb-pages.c', 'src/nb-settings.c', 'src/nb-widgets.c', 'src/nb-navigator.c',
            'src/nb-refresh.c', 'src/nb-switcher.c', 'src/store.c', resources, dependencies: deps, install: true)
 i18n.merge_file(input: 'data/vibeos.Browser.desktop.in', output: 'vibeos.Browser.desktop', type: 'desktop',

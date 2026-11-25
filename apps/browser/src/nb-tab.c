@@ -824,7 +824,9 @@ load_url (NbTab *t, const char *url)
 void
 nb_tab_ensure_view (NbTab *t)
 {
-  if (t->view || t->closing)
+  /* a web process reads the video decoders to leave out from the environment as it starts (nb-video.c): the view is
+   * made when the list is there, nb_app_video_ready, and the window is up without it meanwhile */
+  if (t->view || t->closing || !nb_video_ready ())
     return;
   gboolean popup = t->related != NULL;
   make_view (t);
@@ -842,7 +844,9 @@ nb_tab_load (NbTab *t, const char *text)
   nb_tab_ensure_view (t);
   g_free (t->url);
   t->url = g_strdup (url);
-  load_url (t, url);
+  /* a view not made yet loads t->url when it is */
+  if (t->view)
+    load_url (t, url);
   nb_urlbar_sync (t);
 }
 

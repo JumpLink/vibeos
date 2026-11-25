@@ -10,7 +10,6 @@
  * app.new-incognito-tab (the desktop entry's action of that name). */
 #include "nb.h"
 
-#include <gst/gst.h>
 #include <locale.h>
 #include <vibeos.h>
 #include <string.h>
@@ -21,12 +20,15 @@ on_startup (GApplication *app, gpointer data)
   /* the text follows Font size and Bold text; the stylesheet in sp and dp, over libvibeos's */
   vibeos_init_full (VIBEOS_INIT_SCALED_TEXT);
   vibeos_css_load_resource ("/vibeos/Browser/browser.css", GTK_STYLE_PROVIDER_PRIORITY_APPLICATION + 1);
+  /* the decoder list is asked for now and comes while the window does: no web process starts before it */
+  nb_video_start ();
   nb_app_startup (GTK_APPLICATION (app));
 }
 
 static void
 on_shutdown (GApplication *app, gpointer data)
 {
+  nb_video_stop ();
   nb_app_shutdown ();
 }
 
@@ -94,48 +96,16 @@ on_command_line (GApplication *app, GApplicationCommandLine *cmd, gpointer data)
   return 0;
 }
 
-/* Web video decodes in software. A phone's V4L2 video decoders (stateful, or stateless from v4l2codecs) rank above
- * FFmpeg's and libvpx's, so WebKit picked them, and their frames failed in WebKit's GL video sink. On the S10e
- * (Exynos MFC, Mali on Panfrost) a frame whose rows are not aligned as Panfrost wants, a 540 px wide video's, is not
- * imported into GL ("WSI pitch not properly aligned"): the video played black, the poster gone. And after a loop or
- * a seek the decoder only ended the stream again, so a looping video stopped at 0. The web processes read
- * GST_PLUGIN_FEATURE_RANK at their start: every V4L2 video decoder in the registry (one per codec and device) goes in
- * as NAME:NONE, ahead of what the environment already says, which then still wins. GStreamer's start here takes
- * ~13 ms on the S10e. */
-static void
-web_video_in_software (void)
-{
-  if (!gst_init_check (NULL, NULL, NULL))
-    return;
-  GString *ranks = g_string_new (NULL);
-  static const char *const plugins[] = { "video4linux2", "v4l2codecs" };
-  for (guint i = 0; i < G_N_ELEMENTS (plugins); i++) {
-    GList *features = gst_registry_get_feature_list_by_plugin (gst_registry_get (), plugins[i]);
-    for (GList *l = features; l; l = l->next)
-      if (GST_IS_ELEMENT_FACTORY (l->data) &&
-          gst_element_factory_list_is_type (GST_ELEMENT_FACTORY (l->data),
-                                            GST_ELEMENT_FACTORY_TYPE_DECODER | GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO))
-        g_string_append_printf (ranks, "%s%s:NONE", ranks->len ? "," : "",
-                                gst_plugin_feature_get_name (GST_PLUGIN_FEATURE (l->data)));
-    gst_plugin_feature_list_free (features);
-  }
-  const char *env = g_getenv ("GST_PLUGIN_FEATURE_RANK");
-  if (ranks->len && env && *env)
-    g_string_append_printf (ranks, ",%s", env);
-  if (ranks->len)
-    g_setenv ("GST_PLUGIN_FEATURE_RANK", ranks->str, TRUE);
-  g_string_free (ranks, TRUE);
-}
-
 int
 main (int argc, char **argv)
 {
+  /* the child that lists the video decoders (nb-video.c) */
+  if (argc == 2 && g_str_equal (argv[1], "--probe-decoders"))
+    return nb_video_probe_main ();
   setlocale (LC_ALL, "");
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
   textdomain (GETTEXT_PACKAGE);
-  /* before anything starts a thread or a web process */
-  web_video_in_software ();
   g_autoptr (GtkApplication) app =
     gtk_application_new (NB_APP_ID, G_APPLICATION_HANDLES_COMMAND_LINE | G_APPLICATION_HANDLES_OPEN);
   static const GOptionEntry entries[] = {

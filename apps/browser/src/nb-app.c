@@ -350,6 +350,14 @@ restore_session (void)
 }
 
 void
+nb_app_video_ready (void)
+{
+  /* the page shown gets its view now (and loads); the others when they are picked */
+  if (nb && nb->last_active)
+    nb_tab_ensure_view (nb->last_active);
+}
+
+void
 nb_app_activate (void)
 {
   if (nb->tabs->len) {
