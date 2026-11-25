@@ -539,6 +539,7 @@ Depends: gstreamer1.0-plugins-base,
          ${shlibs:Depends},
          ${misc:Depends},
 Recommends: vibeos-dictate-en | vibeos-dictate-de | vibeos-dictate-es | vibeos-dictate-fr | vibeos-dictate-it | vibeos-dictate-ru,
+            vibeos-dictate-voice-en,
             gstreamer1.0-pulseaudio,
 Suggests: vibeos-dictate-de,
           vibeos-dictate-en,
@@ -555,8 +556,10 @@ Description: dictation for VibeOS
  .
  Vibe, in the same package, is a spoken conversation: it listens, answers
  from a language model (VibeOS's server, or a GGUF file on the phone through
- llama.cpp) and speaks the answer with a Piper voice, downloaded with the
- language when it is chosen.
+ llama.cpp) and speaks the answer with a Piper voice: English's comes in the
+ vibeos-dictate-voice-en package, which this one recommends and VibeOS's
+ system image has installed; the others are downloaded with their language
+ when it is chosen.
  .
  The recognisers are not part of VibeOS: vibeos-dictate loads Moonshine's
  (English, German, Spanish) and Vosk's (French, Italian, Russian) libraries
