@@ -19,6 +19,23 @@
 -- what plays (a sink's monitor, another app's stream), and its own video capture to a camera only, never to a
 -- screen cast: Android keeps both from an app with the permission too (a screen cast goes through the portal,
 -- which asks). When the permission store changes, the permissions follow at once.
+--
+-- A refused capture stream fails at once, as it does in WirePlumber's own linking when it finds no target: the
+-- client is sent an error for the stream (-EACCES), pipewire-pulse fails the PulseAudio stream, and the node is
+-- destroyed. It never hangs unlinked. Refused is: the microphone (or the camera) stored as "no" or not given, and
+-- the Microphone switch in Settings off.
+--
+-- The microphone asks the first time an app records, as the camera and location do through their portals; sound
+-- has no portal. An app whose microphone entry is unset (or "ask") has its capture stream held unlinked while the
+-- user is asked, up to ASK_TIMEOUT_MS. The question travels over the session bus as a name this script owns,
+-- org.freedesktop.ReserveDevice1.VibeOSMicAsk<the app id in hex> (WirePlumber's device reservation, the one
+-- thing a script can put on the bus: the permission store's "set" takes a typed variant a script cannot build). The
+-- shell watches for such names, asks "Allow <app> to use the microphone?", and writes the answer to the app's entry
+-- in the permission store ("vibeos-sandbox"/"microphone": "yes" or "no", remembered). The answer is followed at
+-- once: "yes" links the held streams on the rescan, "no" fails them. A question dismissed (or not asked, as the
+-- phone is locked) is answered by the shell with "dismissed" in "vibeos-sandbox-ask"/"microphone", which fails
+-- the held streams without remembering anything; no answer in ASK_TIMEOUT_MS does the same. One question per app:
+-- a second stream of the same app waits for the same answer.
 -- Such an app makes streams only: a node of its own that says it is something else (a sink, a source, a camera),
 -- which other apps' sound or pictures would be routed to, is destroyed, and never a target in the meantime.
 --
@@ -39,6 +56,13 @@ log = Log.open_topic ("s-client")
 
 local pps = Plugin.find ("portal-permissionstore")
 local MIC_TABLE, MIC_ID = "vibeos-sandbox", "microphone"
+-- the shell's answer to a question it did not put to the user: the app's entry says "dismissed"
+local ASK_TABLE = "vibeos-sandbox-ask"
+-- a question open longer than this (a little over the shell's own 30 s) is answered "no, not now"
+local ASK_TIMEOUT_MS = 35000
+local ASK_NAME = "VibeOSMicAsk"
+local ASK_PRIORITY = 2147483647
+local EACCES = -13
 local CAM_TABLE, CAM_ID = "devices", "camera"
 local cache = {}
 
@@ -68,6 +92,20 @@ local function granted (tbl, id, app_id)
     end
   end
   return false
+end
+
+-- what the store says of the app's microphone: "yes", "no", or nil (no entry, or "ask": the user is yet to be asked)
+local function microphone_answer (app_id)
+  local values = lookup (MIC_TABLE, MIC_ID)[app_id]
+  local answer = nil
+  for _, v in pairs (values or {}) do
+    if v == "no" and answer == nil then
+      answer = "no"
+    elseif v == "yes" then
+      answer = "yes"
+    end
+  end
+  return answer
 end
 
 -- Settings' Microphone and Camera switches: "microphone" or "camera" blocked for every client
@@ -160,6 +198,9 @@ local nodes = {}
 -- the node is the client's own: made by this very connection (PipeWire hands a gone client's id to the next one, so
 -- the connection is told by its serial, which is never reused)
 local function own (client, n)
+  if n.client_id ~= nil and n.client_id == tostring (client["bound-id"]) then
+    return true
+  end
   return n.client_serial ~= nil and n.client_serial == tostring (prop (client, "object.serial"))
 end
 
@@ -191,7 +232,8 @@ end
 local function node_info (node)
   local id = tonumber (node["bound-id"])
   local n = id ~= nil and nodes[id] or nil
-  if n == nil or n.client_id ~= prop (node, "client.id") or n.class ~= prop (node, "media.class") then
+  if n == nil or n.maker_pending or n.client_id ~= prop (node, "client.id") or
+     n.class ~= prop (node, "media.class") then
     local client_id = prop (node, "client.id")
     local maker = tonumber (client_id) ~= nil and
                   clients_om:lookup { Constraint { "bound-id", "=", tonumber (client_id), type = "gobject" } } or nil
@@ -199,6 +241,9 @@ local function node_info (node)
     n = { client_id = client_id ~= nil and tostring (client_id) or nil, app_id = app_of (client_id),
           client_serial = serial ~= nil and tostring (serial) or nil,
           class = prop (node, "media.class"), role = prop (node, "media.role") }
+    -- a node whose maker is not known yet (PipeWire can announce the node before its client) is looked at again the
+    -- next time, or it would stay another client's stream, hidden from the app that made it
+    n.maker_pending = client_id ~= nil and maker == nil
     if id ~= nil then
       nodes[id] = n
     end
@@ -267,7 +312,6 @@ sandbox_pm:add_interest_match (
   Interest { type = "factory" }
 )
 
--- capture streams of apps without the microphone permission stay unlinked
 -- the client that made a node (a session item's or a node's properties), when it is a sandboxed app's
 local function sandboxed_owner (props)
   local client_id = tonumber (props["client.id"])
@@ -293,25 +337,158 @@ local function posing (props)
   return class ~= nil and class:find ("^Stream/") == nil and sandboxed_owner (props) ~= nil
 end
 
-local function capture_denied (si)
+-- what becomes of a sandboxed app's capture stream: "allow", "ask" (the microphone, the user is yet to be asked) or
+-- "refuse" with the reason the app is told
+local function capture_verdict (si)
   local props = si.properties
   local class = props["media.class"]
   local audio = class ~= nil and class:find ("^Stream/Input/Audio") ~= nil
   local video = class ~= nil and class:find ("^Stream/Input/Video") ~= nil
   if not audio and not video then
-    return false
+    return "allow"
   end
   local client = sandboxed_owner (props)
   if client == nil then
-    return false
+    return "allow"
   end
   local app_id = sandboxed_app (client)
   if audio then
-    return blocked ("microphone") or not granted (MIC_TABLE, MIC_ID, app_id)
+    if blocked ("microphone") then
+      return "refuse", app_id, "the microphone is off"
+    end
+    local answer = microphone_answer (app_id)
+    if answer == "yes" then
+      return "allow"
+    end
+    if answer == "no" then
+      return "refuse", app_id, "the microphone is not allowed"
+    end
+    return "ask", app_id
   end
   -- video through the app's own connection; the portals' remotes (the camera, a screen cast) are theirs to grant
-  return cutils.get_client_access (client.properties) == "flatpak" and
-         (blocked ("camera") or not granted (CAM_TABLE, CAM_ID, app_id))
+  if cutils.get_client_access (client.properties) == "flatpak" and
+     (blocked ("camera") or not granted (CAM_TABLE, CAM_ID, app_id)) then
+    return "refuse", app_id, "the camera is not allowed"
+  end
+  return "allow"
+end
+
+-- the stream's key while it waits: its serial, which is never reused
+local function stream_key (si)
+  local props = si.properties
+  return tostring (props["object.serial"] or props["node.id"] or si.id)
+end
+
+-- the app's capture stream fails: its client is told (pipewire-pulse fails the PulseAudio stream, as for a stream
+-- with no target in WirePlumber's own linking) and the node is destroyed
+local function refuse (si, why)
+  local ok, err = pcall (function ()
+    local node = si:get_associated_proxy ("node")
+    local client = sandboxed_owner (si.properties)
+    if node ~= nil and client ~= nil then
+      client:send_error (node["bound-id"], EACCES, why)
+    end
+    if node ~= nil then
+      node:request_destroy ()
+    end
+  end)
+  if not ok then
+    log:warning ("vibeos-sandbox: could not fail a refused capture stream: " .. tostring (err))
+  end
+end
+
+-- ---- the question for the microphone ----------------------------------------------------------------------------
+
+local reserve = Plugin.find ("reserve-device")
+-- an app id that fits in a bus name, as hex
+local function ask_name (app_id)
+  local hex = app_id:gsub (".", function (c) return string.format ("%02x", c:byte ()) end)
+  return ASK_NAME .. hex
+end
+
+-- the apps being asked: app id -> { name = the bus name's last part, streams = { key = si }, timer = the timeout }
+local asking = {}
+
+local function can_ask ()
+  if reserve == nil then
+    return false
+  end
+  local ok, dbus = pcall (function () return reserve:call ("get-dbus") end)
+  return ok and dbus ~= nil and dbus["state"] == "connected"
+end
+
+-- the question over: the name goes from the bus (the shell takes its dialog away) and the held streams are linked
+-- on the rescan ("allow") or fail ("refuse")
+local function finish (app_id, verdict, why)
+  local q = asking[app_id]
+  if q == nil then
+    return
+  end
+  asking[app_id] = nil
+  if q.timer ~= nil then
+    q.timer:destroy ()
+  end
+  pcall (function () reserve:call ("destroy-reservation", q.name) end)
+  if verdict == "refuse" then
+    for _, si in pairs (q.streams) do
+      refuse (si, why)
+    end
+  end
+end
+
+-- a stream waits for the user's answer for its app: the question is put once per app
+local function hold (si, app_id)
+  local q = asking[app_id]
+  if q == nil then
+    local name = ask_name (app_id)
+    if not can_ask () or #name > 220 then
+      log:warning ("vibeos-sandbox: " .. app_id .. " cannot be asked for the microphone")
+      refuse (si, "the microphone cannot be asked for")
+      return
+    end
+    local ok, rd = pcall (function ()
+      return reserve:call ("create-reservation", name, "VibeOS sandbox", app_id, ASK_PRIORITY)
+    end)
+    if not ok or rd == nil then
+      log:warning ("vibeos-sandbox: the question for " .. app_id .. " did not go out: " .. tostring (rd))
+      refuse (si, "the microphone cannot be asked for")
+      return
+    end
+    rd:call ("acquire")
+    q = { name = name, streams = {} }
+    q.timer = Core.timeout_add (ASK_TIMEOUT_MS, function ()
+      q.timer = nil
+      log:notice ("vibeos-sandbox: no answer for the microphone of " .. app_id)
+      finish (app_id, "refuse", "the microphone was not answered")
+    end)
+    asking[app_id] = q
+    log:info (si, "vibeos-sandbox: asking for the microphone of " .. app_id)
+  end
+  q.streams[stream_key (si)] = si
+end
+
+-- the store changed (or the Microphone switch): every question that is answered now, is
+local function settle ()
+  local apps = {}
+  for app_id in pairs (asking) do
+    apps[#apps + 1] = app_id
+  end
+  for _, app_id in ipairs (apps) do
+    local answer = microphone_answer (app_id)
+    local dismissed = false
+    for _, v in pairs (lookup (ASK_TABLE, MIC_ID)[app_id] or {}) do
+      dismissed = dismissed or v == "dismissed"
+    end
+    if blocked ("microphone") then
+      finish (app_id, "refuse", "the microphone is off")
+    elseif answer == "yes" then
+      finish (app_id, "allow")
+    elseif answer == "no" then
+      finish (app_id, "refuse", "the microphone is not allowed")
+    elseif dismissed then
+      finish (app_id, "refuse", "the microphone was not allowed this time")
+    end
+  end
 end
 
 SimpleEventHook {
@@ -328,10 +505,22 @@ SimpleEventHook {
   execute = function (event)
     -- on an error the stream goes on as usual (the microphone itself is hidden all the same): never hold up
     -- the linking of other streams, a call's among them
-    local ok, denied = pcall (capture_denied, event:get_subject ())
-    if ok and denied then
-      log:info (event:get_subject (), "vibeos-sandbox: capture without the permission, not linked")
-      event:stop_processing ()
+    local si = event:get_subject ()
+    local ok, verdict, app_id, why = pcall (capture_verdict, si)
+    if not ok or verdict == "allow" then
+      return
+    end
+    event:stop_processing ()
+    if verdict == "ask" then
+      log:info (si, "vibeos-sandbox: capture without an answer for the microphone, not linked yet")
+      local held, err = pcall (hold, si, app_id)
+      if not held then
+        log:warning ("vibeos-sandbox: " .. tostring (err))
+        refuse (si, "the microphone cannot be asked for")
+      end
+    else
+      log:info (si, "vibeos-sandbox: capture without the permission, refused: " .. tostring (why))
+      refuse (si, why)
     end
   end
 }:register ()
@@ -586,7 +775,8 @@ links_om:activate ()
 if pps ~= nil then
   pps:connect ("changed", function (_, tbl, id, deleted, permissions)
     local privacy = tbl == PRIVACY_TABLE and (id == "microphone" or id == "camera")
-    if privacy or (tbl == MIC_TABLE and id == MIC_ID) or (tbl == CAM_TABLE and id == CAM_ID) then
+    if privacy or (tbl == MIC_TABLE and id == MIC_ID) or (tbl == CAM_TABLE and id == CAM_ID) or
+       (tbl == ASK_TABLE and id == MIC_ID) then
       cache[tbl .. "/" .. id] = (not deleted and permissions) or {}
       sandbox_pm:update_permissions ()
       if privacy then
@@ -595,6 +785,7 @@ if pps ~= nil then
         privacy_restricted_pm:update_permissions ()
         unlink_blocked ()
       end
+      settle ()
       local source = Plugin.find ("standard-event-source")
       if source ~= nil then
         source:call ("schedule-rescan", "linking")

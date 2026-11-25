@@ -10,9 +10,10 @@
  *   the others    "vibeos-sandbox"/<name>   "yes" or "no": network, microphone, contacts, calendar, phone, sms, files
  *
  * An app with no entry gets the permission's default: network is allowed (an app may use the internet from the
- * start), location and camera ask (their portals ask when the app first wants them), background is allowed (what
- * the background portal does with no entry; registering an app sets it to "ask"), the rest are not allowed.
- * The microphone has no runtime question: it is allowed or not, in Settings. */
+ * start), location and camera ask (their portals ask when the app first wants them), the microphone asks (sound has
+ * no portal: WirePlumber's sandbox-access.lua records the request in "vibeos-sandbox-ask"/"microphone" when the app's
+ * capture stream appears, and the shell asks the user and writes the answer to the entry), background is allowed
+ * (what the background portal does with no entry; registering an app sets it to "ask"), the rest are not allowed. */
 #pragma once
 
 #include <gio/gio.h>
@@ -41,6 +42,9 @@ typedef enum {
 
 /* the table of our own grants in the permission store */
 #define VS_STORE_TABLE "vibeos-sandbox"
+/* where WirePlumber's script asks the shell to ask the user for the microphone: "vibeos-sandbox-ask"/"microphone",
+ * the app's entry "ask" while a question is open (the shell takes it away once the user answered or dismissed it) */
+#define VS_ASK_TABLE "vibeos-sandbox-ask"
 
 /* ---- the store: the permission store over D-Bus, or one in memory for the tests ---- */
 

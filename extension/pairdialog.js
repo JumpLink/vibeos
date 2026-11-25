@@ -48,6 +48,10 @@ const STANDARD = bezier(0.2, 0, 0, 1);
 const STANDARD_ACCELERATE = bezier(0.3, 0, 1, 1);
 
 function title(question) {
+    if (question.kind === 'microphone') {
+        /* TRANSLATORS: an app records sound for the first time and asks for the microphone; %s is the app's name */
+        return _('Allow %s to use the microphone?').replace('%s', question.name);
+    }
     return question.kind === 'service'
         /* TRANSLATORS: a Bluetooth device asks to connect to one of the phone's services; %s is its name */
         ? _('Allow %s to connect?').replace('%s', question.name)
@@ -65,8 +69,9 @@ function text(str, sizeSp, wght, colour, width, params = {}) {
     return t;
 }
 
-// One question on the screen. done(answer) once, from a button or close()
-class Dialog {
+// One question on the screen. done(answer) once, from a button or close(). The microphone's (micprompt.js) answers
+// 'yes' or 'no', and null when it is dismissed
+export class Dialog {
     constructor(question, done) {
         this._question = question;
         this._done = done;
@@ -142,6 +147,9 @@ class Dialog {
             break;
         case 'service':
             this._buttons([[_("Don't allow"), null], [_('Allow'), () => true]]);
+            break;
+        case 'microphone':
+            this._buttons([[_("Don't allow"), () => 'no'], [_('Allow'), () => 'yes']]);
             break;
         default:        // authorize: a device pairing without a code
             this._buttons([[_('Cancel'), null], [_('Pair'), () => true]]);

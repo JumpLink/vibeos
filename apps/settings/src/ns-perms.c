@@ -6,8 +6,8 @@
  * too) and stops the app when one is taken away. What an app does not ask for it never gets, and is not listed.
  *
  * "Ask every time" is the store's third grant: nobody has decided yet, and the portal asks the user the next time the
- * app wants it. Only location, the camera and running in the background have it (vibeos-sandbox's vs-perms.c says
- * which); the others are allowed or not.
+ * app wants it. Only location, the camera, the microphone and running in the background have it (vibeos-sandbox's
+ * vs-perms.c says which); the others are allowed or not.
  *
  * Any other app is not sandboxed: it can do whatever the user's account may, and its row says so. */
 #include "ns-pages.h"
@@ -25,7 +25,7 @@ static const struct {
 } perms[] = {
   { "location", N_("Location"), "find-location-symbolic", TRUE },
   { "camera", N_("Camera"), "camera-photo-symbolic", TRUE },
-  { "microphone", N_("Microphone"), "audio-input-microphone-symbolic", FALSE },
+  { "microphone", N_("Microphone"), "audio-input-microphone-symbolic", TRUE },
   { "contacts", N_("Contacts"), "avatar-default-symbolic", FALSE },
   { "calendar", N_("Calendar"), "x-office-calendar-symbolic", FALSE },
   { "phone", N_("Phone"), "call-start-symbolic", FALSE },

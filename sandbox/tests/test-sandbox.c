@@ -68,7 +68,7 @@ test_perm_defaults (void)
   g_assert_cmpint (vs_perm_get (store, app, VS_PERM_NETWORK), ==, VS_GRANT_ALLOW);
   g_assert_cmpint (vs_perm_get (store, app, VS_PERM_LOCATION), ==, VS_GRANT_ASK);
   g_assert_cmpint (vs_perm_get (store, app, VS_PERM_CAMERA), ==, VS_GRANT_ASK);
-  g_assert_cmpint (vs_perm_get (store, app, VS_PERM_MICROPHONE), ==, VS_GRANT_DENY);
+  g_assert_cmpint (vs_perm_get (store, app, VS_PERM_MICROPHONE), ==, VS_GRANT_ASK);
   g_assert_cmpint (vs_perm_get (store, app, VS_PERM_CONTACTS), ==, VS_GRANT_DENY);
   g_assert_cmpint (vs_perm_get (store, app, VS_PERM_CALENDAR), ==, VS_GRANT_DENY);
   g_assert_cmpint (vs_perm_get (store, app, VS_PERM_PHONE), ==, VS_GRANT_DENY);
@@ -76,7 +76,7 @@ test_perm_defaults (void)
   g_assert_cmpint (vs_perm_get (store, app, VS_PERM_FILES), ==, VS_GRANT_DENY);
   g_assert_cmpint (vs_perm_get (store, app, VS_PERM_BACKGROUND), ==, VS_GRANT_ALLOW);
   /* no store at all: the defaults */
-  g_assert_cmpint (vs_perm_get (NULL, app, VS_PERM_MICROPHONE), ==, VS_GRANT_DENY);
+  g_assert_cmpint (vs_perm_get (NULL, app, VS_PERM_MICROPHONE), ==, VS_GRANT_ASK);
 
   for (int i = 0; i < VS_N_PERMS; i++)
     g_assert_cmpint (vs_perm_from_name (vs_perm_name (i)), ==, i);
@@ -119,10 +119,19 @@ test_perm_store (void)
   g_assert_true (vs_perm_set (store, app, VS_PERM_CAMERA, VS_GRANT_ASK, &error));
   g_assert_cmpint (vs_perm_get (store, app, VS_PERM_CAMERA), ==, VS_GRANT_ASK);
 
-  /* the others in our table, and no question for them */
+  /* the microphone: yes, no, and ask again (the shell asks when the app first records) */
   g_assert_true (vs_perm_set (store, app, VS_PERM_MICROPHONE, VS_GRANT_ALLOW, &error));
   g_auto (GStrv) mic = store->get (store, VS_STORE_TABLE, "microphone", app, NULL);
   g_assert_cmpstr (mic[0], ==, "yes");
+  g_assert_true (vs_perm_set (store, app, VS_PERM_MICROPHONE, VS_GRANT_ASK, &error));
+  g_auto (GStrv) mic_ask = store->get (store, VS_STORE_TABLE, "microphone", app, NULL);
+  g_assert_cmpstr (mic_ask[0], ==, "ask");
+  g_assert_cmpint (vs_perm_get (store, app, VS_PERM_MICROPHONE), ==, VS_GRANT_ASK);
+  g_assert_true (vs_perm_set (store, app, VS_PERM_MICROPHONE, VS_GRANT_DENY, &error));
+  g_assert_cmpint (vs_perm_get (store, app, VS_PERM_MICROPHONE), ==, VS_GRANT_DENY);
+  g_assert_true (vs_perm_set (store, app, VS_PERM_MICROPHONE, VS_GRANT_ALLOW, &error));
+
+  /* the others in our table, and no question for them */
   g_assert_false (vs_perm_set (store, app, VS_PERM_CONTACTS, VS_GRANT_ASK, &error));
   g_assert_error (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED);
   g_clear_error (&error);
@@ -137,7 +146,7 @@ test_perm_store (void)
   g_auto (GStrv) bg = store->get (store, "background", "background", app, NULL);
   g_assert_cmpstr (bg[0], ==, "ask");
   /* another app is not touched */
-  g_assert_cmpint (vs_perm_get (store, "org.example.Other", VS_PERM_MICROPHONE), ==, VS_GRANT_DENY);
+  g_assert_cmpint (vs_perm_get (store, "org.example.Other", VS_PERM_MICROPHONE), ==, VS_GRANT_ASK);
 
   VsGrants grants;
   vs_grants_load (store, app, &grants);
@@ -152,10 +161,11 @@ test_perm_store (void)
   store->set (store, "documents", "doc1", "org.example.Other", (const char *[]) { "read", NULL }, NULL);
   store->set (store, "documents", "doc2", app, (const char *[]) { "read", NULL }, NULL);
   vs_perm_set (store, "org.example.Other", VS_PERM_MICROPHONE, VS_GRANT_ALLOW, NULL);
+  store->set (store, VS_ASK_TABLE, "microphone", app, ask, NULL);
   g_assert_true (vs_perm_forget (store, app, &error));
   g_assert_no_error (error);
   const char *tables[][2] = { { "location", "location" }, { "devices", "camera" }, { VS_STORE_TABLE, "microphone" },
-                              { VS_STORE_TABLE, "network" }, { VS_STORE_TABLE, "sms" },
+                              { VS_ASK_TABLE, "microphone" }, { VS_STORE_TABLE, "network" }, { VS_STORE_TABLE, "sms" },
                               { "background", "background" }, { "notifications", "notification" },
                               { "documents", "doc1" }, { "documents", "doc2" } };
   for (guint i = 0; i < G_N_ELEMENTS (tables); i++) {
@@ -355,16 +365,6 @@ test_bwrap_defaults (void)
   g_assert_false (has (a, "/dev/video0"));
   g_assert_false (has_prefix (a, "/dev/snd"));
   g_assert_false (has_prefix (a, "/dev/input"));
-  /* the instance's pipes */
-  g_assert_true (has (a, "--info-fd") && has (a, "--block-fd"));
-  /* the command last, after -- */
-  g_assert_cmpstr (a->pdata[a->len - 3], ==, "--");
-  g_assert_cmpstr (a->pdata[a->len - 2], ==, "foo");
-  g_assert_cmpstr (a->pdata[a->len - 1], ==, "--bar");
-  /* nothing of the system bus */
-  g_assert_false (has_prefix (a, "/run/dbus"));
-  g_assert_false (has_prefix (a, "/var/run/dbus"));
-}
   /* which device this is (/proc/device-tree links to /sys/firmware/devicetree/base): the model and the compatible
    * list, read-only, and nothing else of /sys/firmware */
   g_assert_true (has3 (a, "--ro-bind-try", "/sys/firmware/devicetree/base/compatible",
@@ -379,6 +379,16 @@ test_bwrap_defaults (void)
   for (guint i = 0; i + 1 < a->len; i++)
     if (!g_strcmp0 (a->pdata[i], "--ro-bind-try") && g_str_has_prefix (a->pdata[i + 1], "/sys/firmware"))
       g_assert_true (g_str_has_suffix (a->pdata[i + 1], "/compatible") || g_str_has_suffix (a->pdata[i + 1], "/model"));
+  /* the instance's pipes */
+  g_assert_true (has (a, "--info-fd") && has (a, "--block-fd"));
+  /* the command last, after -- */
+  g_assert_cmpstr (a->pdata[a->len - 3], ==, "--");
+  g_assert_cmpstr (a->pdata[a->len - 2], ==, "foo");
+  g_assert_cmpstr (a->pdata[a->len - 1], ==, "--bar");
+  /* nothing of the system bus */
+  g_assert_false (has_prefix (a, "/run/dbus"));
+  g_assert_false (has_prefix (a, "/var/run/dbus"));
+}
 
 static void
 test_bwrap_grants (void)
