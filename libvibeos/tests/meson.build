@@ -36,6 +36,13 @@ test('original-colors', test_original, env: test_env + ['GSETTINGS_SCHEMA_DIR=' 
 test_locale = executable('test-locale', 'test-locale.c', test_schemas, dependencies: vibeos_dep)
 test('locale', test_locale, env: test_env + ['GSETTINGS_SCHEMA_DIR=' + meson.current_build_dir()])
 
+# a program starting over in the session's new language (vibeos-restart.c): in place, or by systemd for a Type=dbus
+# service, on a bus of the test's own with a mock systemd user manager
+test_restart_child = executable('test-restart-child', 'test-restart-child.c', '../vibeos-restart.c',
+  include_directories: include_directories('..'), dependencies: dependency('gio-2.0'))
+test('restart', find_program('python3'), args: [files('test-restart.py'), meson.current_build_dir()],
+  depends: test_restart_child, env: test_env, timeout: 120)
+
 # VibeosFitLabel's scale, measured in the font in libvibeos/fonts
 test_fit = executable('test-fit', 'test-fit.c',
   dependencies: [vibeos_dep, dependency('fontconfig'), dependency('pangocairo')],
