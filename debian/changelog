@@ -90,6 +90,12 @@ vibeos (1:0.1.4.3) unstable; urgency=medium
     volume keys set it; the brightness is the shade slider's, and under
     automatic brightness it moves its offset.
   * Settings: the parallax wallpapers' previews are squares.
+  * An app installed from Software asks for the microphone the first time
+    it records, as it does for the camera and the location: "Allow … to
+    use the microphone?". The answer is kept, and Settings changes it;
+    a recording refused fails at once instead of waiting. Such an app
+    reads which phone it is on (the device tree's model and compatible
+    list), and its Open Settings button opens Settings.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 00:48:14 +0100
 
