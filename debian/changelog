@@ -5,6 +5,13 @@ vibeos (1:0.1.5) unstable; urgency=medium
     "used too much memory") with a Reload button, in place of an empty
     grey view. The address typed is looked up while it is typed, so the
     page starts loading sooner (never in incognito).
+  * The charging line on the lock screen and the always-on display comes
+    from the power that flows into the battery, as Android has it: under
+    5 W "Charging slowly", from 5 W "Charging", from 12 W "Fast charging"
+    and from 20 W "Super fast charging", whatever the charger offers. A
+    computer's port, or a charger that only just keeps up with the screen,
+    now reads "Charging slowly". "Not charging" is said only when the
+    battery says so (too warm, or a charge limit).
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
