@@ -1,6 +1,9 @@
 /* The Wayland side: one fullscreen xdg toplevel, its exact pixel size (fractional scale + viewporter, or an integer
  * buffer scale), touch and pointer input in pixels, keys through the compositor's keymap (xkbcommon), text from the
  * input method (text-input-v3: the shell's on-screen keyboard), and a frame clock on the compositor's vsync grid.
+ * A size still the wrong way round for its output (portrait on a landscape one) half a second after its configure,
+ * which the shell fits first, makes the window ask to be fullscreen again, once (wl.c's heal_check). Every configure
+ * and turn is in the journal ("wl: ...").
  * Runs inside the GLib main loop. */
 #pragma once
 
