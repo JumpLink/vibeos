@@ -243,6 +243,13 @@ vs_bwrap_args (const VsSandbox *sb)
   static const char *const sys[] = { "/sys/block", "/sys/bus", "/sys/class", "/sys/dev", "/sys/devices", NULL };
   for (guint i = 0; sys[i]; i++)
     add3 (a, "--ro-bind-try", sys[i], sys[i]);
+  /* which device this is: /proc/device-tree is a link to /sys/firmware/devicetree/base, which holds the model and
+   * the compatible list a phone's apps pick their audio routing and layouts by. Those two files only: the rest of
+   * the tree (serial numbers, the boot arguments, calibration) stays out. */
+  static const char *const device_tree[] = { "/sys/firmware/devicetree/base/compatible",
+                                             "/sys/firmware/devicetree/base/model", NULL };
+  for (guint i = 0; device_tree[i]; i++)
+    add3 (a, "--ro-bind-try", device_tree[i], device_tree[i]);
 
   add (a, "--tmpfs");
   add (a, "/tmp");

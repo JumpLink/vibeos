@@ -365,6 +365,20 @@ test_bwrap_defaults (void)
   g_assert_false (has_prefix (a, "/run/dbus"));
   g_assert_false (has_prefix (a, "/var/run/dbus"));
 }
+  /* which device this is (/proc/device-tree links to /sys/firmware/devicetree/base): the model and the compatible
+   * list, read-only, and nothing else of /sys/firmware */
+  g_assert_true (has3 (a, "--ro-bind-try", "/sys/firmware/devicetree/base/compatible",
+                       "/sys/firmware/devicetree/base/compatible"));
+  g_assert_true (has3 (a, "--ro-bind-try", "/sys/firmware/devicetree/base/model",
+                       "/sys/firmware/devicetree/base/model"));
+  guint firmware = 0;
+  for (guint i = 0; i < a->len; i++)
+    if (g_str_has_prefix (a->pdata[i], "/sys/firmware"))
+      firmware++;
+  g_assert_cmpuint (firmware, ==, 4);
+  for (guint i = 0; i + 1 < a->len; i++)
+    if (!g_strcmp0 (a->pdata[i], "--ro-bind-try") && g_str_has_prefix (a->pdata[i + 1], "/sys/firmware"))
+      g_assert_true (g_str_has_suffix (a->pdata[i + 1], "/compatible") || g_str_has_suffix (a->pdata[i + 1], "/model"));
 
 static void
 test_bwrap_grants (void)
