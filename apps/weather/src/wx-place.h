@@ -7,6 +7,15 @@
 #include <glib.h>
 
 #define WX_STEP_DEG 0.1
+/* how long the page waits for GeoClue's first fix: a GNSS fix takes seconds when it was on lately, under a minute
+ * with fresh orbit data, minutes from cold */
+#define WX_FIX_WAIT_S 120
+
+/* why GeoClue gave the page no position */
+typedef enum {
+  WX_NOWHERE_OFF,       /* it could not be asked, or said no: Location off, refused, no agent, no system bus */
+  WX_NOWHERE_NO_FIX,    /* it was asked and had no fix within WX_FIX_WAIT_S: indoors, or a GNSS starting cold */
+} WxNowhere;
 
 /* deg to the nearest 0.1° (halves away from zero), never -0 */
 double wx_round_deg (double deg);
@@ -17,3 +26,5 @@ char *wx_forecast_url (double lat, double lon);
 /* Nominatim's name for the rounded position, at city level (zoom 10: a suburb's name means nothing for a point
  * rounded to 0.1°), in language lang */
 char *wx_reverse_url (double lat, double lon, const char *lang);
+/* the page's message when it has no place at all, untranslated (the caller translates it): what to do next */
+const char *wx_nowhere_message (WxNowhere why);

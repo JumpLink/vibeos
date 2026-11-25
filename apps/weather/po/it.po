@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-weather\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-26 00:29+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -184,18 +184,6 @@ msgstr "Oggi"
 msgid "Sunset %s"
 msgstr "Tramonto: %s"
 
-#. TRANSLATORS: the wind's speed in kilometres an hour
-#: src/main.c
-#, c-format
-msgid "%.0f km/h"
-msgstr "%.0f km/h"
-
-#. TRANSLATORS: the air pressure in hectopascals
-#: src/main.c
-#, c-format
-msgid "%.0f hPa"
-msgstr "%.0f hPa"
-
 #: src/main.c
 msgid "UV index"
 msgstr "Indice UV"
@@ -214,13 +202,8 @@ msgstr "Pressione"
 
 #: src/main.c
 msgid "No forecast: Open-Meteo did not answer. Tap reload to try again."
-msgstr "Nessuna previsione: Open-Meteo non ha risposto. Tocca Ricarica per riprovare."
-
-#: src/main.c
-msgid ""
-"No location. Turn on Location in Settings, then tap reload, or set a city in "
-"the ⋮ menu."
-msgstr "Nessuna posizione. Attiva la geolocalizzazione in Impostazioni, poi tocca Ricarica, oppure imposta una città nel menu ⋮."
+msgstr ""
+"Nessuna previsione: Open-Meteo non ha risposto. Tocca Ricarica per riprovare."
 
 #: src/main.c
 #, c-format
@@ -267,9 +250,12 @@ msgid ""
 "Set City finds cities with Open-Meteo's geocoding, on data from <a "
 "href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0."
 msgstr ""
-"Previsioni meteo di <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, con licenza <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n"
+"Previsioni meteo di <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, "
+"con licenza <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY "
+"4.0</a>.\n"
 "\n"
-"«Imposta città» trova le città con il geocoding di Open-Meteo, su dati di <a href=\"https://www.geonames.org/\">GeoNames</a>, con licenza CC BY 4.0."
+"«Imposta città» trova le città con il geocoding di Open-Meteo, su dati di <a "
+"href=\"https://www.geonames.org/\">GeoNames</a>, con licenza CC BY 4.0."
 
 #: src/main.c
 msgid ""
@@ -278,7 +264,12 @@ msgid ""
 "www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the "
 "<a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database "
 "License</a> (ODbL)."
-msgstr "Il nome del luogo in cui si trova il telefono viene da <a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a> di OpenStreetMap. Dati © <a href=\"https://www.openstreetmap.org/copyright\">collaboratori di OpenStreetMap</a>, con licenza <a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)."
+msgstr ""
+"Il nome del luogo in cui si trova il telefono viene da <a href=\"https://"
+"nominatim.openstreetmap.org/\">Nominatim</a> di OpenStreetMap. Dati © <a "
+"href=\"https://www.openstreetmap.org/copyright\">collaboratori di "
+"OpenStreetMap</a>, con licenza <a href=\"https://opendatacommons.org/"
+"licenses/odbl/\">Open Database License</a> (ODbL)."
 
 #: src/main.c
 msgid "About"
@@ -296,3 +287,16 @@ msgstr "Altre opzioni"
 #: src/main.c
 msgid "Finding where you are…"
 msgstr "Ricerca della posizione…"
+
+#: src/wx-place.c
+msgid ""
+"No location yet. Set a city in the ⋮ menu, or tap reload under open sky."
+msgstr "Ancora nessuna posizione. Imposta una città nel menu ⋮, oppure tocca Ricarica all'aperto."
+
+#: src/wx-place.c
+msgid ""
+"No location. Turn on Location in Settings, then tap reload, or set a city in "
+"the ⋮ menu."
+msgstr ""
+"Nessuna posizione. Attiva la geolocalizzazione in Impostazioni, poi tocca "
+"Ricarica, oppure imposta una città nel menu ⋮."

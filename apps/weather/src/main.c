@@ -872,10 +872,8 @@ load_place (Page *p)
 #define GEO_MANAGER "/org/freedesktop/GeoClue2/Manager"
 /* GClueAccuracyLevel exact. VibeOS's GeoClue has only the phone's own GNSS (no Wi-Fi, cell or IP lookups), and GeoClue
  * never starts a source more accurate than the level asked for, so city accuracy would get no position at all; the
- * page asks for exact and rounds the fix itself (on_location) before anything uses it */
+ * page asks for exact and rounds the fix itself (on_location) before anything uses it. It waits WX_FIX_WAIT_S. */
 #define GEO_EXACT   8
-/* a GNSS fix: seconds when it was on lately, under a minute with fresh orbit data, minutes from cold */
-#define GEO_WAIT_S  120
 
 static void
 save_place (Page *p)
@@ -917,14 +915,15 @@ use_place (Page *p, double lat, double lon, const char *name)
     fetch (p);
 }
 
-/* no place at all: say how to get one (a known place keeps its weather) */
+/* no position from GeoClue: the spinner stops, and a page with no place at all says how to get one (a known place
+ * keeps its weather) */
 static void
-nowhere (Page *p)
+nowhere (Page *p, WxNowhere why)
 {
   gtk_spinner_stop (GTK_SPINNER (p->spinner));
   if (p->have_place)
     return;
-  waiting (p, _("No location. Turn on Location in Settings, then tap reload, or set a city in the ⋮ menu."));
+  waiting (p, _(wx_nowhere_message (why)));
 }
 
 typedef struct {
@@ -1011,7 +1010,7 @@ geo_failed (Page *p, const char *what, GError *error)
 {
   g_message ("location: %s: %s", what, error ? error->message : "none");
   geo_stop (p);
-  nowhere (p);
+  nowhere (p, WX_NOWHERE_OFF);
 }
 
 static void
@@ -1049,7 +1048,9 @@ geo_waited (gpointer data)
 {
   Page *p = data;
   p->geo_timeout = 0;
-  geo_failed (p, "no fix", NULL);
+  g_message ("location: no fix in %d s", WX_FIX_WAIT_S);
+  geo_stop (p);
+  nowhere (p, WX_NOWHERE_NO_FIX);   /* indoors, or a GNSS from cold: not a spinner for ever */
   return G_SOURCE_REMOVE;
 }
 
@@ -1098,7 +1099,7 @@ on_geo_client (GObject *src, GAsyncResult *res, gpointer data)
   p->geo_signal = g_dbus_connection_signal_subscribe (p->system, GEO_BUS, GEO_BUS ".Client", "LocationUpdated",
                                                       p->geo_client, NULL, G_DBUS_SIGNAL_FLAGS_NONE, on_location, p,
                                                       NULL);
-  p->geo_timeout = g_timeout_add_seconds (GEO_WAIT_S, geo_waited, p);
+  p->geo_timeout = g_timeout_add_seconds (WX_FIX_WAIT_S, geo_waited, p);
   g_dbus_connection_call (p->system, GEO_BUS, p->geo_client, GEO_BUS ".Client", "Start", NULL, NULL,
                           G_DBUS_CALL_FLAGS_NONE, -1, NULL, on_geo_started, p);
 }

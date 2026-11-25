@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-weather\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-26 00:29+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Spanish\n"
@@ -183,18 +183,6 @@ msgstr "Hoy"
 msgid "Sunset %s"
 msgstr "Atardecer: %s"
 
-#. TRANSLATORS: the wind's speed in kilometres an hour
-#: src/main.c
-#, c-format
-msgid "%.0f km/h"
-msgstr "%.0f km/h"
-
-#. TRANSLATORS: the air pressure in hectopascals
-#: src/main.c
-#, c-format
-msgid "%.0f hPa"
-msgstr "%.0f hPa"
-
 #: src/main.c
 msgid "UV index"
 msgstr "Índice UV"
@@ -216,14 +204,6 @@ msgid "No forecast: Open-Meteo did not answer. Tap reload to try again."
 msgstr ""
 "No hay previsión: Open-Meteo no ha respondido. Toca Recargar para volver a "
 "intentarlo."
-
-#: src/main.c
-msgid ""
-"No location. Turn on Location in Settings, then tap reload, or set a city in "
-"the ⋮ menu."
-msgstr ""
-"No hay ubicación. Activa la ubicación en Ajustes y toca Recargar, o elige "
-"una ciudad en el menú ⋮."
 
 #: src/main.c
 #, c-format
@@ -308,3 +288,16 @@ msgstr "Más opciones"
 #: src/main.c
 msgid "Finding where you are…"
 msgstr "Buscando tu ubicación…"
+
+#: src/wx-place.c
+msgid ""
+"No location yet. Set a city in the ⋮ menu, or tap reload under open sky."
+msgstr "Aún no hay ubicación. Elige una ciudad en el menú ⋮ o toca Recargar al aire libre."
+
+#: src/wx-place.c
+msgid ""
+"No location. Turn on Location in Settings, then tap reload, or set a city in "
+"the ⋮ menu."
+msgstr ""
+"No hay ubicación. Activa la ubicación en Ajustes y toca Recargar, o elige "
+"una ciudad en el menú ⋮."

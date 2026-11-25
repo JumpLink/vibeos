@@ -84,6 +84,21 @@ test_reverse_url (void)
   g_assert_true (g_str_has_suffix (odd, "&accept-language=x%26y"));
 }
 
+/* a GeoClue wait that ends with no fix is a message that says what to do, not a spinner: and a different one from
+ * Location being off */
+static void
+test_nowhere (void)
+{
+  const char *no_fix = wx_nowhere_message (WX_NOWHERE_NO_FIX), *off = wx_nowhere_message (WX_NOWHERE_OFF);
+  g_assert_true (g_str_has_prefix (no_fix, "No location yet."));
+  g_assert_nonnull (strstr (no_fix, "Set a city"));
+  g_assert_nonnull (strstr (off, "Turn on Location"));
+  g_assert_cmpstr (no_fix, !=, off);
+  /* long enough for a warm GNSS start (about 40 s with fresh orbit data), short enough to give up indoors */
+  g_assert_cmpint (WX_FIX_WAIT_S, >=, 60);
+  g_assert_cmpint (WX_FIX_WAIT_S, <=, 300);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -93,5 +108,6 @@ main (int argc, char **argv)
   g_test_add_func ("/place/locale", test_locale);
   g_test_add_func ("/place/forecast-url", test_forecast_url);
   g_test_add_func ("/place/reverse-url", test_reverse_url);
+  g_test_add_func ("/place/nowhere", test_nowhere);
   return g_test_run ();
 }
