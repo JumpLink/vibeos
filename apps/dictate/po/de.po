@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-dictate\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 20:19+0100\n"
+"POT-Creation-Date: 2026-11-25 01:08+0100\n"
 "PO-Revision-Date: 2026-11-24 16:47+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: German\n"
@@ -592,6 +592,13 @@ msgid "There is not enough space on the phone: %s are needed, %s are free"
 msgstr ""
 "Auf dem Telefon ist nicht genug Platz: %s werden gebraucht, %s sind frei"
 
+#. TRANSLATORS: why the microphone cannot be used yet: the audio has not started
+#. TRANSLATORS: a notice at the top of Vibe's and Dictate's window while the audio (GStreamer) has not started,
+#. * and the microphone and the voice cannot be used
+#: src/dictate-engine.c src/dictate-env.c
+msgid "Audio unavailable"
+msgstr "Audio nicht verfügbar"
+
 #. TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second the package's name
 #. * (vibeos-dictate-de)
 #: src/dictate-engine.c
@@ -624,6 +631,12 @@ msgstr "Die Spracherkennung konnte nicht gestartet werden."
 #: src/dictate-engine.c
 msgid "The microphone could not be opened."
 msgstr "Das Mikrofon konnte nicht geöffnet werden."
+
+#. TRANSLATORS: a notice at the top of Vibe's and Dictate's window when the phone has no microphone to listen to
+#. * (none plugged in, or the sound server is not running); it goes when one appears
+#: src/dictate-env.c
+msgid "No microphone"
+msgstr "Kein Mikrofon"
 
 #: src/dictate-enroll.c
 msgid ""
@@ -2454,6 +2467,12 @@ msgstr[1] "Eine Stimmprobe braucht %d Aufnahmen"
 #, c-format
 msgid "The voice sample could not be saved: %s"
 msgstr "Die Stimmprobe konnte nicht gespeichert werden: %s"
+
+#. TRANSLATORS: a notice at the top of Vibe's window when the phone is offline and Vibe's questions go to a server:
+#. * only the basic commands work until the network is back
+#: src/dictate-window.c
+msgid "No internet connection"
+msgstr "Keine Internetverbindung"
 
 #: src/dictate-window.c
 msgid "Listening…"

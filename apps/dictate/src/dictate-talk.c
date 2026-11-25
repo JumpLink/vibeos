@@ -18,6 +18,7 @@
 #include "dictate-actions.h"
 #include "dictate-brain.h"
 #include "dictate-debuglog.h"
+#include "dictate-gst.h"
 #include "dictate-offline.h"
 #include "dictate-output.h"
 #include "dictate-remote.h"
@@ -511,7 +512,9 @@ on_audio (gpointer data)
 
   if (!current (self, p->turn))
     return G_SOURCE_REMOVE;
-  if (p->samples && p->n && g_atomic_int_get (&self->speak) && (guint) g_atomic_int_get (&self->hushed) != p->turn)
+  /* no voice until GStreamer has started (dictate-gst.h): the reply is written and not spoken */
+  if (p->samples && p->n && g_atomic_int_get (&self->speak) && (guint) g_atomic_int_get (&self->hushed) != p->turn
+      && dictate_gst_ready ())
     {
       GstBuffer *buffer;
 
@@ -1539,6 +1542,14 @@ job_with_files (DictateTalk *self, int kind, const char *language, const char *t
   job->voice = g_steal_pointer (&voice);
   job->name = g_steal_pointer (&name);
   return job;
+}
+
+gboolean
+dictate_talk_needs_network (DictateTalk *self)
+{
+  g_autofree char *brain = find_brain (self);
+
+  return brain && dictate_brain_is_remote (brain);
 }
 
 void

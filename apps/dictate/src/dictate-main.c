@@ -15,10 +15,10 @@
  * sends nothing. */
 #include "dictate-calls.h"
 #include "dictate-device.h"
+#include "dictate-env.h"
 #include "dictate-window.h"
 
 #include <glib/gi18n.h>
-#include <gst/gst.h>
 #include <locale.h>
 #include <string.h>
 #include <vibeos.h>
@@ -103,6 +103,8 @@ on_startup (GApplication *app, gpointer data)
     g_object_bind_property (gtk_settings_get_default (), "gtk-interface-contrast", css, "prefers-contrast",
                             G_BINDING_SYNC_CREATE);
 #endif
+  /* GStreamer's start-up, the sound server and the network, none waited for: the windows say what is missing */
+  dictate_env_start ();
   if (!agent)
     return;
   settings = g_settings_new ("vibeos.Dictate");
@@ -206,7 +208,8 @@ main (int argc, char **argv)
    * cores (0.22 against 0.32 s of work per second of speech on the S10e), and leaves the others idle. Set before
    * any thread starts. */
   g_setenv ("MOONSHINE_ORT_SINGLE_THREAD", "1", FALSE);
-  gst_init (NULL, NULL);
+  /* no gst_init () here: with no plugin registry it forks the plugin scanner, and a driver that hangs under it
+   * would keep the app from registering on the bus. It runs on a thread once the app is up (dictate_env_start) */
 
   /* --agent: Agent, an app of its own (its id, its window, its icon); --background: Agent with no window, for
    * Announce calls. Both taken out before GApplication parses */

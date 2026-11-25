@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-dictate\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 20:19+0100\n"
+"POT-Creation-Date: 2026-11-25 01:08+0100\n"
 "PO-Revision-Date: 2026-11-24 16:47+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Spanish\n"
@@ -597,6 +597,13 @@ msgid "There is not enough space on the phone: %s are needed, %s are free"
 msgstr ""
 "No hay suficiente espacio en el teléfono: se necesitan %s y hay %s libres"
 
+#. TRANSLATORS: why the microphone cannot be used yet: the audio has not started
+#. TRANSLATORS: a notice at the top of Vibe's and Dictate's window while the audio (GStreamer) has not started,
+#. * and the microphone and the voice cannot be used
+#: src/dictate-engine.c src/dictate-env.c
+msgid "Audio unavailable"
+msgstr "Audio no disponible"
+
 #. TRANSLATORS: the first %s is the language's name for itself (Deutsch), the second the package's name
 #. * (vibeos-dictate-de)
 #: src/dictate-engine.c
@@ -631,6 +638,12 @@ msgstr "No se pudo iniciar el reconocimiento de voz."
 #: src/dictate-engine.c
 msgid "The microphone could not be opened."
 msgstr "No se pudo abrir el micrófono."
+
+#. TRANSLATORS: a notice at the top of Vibe's and Dictate's window when the phone has no microphone to listen to
+#. * (none plugged in, or the sound server is not running); it goes when one appears
+#: src/dictate-env.c
+msgid "No microphone"
+msgstr "Sin micrófono"
 
 #: src/dictate-enroll.c
 msgid ""
@@ -2452,6 +2465,12 @@ msgstr[1] "Una muestra de voz necesita %d grabaciones"
 #, c-format
 msgid "The voice sample could not be saved: %s"
 msgstr "No se pudo guardar la muestra de voz: %s"
+
+#. TRANSLATORS: a notice at the top of Vibe's window when the phone is offline and Vibe's questions go to a server:
+#. * only the basic commands work until the network is back
+#: src/dictate-window.c
+msgid "No internet connection"
+msgstr "Sin conexión a Internet"
 
 #: src/dictate-window.c
 msgid "Listening…"

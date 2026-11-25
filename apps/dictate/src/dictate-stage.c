@@ -18,7 +18,8 @@ struct _DictateStage
 {
   GtkWidget parent;
   GtkWidget *header, *start, *end, *title, *settings, *call;
-  GtkWidget *banner;            /* under the bar, outside the scroll: the call going on, over an exchange */
+  GtkWidget *banner;            /* under the bar, outside the scroll: the notice, then the call going on, over an exchange */
+  GtkWidget *notice;            /* the banner's first line: what is missing ("No microphone") */
   GtkWidget *scroller, *column, *past, *page;
   GtkWidget *mine, *middle, *orb, *card, *text, *who, *headline, *sub, *written, *progress, *buttons, *hint;
   gboolean text_first, large_buttons;
@@ -185,13 +186,22 @@ dictate_stage_set_banner (DictateStage *self, GtkWidget *widget)
 {
   GtkWidget *child;
 
-  if (widget && gtk_widget_get_first_child (self->banner) == widget)
+  if (widget && gtk_widget_get_last_child (self->banner) == widget)
     return;
-  while ((child = gtk_widget_get_first_child (self->banner)))
+  /* the notice stays: it is the banner's first child */
+  while ((child = gtk_widget_get_last_child (self->banner)) && child != self->notice)
     gtk_box_remove (GTK_BOX (self->banner), child);
   if (widget)
     gtk_box_append (GTK_BOX (self->banner), widget);
-  gtk_widget_set_visible (self->banner, widget != NULL);
+  gtk_widget_set_visible (self->banner, widget != NULL || gtk_widget_get_visible (self->notice));
+}
+
+void
+dictate_stage_set_notice (DictateStage *self, const char *notice)
+{
+  gtk_label_set_text (GTK_LABEL (self->notice), notice ? notice : "");
+  gtk_widget_set_visible (self->notice, notice != NULL);
+  gtk_widget_set_visible (self->banner, notice != NULL || gtk_widget_get_last_child (self->banner) != self->notice);
 }
 
 void
@@ -663,6 +673,12 @@ dictate_stage_init (DictateStage *self)
   gtk_widget_set_parent (self->header, widget);
   self->banner = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_add_css_class (self->banner, "dictate-stage-banner");
+  self->notice = gtk_label_new (NULL);
+  gtk_widget_add_css_class (self->notice, "dictate-notice");
+  gtk_label_set_wrap (GTK_LABEL (self->notice), TRUE);
+  gtk_label_set_xalign (GTK_LABEL (self->notice), 0);
+  gtk_widget_set_visible (self->notice, FALSE);
+  gtk_box_append (GTK_BOX (self->banner), self->notice);
   gtk_widget_set_visible (self->banner, FALSE);
   gtk_widget_set_parent (self->banner, widget);
 
