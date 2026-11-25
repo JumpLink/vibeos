@@ -256,6 +256,9 @@ SimpleEventHook {
 -- The earpiece's route is new, and WirePlumber would start it at its default volume (0.064, inaudible next to the
 -- ear). Until the user has set one of its own (WirePlumber stores that, and it comes with the route from then on),
 -- the call's route starts at the volume the loudspeaker has: between the stored props and the route being set.
+-- Only while an app is in a call: a modem call's Voice Call profile has the same "[Out] Earpiece" route, and there
+-- the volume only reaches what PipeWire plays during the call (the call itself is mixed in the DSP), which keeps
+-- WirePlumber's own.
 devinfo = require ("device-info-cache")
 local routes_state = nil
 
@@ -284,7 +287,7 @@ SimpleEventHook {
     local device = event:get_subject ()
     local want = device.properties ["vibeos.communication-device"]
     local selected = event:get_data ("selected-routes")
-    if not want or not selected then
+    if not calling or not want or not selected then
       return
     end
     local dev_info = devinfo:get_device_info (device)
