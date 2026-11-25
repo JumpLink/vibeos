@@ -12,6 +12,12 @@ vibeos (1:0.1.5) unstable; urgency=medium
     computer's port, or a charger that only just keeps up with the screen,
     now reads "Charging slowly". "Not charging" is said only when the
     battery says so (too warm, or a charge limit).
+  * Tablets without a vibration motor (the Xiaomi Pad 5, the Galaxy Tab
+    S5e Wi-Fi) click softly under the keyboard's keys and sound each step
+    of the volume, as Android does; phones keep their haptics. Settings ›
+    Sound and vibration › System sounds has Keyboard sounds and Volume
+    change sound, on by default where there is no motor. Both stay silent
+    during a call, in Vibrate and Mute, and while the sound is muted.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
