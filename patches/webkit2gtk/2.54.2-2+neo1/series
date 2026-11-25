@@ -1,0 +1,3 @@
+touch-scroll-resample.patch
+gtk-full-refresh-rate.patch
+cross-gir-scanner-target.patch

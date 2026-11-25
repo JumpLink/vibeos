@@ -1,0 +1,5 @@
+0001-hexagonfs-add-create-write-truncate-unlink-and-renam.patch
+0002-apps_std-serve-fopen-fwrite-fsync-fremove-ftrunc-and.patch
+0003-listener-answer-unsupported-requests-and-fetch-input.patch
+0004-rpcd_builder-map-the-registry-s-parent-directory-whe.patch
+0005-hexagonrpcd-fix-descriptor-lifetimes-and-the-write-p.patch

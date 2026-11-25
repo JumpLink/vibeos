@@ -1,0 +1,225 @@
+Description: qmi: activate the primary GW provisioning session when there is none
+ The modem on the two-slot Qualcomm SoCs (POCO X3 NFC, SM7150) never opens a
+ provisioning session by itself: a card in either slot stays with its USIM app
+ 'detected', the card status has no primary GW session, ModemManager reads that
+ as "no SIM" and the modem ends up failed: sim-missing, at boot when nothing
+ else selected the app and after every SIM hot swap. Android's RIL selects the
+ application whenever a card shows up. Do the same in the unlock check: if
+ there is no primary GW session, or it sits on a slot whose card is gone,
+ activate one on the first present card's USIM (else SIM) app and return a
+ retry error, so the generic logic checks again 2 s later and finds it.
+Author: VibeOS
+Forwarded: no
+Last-Update: 2026-11-25
+---
+diff --git a/src/mm-broadband-modem-qmi.c b/src/mm-broadband-modem-qmi.c
+index 7ce39d5..6813a3d 100644
+--- a/src/mm-broadband-modem-qmi.c
++++ b/src/mm-broadband-modem-qmi.c
+@@ -859,8 +859,18 @@ typedef enum {
+ typedef struct {
+     LoadUnlockRequiredStep step;
+     gboolean               last_attempt;
++    guint8                 provision_slot;
++    GArray                *provision_aid;
+ } LoadUnlockRequiredContext;
+ 
++static void
++load_unlock_required_context_free (LoadUnlockRequiredContext *ctx)
++{
++    if (ctx->provision_aid)
++        g_array_unref (ctx->provision_aid);
++    g_free (ctx);
++}
++
+ static MMModemLock
+ modem_load_unlock_required_finish (MMIfaceModem  *self,
+                                    GAsyncResult  *res,
+@@ -879,6 +889,140 @@ modem_load_unlock_required_finish (MMIfaceModem  *self,
+ 
+ static void load_unlock_required_context_step (GTask *task);
+ 
++/* The modem on the Qualcomm SoCs with two SIM slots (DSDS, e.g. SM7150) never
++ * opens a provisioning session by itself: a card in either slot stays with its
++ * USIM application 'detected' and the card status reports no primary GW session,
++ * which reads as "no SIM" here, at boot and after every SIM hot swap. Android's
++ * RIL selects the application each time a card shows up; do the same: when there
++ * is no primary GW session (or it points at a slot whose card is gone), activate
++ * one on the first present card's USIM (else SIM) application and let the
++ * generic logic retry the unlock check. */
++static gboolean
++find_card_application_to_provision (QmiMessageUimGetCardStatusOutput  *output,
++                                    guint8                            *o_slot,
++                                    GArray                           **o_aid,
++                                    gboolean                          *o_stale_session)
++{
++    GArray  *cards = NULL;
++    guint16  index_gw_primary = 0xFFFF;
++    guint8   session_slot_i;
++    guint    i;
++
++    if (!qmi_message_uim_get_card_status_output_get_card_status (output,
++                                                                 &index_gw_primary,
++                                                                 NULL, NULL, NULL,
++                                                                 &cards,
++                                                                 NULL) ||
++        !cards)
++        return FALSE;
++
++    *o_stale_session = FALSE;
++    session_slot_i = (index_gw_primary & 0xFF00) >> 8;
++    if (session_slot_i != 0xFF) {
++        /* A session on a present card is not ours to touch */
++        if (session_slot_i < cards->len &&
++            g_array_index (cards, QmiMessageUimGetCardStatusOutputCardStatusCardsElement, session_slot_i).card_state == QMI_UIM_CARD_STATE_PRESENT)
++            return FALSE;
++        *o_stale_session = TRUE;
++    }
++
++    for (i = 0; i < cards->len; i++) {
++        QmiMessageUimGetCardStatusOutputCardStatusCardsElement                      *card;
++        QmiMessageUimGetCardStatusOutputCardStatusCardsElementApplicationsElementV2 *app;
++        QmiMessageUimGetCardStatusOutputCardStatusCardsElementApplicationsElementV2 *sim_app = NULL;
++        guint                                                                        j;
++
++        card = &g_array_index (cards, QmiMessageUimGetCardStatusOutputCardStatusCardsElement, i);
++        if (card->card_state != QMI_UIM_CARD_STATE_PRESENT || !card->applications)
++            continue;
++
++        for (j = 0; j < card->applications->len; j++) {
++            app = &g_array_index (card->applications, QmiMessageUimGetCardStatusOutputCardStatusCardsElementApplicationsElementV2, j);
++            if (app->state == QMI_UIM_CARD_APPLICATION_STATE_ILLEGAL ||
++                !app->application_identifier_value ||
++                !app->application_identifier_value->len)
++                continue;
++            if (app->type == QMI_UIM_CARD_APPLICATION_TYPE_USIM)
++                break;
++            if (app->type == QMI_UIM_CARD_APPLICATION_TYPE_SIM && !sim_app)
++                sim_app = app;
++        }
++        if (j == card->applications->len)
++            app = sim_app;
++        if (!app)
++            continue;
++
++        *o_slot = (guint8) (i + 1);
++        *o_aid = g_array_ref (app->application_identifier_value);
++        return TRUE;
++    }
++
++    return FALSE;
++}
++
++static void
++unlock_required_change_provisioning_session_ready (QmiClientUim *client,
++                                                   GAsyncResult *res,
++                                                   GTask        *task)
++{
++    MMBroadbandModemQmi                                     *self;
++    g_autoptr(QmiMessageUimChangeProvisioningSessionOutput)  output = NULL;
++    g_autoptr(GError)                                        error = NULL;
++
++    self = g_task_get_source_object (task);
++
++    output = qmi_client_uim_change_provisioning_session_finish (client, res, &error);
++    if (!output || !qmi_message_uim_change_provisioning_session_output_get_result (output, &error))
++        mm_obj_warn (self, "couldn't activate the primary GW provisioning session: %s", error->message);
++    else
++        mm_obj_msg (self, "primary GW provisioning session activated");
++
++    /* Either way, check again a bit later */
++    g_task_return_new_error (task, MM_CORE_ERROR, MM_CORE_ERROR_RETRY,
++                             "No primary GW provisioning session yet (retry)");
++    g_object_unref (task);
++}
++
++static void
++unlock_required_activate_provisioning_session (QmiClientUim *client,
++                                               GTask        *task)
++{
++    LoadUnlockRequiredContext                              *ctx;
++    g_autoptr(QmiMessageUimChangeProvisioningSessionInput)  input = NULL;
++
++    ctx = g_task_get_task_data (task);
++
++    input = qmi_message_uim_change_provisioning_session_input_new ();
++    qmi_message_uim_change_provisioning_session_input_set_session_change (
++        input, QMI_UIM_SESSION_TYPE_PRIMARY_GW_PROVISIONING, TRUE, NULL);
++    qmi_message_uim_change_provisioning_session_input_set_application_information (
++        input, ctx->provision_slot, ctx->provision_aid, NULL);
++    qmi_client_uim_change_provisioning_session (client,
++                                                input,
++                                                10,
++                                                g_task_get_cancellable (task),
++                                                (GAsyncReadyCallback) unlock_required_change_provisioning_session_ready,
++                                                task);
++}
++
++static void
++unlock_required_deactivate_provisioning_session_ready (QmiClientUim *client,
++                                                       GAsyncResult *res,
++                                                       GTask        *task)
++{
++    MMBroadbandModemQmi                                     *self;
++    g_autoptr(QmiMessageUimChangeProvisioningSessionOutput)  output = NULL;
++    g_autoptr(GError)                                        error = NULL;
++
++    self = g_task_get_source_object (task);
++
++    output = qmi_client_uim_change_provisioning_session_finish (client, res, &error);
++    if (!output || !qmi_message_uim_change_provisioning_session_output_get_result (output, &error))
++        mm_obj_dbg (self, "couldn't deactivate the stale primary GW provisioning session: %s", error->message);
++
++    unlock_required_activate_provisioning_session (client, task);
++}
++
+ static void
+ unlock_required_uim_get_card_status_ready (QmiClientUim *client,
+                                            GAsyncResult *res,
+@@ -906,6 +1050,37 @@ unlock_required_uim_get_card_status_ready (QmiClientUim *client,
+                                                   &lock,
+                                                   NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                                                   &error)) {
++        gboolean stale_session = FALSE;
++
++        if ((g_error_matches (error, MM_MOBILE_EQUIPMENT_ERROR, MM_MOBILE_EQUIPMENT_ERROR_SIM_NOT_INSERTED) ||
++             g_error_matches (error, MM_MOBILE_EQUIPMENT_ERROR, MM_MOBILE_EQUIPMENT_ERROR_SIM_WRONG)) &&
++            !ctx->last_attempt &&
++            find_card_application_to_provision (output, &ctx->provision_slot, &ctx->provision_aid, &stale_session)) {
++            g_clear_error (&error);
++            qmi_message_uim_get_card_status_output_unref (output);
++
++            if (stale_session) {
++                g_autoptr(QmiMessageUimChangeProvisioningSessionInput) input = NULL;
++
++                mm_obj_msg (self, "primary GW provisioning session points at a missing card: moving it to slot %u",
++                            (guint) ctx->provision_slot);
++                input = qmi_message_uim_change_provisioning_session_input_new ();
++                qmi_message_uim_change_provisioning_session_input_set_session_change (
++                    input, QMI_UIM_SESSION_TYPE_PRIMARY_GW_PROVISIONING, FALSE, NULL);
++                qmi_client_uim_change_provisioning_session (client,
++                                                            input,
++                                                            10,
++                                                            g_task_get_cancellable (task),
++                                                            (GAsyncReadyCallback) unlock_required_deactivate_provisioning_session_ready,
++                                                            task);
++                return;
++            }
++
++            mm_obj_msg (self, "no primary GW provisioning session: activating it on slot %u", (guint) ctx->provision_slot);
++            unlock_required_activate_provisioning_session (client, task);
++            return;
++        }
++
+         /* The device may report a SIM NOT INSERTED error if we're querying the
+          * card status soon after power on. We'll let the Modem interface generic
+          * logic retry loading the info a bit later if that's the case. This will
+@@ -1119,7 +1294,7 @@ modem_load_unlock_required (MMIfaceModem        *self,
+     ctx->last_attempt = last_attempt;
+ 
+     task = g_task_new (self, cancellable, callback, user_data);
+-    g_task_set_task_data (task, ctx, g_free);
++    g_task_set_task_data (task, ctx, (GDestroyNotify) load_unlock_required_context_free);
+ 
+     load_unlock_required_context_step (task);
+ }

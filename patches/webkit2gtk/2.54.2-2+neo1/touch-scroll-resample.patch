@@ -1,0 +1,198 @@
+Description: Touch scrolling resampled to the frame clock
+ The touchscreen reports at 240 Hz and the display draws at 120 Hz; one scroll step per
+ touch report gave each frame 0-3 reports of movement and a steady finger scrolled in uneven
+ jumps. Like Android, each frame now scrolls to where the finger was 5 ms before it,
+ interpolated between reports; offsets keep sub-pixel precision; the drag slop is not jumped.
+Author: pulpoff <pashkovsky@gmail.com>
+Forwarded: no
+
+--- a/Source/WebKit/UIProcess/API/gtk/WebKitWebViewBase.cpp	2026-10-10 02:57:27.134560666 +0200
++++ b/Source/WebKit/UIProcess/API/gtk/WebKitWebViewBase.cpp	2026-10-10 02:57:40.352517311 +0200
+@@ -381,6 +381,18 @@
+     bool isBeingDragged;
+     bool pageGrabbedTouch;
+ 
++    // A touch scroll is resampled to the frame clock: the finger's positions are kept with their timestamps and
++    // each frame sends one scroll step, to where the finger was a little before the frame.
++    struct TouchScrollSample {
++        double time; // µs, CLOCK_MONOTONIC
++        FloatPoint offset;
++    };
++    Vector<TouchScrollSample, 16> touchScrollSamples;
++    FloatPoint touchScrollSent;
++    int touchScrollX { 0 };
++    int touchScrollY { 0 };
++    guint touchScrollTickID { 0 };
++
+     std::unique_ptr<PointerLockManager> pointerLockManager;
+ 
+     Vector<CompletionHandler<void()>> nextPresentationUpdateCallbacks;
+@@ -2205,11 +2217,99 @@
+     webkitWebViewBaseSynthesizeMouseEvent(webViewBase, MouseEventType::Release, button, 0, x, y, modifiers, nPress, mousePointerEventType(), PlatformMouseEvent::IsTouch::Yes);
+ }
+ 
++// Android's input resampling: the touchscreen reports at its own rate (240 Hz here) and the frames come at the
++// display's (120 Hz); a scroll step per touch report gave each frame 0 to 3 reports' worth of movement, and the page
++// moved in uneven jumps under a steady finger. Each frame now scrolls to where the finger was RESAMPLE_LATENCY before
++// it, interpolated between the reports around that moment (predicted a little past the last one if none is newer).
++static constexpr double touchScrollResampleLatency = 5000; // µs
++static constexpr double touchScrollMaxPrediction = 8000; // µs
++
++static double touchScrollEventTime(const GdkEvent* event)
++{
++    // event times are milliseconds of CLOCK_MONOTONIC in 32 bits (Wayland); place them on the µs clock of now
++    double now = g_get_monotonic_time();
++    if (!event)
++        return now;
++    int32_t ago = static_cast<int32_t>(static_cast<uint32_t>(now / 1000) - gdk_event_get_time(const_cast<GdkEvent*>(event)));
++    return now - std::max(ago, 0) * 1000.;
++}
++
++static FloatPoint touchScrollOffsetAt(const Vector<WebKitWebViewBasePrivate::TouchScrollSample, 16>& samples, double time)
++{
++    const auto& last = samples.last();
++    if (samples.size() == 1 || time <= samples[0].time)
++        return time <= samples[0].time ? samples[0].offset : last.offset;
++    for (size_t i = 1; i < samples.size(); ++i) {
++        const auto& a = samples[i - 1];
++        const auto& b = samples[i];
++        if (time <= b.time) {
++            float t = b.time > a.time ? (time - a.time) / (b.time - a.time) : 1;
++            return a.offset + (b.offset - a.offset) * t;
++        }
++    }
++    // past the newest report: extrapolate, by at most half the last interval and 8 ms
++    const auto& prev = samples[samples.size() - 2];
++    double interval = last.time - prev.time;
++    if (interval <= 0)
++        return last.offset;
++    double ahead = std::min({ time - last.time, interval / 2, touchScrollMaxPrediction });
++    return last.offset + (last.offset - prev.offset) * static_cast<float>(ahead / interval);
++}
++
++static void webkitWebViewBaseTouchScrollSendTo(WebKitWebViewBase* webViewBase, FloatPoint offset)
++{
++    WebKitWebViewBasePrivate* priv = webViewBase->priv;
++    double deltaX = priv->touchScrollSent.x() - offset.x();
++    double deltaY = priv->touchScrollSent.y() - offset.y();
++    if (!deltaX && !deltaY)
++        return;
++    priv->touchScrollSent = offset;
++
++    ViewGestureController* controller = webkitWebViewBaseViewGestureController(webViewBase);
++    if (controller && controller->isSwipeGestureEnabled()) {
++        FloatSize delta(deltaX / Scrollbar::pixelsPerLineStep(), deltaY / Scrollbar::pixelsPerLineStep());
++        int32_t eventTime = static_cast<int32_t>(g_get_monotonic_time() / 1000);
++        PlatformGtkScrollData scrollData = { .delta = delta, .eventTime = eventTime, .source = GDK_SOURCE_TOUCHSCREEN, .isEnd = false };
++        if (controller->handleScrollWheelEvent(&scrollData))
++            return;
++    }
++
++    webkitWebViewBaseSynthesizeWheelEvent(webViewBase, nullptr, -deltaX, -deltaY, priv->touchScrollX, priv->touchScrollY, WheelEventPhase::Changed, WheelEventPhase::NoPhase, true);
++}
++
++static gboolean webkitWebViewBaseTouchScrollTick(GtkWidget* widget, GdkFrameClock* frameClock, gpointer)
++{
++    WebKitWebViewBasePrivate* priv = WEBKIT_WEB_VIEW_BASE(widget)->priv;
++    auto& samples = priv->touchScrollSamples;
++    if (samples.isEmpty())
++        return G_SOURCE_CONTINUE;
++
++    double target = gdk_frame_clock_get_frame_time(frameClock) - touchScrollResampleLatency;
++    webkitWebViewBaseTouchScrollSendTo(WEBKIT_WEB_VIEW_BASE(widget), touchScrollOffsetAt(samples, target));
++    // keep the report just before the target and everything newer
++    while (samples.size() > 2 && samples[1].time <= target)
++        samples.removeAt(0);
++    return G_SOURCE_CONTINUE;
++}
++
++static void webkitWebViewBaseTouchScrollStop(WebKitWebViewBase* webViewBase, bool flush)
++{
++    WebKitWebViewBasePrivate* priv = webViewBase->priv;
++    if (flush && !priv->touchScrollSamples.isEmpty())
++        webkitWebViewBaseTouchScrollSendTo(webViewBase, priv->touchScrollSamples.last().offset);
++    priv->touchScrollSamples.clear();
++    if (priv->touchScrollTickID) {
++        gtk_widget_remove_tick_callback(GTK_WIDGET(webViewBase), priv->touchScrollTickID);
++        priv->touchScrollTickID = 0;
++    }
++}
++
+ static void webkitWebViewBaseTouchDragBegin(WebKitWebViewBase* webViewBase, gdouble startX, gdouble startY, GtkGesture* gesture)
+ {
+     WebKitWebViewBasePrivate* priv = webViewBase->priv;
+     priv->dragOffset.set(0, 0);
+     priv->isBeingDragged = false;
++    webkitWebViewBaseTouchScrollStop(webViewBase, false);
+ 
+     auto* sequence = gtk_gesture_single_get_current_sequence(GTK_GESTURE_SINGLE(gesture));
+     auto* event = gtk_gesture_get_last_event(gesture, sequence);
+@@ -2235,6 +2335,10 @@
+             return;
+         priv->isBeingDragged = true;
+         gtk_gesture_set_state(gesture, GTK_EVENT_SEQUENCE_CLAIMED);
++        // the scroll starts where the drag was recognised: the slop is not jumped over
++        priv->touchScrollSent = FloatPoint(offsetX, offsetY);
++        priv->touchScrollX = static_cast<int>(x);
++        priv->touchScrollY = static_cast<int>(y);
+ 
+         if (priv->isLongPressed) {
+             // Drag after long press forwards emulated mouse events (for e.g. text selection)
+@@ -2247,29 +2351,24 @@
+     if (priv->isLongPressed)
+         webkitWebViewBaseSynthesizeMouseEvent(webViewBase, MouseEventType::Motion, GDK_BUTTON_PRIMARY, GDK_BUTTON1_MASK, x + offsetX, y + offsetY, modifiers, 0, mousePointerEventType(), PlatformMouseEvent::IsTouch::Yes);
+     else {
+-        // Round offsets to avoid accumulated rounding errors of deltas.
+-        offsetX = std::round(offsetX);
+-        offsetY = std::round(offsetY);
+-        double deltaX = priv->dragOffset.x() - offsetX;
+-        double deltaY = priv->dragOffset.y() - offsetY;
++        // The position is sent from the frame clock (webkitWebViewBaseTouchScrollTick), unrounded: sent as the
++        // difference of positions, steps accumulate no error, and a slow drag moves by device pixels.
+         priv->dragOffset.set(offsetX, offsetY);
+-
+-        ViewGestureController* controller = webkitWebViewBaseViewGestureController(webViewBase);
+-        if (controller && controller->isSwipeGestureEnabled()) {
+-            FloatSize delta(deltaX / Scrollbar::pixelsPerLineStep(), deltaY / Scrollbar::pixelsPerLineStep());
+-            int32_t eventTime = static_cast<int32_t>(gtk_event_controller_get_current_event_time(GTK_EVENT_CONTROLLER(gesture)));
+-            PlatformGtkScrollData scrollData = { .delta = delta, .eventTime = eventTime, .source = GDK_SOURCE_TOUCHSCREEN, .isEnd = false };
+-            if (controller->handleScrollWheelEvent(&scrollData))
+-                return;
+-        }
+-
+-        webkitWebViewBaseSynthesizeWheelEvent(webViewBase, event, -deltaX, -deltaY, x, y, WheelEventPhase::Changed, WheelEventPhase::NoPhase, true);
++        double time = touchScrollEventTime(event);
++        auto& samples = priv->touchScrollSamples;
++        if (!samples.isEmpty() && time <= samples.last().time)
++            samples.last().offset = priv->dragOffset;
++        else
++            samples.append({ time, priv->dragOffset });
++        if (!priv->touchScrollTickID)
++            priv->touchScrollTickID = gtk_widget_add_tick_callback(GTK_WIDGET(webViewBase), webkitWebViewBaseTouchScrollTick, nullptr, nullptr);
+     }
+ }
+ 
+ static void webkitWebViewBaseTouchDragEnd(WebKitWebViewBase* webViewBase, gdouble offsetX, gdouble offsetY, GtkGesture* gesture)
+ {
+     WebKitWebViewBasePrivate* priv = webViewBase->priv;
++    webkitWebViewBaseTouchScrollStop(webViewBase, !priv->pageGrabbedTouch);
+     if (priv->pageGrabbedTouch)
+         return;
+ 
+@@ -2283,6 +2382,7 @@
+ 
+ static void webkitWebViewBaseTouchDragCancel(WebKitWebViewBase* webViewBase, GdkEventSequence*, GtkGesture*)
+ {
++    webkitWebViewBaseTouchScrollStop(webViewBase, false);
+     if (auto* controller = webkitWebViewBaseViewGestureController(webViewBase))
+         controller->cancelSwipe();
+ }
+@@ -2292,6 +2392,8 @@
+     WebKitWebViewBasePrivate* priv = webViewBase->priv;
+     if (priv->pageGrabbedTouch || !priv->isBeingDragged || priv->isLongPressed)
+         return;
++    // the finger's last position first, then the fling
++    webkitWebViewBaseTouchScrollStop(webViewBase, true);
+ 
+     double x, y;
+     if (gtk_gesture_get_point(gesture, gtk_gesture_single_get_current_sequence(GTK_GESTURE_SINGLE(gesture)), &x, &y)) {

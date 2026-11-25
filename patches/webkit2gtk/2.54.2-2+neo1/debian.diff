@@ -1,0 +1,54 @@
+--- a/debian/rules
++++ b/debian/rules
+@@ -7,7 +7,7 @@
+ 
+ # gtk3 build -> 4.1 API packages
+ # gtk4 build -> 6.0 API packages
+-ENABLE_GTK3=YES
++ENABLE_GTK3=NO
+ ENABLE_GTK4=YES
+ # YES => build libwebkit2gtk-4.0-doc, libjavascriptcoregtk-4.0-bin and webkit2gtk-driver (for trixie)
+ BUILD_TRANSITIONAL_PKGS=NO
+@@ -78,8 +78,8 @@
+ 
+ # The debug packages produced by webkit are huge and cause problems in
+ # most buildds. Use -g1 in all architectures to make them smaller.
+-CFLAGS := $(CFLAGS:-g=-g1)
+-CXXFLAGS := $(CXXFLAGS:-g=-g1)
++CFLAGS := $(CFLAGS:-g=-g0)
++CXXFLAGS := $(CXXFLAGS:-g=-g0)
+ 
+ # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=949621
+ LDFLAGS += -Wl,--reduce-memory-overheads
+@@ -135,7 +135,7 @@
+ 	EXTRA_CMAKE_ARGUMENTS += -DENABLE_BUBBLEWRAP_SANDBOX=ON
+ 	DH_GENCONTROL_ARGS += -Vbwrap:Depends="bubblewrap (>= 0.3.1), xdg-dbus-proxy"
+ # Disable the bubblewrap sandbox if libseccomp-dev is not available
+-else ifeq ($(shell pkg-config --exists libseccomp && echo yes),yes)
++else ifeq ($(shell $(DEB_HOST_GNU_TYPE)-pkg-config --exists libseccomp && echo yes),yes)
+ 	EXTRA_CMAKE_ARGUMENTS += -DENABLE_BUBBLEWRAP_SANDBOX=ON
+ 	DH_GENCONTROL_ARGS += -Vbwrap:Depends="bubblewrap (>= 0.3.1), xdg-dbus-proxy"
+ 	DH_GENCONTROL_ARGS += -Vbwrap:Recommends="xdg-desktop-portal-gtk"
+@@ -220,6 +220,22 @@
+ 			    -e 's/webkit2/webkit/g' \
+ 			    -e 's/4\.1/6.0/g'
+ 
++# neo: ARMv8.2 for every Neo phone: dot product, half floats, crypto, scheduled for the POCO's A76. Only what BOTH
++# phones' /proc/cpuinfo Features list: fp asimd aes pmull sha1 sha2 crc32 atomics fphp asimdhp asimdrdm dcpop asimddp
++# (POCO Snapdragon 732G adds lrcpc; S10e Exynos 9820 has none of it). No RCpc: the S10e's Mongoose M4 has no LDAPR,
++# and a build with +rcpc dies there on SIGILL at the first page (clang lowers acquire loads to LDAPR).
++# Debian's arm64 baseline is ARMv8.0.
++ifneq (,$(filter $(DEB_HOST_ARCH),arm64))
++	CFLAGS += -march=armv8.2-a+dotprod+fp16+crypto -mtune=cortex-a76
++	CXXFLAGS += -march=armv8.2-a+dotprod+fp16+crypto -mtune=cortex-a76
++endif
++# neo: when cross-building, clang has to be told the target (dh_auto_configure names the GNU cross compilers)
++ifneq ($(DEB_BUILD_ARCH),$(DEB_HOST_ARCH))
++	EXTRA_CMAKE_ARGUMENTS += -DCMAKE_C_COMPILER_TARGET=$(DEB_HOST_GNU_TYPE) -DCMAKE_CXX_COMPILER_TARGET=$(DEB_HOST_GNU_TYPE)
++	# the sandbox's helpers cannot be looked up when cross-building: their paths on the phone
++	EXTRA_CMAKE_ARGUMENTS += -DBWRAP_EXECUTABLE=/usr/bin/bwrap -DDBUS_PROXY_EXECUTABLE=/usr/bin/xdg-dbus-proxy
++endif
++
+ %:
+ 	dh $@ --with gir --buildsystem=cmake+ninja $(EXTRA_DH_ARGUMENTS)
+ 

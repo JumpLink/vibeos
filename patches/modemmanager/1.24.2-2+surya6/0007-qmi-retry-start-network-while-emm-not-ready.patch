@@ -1,0 +1,82 @@
+Description: qmi: retry Start Network while EMM is not ready right after attach
+ Right after the LTE attach (at boot, after a SIM swap or a modem reprobe) the
+ POCO X3 NFC modem (SM7150) refuses a PDN connection for a second or two with
+ CallFailed, verbose call end reason (3,1110) [cm] emm-invalid-state, although
+ it already reports registered and PS-attached. NetworkManager burns all its
+ autoconnect retries (three profiles x 4) within that second and then waits
+ 5 minutes, so data came up 5 minutes after boot. Retry the same Start Network
+ once per second, up to 15 times, on that one reason only.
+Author: VibeOS
+Forwarded: no
+Last-Update: 2026-11-25
+---
+diff --git a/src/mm-bearer-qmi.c b/src/mm-bearer-qmi.c
+index be2c6dd..639229e 100644
+--- a/src/mm-bearer-qmi.c
++++ b/src/mm-bearer-qmi.c
+@@ -534,6 +534,8 @@ typedef struct {
+     guint32           packet_data_handle_ipv6;
+     MMBearerIpConfig *ipv6_config;
+     GError           *error_ipv6;
++
++    guint             emm_busy_retries;
+     guint             extended_ipv4_config_change_id;
+     guint             extended_ipv6_config_change_id;
+ } ConnectContext;
+@@ -1252,6 +1254,37 @@ error_from_start_network_output (MMBearerQmi                     *self,
+     return g_error_new_literal (MM_MOBILE_EQUIPMENT_ERROR, MM_MOBILE_EQUIPMENT_ERROR_UNKNOWN, "Call failed");
+ }
+ 
++/* Right after the LTE attach (at boot, after a SIM swap or a reprobe) the
++ * modem refuses a PDN connection for a second or two with CallFailed,
++ * verbose reason [cm] emm-invalid-state, while it already reports
++ * "registered, attached". NetworkManager then burns all its autoconnect
++ * retries within that second and waits 5 minutes before trying again. Retry
++ * the same Start Network here instead, once per second for a while. */
++#define START_NETWORK_EMM_BUSY_MAX_RETRIES 15
++
++static gboolean
++start_network_is_emm_busy (QmiMessageWdsStartNetworkOutput *output)
++{
++    QmiWdsVerboseCallEndReasonType verbose_cer_type;
++    gint16                         verbose_cer_reason;
++
++    return (output &&
++            qmi_message_wds_start_network_output_get_verbose_call_end_reason (output,
++                                                                              &verbose_cer_type,
++                                                                              &verbose_cer_reason,
++                                                                              NULL) &&
++            verbose_cer_type == QMI_WDS_VERBOSE_CALL_END_REASON_TYPE_CM &&
++            verbose_cer_reason == QMI_WDS_VERBOSE_CALL_END_REASON_CM_EMM_INVALID_STATE);
++}
++
++static gboolean
++start_network_retry_cb (GTask *task)
++{
++    /* Same step again; connect_context_step() handles a cancellation meanwhile */
++    connect_context_step (task);
++    return G_SOURCE_REMOVE;
++}
++
+ static void
+ start_network_ready (QmiClientWds *client,
+                      GAsyncResult *res,
+@@ -1284,6 +1317,18 @@ start_network_ready (QmiClientWds *client,
+             /* Fall down to a successful connection */
+         } else {
+             mm_obj_msg (self, "couldn't start %s network: %s", ctx->running_ipv4 ? "IPv4" : "IPv6", error->message);
++            if (g_error_matches (error, QMI_PROTOCOL_ERROR, QMI_PROTOCOL_ERROR_CALL_FAILED) &&
++                start_network_is_emm_busy (output) &&
++                ctx->emm_busy_retries < START_NETWORK_EMM_BUSY_MAX_RETRIES) {
++                ctx->emm_busy_retries++;
++                mm_obj_msg (self, "EMM not ready for a PDN yet: retrying %s start network in 1 s (%u/%u)",
++                            ctx->running_ipv4 ? "IPv4" : "IPv6",
++                            ctx->emm_busy_retries, START_NETWORK_EMM_BUSY_MAX_RETRIES);
++                g_clear_error (&error);
++                qmi_message_wds_start_network_output_unref (output);
++                g_timeout_add_seconds (1, (GSourceFunc) start_network_retry_cb, task);
++                return;
++            }
+             if (g_error_matches (error, QMI_PROTOCOL_ERROR, QMI_PROTOCOL_ERROR_CALL_FAILED)) {
+                 g_clear_error (&error);
+                 error = error_from_start_network_output (self, ctx->running_ipv4, output);

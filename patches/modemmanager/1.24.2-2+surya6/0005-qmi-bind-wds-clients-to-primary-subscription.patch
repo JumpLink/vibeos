@@ -1,0 +1,111 @@
+Description: qmi: bind each bearer WDS client to the primary subscription
+ On a multi-SIM (DSDS) Qualcomm modem an unbound WDS client follows the default
+ data subscription (DDS). Nothing on Linux sets the DDS, and on the POCO X3 NFC
+ (SM7150) it points at a subscription without a SIM: every connect fails at once
+ with CallFailed, verbose call end reason (3,2001) [cm] no-service, while the
+ modem is registered on LTE and PS-attached. Verified with a raw QMI client: an
+ unbound or secondary-bound client gets no-service, a primary-bound one gets the
+ call up. ModemManager only uses the primary GW session, so bind the IPv4 and
+ IPv6 WDS clients to the primary subscription after Bind (Mux) Data Port (which
+ resets the binding). Modems without the message keep the default, as before.
+Author: VibeOS
+Forwarded: no
+Last-Update: 2026-11-24
+---
+diff --git a/src/mm-bearer-qmi.c b/src/mm-bearer-qmi.c
+index cf6c1fc..be2c6dd 100644
+--- a/src/mm-bearer-qmi.c
++++ b/src/mm-bearer-qmi.c
+@@ -473,6 +473,7 @@ typedef enum {
+     CONNECT_STEP_IPV4,
+     CONNECT_STEP_WDS_CLIENT_IPV4,
+     CONNECT_STEP_BIND_DATA_PORT_IPV4,
++    CONNECT_STEP_BIND_SUBSCRIPTION_IPV4,
+     CONNECT_STEP_IP_FAMILY_IPV4,
+     CONNECT_STEP_ENABLE_INDICATIONS_IPV4,
+     CONNECT_STEP_START_NETWORK_IPV4,
+@@ -481,6 +482,7 @@ typedef enum {
+     CONNECT_STEP_IPV6,
+     CONNECT_STEP_WDS_CLIENT_IPV6,
+     CONNECT_STEP_BIND_DATA_PORT_IPV6,
++    CONNECT_STEP_BIND_SUBSCRIPTION_IPV6,
+     CONNECT_STEP_IP_FAMILY_IPV6,
+     CONNECT_STEP_ENABLE_INDICATIONS_IPV6,
+     CONNECT_STEP_START_NETWORK_IPV6,
+@@ -1657,6 +1659,54 @@ bind_mux_data_port_ready (QmiClientWds *client,
+     connect_context_step (task);
+ }
+ 
++/* On a multi-SIM (DSDS) modem a WDS client that is not bound to a subscription
++ * follows the modem's default data subscription (DDS). Nothing on the host ever
++ * sets the DDS, so it may point at a subscription without a SIM (it does on the
++ * POCO X3 NFC, SM7150), and every call then fails at once with CallFailed,
++ * verbose reason [cm] no-service, while the modem is registered and attached.
++ * ModemManager only ever uses the primary GW provisioning session, so bind the
++ * client to the primary subscription, as the Android data stack binds each of
++ * its WDS clients. Binding is per client and is reset by Bind (Mux) Data Port,
++ * so it is done after that, on every connection. Modems that don't know the
++ * message keep the default binding, as before. */
++static void
++bind_subscription_ready (QmiClientWds *client,
++                         GAsyncResult *res,
++                         GTask        *task)
++{
++    ConnectContext                                 *ctx;
++    g_autoptr(GError)                               error = NULL;
++    g_autoptr(QmiMessageWdsBindSubscriptionOutput)  output = NULL;
++
++    ctx = g_task_get_task_data (task);
++
++    output = qmi_client_wds_bind_subscription_finish (client, res, &error);
++    if (!output || !qmi_message_wds_bind_subscription_output_get_result (output, &error))
++        mm_obj_dbg (ctx->self, "couldn't bind WDS client to the primary subscription: %s", error->message);
++    else
++        mm_obj_dbg (ctx->self, "WDS client bound to the primary subscription");
++
++    /* Keep on */
++    ctx->step++;
++    connect_context_step (task);
++}
++
++static void
++bind_subscription (GTask        *task,
++                   QmiClientWds *client)
++{
++    g_autoptr(QmiMessageWdsBindSubscriptionInput) input = NULL;
++
++    input = qmi_message_wds_bind_subscription_input_new ();
++    qmi_message_wds_bind_subscription_input_set_subscription_id (input, QMI_SUBSCRIPTION_TYPE_PRIMARY, NULL);
++    qmi_client_wds_bind_subscription (client,
++                                      input,
++                                      10,
++                                      g_task_get_cancellable (task),
++                                      (GAsyncReadyCallback)bind_subscription_ready,
++                                      task);
++}
++
+ static void
+ qmi_port_allocate_client_ready (MMPortQmi *qmi,
+                                 GAsyncResult *res,
+@@ -2106,6 +2156,10 @@ connect_context_step (GTask *task)
+         ctx->step++;
+         /* fall through */
+ 
++    case CONNECT_STEP_BIND_SUBSCRIPTION_IPV4:
++        bind_subscription (task, ctx->client_ipv4);
++        return;
++
+     case CONNECT_STEP_IP_FAMILY_IPV4:
+         /* If client is new enough, select IP family */
+         if (!ctx->no_ip_family_preference) {
+@@ -2251,6 +2305,10 @@ connect_context_step (GTask *task)
+         ctx->step++;
+         /* fall through */
+ 
++    case CONNECT_STEP_BIND_SUBSCRIPTION_IPV6:
++        bind_subscription (task, ctx->client_ipv6);
++        return;
++
+     case CONNECT_STEP_IP_FAMILY_IPV6: {
+         QmiMessageWdsSetIpFamilyInput *input;
+ 

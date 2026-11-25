@@ -1,0 +1,78 @@
+Description: the SSC light level smoothed, with a dead band
+ The SSC light sensor (a Qualcomm sensor core, through libssc) streams at
+ about 13 Hz and jitters, and every new value moved the screen brightness.
+ For the SSC light sensor only, as Android does, the level is averaged over
+ about 3 s, and a level is reported only when it is 15 % brighter or 25 %
+ darker than the last one reported, and at least 1 unit away from it. The
+ other light drivers report every change, as before.
+Author: pulpoff <pashkovsky@gmail.com>
+Forwarded: no
+Last-Update: 2026-11-25
+---
+diff --git a/src/iio-sensor-proxy.c b/src/iio-sensor-proxy.c
+index 6700e3a..9b229d8 100644
+--- a/src/iio-sensor-proxy.c
++++ b/src/iio-sensor-proxy.c
+@@ -16,6 +16,7 @@
+ #include <string.h>
+ #include <stdlib.h>
+ #include <stdio.h>
++#include <math.h>
+ 
+ #include <glib-unix.h>
+ #include <gio/gio.h>
+@@ -58,6 +59,8 @@ typedef struct {
+ 
+ 	/* Light */
+ 	gdouble previous_level;
++	gdouble smoothed_level;
++	gint64 smoothed_time;
+ 	gboolean uses_lux;
+ 
+ 	/* Compass */
+@@ -967,17 +970,42 @@ light_changed_func (SensorDevice *sensor_device,
+ {
+ 	SensorData *data = user_data;
+ 	LightReadings *readings = (LightReadings *) readings_data;
++	gdouble level;
++	gboolean report;
+ 
+ 	//FIXME handle errors
+ 	g_debug ("Light level sent by driver (quirk applied): %lf (unit: %s)",
+ 		 readings->level, data->uses_lux ? "lux" : "vendor");
+ 
+-	if (data->previous_level != readings->level ||
+-	    data->uses_lux != readings->uses_lux) {
++	level = readings->level;
++	report = data->previous_level != level;
++#ifdef HAS_LIBSSC
++	/* The SSC light sensor streams (~13 Hz) and jitters, and every new value
++	 * moved the screen brightness. As Android does: average over ~3 s, and only
++	 * report a level 15 % brighter or 25 % darker than the last one (and at
++	 * least 1 unit away), so the screen changes rarely and slowly. */
++	if (DRIVER_FOR_TYPE(DRIVER_TYPE_LIGHT) == &ssc_light) {
++		gint64 now = g_get_monotonic_time ();
++
++		if (data->smoothed_time == 0 || data->uses_lux != readings->uses_lux) {
++			data->smoothed_level = readings->level;
++		} else {
++			gdouble dt = (now - data->smoothed_time) / (gdouble) G_USEC_PER_SEC;
++			data->smoothed_level += (1.0 - exp (-dt / 3.0)) * (readings->level - data->smoothed_level);
++		}
++		data->smoothed_time = now;
++		level = round (data->smoothed_level);
++		report = data->previous_level != level &&
++			 fabs (level - data->previous_level) >= 1.0 &&
++			 (level > data->previous_level * 1.15 || level < data->previous_level * 0.75);
++	}
++#endif
++
++	if (report || data->uses_lux != readings->uses_lux) {
+ 		gdouble tmp;
+ 
+ 		tmp = data->previous_level;
+-		data->previous_level = readings->level;
++		data->previous_level = level;
+ 
+ 		data->uses_lux = readings->uses_lux;
+ 

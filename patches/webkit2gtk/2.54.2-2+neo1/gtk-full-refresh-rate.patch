@@ -1,0 +1,24 @@
+Description: GTK: render pages at the display refresh rate, not near 60 fps
+ PreferPageRenderingUpdatesNear60FPSEnabled is on for every port but visionOS; on a 120 Hz
+ phone panel it held pages to 60 fps (40-60 fps while touch scrolling).
+Author: pulpoff <pashkovsky@gmail.com>
+Forwarded: no
+
+--- a/Source/WTF/Scripts/Preferences/UnifiedWebPreferences.yaml	2026-10-10 02:57:51.516755252 +0200
++++ b/Source/WTF/Scripts/Preferences/UnifiedWebPreferences.yaml	2026-10-10 02:57:51.554913263 +0200
+@@ -6822,12 +6822,15 @@
+   defaultValue:
+     WebKitLegacy:
+       "PLATFORM(VISION)": false
++      "PLATFORM(GTK)": false
+       default: true
+     WebKit:
+       "PLATFORM(VISION)": false
++      "PLATFORM(GTK)": false
+       default: true
+     WebCore:
+       "PLATFORM(VISION)": false
++      "PLATFORM(GTK)": false
+       default: true
+ 
+ PreferSpatialAudioExperience:

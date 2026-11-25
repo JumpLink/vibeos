@@ -1,0 +1,9 @@
+--- a/debian/rules
++++ b/debian/rules
+@@ -24,3 +24,6 @@
+ 
+ override_dh_auto_configure:
+ 	dh_auto_configure -- $(DEB_CONFIGURE_EXTRA_ARGS)
++
++override_dh_shlibdeps:
++	dh_shlibdeps --dpkg-shlibdeps-params=--ignore-missing-info

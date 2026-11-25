@@ -1,0 +1,7 @@
+0001-qmi-retry-answer-while-call-in-setup.patch
+0002-generic-net-port-cgact.patch
+0003-generic-net-port-data.patch
+0004-netlink-transaction-use-after-free.patch
+0005-qmi-bind-wds-clients-to-primary-subscription.patch
+0006-qmi-activate-primary-gw-provisioning-session.patch
+0007-qmi-retry-start-network-while-emm-not-ready.patch

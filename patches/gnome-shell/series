@@ -1,0 +1,5 @@
+0001-keyboard-stop-waiting-for-the-actor-of-a-window-that.patch
+0002-blur-effect-blur-at-a-quarter-of-the-resolution-at-least.patch
+0003-keyboard-keep-a-window-moved-for-the-osk-above-it.patch
+0004-layout-let-an-extension-hold-the-stage-hidden-at-startup.patch
+0005-screenShield-connect-the-power-save-handler-only-where-mutter-exports-the-mode.patch

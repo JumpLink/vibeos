@@ -1,0 +1,40 @@
+From: pulpoff <pashkovsky@gmail.com>
+Subject: libipa: sensor helpers for the Galaxy Tab S5e cameras (s5k3m5, s5k4ha)
+
+Both drivers take the SMIA analogue gain code with 5 fractional bits
+(0x20 = 1x .. 0x200 = 16x). Without a helper the soft ISP drove the codes
+as if they were gains and the picture stayed dark.
+---
+Index: libcamera-0.7.2/src/ipa/libipa/camera_sensor_helper.cpp
+===================================================================
+--- libcamera-0.7.2.orig/src/ipa/libipa/camera_sensor_helper.cpp
++++ libcamera-0.7.2/src/ipa/libipa/camera_sensor_helper.cpp
+@@ -642,6 +642,28 @@ public:
+ };
+ REGISTER_CAMERA_SENSOR_HELPER("imx477", CameraSensorHelperImx477)
+ 
++class CameraSensorHelperS5k3m5 : public CameraSensorHelper
++{
++public:
++	CameraSensorHelperS5k3m5()
++	{
++		/* Samsung: code = 32 * gain, 1x .. 16x */
++		gain_ = AnalogueGainLinear{ 1, 0, 0, 32 };
++	}
++};
++REGISTER_CAMERA_SENSOR_HELPER("s5k3m5", CameraSensorHelperS5k3m5)
++
++class CameraSensorHelperS5k4ha : public CameraSensorHelper
++{
++public:
++	CameraSensorHelperS5k4ha()
++	{
++		/* Samsung: code = 32 * gain, 1x .. 16x */
++		gain_ = AnalogueGainLinear{ 1, 0, 0, 32 };
++	}
++};
++REGISTER_CAMERA_SENSOR_HELPER("s5k4ha", CameraSensorHelperS5k4ha)
++
+ class CameraSensorHelperImx678 : public CameraSensorHelper
+ {
+ public:
