@@ -9,7 +9,9 @@
  *
  * Nothing of GStreamer runs here: gst_init may wait on a driver, so the window comes first and the start follows on
  * a thread of its own (cam-startup.h). */
+#include "cam-constants.h"
 #include "cam-encoder.h"
+#include "cam-shutdown.h"
 #include "cam-window.h"
 
 #include <glib/gi18n.h>
@@ -76,6 +78,15 @@ on_terminate (gpointer data)
   return G_SOURCE_CONTINUE;
 }
 
+/* the windows are gone, and the camera may still be closing in the pipeline's worker (cam-shutdown.h): the process
+ * ends after it. Here, before GTK's own shutdown, the main context is still the application's and GDK still up. */
+static void
+on_shutdown (GApplication *app, gpointer data)
+{
+  if (!cam_shutdown_wait (CAM_MS_CLOSE_WAIT))
+    g_warning ("camera: still closing after %d ms, ending all the same", CAM_MS_CLOSE_WAIT);
+}
+
 /* the shell's volume keys (extension/service.js TakeVolumeKeys): +1 up, -1 down, on the press */
 static void
 on_volume_key (GSimpleAction *action, GVariant *parameter, gpointer data)
@@ -106,6 +117,7 @@ main (int argc, char **argv)
   g_action_map_add_action_entries (G_ACTION_MAP (app), actions, G_N_ELEMENTS (actions), app);
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), NULL);
   g_signal_connect (app, "activate", G_CALLBACK (on_activate), NULL);
+  g_signal_connect (app, "shutdown", G_CALLBACK (on_shutdown), NULL);
   g_unix_signal_add (SIGTERM, on_terminate, app);
   g_unix_signal_add (SIGINT, on_terminate, app);
   return g_application_run (G_APPLICATION (app), argc, argv);

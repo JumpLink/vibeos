@@ -1,5 +1,6 @@
 /* cam-pipeline: see cam-pipeline.h. */
 #include "cam-pipeline.h"
+#include "cam-shutdown.h"
 
 #include <gst/app/gstappsink.h>
 #include <gst/video/video.h>
@@ -126,9 +127,8 @@ is_busy_error (const char *text)
 }
 
 static void
-run_request (gpointer job, gpointer data)
+do_request (CamPipeline *self)
 {
-  CamPipeline *self = data;
   g_autofree char *camera = NULL;
   g_autofree char *error = NULL;
   gboolean active, reopen, ok = FALSE;
@@ -236,9 +236,19 @@ run_request (gpointer job, gpointer data)
     post (self, NOTE_FAILED, generation, error, NULL);
 }
 
+/* each request runs in the worker, and the process does not end before it has (cam-shutdown.h): the stop asked for
+ * as the last window goes closes the camera while the application shuts down */
+static void
+run_request (gpointer job, gpointer data)
+{
+  do_request (data);
+  cam_shutdown_release ();
+}
+
 static void
 request (CamPipeline *self)
 {
+  cam_shutdown_hold ();
   g_thread_pool_push (self->worker, GUINT_TO_POINTER (1), NULL);
 }
 
