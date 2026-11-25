@@ -116,10 +116,11 @@ if voice_src != ''
   app_args += ['-DHAVE_PIPER', '-I' + voice_src]
   # the search's microphone: Agent's and Dictate's speech recognition (Moonshine, Vosk, the voice activity detector),
   # built from the same sources, its models and recognisers the ones vibeos-dictate's language packages install.
-  # Its messages stay in Dictate's translation domain.
+  # Its messages stay in Dictate's translation domain. dictate-gst is the engine's gate on GStreamer's start, which
+  # Navi makes itself (gst_init before the engine): that counts as started.
   dictation = static_library('navi-dictation',
     files(voice_src / 'dictate-engine.c', voice_src / 'dictate-models.c', voice_src / 'dictate-moonshine.c',
-          voice_src / 'dictate-vosk.c', voice_src / 'dictate-vad.c'),
+          voice_src / 'dictate-vosk.c', voice_src / 'dictate-vad.c', voice_src / 'dictate-gst.c'),
     c_args: ['-DGETTEXT_PACKAGE="vibeos-dictate"', '-DLIBRARY_DIR="@0@"'.format(get_option('dictate_library_dir')),
              '-I' + voice_src],
     dependencies: [dependency('gio-2.0'), dependency('json-glib-1.0'), dependency('gstreamer-1.0'),
