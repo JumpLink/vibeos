@@ -1,11 +1,9 @@
 etc/pam.d/vibeos
 usr/libexec/vibeos-auth
-usr/libexec/vibeos-migrate-ids
 usr/sbin/input-boost
 usr/sbin/vibeos-wakeup
 usr/lib/systemd/system/input-boost.service
 usr/lib/systemd/system/vibeos-wakeup.service
-usr/lib/systemd/user/vibeos-migrate-ids.service
 usr/share/dbus-1/system.d/vibeos.Wakeup.conf
 usr/bin/vibeos-theme
 usr/share/glib-2.0/schemas/vibeos.Theme.gschema.xml

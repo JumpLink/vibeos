@@ -1,6 +1,6 @@
 #!/bin/sh
 # build-mutter.sh OUTDIR: mutter 51.0-3+gp1, the MUTTER of build-system.sh: Debian's mutter 51.0-3, unchanged but
-# for this repository's patches/mutter (0001-0005, as debian/patches/gnome-phone/) and the two symbols patch 0004
+# for this repository's patches/mutter (0001-0005, as debian/patches/vibeos/) and the two symbols patch 0004
 # exports (in debian/libmutter-51-0.symbols), built for arm64 in the build chroot (build-chroot.sh; qemu-user on a
 # PC). The .debs, .buildinfo and .changes go to OUTDIR (new).
 #
@@ -50,14 +50,14 @@ S=$(ls -d "$W"/mutter-*/ | head -1); S=${S%/}
 log "Debian's mutter $DV ($(head -c 16 "$L/source.sha256")... $(ls "$W"/mutter_*.dsc | xargs -n1 basename))"
 
 # VibeOS's patches, after Debian's
-mkdir -p "$S/debian/patches/gnome-phone"
+mkdir -p "$S/debian/patches/vibeos"
 for p in "$PD"/0*.patch; do
-	cp "$p" "$S/debian/patches/gnome-phone/"
-	echo "gnome-phone/${p##*/}" >> "$S/debian/patches/series"
+	cp "$p" "$S/debian/patches/vibeos/"
+	echo "vibeos/${p##*/}" >> "$S/debian/patches/series"
 done
 MAINT=$(dpkg-parsechangelog -l "$T/../debian/changelog" -S Maintainer)
 { printf 'mutter (%s) unstable; urgency=medium\n\n' "$V"
-  printf '  * gnome-phone: patches 0001-0005 (keep outputs on, phone logical size,\n    orientation inhibit export, blur buffers, resize resync)\n\n'
+  printf '  * VibeOS: patches 0001-0005 (keep outputs on, phone logical size,\n    orientation inhibit export, blur buffers, resize resync)\n\n'
   printf ' -- %s  %s\n\n' "$MAINT" "$CDATE"
   cat "$S/debian/changelog"; } > "$S/debian/changelog.new"
 mv "$S/debian/changelog.new" "$S/debian/changelog"
@@ -71,7 +71,7 @@ sed -i "/^ meta_orientation_manager_has_accelerometer@Base /a\\
 [ "$(grep -c -E '^ meta_orientation_manager_(un)?inhibit_tracking@Base ' "$SY")" = 2 ] || { echo "$SY: the two symbols were not added" >&2; exit 1; }
 $CH sh -c "cd /build/${S##*/} && dpkg-source --before-build ." > "$L/patches.txt" 2>&1 ||
 	{ tail -20 "$L/patches.txt" >&2; exit 1; }
-for p in "$PD"/0*.patch; do grep -q "gnome-phone/${p##*/}" "$L/patches.txt" || { echo "${p##*/} was not applied (see $L/patches.txt)" >&2; exit 1; }; done
+for p in "$PD"/0*.patch; do grep -q "vibeos/${p##*/}" "$L/patches.txt" || { echo "${p##*/} was not applied (see $L/patches.txt)" >&2; exit 1; }; done
 log "patches: $(cd "$PD" && ls 0*.patch | tr '\n' ' ')"
 $CH sh -c "cd /build/${S##*/} && dpkg-checkbuilddeps" > "$L/builddeps.txt" 2>&1 || { cat "$L/builddeps.txt" >&2; exit 1; }
 

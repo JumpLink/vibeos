@@ -11,7 +11,6 @@
 #include <time.h>
 
 #include "image.h"
-#include "legacy-ids.h"
 #include "vibeos.h"
 #include "parallax.h"
 #include "vibeos-locale.h"
@@ -931,22 +930,6 @@ on_signal (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-/* An install from before 0.1.7 kept the user's settings and files under the old IDs. The session carries them over
- * before it starts (vibeos-migrate-ids.service); when that has not happened (the unit not enabled yet, a
- * session started without it), the launcher does it before it reads a setting or the layout. Once done, a stamp
- * file says so and this is one stat. */
-static void
-migrate_ids (void)
-{
-  g_autofree char *stamp = legacy_stamp_path ();
-  if (g_file_test (stamp, G_FILE_TEST_EXISTS) || !g_file_test (MIGRATE_IDS, G_FILE_TEST_IS_EXECUTABLE))
-    return;
-  char *argv[] = { (char *) MIGRATE_IDS, NULL };
-  g_autoptr (GError) error = NULL;
-  if (!g_spawn_sync (NULL, argv, NULL, G_SPAWN_DEFAULT, NULL, NULL, NULL, NULL, NULL, &error))
-    g_warning ("%s: %s", MIGRATE_IDS, error->message);
-}
-
 int
 main (int argc, char **argv)
 {
@@ -954,7 +937,6 @@ main (int argc, char **argv)
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
   textdomain (GETTEXT_PACKAGE);
-  migrate_ids ();
   static const WlCallbacks cb = { on_resize, on_frame,  on_touch, on_key,   on_close,
                                   on_shown,  on_suspended, on_text, on_erase, on_submit };
   A.loop = g_main_loop_new (NULL, FALSE);

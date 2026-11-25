@@ -20,13 +20,10 @@ French, Italian, Dutch and Russian: the shell, the launcher and every app.
 
 | Device class | Status |
 |---|---|
-| **Phones** | In daily use: Samsung Galaxy S10e and POCO X3 NFC, both on mainline Linux with Mobian |
-| **Tablets** | Being brought up on a Samsung Galaxy Tab S5e: the tablet layouts (two panes, a navigation rail) are under way |
+| **Phones** | In daily use: Samsung Galaxy S10e, POCO X3 NFC and Samsung Galaxy S20 FE, on mainline Linux (the S20 FE without Bluetooth and the cameras yet). The OnePlus 6T has a device zip converted from Nura's build, not yet installed on one |
+| **Tablets** | Being brought up: the Samsung Galaxy Tab S5e (Wi-Fi), which VibeOS lays out as a tablet (two panes, a navigation rail and a taskbar), and the Xiaomi Pad 5 (cameras: coming in 0.1.5; image: coming) |
 | **Desktops and laptops with a touch screen** | Planned: the same shell and apps, with a docked desktop for keyboard and mouse |
 | **TV boxes** (like Android TV) | Planned: a remote-friendly home screen on the same base |
-
-VibeOS was called **gnome-phone** up to 0.1.11. Now that it targets more than phones, it carries a name of its own.
-Upgrading from gnome-phone keeps everything: see [Upgrading from gnome-phone](#upgrading-from-gnome-phone).
 
 ## The apps
 
@@ -101,7 +98,7 @@ shell; the device images do.
 | `vibeos` | Metapackage: the extension, the session, the launcher and the apps |
 | `gnome-shell-extension-vibeos` | The GNOME Shell extension |
 | `vibeos-session` | The "VibeOS" session (GDM, or a systemd unit with no display manager) |
-| `vibeos-daemons` | The PIN check, alarm wake-ups, the touch GPU boost, and `vibeos-migrate-ids`, which carries a user's settings over from gnome-phone |
+| `vibeos-daemons` | The PIN check, alarm wake-ups, the touch GPU boost, and the system colours (`vibeos-theme`) |
 | `vibeos-launcher` | The home screen |
 | `vibeos-dialer`, `vibeos-messaging`, `vibeos-contacts`, `vibeos-browser`, `vibeos-camera`, `vibeos-files`, `vibeos-clock`, `vibeos-calendar`, `vibeos-calculator`, `vibeos-weather`, `vibeos-compass`, `vibeos-dictate`, `vibeos-software`, `vibeos-installer`, `vibeos-settings`, `vibeos-terminal`, `vibeos-video` | The apps |
 | `vibeos-navi` | Navi, car navigation with MapLibre Native inside; built on its own by `apps/navi/pkg/build-deb.sh` |
@@ -165,11 +162,10 @@ empty folder, check them against `SHA256SUMS`, then:
 
 ```sh
 sha256sum -c SHA256SUMS
-sudo apt install $(ls ./*.deb | grep -v '^\./neo-')
+sudo apt install ./*.deb
 sudo apt-mark hold libmutter-51-0 gir1.2-mutter-51 mutter-common mutter-common-bin
 ```
 
-The `neo-*` files are empty transitional packages, only for an [upgrade from gnome-phone](#upgrading-from-gnome-phone).
 The hold keeps the patched mutter from being replaced by Debian's at the next upgrade. Skip the mutter `.deb` files
 and the hold if you want Debian's stock mutter. Skip the `vibeos-dictate-*` speech packages you do not need: each
 language's model is large.
@@ -182,44 +178,6 @@ busctl call org.freedesktop.Accounts /org/freedesktop/Accounts/User$(id -u) \
 ```
 
 To run without a display manager, see `/usr/share/doc/vibeos-session/README.Debian`.
-
-## Upgrading from gnome-phone
-
-Install the VibeOS packages the same way, but all of them at once and the `neo-*` ones included
-(`sudo apt install ./*.deb`): each one replaces its gnome-phone package (`gnome-phone-*`, `neo-*`, `libneo-*`,
-`fonts-neo-roboto`). Then restart the device. Until then the running shell, launcher and services are still
-gnome-phone's.
-
-The old app packages (`neo-browser`, `neo-dialer`, …) are not removed but upgraded to empty transitional packages, so
-that each app keeps its place on the home screen. Once the device has restarted into VibeOS, remove them and the
-removed packages' leftover configuration:
-
-```sh
-sudo apt purge $(dpkg-query -W -f '${db:Status-Abbrev} ${Package}\n' 'neo-*' 'gnome-phone*' 'libneo-*' \
-    fonts-neo-roboto gnome-shell-extension-gnome-phone 2>/dev/null | awk '/^(ii|rc)/ { print $2 }')
-```
-
-What carries over:
-
-- **The login session.** `vibeos-session` moves each user whose session was `gnome-phone` to `vibeos` (the session
-  GDM's automatic login starts). It also copies a mobile shell's unit drop-in
-  (`/etc/systemd/user/org.gnome.Shell@gnome-phone.service.d`) to the vibeos session's, and does the same for the
-  dock switcher's settings.
-- **The home screen.** The old launcher rearranges the home layout while the packages are swapped. The app packages
-  save each user's layout before that happens, and it is put back at the next login.
-- **Each user's settings and files.** At the next login, `vibeos-migrate-ids` copies the settings to the new schemas
-  (`neo.Phone` is `vibeos.Shell`, `neo.Clock` is `vibeos.Clock`, …). It also:
-  - moves the apps' files to the new names: alarms, the browser's profile, the calculator's history, Dictate's
-    models, the lock screen's state;
-  - renames the browser's home screen shortcuts;
-  - carries the default apps, favourites, notification settings and the enabled extension across
-    (`gnome-phone@neo` is `shell@vibeos`).
-
-  It records what it did in `~/.local/state/vibeos/renamed`. The old settings and files are left where they were;
-  each moved directory keeps a symlink under its old name. Installs older than gnome-phone 0.1.7 are carried over
-  too.
-- **Your own device settings.** A device's own GSettings overrides must name the new schemas (`[vibeos.Shell]`) and
-  the new app ids. Until they do, the old overrides' values are kept as each user's own.
 
 ## Not in these packages
 
@@ -240,7 +198,7 @@ sudo apt build-dep .
 dpkg-buildpackage -b -uc -us
 ```
 
-Each part (`libvibeos`, `libspongy`, `extension`, `session`, `vibeos-launcher`, `migrate-ids`, `apps/*`) is its own
+Each part (`libvibeos`, `libspongy`, `extension`, `session`, `vibeos-launcher`, `apps/*`) is its own
 meson project, and `debian/rules` builds them in order.
 
 ## Installer images

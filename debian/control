@@ -69,9 +69,6 @@ Homepage: https://github.com/pulpoff/vibeos
 Package: vibeos
 Architecture: all
 Section: metapackages
-Conflicts: gnome-phone
-Replaces: gnome-phone
-Provides: gnome-phone
 Depends: gnome-shell-extension-vibeos (= ${source:Version}),
          vibeos-launcher (>= ${source:Version}),
          vibeos-daemons (>= ${source:Version}),
@@ -117,9 +114,6 @@ Description: GNOME-based system for touch devices (metapackage)
 
 Package: gnome-shell-extension-vibeos
 Architecture: all
-Conflicts: gnome-shell-extension-gnome-phone
-Replaces: gnome-shell-extension-gnome-phone
-Provides: gnome-shell-extension-gnome-phone
 Depends: gnome-shell (>= 51~),
          gnome-shell (<< 52~),
          vibeos-launcher (>= ${source:Version}),
@@ -151,12 +145,9 @@ Description: GNOME Shell extension of VibeOS, the shell for touch devices
 
 Package: vibeos-session
 Architecture: all
-Conflicts: gnome-phone-session
 # /etc/xdg/gnome-mimeapps.list was vibeos-installer's
 Breaks: vibeos-installer (<< 1:0.1.3+audit3~)
-Replaces: gnome-phone-session,
-          vibeos-installer (<< 1:0.1.3+audit3~),
-Provides: gnome-phone-session
+Replaces: vibeos-installer (<< 1:0.1.3+audit3~)
 Depends: gnome-session (>= 51~),
          gnome-shell-extension-vibeos (= ${source:Version}),
          ${misc:Depends},
@@ -179,11 +170,7 @@ Description: VibeOS session
 Package: vibeos-daemons
 Architecture: any
 Section: admin
-Conflicts: gnome-phone-daemons
-Replaces: gnome-phone-daemons
-Provides: gnome-phone-daemons
-Depends: dconf-cli,
-         ${shlibs:Depends},
+Depends: ${shlibs:Depends},
          ${misc:Depends},
 Description: VibeOS system helpers
  Small system programs used by the VibeOS shell and apps:
@@ -195,10 +182,6 @@ Description: VibeOS system helpers
   * input-boost raises the GPU's (and optionally the CPUs') clock floor while
     the touchscreen is touched. It is not enabled by default: its floor must
     be tuned for the device;
-  * vibeos-migrate-ids carries each user's settings, files and home
-    screen over from the names VibeOS had as gnome-phone (up to 0.1.11) to
-    the vibeos ones, once, as the user's session starts (a systemd user
-    unit).
   * vibeos-theme computes the system's colours from a seed colour or the
     wallpaper and stores them in vibeos.Theme (whose schema is here), which
     the apps follow, light or dark.
@@ -240,9 +223,6 @@ Description: mobile data profile for every new SIM
 
 Package: vibeos-launcher
 Architecture: any
-Conflicts: neo-launcher
-Replaces: neo-launcher
-Provides: neo-launcher
 Depends: ${shlibs:Depends},
          ${misc:Depends},
 Recommends: mesa-vulkan-drivers,
@@ -342,9 +322,6 @@ Package: libvibeos-1-0
 Architecture: any
 Multi-Arch: same
 Section: libs
-Conflicts: libneo-1-0
-Replaces: libneo-1-0
-Provides: libneo-1-0
 Depends: fonts-vibeos-roboto (= ${source:Version}),
          ${shlibs:Depends},
          ${misc:Depends},
@@ -359,9 +336,6 @@ Package: libvibeos-dev
 Architecture: any
 Multi-Arch: same
 Section: libdevel
-Conflicts: libneo-dev
-Replaces: libneo-dev
-Provides: libneo-dev
 Depends: libvibeos-1-0 (= ${binary:Version}),
          libspongy-dev (= ${binary:Version}),
          libtonal-dev (= ${binary:Version}),
@@ -379,9 +353,6 @@ Package: fonts-vibeos-roboto
 Architecture: all
 Multi-Arch: foreign
 Section: fonts
-Conflicts: fonts-neo-roboto
-Replaces: fonts-neo-roboto
-Provides: fonts-neo-roboto
 Depends: ${misc:Depends},
 Description: Roboto variable font as Android ships it, for the VibeOS apps
  Roboto 3 as a variable font (weight 100-900, width 75-100), as Android
@@ -391,8 +362,6 @@ Description: Roboto variable font as Android ships it, for the VibeOS apps
 
 Package: vibeos-calculator
 Architecture: any
-Breaks: neo-calculator (<< 1:0.1.0~)
-Replaces: neo-calculator (<< 1:0.1.0~)
 Depends: ${shlibs:Depends},
          ${misc:Depends},
 Description: Calculator for VibeOS
@@ -402,8 +371,6 @@ Description: Calculator for VibeOS
 
 Package: vibeos-calendar
 Architecture: any
-Breaks: neo-calendar (<< 1:0.1.0~)
-Replaces: neo-calendar (<< 1:0.1.0~)
 Depends: evolution-data-server,
          ${shlibs:Depends},
          ${misc:Depends},
@@ -416,8 +383,6 @@ Description: Calendar for VibeOS
 
 Package: vibeos-clock
 Architecture: any
-Breaks: neo-clock (<< 1:0.1.0~)
-Replaces: neo-clock (<< 1:0.1.0~)
 Depends: sound-theme-freedesktop,
          tzdata,
          gstreamer1.0-plugins-base,
@@ -434,8 +399,6 @@ Description: Clock for VibeOS
 
 Package: vibeos-compass
 Architecture: any
-Breaks: neo-compass (<< 1:0.1.0~)
-Replaces: neo-compass (<< 1:0.1.0~)
 Depends: ${shlibs:Depends},
          ${misc:Depends},
 Recommends: iio-sensor-proxy,
@@ -446,8 +409,6 @@ Description: Compass for VibeOS
 
 Package: vibeos-contacts
 Architecture: any
-Breaks: neo-contacts (<< 1:0.1.0~)
-Replaces: neo-contacts (<< 1:0.1.0~)
 Depends: evolution-data-server,
          ${shlibs:Depends},
          ${misc:Depends},
@@ -458,8 +419,6 @@ Description: Contacts app for VibeOS
 
 Package: vibeos-dialer
 Architecture: any
-Breaks: neo-dialer (<< 1:0.1.0~)
-Replaces: neo-dialer (<< 1:0.1.0~)
 Depends: gstreamer1.0-plugins-base,
          sound-theme-freedesktop,
          ${shlibs:Depends},
@@ -479,8 +438,6 @@ Description: Phone app for VibeOS
 
 Package: vibeos-messaging
 Architecture: any
-Breaks: neo-messaging (<< 1:0.1.0~)
-Replaces: neo-messaging (<< 1:0.1.0~)
 Depends: gstreamer1.0-plugins-base,
          sound-theme-freedesktop,
          ${shlibs:Depends},
@@ -496,8 +453,6 @@ Description: Messaging app for VibeOS
 
 Package: vibeos-browser
 Architecture: any
-Breaks: neo-browser (<< 1:0.1.0~)
-Replaces: neo-browser (<< 1:0.1.0~)
 Depends: ${shlibs:Depends},
          ${misc:Depends},
 Description: web browser for VibeOS
@@ -506,10 +461,8 @@ Description: web browser for VibeOS
 
 Package: vibeos-settings
 Architecture: any
-Breaks: neo-settings (<< 1:0.1.0~)
 Conflicts: gnome-control-center
-Replaces: neo-settings (<< 1:0.1.0~),
-          gnome-control-center,
+Replaces: gnome-control-center
 Provides: gnome-control-center (= 1:99),
 Depends: python3,
          python3-gi,
@@ -535,8 +488,6 @@ Description: settings app for VibeOS
 
 Package: vibeos-weather
 Architecture: any
-Breaks: neo-weather (<< 1:0.1.0~)
-Replaces: neo-weather (<< 1:0.1.0~)
 Depends: curl,
          ${shlibs:Depends},
          ${misc:Depends},
@@ -550,8 +501,6 @@ Description: weather app for VibeOS
 
 Package: vibeos-camera
 Architecture: any
-Breaks: neo-camera (<< 1:0.1.0~)
-Replaces: neo-camera (<< 1:0.1.0~)
 Depends: gstreamer1.0-libcamera,
          gstreamer1.0-plugins-base,
          gstreamer1.0-plugins-good,
@@ -572,8 +521,6 @@ Description: camera app for VibeOS
 
 Package: vibeos-files
 Architecture: any
-Breaks: neo-files (<< 1:0.1.0~)
-Replaces: neo-files (<< 1:0.1.0~)
 Depends: ${shlibs:Depends},
          ${misc:Depends},
 Recommends: gvfs-backends,
@@ -588,8 +535,6 @@ Description: file manager for VibeOS
 
 Package: vibeos-dictate
 Architecture: any
-Breaks: neo-dictate (<< 1:0.1.0~)
-Replaces: neo-dictate (<< 1:0.1.0~)
 Depends: gstreamer1.0-plugins-base,
          ${shlibs:Depends},
          ${misc:Depends},
@@ -707,9 +652,6 @@ Description: sandbox for the apps installed from Software on VibeOS
 
 Package: vibeos-iconpack-gnome-free
 Architecture: all
-Conflicts: neo-iconpack-round
-Replaces: neo-iconpack-round
-Provides: neo-iconpack-round
 Depends: ${misc:Depends},
 Recommends: vibeos-launcher,
 Description: gnome-free icon pack for the VibeOS launcher
@@ -729,9 +671,6 @@ Description: VibeOS icon pack for the VibeOS launcher
 
 Package: vibeos-parallax-solar-system
 Architecture: all
-Conflicts: neo-parallax-solar-system
-Replaces: neo-parallax-solar-system
-Provides: neo-parallax-solar-system
 Depends: ${misc:Depends},
 Recommends: vibeos-launcher,
 Description: NASA solar-system parallax wallpaper for the VibeOS launcher
@@ -739,136 +678,6 @@ Description: NASA solar-system parallax wallpaper for the VibeOS launcher
  launcher: the Sun, Earth, the Moon, Mars, Saturn and Jupiter from NASA's
  public-domain images over a drawn star field. Installing it makes it the
  default wallpaper; GNOME Settings' Background panel lists it too.
-
-Package: neo-browser
-Architecture: all
-Section: oldlibs
-Depends: vibeos-browser (>= ${source:Version}),
-         ${misc:Depends},
-Description: transitional package for vibeos-browser
- neo-browser is vibeos-browser now. This empty package takes the old one's
- place in an upgrade from gnome-phone, so that the app keeps its place on the
- home screen; it can be removed afterwards.
-
-Package: neo-calculator
-Architecture: all
-Section: oldlibs
-Depends: vibeos-calculator (>= ${source:Version}),
-         ${misc:Depends},
-Description: transitional package for vibeos-calculator
- neo-calculator is vibeos-calculator now. This empty package takes the old
- one's place in an upgrade from gnome-phone, so that the app keeps its place on
- the home screen; it can be removed afterwards.
-
-Package: neo-calendar
-Architecture: all
-Section: oldlibs
-Depends: vibeos-calendar (>= ${source:Version}),
-         ${misc:Depends},
-Description: transitional package for vibeos-calendar
- neo-calendar is vibeos-calendar now. This empty package takes the old one's
- place in an upgrade from gnome-phone, so that the app keeps its place on the
- home screen; it can be removed afterwards.
-
-Package: neo-camera
-Architecture: all
-Section: oldlibs
-Depends: vibeos-camera (>= ${source:Version}),
-         ${misc:Depends},
-Description: transitional package for vibeos-camera
- neo-camera is vibeos-camera now. This empty package takes the old one's place
- in an upgrade from gnome-phone, so that the app keeps its place on the home
- screen; it can be removed afterwards.
-
-Package: neo-clock
-Architecture: all
-Section: oldlibs
-Depends: vibeos-clock (>= ${source:Version}),
-         ${misc:Depends},
-Description: transitional package for vibeos-clock
- neo-clock is vibeos-clock now. This empty package takes the old one's place in
- an upgrade from gnome-phone, so that the app keeps its place on the home
- screen; it can be removed afterwards.
-
-Package: neo-compass
-Architecture: all
-Section: oldlibs
-Depends: vibeos-compass (>= ${source:Version}),
-         ${misc:Depends},
-Description: transitional package for vibeos-compass
- neo-compass is vibeos-compass now. This empty package takes the old one's
- place in an upgrade from gnome-phone, so that the app keeps its place on the
- home screen; it can be removed afterwards.
-
-Package: neo-contacts
-Architecture: all
-Section: oldlibs
-Depends: vibeos-contacts (>= ${source:Version}),
-         ${misc:Depends},
-Description: transitional package for vibeos-contacts
- neo-contacts is vibeos-contacts now. This empty package takes the old one's
- place in an upgrade from gnome-phone, so that the app keeps its place on the
- home screen; it can be removed afterwards.
-
-Package: neo-dialer
-Architecture: all
-Section: oldlibs
-Depends: vibeos-dialer (>= ${source:Version}),
-         ${misc:Depends},
-Description: transitional package for vibeos-dialer
- neo-dialer is vibeos-dialer now. This empty package takes the old one's place
- in an upgrade from gnome-phone, so that the app keeps its place on the home
- screen; it can be removed afterwards.
-
-Package: neo-dictate
-Architecture: all
-Section: oldlibs
-Depends: vibeos-dictate (>= ${source:Version}),
-         ${misc:Depends},
-Description: transitional package for vibeos-dictate
- neo-dictate is vibeos-dictate now. This empty package takes the old one's
- place in an upgrade from gnome-phone, so that the app keeps its place on the
- home screen; it can be removed afterwards.
-
-Package: neo-files
-Architecture: all
-Section: oldlibs
-Depends: vibeos-files (>= ${source:Version}),
-         ${misc:Depends},
-Description: transitional package for vibeos-files
- neo-files is vibeos-files now. This empty package takes the old one's place in
- an upgrade from gnome-phone, so that the app keeps its place on the home
- screen; it can be removed afterwards.
-
-Package: neo-messaging
-Architecture: all
-Section: oldlibs
-Depends: vibeos-messaging (>= ${source:Version}),
-         ${misc:Depends},
-Description: transitional package for vibeos-messaging
- neo-messaging is vibeos-messaging now. This empty package takes the old one's
- place in an upgrade from gnome-phone, so that the app keeps its place on the
- home screen; it can be removed afterwards.
-
-Package: neo-settings
-Architecture: all
-Section: oldlibs
-Depends: vibeos-settings (>= ${source:Version}),
-         ${misc:Depends},
-Description: transitional package for vibeos-settings
- neo-settings is vibeos-settings now. This empty package takes the old one's
- place in an upgrade from gnome-phone, so that the app keeps its place on the
- home screen; it can be removed afterwards.
-
-Package: neo-weather
-Architecture: all
-Section: oldlibs
-Depends: vibeos-weather (>= ${source:Version}),
-         ${misc:Depends},
-Description: transitional package for vibeos-weather
- neo-weather is vibeos-weather now. This empty package takes the old one's
- place in an upgrade from gnome-phone, so that the app keeps its place on the
- home screen; it can be removed afterwards.
 
 Package: vibeos-video
 Architecture: any

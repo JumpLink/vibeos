@@ -2,7 +2,6 @@
  * image (GNOME has its own phone, contacts, messages, clock, files: these expect Android's telephony and home).
  * Play stays, and what it installs, and Android's settings under a name that tells it from GNOME's. */
 #include "apps.h"
-#include "legacy-ids.h"
 
 #include <glib/gi18n.h>
 
@@ -56,8 +55,7 @@ apps_installed (void)
     /* Waydroid writes its Settings entry NoDisplay; VibeOS shows it as Android Settings */
     if (!g_app_info_should_show (info) && g_strcmp0 (id, ANDROID_SETTINGS))
       continue;
-    if (is_android_builtin (id) || g_str_has_prefix (id, "vibeos.Launcher") ||
-        g_str_has_prefix (id, LEGACY_PREFIX "NeoLauncher"))
+    if (is_android_builtin (id) || g_str_has_prefix (id, "vibeos.Launcher"))
       continue;
     /* a phone shows phone apps: nothing that runs in a terminal (htop, nvtop), and not Waydroid's whole-screen
      * Android session (its apps come one by one, as windows of their own) */
@@ -73,17 +71,6 @@ apps_installed (void)
     if (g_hash_table_contains (apps, apps_replaced[r][1]))
       g_hash_table_remove (apps, apps_replaced[r][0]);
   return apps;
-}
-
-char *
-apps_current_id (const char *id)
-{
-  g_autofree char *now = legacy_desktop_id (id);
-  if (!now)
-    return g_strdup (id);
-  g_autoptr (GDesktopAppInfo) old = g_desktop_app_info_new (id);
-  g_autoptr (GDesktopAppInfo) renamed = old ? NULL : g_desktop_app_info_new (now);
-  return renamed ? g_steal_pointer (&now) : g_strdup (id);
 }
 
 const char *

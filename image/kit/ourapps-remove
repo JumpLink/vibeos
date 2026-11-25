@@ -1,5 +1,5 @@
 # build-system.sh: GNOME's apps removed from our POCO's ROM (2026-11-12: "only our apps"; kept: Software, Image
-# Viewer, Document Viewer, Video Player). gnome-snapshot goes too: neo-camera replaces it; and since 0.1.4.1
+# Viewer, Document Viewer, Video Player). gnome-snapshot goes too: vibeos-camera replaces it; and since 0.1.4.1
 # gnome-console: Terminal (vibeos-terminal) replaces it (2026-11-24). apt-get remove must take exactly these and
 # nothing else (their dependencies are marked manual first, from ourapps-manual).
 gnome-core

@@ -107,19 +107,14 @@ language_name() {
 }
 
 # package ROOT NAME VERSION ARCH: ROOT/DEBIAN/control's fields after these four come from stdin; the .deb into OUT.
-# Each package replaces gnome-phone's of the same content (neo-dictate-*, before VibeOS).
 package() {
 	mkdir -p "$1/DEBIAN"
-	old=$(echo "$2" | sed 's/^vibeos-/neo-/')
 	{
 		echo "Package: $2"
 		echo "Version: $3"
 		echo "Architecture: $4"
 		echo "Maintainer: $MAINTAINER"
 		echo "Installed-Size: $(du -sk --exclude=DEBIAN "$1" | cut -f1)"
-		echo "Conflicts: $old"
-		echo "Replaces: $old"
-		echo "Provides: $old"
 		cat
 	} > "$1/DEBIAN/control"
 	find "$1/usr" -type d -exec chmod 755 {} +
