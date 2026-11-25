@@ -102,6 +102,11 @@ vibeos (1:0.1.4.3) unstable; urgency=medium
     and back down when they close. An app can still be fitted above the
     keys (vibeos.Shell keyboard-fit-apps, which replaces
     keyboard-slide-apps, or X-Vibeos-Keyboard=fit in its desktop file).
+  * Navi: standing, or slower than a walk, away from a route, the arrow
+    points where the phone points, by its compass (claimed only while
+    Navi is on the screen), and in heading-up the map turns with it.
+    Moving, or along a route, it follows the car's course as before; a
+    phone without a compass keeps GPS's alone.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 00:48:14 +0100
 
