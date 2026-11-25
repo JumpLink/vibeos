@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-video\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 16:55+0100\n"
+"POT-Creation-Date: 2026-11-25 01:45+0100\n"
 "PO-Revision-Date: 2026-11-24 16:54+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Dutch\n"
@@ -110,6 +110,12 @@ msgstr "Instellingen"
 #: main.c
 msgid "Back"
 msgstr "Terug"
+
+#. TRANSLATORS: shown in the video player's top bar while a film plays without sound because the device has no sound
+#. output (no speaker, headphones or Bluetooth device that takes it)
+#: main.c
+msgid "No audio output"
+msgstr "Geen audio-uitvoer"
 
 #: main.c
 msgid "More options"

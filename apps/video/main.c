@@ -4,6 +4,19 @@
  * play/pause and forward 10 s in the middle, the time, the seek bar and the length at the bottom. A tap shows or hides
  * them (they hide by themselves after a few seconds of playing); a double tap on the left or right third skips 10 s.
  *
+ * The phones' and tablets' hardware decoders (V4L2 memory-to-memory: Qualcomm's venus and iris, Samsung's MFC) decode
+ * H.264 and HEVC: a third to a tenth of the CPU time of FFmpeg's decoders, and the phone stays cooler. Other codecs
+ * only where the device says its decoder takes them reliably (VP9 wedged one's firmware until a reboot): the
+ * device layer's /usr/share/vibeos-device/video.conf, a key file, [Video] hwdec-codecs=h264,hevc,vp9 (mpv's list).
+ * A film the decoder still cannot take (10-bit HEVC on some) is decoded in software, by mpv's own fallback.
+ *
+ * Where nothing takes the film's sound, mpv would wait for it and the film would stand still: a sound server with no
+ * output (PipeWire with only its dummy sink, or none). Then it plays without sound (mpv's ao "null") and the controls
+ * say "No audio output": at once when PipeWire lists no real output as the film opens; when no output would open (the
+ * film then goes on without its sound, or, with nothing else to play, ends and is opened again where it was); else
+ * when a film that started has not moved for 2 s while not paused, buffering or seeking. A film opened once an output
+ * is there has sound again.
+ *
  * A file opened from a share (smb://…) is played from GVfs's FUSE path to it: mpv's FFmpeg cannot open smb:// itself.
  * Where a film was left is remembered (mpv's watch-later files, in the user's state directory), and it carries on
  * from there the next time.
@@ -32,6 +45,7 @@
 #include <gtk/gtk.h>
 #include <locale.h>
 #include <math.h>
+#include <string.h>
 #include <mpv/client.h>
 #include <mpv/render_gl.h>
 #include <spongy-gtk.h>
@@ -47,15 +61,26 @@
 #define CENTER_BUTTON_DP 72
 #define SIDE_BUTTON_DP 56
 #define TOP_BUTTON_DP 48
+#define STALL_MS 2000
+#define DEVICE_VIDEO_CONF "/usr/share/vibeos-device/video.conf"
+#define HWDEC_CODECS "h264,hevc"
 
 typedef enum { ICON_BACK, ICON_PLAY, ICON_PAUSE, ICON_REPLAY, ICON_FORWARD, ICON_MORE, ICON_FULLSCREEN } Icon;
 
 typedef struct {
   GtkApplication *app;
-  GtkWidget *win, *area, *controls, *title, *full, *more, *play, *position, *length, *seek, *spinner, *message;
+  GtkWidget *win, *area, *controls, *title, *notice, *full, *more, *play, *position, *length, *seek, *spinner, *message;
   mpv_handle *mpv;
   mpv_render_context *render;
-  gboolean paused, buffering, ended, have_file, dragging, setting_seek, named, fullscreen, cropped;
+  gboolean paused, buffering, seeking, ended, have_file, dragging, setting_seek, named, fullscreen, cropped;
+  /* the sound: played to nothing (mpv's ao "null"), as nothing took it; PipeWire lists a real output: 1, or none: 0,
+   * or not known: -1; the watch for a film that does not move (since when it last moved, and from where) */
+  gboolean silent, watching;
+  int outputs;
+  gint64 moved_at;
+  double watch_from;
+  guint stall_id;
+  char *playing;          /* what was given to mpv to play: a path or a web address */
   double time, duration;
   double aspect;          /* the film's picture as it is shown, width / height (0: no picture) */
   gint64 rotate;          /* and the turn it is shown at (a phone's video filmed upright: 90) */
@@ -252,11 +277,104 @@ sync_crop (Player *p, gboolean again)
   command (p, args);
 }
 
+/* ---- the sound ---- */
+
+static const char *node_string (const mpv_node *map, const char *key);
+static GArray *tracks_of (Player *p, const char *type);
+
+/* The film plays without sound (the output mpv opened is closed, and ao "null" takes the sound at the film's pace), or
+ * with it again, on the outputs mpv chooses itself */
+static void
+set_silent (Player *p, gboolean silent)
+{
+  if (silent == p->silent || !p->mpv)
+    return;
+  p->silent = silent;
+  const char *args[] = {"set", "ao", silent ? "null" : "", NULL};
+  command (p, args);
+  gtk_widget_set_visible (p->notice, silent);
+}
+
+/* mpv's audio-device-list: an output of PipeWire's ("pipewire/NAME") that is not its dummy one (auto_null, "Dummy
+ * Output") is a real one. With PipeWire not running there is no telling (mpv then opens another server or ALSA) */
+static void
+sync_outputs (Player *p, const mpv_node *list)
+{
+  g_autofree char *socket = g_build_filename (g_get_user_runtime_dir (), "pipewire-0", NULL);
+  if (!list || list->format != MPV_FORMAT_NODE_ARRAY || !g_file_test (socket, G_FILE_TEST_EXISTS)) {
+    p->outputs = -1;
+    return;
+  }
+  p->outputs = 0;
+  for (int i = 0; i < list->u.list->num && !p->outputs; i++) {
+    const char *name = node_string (&list->u.list->values[i], "name");
+    const char *description = node_string (&list->u.list->values[i], "description");
+    if (name && g_str_has_prefix (name, "pipewire/") && !strstr (name, "auto_null") &&
+        g_strcmp0 (description, "Dummy Output"))
+      p->outputs = 1;
+  }
+}
+
+static gboolean
+check_stall (gpointer data)
+{
+  Player *p = data;
+  p->stall_id = 0;
+  if (!p->watching || !p->have_file || p->paused || p->ended || p->buffering || p->seeking || p->silent)
+    return G_SOURCE_REMOVE;
+  gint64 still = (g_get_monotonic_time () - p->moved_at) / 1000;
+  if (still < STALL_MS) {
+    p->stall_id = g_timeout_add (STALL_MS - still, check_stall, p);
+    return G_SOURCE_REMOVE;
+  }
+  g_message ("the film has not moved for %d ms: playing it without sound", STALL_MS);
+  p->watching = FALSE;
+  set_silent (p, TRUE);
+  return G_SOURCE_REMOVE;
+}
+
+/* Once the film plays: one with sound tracks that has no sound output (none would open, and mpv let go of the sound)
+ * plays on without sound, its sound to nothing, and the controls say so */
+static void
+check_output (Player *p)
+{
+  if (p->silent || !p->mpv)
+    return;
+  char *ao = mpv_get_property_string (p->mpv, "current-ao");
+  mpv_free (ao);
+  if (ao)
+    return;
+  g_autoptr (GArray) sound = tracks_of (p, "audio");
+  if (sound->len == 0)
+    return;
+  g_message ("no sound output would open: playing without sound");
+  set_silent (p, TRUE);
+  const char *again[] = {"set", "aid", "auto", NULL};
+  command (p, again);
+}
+
+/* A film watched from when it opens or is played again, until it has moved a second: one that stands still for
+ * STALL_MS (not paused, buffering or seeking) plays on without sound */
+static void
+watch_stall (Player *p)
+{
+  p->watching = TRUE;
+  p->watch_from = p->time;
+  p->moved_at = g_get_monotonic_time ();
+  g_clear_handle_id (&p->stall_id, g_source_remove);
+  p->stall_id = g_timeout_add (STALL_MS, check_stall, p);
+}
+
 static void
 on_property (Player *p, mpv_event_property *prop)
 {
   if (g_str_equal (prop->name, "time-pos")) {
-    p->time = prop->format == MPV_FORMAT_DOUBLE ? *(double *) prop->data : 0;
+    double time = prop->format == MPV_FORMAT_DOUBLE ? *(double *) prop->data : 0;
+    if (time != p->time)
+      p->moved_at = g_get_monotonic_time ();
+    p->time = time;
+    if (p->watching && fabs (p->time - p->watch_from) >= 1)
+      p->watching = FALSE;
     sync_time (p);
   } else if (g_str_equal (prop->name, "duration")) {
     p->duration = prop->format == MPV_FORMAT_DOUBLE ? *(double *) prop->data : 0;
@@ -269,6 +387,8 @@ on_property (Player *p, mpv_event_property *prop)
     p->paused = paused;
     gtk_widget_queue_draw (gtk_button_get_child (GTK_BUTTON (p->play)));
     sync_inhibit (p);
+    if (!paused && p->have_file)
+      watch_stall (p);
     /* paused, the controls come; played again, they go a little later */
     show_controls (p, TRUE);
   } else if (g_str_equal (prop->name, "eof-reached")) {
@@ -284,6 +404,11 @@ on_property (Player *p, mpv_event_property *prop)
     gboolean on = prop->format == MPV_FORMAT_FLAG && *(int *) prop->data;
     if (g_str_equal (prop->name, "paused-for-cache"))
       p->buffering = on;
+    else
+      p->seeking = on;
+    /* the time it stood still buffering or seeking does not count */
+    if (!on)
+      p->moved_at = g_get_monotonic_time ();
     gtk_widget_set_visible (p->spinner, p->buffering);
     gtk_spinner_set_spinning (GTK_SPINNER (p->spinner), p->buffering);
   } else if (g_str_equal (prop->name, "video-params/aspect")) {
@@ -292,6 +417,8 @@ on_property (Player *p, mpv_event_property *prop)
   } else if (g_str_equal (prop->name, "video-params/rotate")) {
     p->rotate = prop->format == MPV_FORMAT_INT64 ? *(gint64 *) prop->data : 0;
     sync_crop (p, FALSE);
+  } else if (g_str_equal (prop->name, "audio-device-list")) {
+    sync_outputs (p, prop->format == MPV_FORMAT_NODE ? prop->data : NULL);
   } else if (g_str_equal (prop->name, "media-title") && prop->format == MPV_FORMAT_STRING && !p->named) {
     /* a web stream's own title (a file keeps its name: a film's title tag is often another film's) */
     const char *title = *(char **) prop->data;
@@ -316,11 +443,26 @@ drain_events (gpointer data)
     case MPV_EVENT_FILE_LOADED:
       p->ended = FALSE;
       gtk_widget_set_visible (p->message, FALSE);
+      watch_stall (p);
       /* the crop is the player's, whatever a film's watch-later file says */
       sync_crop (p, TRUE);
       break;
+    case MPV_EVENT_PLAYBACK_RESTART:
+      check_output (p);
+      break;
     case MPV_EVENT_END_FILE: {
       mpv_event_end_file *end = ev->data;
+      /* nothing but the sound to play, and no output for it: again where it was, without sound */
+      if (end->reason == MPV_END_FILE_REASON_ERROR && end->error == MPV_ERROR_AO_INIT_FAILED && !p->silent &&
+          p->playing) {
+        g_message ("no sound output would open: playing again without sound");
+        set_silent (p, TRUE);
+        char start[64];
+        g_snprintf (start, sizeof start, "start=%.3f", p->time);
+        const char *again[] = {"loadfile", p->playing, "replace", "-1", start, NULL};
+        command (p, again);
+        break;
+      }
       if (end->reason == MPV_END_FILE_REASON_ERROR) {
         g_warning ("mpv: %s", mpv_error_string (end->error));
         /* nothing plays: the controls stay */
@@ -447,7 +589,10 @@ start_mpv (Player *p)
   g_mkdir_with_parents (later, 0700);
   const char *const options[][2] = {
     {"vo", "libmpv"},
-    {"hwdec", "auto-safe"},
+    /* the device's V4L2 decoder, its frames copied out for the OpenGL renderer (mpv has no way to draw them in place),
+     * else what mpv knows to be safe (VA-API on a PC), else FFmpeg's own decoders; a codec the decoder lacks goes
+     * on to the next */
+    {"hwdec", "v4l2m2m-copy,auto-safe"},
     /* at the end the last frame stays, with the controls, as Android's player leaves it */
     {"keep-open", "yes"},
     {"save-position-on-quit", "yes"},
@@ -469,6 +614,19 @@ start_mpv (Player *p)
   };
   for (gsize i = 0; i < G_N_ELEMENTS (options); i++)
     mpv_set_option_string (p->mpv, options[i][0], options[i][1]);
+  /* the codecs the device's decoder may take (see the top) */
+  g_autoptr (GKeyFile) device = g_key_file_new ();
+  g_autofree char *codecs = NULL;
+  if (g_key_file_load_from_file (device, DEVICE_VIDEO_CONF, G_KEY_FILE_NONE, NULL))
+    codecs = g_key_file_get_string (device, "Video", "hwdec-codecs", NULL);
+  mpv_set_option_string (p->mpv, "hwdec-codecs", codecs && *codecs ? codecs : HWDEC_CODECS);
+  /* for a test: mpv's options, NAME=VALUE separated by spaces, over the ones above (hwdec=no, ao=null) */
+  g_auto (GStrv) extra = g_strsplit (g_getenv ("VIBEOS_VIDEO_MPV_OPTIONS") ? g_getenv ("VIBEOS_VIDEO_MPV_OPTIONS") : "", " ", -1);
+  for (int i = 0; extra[i]; i++) {
+    g_auto (GStrv) pair = g_strsplit (extra[i], "=", 2);
+    if (pair[0] && pair[1])
+      mpv_set_option_string (p->mpv, pair[0], pair[1]);
+  }
   if (mpv_initialize (p->mpv) < 0) {
     mpv_destroy (p->mpv);
     p->mpv = NULL;
@@ -479,6 +637,9 @@ start_mpv (Player *p)
   mpv_observe_property (p->mpv, 0, "pause", MPV_FORMAT_FLAG);
   mpv_observe_property (p->mpv, 0, "eof-reached", MPV_FORMAT_FLAG);
   mpv_observe_property (p->mpv, 0, "paused-for-cache", MPV_FORMAT_FLAG);
+  mpv_observe_property (p->mpv, 0, "seeking", MPV_FORMAT_FLAG);
+  /* the outputs there are, as they come and go */
+  mpv_observe_property (p->mpv, 0, "audio-device-list", MPV_FORMAT_NODE);
   mpv_observe_property (p->mpv, 0, "media-title", MPV_FORMAT_STRING);
   mpv_observe_property (p->mpv, 0, "video-params/aspect", MPV_FORMAT_DOUBLE);
   mpv_observe_property (p->mpv, 0, "video-params/rotate", MPV_FORMAT_INT64);
@@ -1072,6 +1233,7 @@ static const char CSS[] =
   ".video-top { background-image: linear-gradient(to bottom, alpha(black, 0.6), transparent); padding: 8dp 8dp 32dp 4dp; }"
   ".video-bottom { background-image: linear-gradient(to top, alpha(black, 0.6), transparent); padding: 32dp 16dp 12dp 16dp; }"
   ".video-title { font-size: 18sp; font-weight: 500; }"
+  ".video-notice { font-size: 14sp; color: alpha(white, 0.8); }"
   ".video-time { font-size: 14sp; font-feature-settings: 'tnum'; }"
   ".video-icon { background: none; border: none; box-shadow: none; padding: 0; min-width: 0; min-height: 0; }"
   ".video-message { font-size: 16sp; background-color: alpha(black, 0.6); border-radius: 12dp; padding: 12dp 20dp; }"
@@ -1133,6 +1295,12 @@ build (Player *p)
   gtk_label_set_xalign (GTK_LABEL (p->title), 0);
   gtk_widget_set_hexpand (p->title, TRUE);
   gtk_box_append (GTK_BOX (top), p->title);
+  /* TRANSLATORS: shown in the video player's top bar while a film plays without sound because the device has no sound
+     output (no speaker, headphones or Bluetooth device that takes it) */
+  p->notice = gtk_label_new (_("No audio output"));
+  gtk_widget_add_css_class (p->notice, "video-notice");
+  gtk_widget_set_visible (p->notice, FALSE);
+  gtk_box_append (GTK_BOX (top), p->notice);
   p->full = icon_button (p, ICON_FULLSCREEN, TOP_BUTTON_DP, _("Full screen"), G_CALLBACK (toggle_fullscreen));
   gtk_box_append (GTK_BOX (top), p->full);
   p->more = icon_button (p, ICON_MORE, TOP_BUTTON_DP, _("More options"), G_CALLBACK (open_menu));
@@ -1249,6 +1417,13 @@ play_file (Player *p, GFile *file, gboolean mounted)
   gtk_label_set_text (GTK_LABEL (p->title), name);
   gtk_window_set_title (GTK_WINDOW (p->win), name);
   gtk_widget_set_visible (p->message, FALSE);
+  /* no output: silent from the start; one there again: sound again */
+  if (p->outputs == 0)
+    set_silent (p, TRUE);
+  else if (p->outputs == 1)
+    set_silent (p, FALSE);
+  g_free (p->playing);
+  p->playing = g_strdup (what);
   const char *args[] = {"loadfile", what, NULL};
   command (p, args);
   show_controls (p, TRUE);
@@ -1560,7 +1735,19 @@ on_shutdown (GApplication *app, Player *p)
   g_clear_handle_id (&p->tap_id, g_source_remove);
   g_clear_handle_id (&p->events_id, g_source_remove);
   g_clear_handle_id (&p->shape_id, g_source_remove);
+  g_clear_handle_id (&p->stall_id, g_source_remove);
+  g_clear_pointer (&p->playing, g_free);
   if (p->mpv) {
+    if (g_getenv ("VIBEOS_VIDEO_LOG")) {
+      /* (mpv's strings, freed by mpv) */
+      char *hwdec = mpv_get_property_string (p->mpv, "hwdec-current");
+      char *vo = mpv_get_property_string (p->mpv, "frame-drop-count");
+      char *decoder = mpv_get_property_string (p->mpv, "decoder-frame-drop-count");
+      g_message ("decoding: %s; frames dropped: %s by the output, %s by the decoder", hwdec, vo, decoder);
+      mpv_free (hwdec);
+      mpv_free (vo);
+      mpv_free (decoder);
+    }
     /* where the film was left, for next time */
     if (p->have_file) {
       const char *save[] = {"write-watch-later-config", NULL};
@@ -1578,7 +1765,7 @@ main (int argc, char **argv)
   bindtextdomain (GETTEXT_PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (GETTEXT_PACKAGE, "UTF-8");
   textdomain (GETTEXT_PACKAGE);
-  Player p = {.paused = FALSE, .landscape = -1};
+  Player p = {.paused = FALSE, .landscape = -1, .outputs = -1};
   g_autoptr (GtkApplication) app = gtk_application_new (APP_ID, G_APPLICATION_HANDLES_OPEN);
   p.app = app;
   g_signal_connect (app, "startup", G_CALLBACK (on_startup), &p);
