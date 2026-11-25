@@ -46,7 +46,7 @@ endforeach
 executable('vibeos-launcher',
   'src/main.c', 'src/vk.c', 'src/gfx.c', 'src/gfx-vk.c', 'src/gfx-gl.c', 'src/wl.c', 'src/text.c', 'src/image.c',
   'src/parallax.c', 'src/apps.c', 'src/icons.c', 'src/model.c', 'src/tiles.c', 'src/home.c', 'src/drawer.c',
-  'src/nav.c', 'src/popup.c', 'src/drag.c', 'src/pieces.c', '../libvibeos/vibeos-locale.c',
+  'src/nav.c', 'src/popup.c', 'src/drag.c', 'src/pieces.c', 'src/look.c', '../libvibeos/vibeos-locale.c',
   proto_src,
   include_directories: include_directories('src', 'shaders', '../libvibeos'),
   c_args: ['-DGETTEXT_PACKAGE="vibeos-launcher"',
@@ -80,3 +80,8 @@ gnome.post_install(glib_compile_schemas: true)
 
 # the launcher's translations, and their checks
 subdir('po')
+
+# a tablet's drawer sheet blurs as the shade does: its verdict read as shadelook.js writes it, the blur without one
+test('shade-look', executable('test-look', 'tests/test-look.c', 'src/look.c',
+                              include_directories: include_directories('src'),
+                              dependencies: [dependency('glib-2.0'), dependency('json-glib-1.0')]))

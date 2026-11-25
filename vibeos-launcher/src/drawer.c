@@ -12,13 +12,18 @@
  * has a word starting with each word typed, then the ones whose generic name or keywords
  * do. Enter opens the first; scrolling the list puts the keyboard away; back, or the sheet closing, ends the search.
  *
- * A tablet's sheet floats: narrower than the screen, centred, opaque; a tap beside it closes it as back does. */
+ * A tablet's sheet floats: narrower than the screen, centred; a tap beside it closes it as back does. It is the tablet
+ * shade's material: the screen behind it blurred as the open shade blurs it, under the shade panel's tint, or opaque
+ * where the shade is (extension/shadelook.js measures whether the GPU holds the frame rate under its blur, and keeps
+ * the verdict in shade-look.json; none yet, the shade starts with the blur). The look changes only while the sheet is
+ * gone, as the shade's does only while it is shut. */
 #include <librsvg/rsvg.h>
 #include <math.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
 
 #include "apps.h"
 #include "image.h"
+#include "look.h"
 #include "vibeos.h"
 
 #define SLOP_DP              8
@@ -44,7 +49,10 @@
 #define HINT_RGB             0xA2ADAF
 #define LABEL_RGB            0xDDE7E9
 #define THUMB_RGB            0xB8EBF3      /* also the caret */
-#define TAB_SHEET_RGB        0x11353A      /* a tablet's, opaque */
+#define TAB_SHEET_RGB        0x11353A      /* a tablet's where the shade is opaque (palette.js TabletShade.scrim) */
+#define TAB_TINT_RGB         0x162C30      /* ... and where it blurs, the shade panel's tint over the blur */
+#define TAB_TINT_ALPHA       0.72256f      /*     (palette.js SHADE_PANEL, its rgb rounded as shade.js's CSS has it) */
+#define TAB_BLUR_SIGMA       51.0f         /* px: the open shade's Shell.BlurEffect radius 102, Clutter's σ = r / 2 */
 #define TAB_SEARCH_RGB       0x102326
 #define CARET_BLINK_MS       500           /* the caret's half period */
 #define CARET_DP             2
@@ -90,6 +98,12 @@ static struct {
   TextLayout *query_text, *none;   /* the query as typed; "No apps found matching …" */
   bool        caret_on;
   guint       caret_id;
+  /* a tablet's look: the shade's, as last read, and the one in use (taken up while the sheet is gone) */
+  GFileMonitor *look_monitor;
+  bool        look_read, look_blur, blur;
+  GfxTex     *backdrop;            /* this frame's screen behind, blurred: a tablet's sheet with the blur */
+  bool        backdrop_new;        /* a new blur: the sheet's picture is made again from it */
+  GfxTex     *sheet_target;        /* the blur under the tint, at the blur's size: the sheet draws it in one quad */
   /* drawing */
   GfxTex     *search_icon;
   TextLayout *hint;
@@ -186,6 +200,63 @@ static void search_filter (void);
 static void search_blur (void);
 static void search_end (void);
 
+/* ---- a tablet's look: the shade's ------------------------------------------------------------------------------ */
+
+/* the shade's verdict (look.h) */
+static bool
+read_look (void)
+{
+  g_autofree char *path = look_path ();
+  return look_blurs (path);
+}
+
+/* the look in use follows the shade's while the sheet is gone */
+static void
+take_look (void)
+{
+  if (D.f <= 0 && !D.down && !D.settling && D.blur != D.look_blur) {
+    D.blur = D.look_blur;
+    g_message ("drawer: the tablet's sheet %s, as the shade", D.blur ? "blurs" : "is opaque");
+  }
+}
+
+static void
+on_look_changed (GFileMonitor *monitor, GFile *file, GFile *other, GFileMonitorEvent event, gpointer data)
+{
+  if (event == G_FILE_MONITOR_EVENT_CHANGED || event == G_FILE_MONITOR_EVENT_ATTRIBUTE_CHANGED)
+    return;                        /* (a write ends in CHANGES_DONE_HINT, a replace in a create or a move) */
+  D.look_blur = read_look ();
+  take_look ();
+}
+
+static void
+look_init (void)
+{
+  g_autofree char *path = look_path ();
+  g_autoptr (GFile) file = g_file_new_for_path (path);
+  D.look_monitor = g_file_monitor_file (file, G_FILE_MONITOR_WATCH_MOVES, NULL, NULL);
+  if (D.look_monitor)
+    g_signal_connect (D.look_monitor, "changed", G_CALLBACK (on_look_changed), NULL);
+  D.look_read = true;
+  D.blur = D.look_blur = read_look ();
+  g_message ("drawer: the tablet's sheet %s, as the shade", D.blur ? "blurs" : "is opaque");
+}
+
+/* σ in px of the screen behind that this frame's sheet shows blurred, 0 for none (a phone's sheet, a tablet's that
+ * is opaque or gone); main.c blurs it and hands it over (drawer_set_backdrop) before drawer_draw */
+float
+drawer_backdrop_sigma (void)
+{
+  return N.tablet && D.blur && D.f > 0 ? TAB_BLUR_SIGMA : 0;
+}
+
+void
+drawer_set_backdrop (GfxTex *blurred, bool changed)
+{
+  D.backdrop = blurred;
+  D.backdrop_new |= changed;
+}
+
 void
 drawer_layout (void)
 {
@@ -211,6 +282,8 @@ drawer_layout (void)
     search_end ();
   /* without the pill the list starts where the pill was */
   D.cols = MAX (1, N.drawer_cols);
+  if (N.tablet && !D.look_read)
+    look_init ();
   if (N.tablet) {
     D.sw = roundf (tab_sheet_w ());
     D.sx = roundf ((N.W - D.sw) / 2);
@@ -586,6 +659,7 @@ drawer_frame (void)
       D.revert_t0 = 0;
     more = true;
   }
+  take_look ();
   bool a = false;
   D.bump_amount = spongy_edge_frame (&D.bump, N.now, true, &a);
   more |= a;
@@ -961,13 +1035,22 @@ target (GfxTex **t, int w, int h)
   return *t;
 }
 
-/* Offscreen passes, before the screen's: the list and the container when they are stretched */
+/* Offscreen passes, before the screen's: a tablet's sheet picture from a new blur, the list and the container when
+ * they are stretched */
 void drawer_prepare (void);
 void
 drawer_prepare (void)
 {
   if (D.f <= 0)
     return;
+  if (D.backdrop && (D.backdrop_new || !D.sheet_target)) {
+    int w = D.backdrop->w, h = D.backdrop->h;
+    gfx_pass_begin (target (&D.sheet_target, w, h), (GfxColor) { 0, 0, 0, 1 });
+    gfx_image_opaque (D.backdrop, 0, 0, w, h);
+    gfx_rect (0, 0, w, h, 0, GFX_RGBA (TAB_TINT_RGB, TAB_TINT_ALPHA));
+    gfx_pass_end ();
+    D.backdrop_new = false;
+  }
   bool list_stretched = D.list_top_amount + D.list_bottom_amount != 0;
   if (list_stretched) {
     gfx_pass_begin (target (&D.list_target, N.W, (int) ceilf (D.list_h)), (GfxColor) { 0, 0, 0, 0 });
@@ -989,10 +1072,10 @@ sheet_scale (void)
   return 1 - (1 - HOME_MIN_SCALE) * decelerate3 (D.home_p);
 }
 
-/* What the sheet will cover whole this frame, in screen px: a tablet's (opaque) from below its top corners to the
- * screen's bottom, a pixel in from its antialiased edge and on whole pixels. The screen pass takes it as its hole
- * (gfx_occlude), so the wallpaper, the home and the scrim are not drawn under it; drawer_draw takes it away before
- * the sheet. A phone's sheet is see-through: none. */
+/* What the sheet will cover whole this frame, in screen px: a tablet's (opaque, or the opaque screen's blur under its
+ * tint) from below its top corners to the screen's bottom, a pixel in from its antialiased edge and on whole pixels.
+ * The screen pass takes it as its hole (gfx_occlude), so the wallpaper, the home and the scrim are not drawn under it;
+ * drawer_draw takes it away before the sheet. A phone's sheet is see-through: none. */
 bool
 drawer_cover (float r[4])
 {
@@ -1027,7 +1110,13 @@ drawer_draw (void)
   gfx_save ();
   if (scale != 1)
     gfx_scale (scale, scale, N.W / 2.0f, N.H / 2.0f);   /* the apps view and its header, about their centre */
-  if (N.tablet)
+  if (N.tablet && D.backdrop) {
+    /* the blurred screen as it is behind the sheet: its rect on the screen, through this frame's scale */
+    float h = N.H - top + r, cx = N.W / 2.0f, cy = N.H / 2.0f;
+    float x0 = cx + (D.sx - cx) * scale, x1 = cx + (D.sx + D.sw - cx) * scale;
+    float y0 = cy + (top - cy) * scale, y1 = cy + (top + h - cy) * scale;
+    gfx_image_uv (D.sheet_target, D.sx, top, D.sw, h, x0 / N.W, y0 / N.H, x1 / N.W, y1 / N.H, r, 1);
+  } else if (N.tablet)
     gfx_rect (D.sx, top, D.sw, N.H - top + r, r, GFX_RGBA (TAB_SHEET_RGB, 1));
   else
     gfx_rect (0, top, N.W, N.H - top + r, r, GFX_RGBA (SHEET_RGB, SHEET_ALPHA));
