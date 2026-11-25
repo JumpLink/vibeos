@@ -21,10 +21,11 @@ name order) with [`patches/mutter`](../mutter/) to mutter-mobile:
 
 `/opt/gnome-mobile` in the VibeOS system image (0.1.4.3 and later): `lib/gnome-shell/libshell-51.so` (the shell's
 JavaScript is a GResource inside it) is the tag with all five. The shell's other files there (`libst-51.so`,
-`bin/gnome-shell`, ...) are built from the tag: none of the five changes their sources.
+`bin/gnome-shell`, ...) are built from the tag: none of the five changes their sources. The mutter-mobile shipped in the
+same `/opt/gnome-mobile` was built with [`patches/mutter`](../mutter/) 0001-0003 and 0005; 0004 came later.
 
-The same folder also holds `lib/gnome-shell/libshell-51.so.before-osk-top`, a copy kept from an earlier build that
-nothing loads: its JavaScript is the tag with 0001 alone.
+`lib/gnome-shell/libshell-51.so.before-osk-top` is a leftover of an earlier build that nothing loads; its source is the
+tag with 0001 (with or without 0002).
 
 ## Licence
 
