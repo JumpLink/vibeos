@@ -67,8 +67,10 @@ const UP_PENDING_CHARGE = 5;
 const CHARGE_SETTLE_MS = 400;
 
 // what the lock screen and the AOD say while the battery charges: the percentage, then AOSP's "Charging slowly" and
-// "Charging", One UI's "Fast charging", "Super fast charging" and "Wireless charging", and AOSP's "Not charging" (a
-// charger is in, nothing flows), as one sentence a language can order its own way; then, while the battery takes some, how much (the owner asked, 11-08)
+// "Charging", One UI's "Fast charging", "Super fast charging" and "Wireless charging", and AOSP's "Not charging" (the
+// battery's STATUS says the charger holds it: too warm, or a charge limit), as one sentence a language can order its
+// own way; then, while the battery takes some, how much (the owner asked, 11-08). A full battery is "Charged", which
+// the callers say in its place.
 export function chargingText(level, speed, amps = null) {
     const format = {
         /* TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%") */
@@ -79,8 +81,8 @@ export function chargingText(level, speed, amps = null) {
         superfast: _('%s • Super fast charging'),
         /* TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%") */
         wireless: _('%s • Wireless charging'),
-        /* TRANSLATORS: the lock screen's charging line, for a charger that is plugged in while the battery takes no power;
-           %s is the battery's level ("75%") */
+        /* TRANSLATORS: the lock screen's charging line, for a charger that is plugged in but holds the battery
+           where it is (too warm, or a charge limit); %s is the battery's level ("75%") */
         idle: _('%s • Not charging'),
     }[speed] ?? /* TRANSLATORS: the lock screen's charging line; %s is the battery's level ("75%") */ _('%s • Charging');
     const text = format.replace('%s', formatPercent(level));

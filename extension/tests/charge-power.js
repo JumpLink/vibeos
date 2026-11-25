@@ -1,9 +1,9 @@
 // The charging label's rule on fake power supply trees (charge-power.sh). The trees are the phones' real readings
 // (the numbers are theirs, nothing else), and each device's sign convention is written down where its tree is built.
 //
-//   flat      under 1 W while plugged in: "Charging" where STATUS says so, else "Not charging"
-//   slowly    STATUS Discharging while a supply is online
-//   speed     the battery's measured power: from 20 W super fast, from 12 W fast, else plain "Charging"
+//   status    STATUS Full is "Charged", STATUS Not charging is "Not charging" (and only that)
+//   slowly    under 5 W into the battery, or STATUS Discharging while a supply is online
+//   speed     the battery's measured power: from 20 W super fast, from 12 W fast, from 5 W plain "Charging"
 //   wireless  only a pad online
 //   unknown   STATUS Unknown: the capacity's trend gives the direction
 //   smoothing one spike changes nothing
@@ -68,9 +68,9 @@ const label = r => `${r.speed}${r.amps === null ? '' : ` ${r.amps.toFixed(2)}A`}
 // Each device builds its supplies from a status, a power in watts INTO the battery (negative: out of it) and its own
 // sign convention. The numbers of the real readings are noted where they come from.
 
-// S10e: max170xx_battery reports CURRENT_NOW negative while it charges (-11250 at STATUS Charging on a computer's
-// port; an older comment in the code claimed positive, the reading says no). No POWER_NOW. The charger chip and the
-// USB-C port are online with a cable.
+// S10e: max170xx_battery's sign while it charges is not established: the one reading, -11250 at STATUS Charging on a
+// computer's port, is next to nothing flowing (an older comment in the code said positive). The trees use negative;
+// the rule never reads the sign. No POWER_NOW. The charger chip and the USB-C port are online with a cable.
 function s10e(status, watts, capacity = 50) {
     const volts = 3.988750;
     return tree({
@@ -81,8 +81,8 @@ function s10e(status, watts, capacity = 50) {
     });
 }
 
-// S20: the same gauge family and convention (CURRENT_NOW -71250 at STATUS Charging on a wireless pad); the pad is
-// the only supply online, the USB-C one and the charger are offline.
+// S20: the same gauge family, its sign as little established (CURRENT_NOW -71250 at STATUS Charging on a wireless pad,
+// a quarter of a watt); the pad is the only supply online, the USB-C one and the charger are offline.
 function s20(status, watts, capacity = 50, cable = false) {
     const volts = 3.835156;
     return tree({
@@ -142,7 +142,8 @@ let r = settle(tree({
     'max77705-charger': {type: 'USB', online: 1},
     'max77705-usbc': {type: 'USB', online: 1, usb_type: 'Unknown SDP DCP CDP [C] PD PD_DRP', current_max: 500000},
 }));
-check('S10e on a PC port (11 mA, STATUS Charging): "Charging", no amps', r.speed === 'normal' && r.amps === null, label(r));
+check('S10e on a PC port (11 mA, STATUS Charging): "Charging slowly", no amps', r.speed === 'slow' && r.amps === null,
+    label(r));
 
 r = settle(tree({
     qcom_qg: {type: 'Battery', status: 'Unknown', capacity: 100, current_now: -1068, voltage_now: 4489886},
@@ -150,14 +151,15 @@ r = settle(tree({
         voltage_now: 0, status: 'Full'},
     'tcpm-source-psy': {type: 'USB', online: 1, voltage_now: 5000000, current_max: 3000000},
 }));
-check('POCO on a PC port (1 mA, STATUS Unknown, 3 A offer): "Not charging"', r.speed === 'idle' && r.amps === null, label(r));
+check('POCO on a PC port (1 mA, STATUS Unknown at 100 %, 3 A offer): "Charged"', r.speed === 'full' && r.amps === null,
+    label(r));
 
 r = settle(tree({
     qcom_qg: {type: 'Battery', status: 'Full', capacity: 100, current_now: 152, voltage_now: 4489886},
     'pm8150b-charger': {type: 'USB', online: 1, usb_type: 'Unknown [SDP] DCP CDP', current_max: 700000},
     'tcpm-source-psy': {type: 'USB', online: 1, voltage_now: 5000000, current_max: 3000000},
 }));
-check('POCO at Full: "Not charging"', r.speed === 'idle', label(r));
+check('POCO at Full: "Charged"', r.speed === 'full', label(r));
 
 r = settle(tree({
     'qcom-battery': {type: 'Battery', status: 'Charging', capacity: 80, current_now: -12695, power_now: -52004,
@@ -166,13 +168,14 @@ r = settle(tree({
     tcpm: {type: 'USB', online: 1, voltage_now: 5000000, current_max: 3000000},
     idtp9418: {type: 'Wireless', online: 0},
 }));
-check('Mi Pad 5 (52 mW, 15 W limit, STATUS Charging): "Charging", never fast', r.speed === 'normal' && r.amps === null,
-    label(r));
+check('Mi Pad 5 (52 mW, 15 W limit, STATUS Charging): "Charging slowly", never fast',
+    r.speed === 'slow' && r.amps === null, label(r));
 
 r = settle(s5e('Discharging', -0.954135, 50, 0));
 check('Tab S5e unplugged (954 mW out, charger offline): no label', r.speed === null && r.amps === null, label(r));
 
-// ---- a charge at 5, 13 and 25 W, in each device's convention --------------------------------------------------
+// ---- a charge at 3, 6, 13 and 25 W, in each device's convention ---------------------------------------------
+// (6 W, not 5: a tree's current is rounded to the µA, which puts 5 W a hair under the threshold)
 
 const cases = [
     ['S10e', w => s10e('Charging', w)],
@@ -182,7 +185,7 @@ const cases = [
     ['Mi Pad 5', w => nabu('Charging', w)],
 ];
 for (const [name, build] of cases) {
-    for (const [w, speed] of [[5, 'normal'], [13, 'fast'], [25, 'superfast']]) {
+    for (const [w, speed] of [[3, 'slow'], [6, 'normal'], [13, 'fast'], [25, 'superfast']]) {
         r = settle(build(w));
         check(`${name} charging at ${w} W: ${speed}`, r.speed === speed, label(r));
     }
@@ -202,6 +205,20 @@ for (const [name, tr] of [['S10e', s10e('Discharging', -2)], ['Tab S5e', s5e('Di
     check(`${name} Discharging while online: slowly, no amps`, r.speed === 'slow' && r.amps === null, label(r));
 }
 
+// ---- STATUS Not charging and Full --------------------------------------------------------------------------------
+
+for (const [name, tr] of [['Mi Pad 5 at a charge limit', nabu('Not charging', 0, 80)],
+    ['S10e too warm', s10e('Not charging', 0.05)], ['POCO held, 2 W still read', poco('Not charging', 2, -1)]]) {
+    r = settle(tr);
+    check(`${name} (STATUS Not charging): "Not charging", no amps`, r.speed === 'idle' && r.amps === null, label(r));
+}
+r = settle(s20('Not charging', 0, 90));
+check('S20 held on its pad (STATUS Not charging): "Not charging", not wireless', r.speed === 'idle', label(r));
+r = settle(s10e('Full', 0, 99));
+check('S10e at Full at 99 %: "Charged"', r.speed === 'full' && r.amps === null, label(r));
+r = settle(s10e('Charging', 0.3, 40));
+check('S10e under 1 W at STATUS Charging: "Charging slowly", no amps', r.speed === 'slow' && r.amps === null, label(r));
+
 // ---- STATUS Unknown: the capacity's trend --------------------------------------------------------------------------
 
 const sample = (t, capacity, o = {}) => ({t, cable: true, pad: false, status: 'Unknown', capacity, watts: 5, amps: 1.2, ...o});
@@ -211,13 +228,17 @@ check('Unknown, capacity rising, 13 W: fast',
     chargeReading([50, 50, 51].map((c, i) => sample(i * 3000, c, {watts: 13}))).speed === 'fast');
 check('Unknown, capacity falling: slowly',
     chargeReading([sample(0, 51), sample(3000, 51), sample(6000, 50)]).speed === 'slow');
-check('Unknown, capacity steady: "Not charging"',
-    chargeReading([sample(0, 50), sample(3000, 50), sample(6000, 50)]).speed === 'idle');
-check('Unknown, capacity rising, flat power (STATUS does not say Charging): "Not charging"',
-    chargeReading([50, 51].map((c, i) => sample(i * 3000, c, {watts: 0.2}))).speed === 'idle');
+check('Unknown, capacity steady at 50 %, 5 W: "Charging" (only STATUS says "Not charging")',
+    chargeReading([sample(0, 50), sample(3000, 50), sample(6000, 50)]).speed === 'normal');
+check('Unknown, capacity steady at 50 %, flat power: "Charging slowly"',
+    chargeReading([50, 50, 50].map((c, i) => sample(i * 3000, c, {watts: 0.2}))).speed === 'slow');
+check('Unknown, capacity steady at 100 %: "Charged"',
+    chargeReading([100, 100].map((c, i) => sample(i * 3000, c, {watts: 0.2}))).speed === 'full');
+check('Unknown, capacity rising, flat power: "Charging slowly"',
+    chargeReading([50, 51].map((c, i) => sample(i * 3000, c, {watts: 0.2}))).speed === 'slow');
 // the same through a tree whose capacity moves between samples
 {
-    const root = poco('Unknown', 5, -1, 70);
+    const root = poco('Unknown', 6, -1, 70);
     let t = 0;
     const meter = new ChargeMeter({root, now: () => (t += 3000)});
     meter.setPlugged(true);
@@ -274,7 +295,7 @@ r = settle(tree({
     'big-charger': {type: 'Mains', online: 1, input_current_limit: 5000000, current_max: 9000000,
         voltage_now: 20000000, voltage_max: 20000000, usb_type: 'C [PD]'},
 }));
-check('a 100 W limit and offer with 3 W flowing: "Charging"', r.speed === 'normal', label(r));
+check('a 100 W limit and offer with 3 W flowing: "Charging slowly"', r.speed === 'slow', label(r));
 r = settle(tree({
     'qcom-battery': {type: 'Battery', status: 'Charging', capacity: 50, power_now: -22000000, current_now: -5000000,
         voltage_now: 4400000},

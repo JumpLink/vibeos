@@ -11,8 +11,10 @@
 import GLib from 'gi://GLib';
 
 export const POWER_SUPPLY = '/sys/class/power_supply';
-// below this a plugged-in phone is "flat": nothing worth a speed goes into the battery
+// Android's speeds: below SLOW_W "Charging slowly", from FAST_W fast, from SUPER_FAST_W super fast. Below FLAT_W
+// nothing worth a number goes into the battery, and no current is shown.
 export const FLAT_W = 1;
+export const SLOW_W = 5;
 export const FAST_W = 12;
 export const SUPER_FAST_W = 20;
 // the samples power and STATUS are smoothed over (the median of the power, the majority of the STATUS), and the ones
@@ -36,7 +38,8 @@ const int = text => {
     return isNaN(n) ? null : n;
 };
 
-// 'in' (the battery takes power), 'out' (it gives some), 'none' (full, held at a level) or 'unknown', from STATUS
+// from STATUS: 'in' (the battery takes power), 'out' (it gives some), 'full', 'held' (the charger keeps it where it
+// is: a temperature or a charge limit) or 'unknown'
 function statusDirection(status) {
     switch (status) {
     case 'Charging':
@@ -44,8 +47,9 @@ function statusDirection(status) {
     case 'Discharging':
         return 'out';
     case 'Full':
+        return 'full';
     case 'Not charging':
-        return 'none';
+        return 'held';
     default:
         return 'unknown';
     }
@@ -116,36 +120,41 @@ function majority(directions) {
     return directions.findLast(d => count[d] === best);
 }
 
-// The label's speed and the current into the battery from the samples, oldest first:
-//   {speed, amps}, speed 'wireless' | 'superfast' | 'fast' | 'normal' (plain "Charging") | 'slow' (a supply is online
-//   and the battery still gives power) | 'idle' ("Not charging") | null (nothing is plugged in); amps in A, or null
-//   unless the battery takes power.
+// The label's speed and the current into the battery from the samples, oldest first: {speed, amps}, speed
+//   'full'       STATUS Full ("Charged")
+//   'idle'       STATUS Not charging: the charger holds the battery (a temperature or a charge limit)
+//   'wireless'   on a pad, no cable
+//   'slow'       under SLOW_W into the battery, or the battery giving power while a charger is in
+//   'normal'     plain "Charging"; 'fast', 'superfast' from FAST_W and SUPER_FAST_W
+//   null         nothing is plugged in
+// amps in A, or null unless the battery takes power.
 export function chargeReading(samples) {
     const last = samples.at(-1);
     if (!last || (!last.cable && !last.pad))
         return {speed: null, amps: null};
     const recent = samples.slice(-SMOOTH_SAMPLES);
-    const status = majority(recent.map(s => statusDirection(s.status)));
-    let direction = status;
+    let direction = majority(recent.map(s => statusDirection(s.status)));
     if (direction === 'unknown') {
+        // the capacity's trend; a level that holds is charging as slowly as the power says, or full at 100 %
         const levels = samples.map(s => s.capacity).filter(c => c !== null);
         const trend = levels.length ? levels.at(-1) - levels[0] : 0;
-        direction = trend > 0 ? 'in' : trend < 0 ? 'out' : 'none';
+        direction = trend > 0 ? 'in' : trend < 0 ? 'out' : levels.at(-1) >= 100 ? 'full' : 'in';
     }
+    if (direction === 'full')
+        return {speed: 'full', amps: null};
+    if (direction === 'held')
+        return {speed: 'idle', amps: null};
     const watts = median(recent.map(s => s.watts));
-    const flat = watts !== null && watts < FLAT_W;
-    const amps = direction === 'in' && !flat ? median(recent.map(s => s.amps)) : null;
+    const amps = direction === 'in' && watts !== null && watts >= FLAT_W ? median(recent.map(s => s.amps)) : null;
     // a pad with no cable on it: no speed is worked out, as on One UI
     if (!last.cable)
         return {speed: 'wireless', amps};
     if (direction === 'out')
         return {speed: 'slow', amps: null};
-    // flat: "Charging" where the battery's own STATUS says so, else "Not charging" (a trend alone is not enough)
-    if (flat)
-        return {speed: status === 'in' ? 'normal' : 'idle', amps: null};
-    if (direction !== 'in')
-        return {speed: 'idle', amps: null};
-    return {speed: watts >= SUPER_FAST_W ? 'superfast' : watts >= FAST_W ? 'fast' : 'normal', amps};
+    if (watts === null)
+        return {speed: 'normal', amps};
+    return {speed: watts >= SUPER_FAST_W ? 'superfast' : watts >= FAST_W ? 'fast' : watts >= SLOW_W ? 'normal' : 'slow',
+        amps};
 }
 
 // The samples of one plug-in, and the timer that takes them while something is plugged in (and only then: setPlugged

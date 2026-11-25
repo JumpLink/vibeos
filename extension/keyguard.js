@@ -582,7 +582,8 @@ export class Keyguard extends Signals.EventEmitter {
         // (setNotice), but not after a lockdown
         let indication = !this._lockedDown && this._notice ? this._notice : '';
         if (!indication && battery.present && battery.plugged)
-            indication = battery.level >= 100 ? _('Charged') : chargingText(battery.level, battery.speed, battery.amps);
+            indication = battery.level >= 100 || battery.speed === 'full' ? _('Charged')
+                : chargingText(battery.level, battery.speed, battery.amps);
         if (indication !== this._indicationText) {
             this._indicationText = indication;
             this._indication.setText(indication);

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-shell\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 04:08+0100\n"
+"POT-Creation-Date: 2026-11-25 04:14+0100\n"
 "PO-Revision-Date: 2026-11-24 19:46+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: French\n"
@@ -405,8 +405,8 @@ msgstr "%s • Recharge ultra-rapide"
 msgid "%s • Wireless charging"
 msgstr "%s • Recharge sans fil"
 
-#. TRANSLATORS: the lock screen's charging line, for a charger that is plugged in while the battery takes no power;
-#. %s is the battery's level ("75%")
+#. TRANSLATORS: the lock screen's charging line, for a charger that is plugged in but holds the battery
+#. where it is (too warm, or a charge limit); %s is the battery's level ("75%")
 #: state.js
 #, javascript-format
 msgid "%s • Not charging"

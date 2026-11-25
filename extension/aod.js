@@ -351,7 +351,7 @@ class Aod extends St.BoxLayout {
         const {battery} = this._state;
         this._batteryIcon.icon_name = battery.icon;
         // plugged in, how fast it charges, as the lock screen says it
-        this._batteryLabel.text = battery.plugged && battery.level < 100
+        this._batteryLabel.text = battery.plugged && battery.level < 100 && battery.speed !== 'full'
             ? chargingText(battery.level, battery.speed, battery.amps) : formatPercent(battery.level);
         this._battery.visible = battery.present;
     }
