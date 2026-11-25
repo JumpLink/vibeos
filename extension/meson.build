@@ -18,11 +18,13 @@ install_data('appmem.py', install_dir: extdir, install_mode: 'rwxr-xr-x')
 configure_file(input: 'home.js', output: 'home.js', install_dir: extdir,
   command: ['sed', '-e', 's|/usr/local/bin/vibeos-launcher|' + bindir + '/vibeos-launcher|', '@INPUT@'], capture: true)
 
-# the power key's handlers driven directly, never with a real key (tests/power-keys.sh); needs gjs and a D-Bus daemon
+# the power key's handlers driven directly, never with a real key (tests/power-keys.sh); needs gjs and a D-Bus daemon.
+# Alone: its chords are 250 ms apart, which tests running beside it on a loaded machine can stretch
 gjs = find_program('gjs', required: false)
 dbus_run_session = find_program('dbus-run-session', required: false)
 if gjs.found() and dbus_run_session.found()
-  test('power-keys', find_program('tests/power-keys.sh'), args: [meson.current_source_dir()], timeout: 120)
+  test('power-keys', find_program('tests/power-keys.sh'), args: [meson.current_source_dir()], timeout: 120,
+    is_parallel: false)
 endif
 
 # the Bluetooth agent, trust after pairing and reconnection against a BlueZ stand-in (tests/bt-agent.sh); needs gjs and a
@@ -40,9 +42,10 @@ endif
 
 # the click and the volume sound really played, through a PipeWire of the test's own with two null sinks, each recorded
 # (tests/sounds-pipewire.sh); needs PipeWire, WirePlumber, pipewire-pulse, libcanberra-pulse and GSound, and is skipped
-# without them
+# without them. Alone: what it records and how long a play takes are what it checks
 if gjs.found() and dbus_run_session.found()
-  test('sounds-pipewire', find_program('tests/sounds-pipewire.sh'), args: [meson.current_source_dir()], timeout: 180)
+  test('sounds-pipewire', find_program('tests/sounds-pipewire.sh'), args: [meson.current_source_dir()], timeout: 180,
+    is_parallel: false)
 endif
 
 # what a Back button is called in an app's language, from catalogs it compiles (tests/back-names.sh); needs gjs and
