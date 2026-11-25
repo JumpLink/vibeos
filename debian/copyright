@@ -131,6 +131,27 @@ Comment:
  Terminal's app icon, a prompt's chevron and the cursor, is drawn for VibeOS
  on the tile the other apps use.
 
+Files: apps/video/data/vibeos.Video.svg
+       docs/icons/video.png
+       apps/dictate/data/vibeos.Agent.svg
+       docs/icons/vibe.png
+Copyright: 2026 pulpoff <pashkovsky@gmail.com>
+License: Expat
+Comment:
+ Video Player's app icon (a play button on a screen) and Vibe's (a head with
+ circuit lines over wave ribbons) are drawn for VibeOS on the tile the other
+ apps use; the PNGs in docs/icons are them at 96 px, for the README.
+
+Files: apps/navi/data/vibeos.Navi.svg
+       docs/icons/navi.png
+Copyright: 2025 Fonticons, Inc. (Font Awesome Free)
+           2026 pulpoff <pashkovsky@gmail.com> (the tile)
+License: CC-BY-4.0
+Comment:
+ Navi's app icon is Font Awesome Free's diamond-turn-right in white on the
+ tile the other apps use (https://fontawesome.com/license/free); the PNG in
+ docs/icons is it at 96 px, for the README.
+
 Files: apps/software/data/fontawesome/*
 Copyright: 2025 Fonticons, Inc. (Font Awesome Free 7.0.0)
 License: CC-BY-4.0
