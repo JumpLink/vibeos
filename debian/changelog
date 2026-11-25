@@ -40,7 +40,7 @@ vibeos (1:0.1.4.3) unstable; urgency=medium
     Voice match is not offered yet.
   * Terminal in the six languages too.
   * The status bar shows the mobile network's type left of the signal
-    while mobile data is connected: 5G, LTE, H+, H, 3G, E or G.
+    while the phone's data goes over it: 5G, LTE, H+, H, 3G, E or G.
   * The battery's fill is green above half, yellow from 30 %, orange from
     15 % and red below, charging or not, on the status bar, the shade and
     the lock screen. Power saver shows its plus sign, no longer a yellow

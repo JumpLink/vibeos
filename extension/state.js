@@ -412,6 +412,24 @@ export const SystemState = GObject.registerClass({
         this._syncNetwork();
     }
 
+    // Whether the phone's data goes over the modem, as Android shows the network type only while mobile data is the
+    // default network: with Wi-Fi connected, NetworkManager keeps the modem's bearer up beside it, on a route of a
+    // higher metric, and the data goes over Wi-Fi
+    _dataOverModem() {
+        const primary = this._client.primary_connection;
+        if (!primary || !this._modemDevice)
+            return false;
+        const type = primary.get_connection_type();
+        if (type === 'gsm' || type === 'cdma' || primary.get_devices().includes(this._modemDevice))
+            return true;
+        // a VPN goes over another connection: the modem's, while no connection but the modem's is up beside it
+        if (!primary.vpn && type !== 'wireguard')
+            return false;
+        return this._client.get_active_connections().every(c => c === primary ||
+            c.state !== NM.ActiveConnectionState.ACTIVATED || c.get_connection_type() === 'loopback' ||
+            c.get_devices().includes(this._modemDevice));
+    }
+
     _syncNetwork() {
         const client = this._client;
         const wifiState = this._wifiDevice?.state ?? NM.DeviceState.UNAVAILABLE;
@@ -438,6 +456,7 @@ export const SystemState = GObject.registerClass({
         const tech = this._modem?.accessTechnology ?? '';
         const mm = this._mmModem;
         const bearerUp = mm?.get_cached_property('State')?.unpack() === MM_MODEM_STATE_CONNECTED;
+        const overModem = bearerUp && this._dataOverModem();
         this.mobile = {
             present: !!this._modemDevice,
             level: mobileLevel(this._modem?.signal_quality ?? 0),
@@ -445,7 +464,7 @@ export const SystemState = GObject.registerClass({
             tech: tech === 'unknown' || tech === 'other' ? '' : tech,
             dataConnected: modemState === NM.DeviceState.ACTIVATED,
             dataEnabled: client.wwan_enabled && modemState === NM.DeviceState.ACTIVATED,
-            dataType: bearerUp ? dataType(mm.get_cached_property('AccessTechnologies')?.unpack() ?? 0) : '',
+            dataType: overModem ? dataType(mm.get_cached_property('AccessTechnologies')?.unpack() ?? 0) : '',
         };
         this._changed();
     }
