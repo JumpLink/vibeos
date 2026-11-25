@@ -83,12 +83,11 @@ export function systemEnd(hole, W, height = BAR_HEIGHT) {
     return holePlace(hole, W, height) === 'end' ? hole[0] - CUTOUT_GAP : W - (TABLET ? TABLET_END : OPEN_END);
 }
 
-const FILL = {
-    default: [255, 255, 255],
-    charging: [0x18, 0xcc, 0x47],
-    error: [0xff, 0x0e, 0x01],
-    powerSave: [0xff, 0xc9, 0x17],
-};
+// The battery's fill colour by its charge, charging or not (the bolt says that, the plus the battery saver)
+export function batteryFill(level) {
+    return level > 50 ? Color.batteryGood : level >= 30 ? Color.batteryMedium : level >= 15 ? Color.batteryLow
+        : Color.batteryCritical;
+}
 
 // The charging bolt and the power-save plus, viewport units
 const BOLT = {w: 8, h: 9, d: 'M7.672,3.375L4.302,3.375L5.038,0.563C5.113,0.281 4.91,0 4.633,0C4.515,0 4.398,0.056 ' +
@@ -182,13 +181,13 @@ export function paintWifi(cr, x, top, level, color, alpha = 1) {
     paintIcon(cr, `ic_wifi_${drawn}`, x, top - (WIFI_W - ICON_H) / 2, WIFI_W, color, alpha);
 }
 
-// The battery: a 24 x 13 rounded body filled to the level, then the
-// cap, or an attribution glyph (bolt, plus) overlapping the body by 20 % with a clear 2 vp stroke around it.
-// Returns the width drawn.
+// The battery: a 24 x 13 rounded body filled to the level in its charge's colour (batteryFill), then the cap, or an
+// attribution glyph (bolt, plus) overlapping the body by 20 % with a clear 2 vp stroke around it. Returns the width
+// drawn.
 export function paintBattery(cr, x, top, battery, powerSave, scale = BATTERY_VP) {
     const charging = battery.plugged;
     const attribution = powerSave ? PLUS : charging ? BOLT : null;
-    const profile = powerSave ? 'powerSave' : charging ? 'charging' : battery.level <= 20 ? 'error' : 'default';
+    const fill = batteryFill(battery.level);
     const full = battery.level >= 100;
     const bodyW = 24 * scale, bodyH = 13 * scale;
 
@@ -196,7 +195,7 @@ export function paintBattery(cr, x, top, battery, powerSave, scale = BATTERY_VP)
     // body: background, then the fill clipped to the level
     roundRect(cr, x, top, bodyW, bodyH, 4 * scale);
     if (full) {
-        setSource(cr, FILL[profile]);
+        setSource(cr, fill);
         cr.fill();
     } else {
         cr.setSourceRGBA(1, 1, 1, attribution ? 0.55 : 0.45);
@@ -206,7 +205,7 @@ export function paintBattery(cr, x, top, battery, powerSave, scale = BATTERY_VP)
         cr.rectangle(x, top, Math.ceil(battery.level / 100 * 24) * scale, bodyH);
         cr.clip();
         roundRect(cr, x, top, bodyW, bodyH, 4 * scale);
-        setSource(cr, FILL[profile]);
+        setSource(cr, fill);
         cr.fill();
         cr.restore();
     }
@@ -238,7 +237,7 @@ export function paintBattery(cr, x, top, battery, powerSave, scale = BATTERY_VP)
         cr.lineTo(capX, capY + capH);
         cr.closePath();
         if (full)
-            setSource(cr, FILL[profile]);
+            setSource(cr, fill);
         else
             cr.setSourceRGBA(1, 1, 1, 0.45);
         cr.fill();

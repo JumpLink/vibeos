@@ -23,6 +23,11 @@ export const Color = {
     notificationScrim: [5, 28, 28],         // behind the notification stack
     white: [255, 255, 255],
     black: [0, 0, 0],
+    // the battery's fill by its charge, saturated mid-tones that read on the dark bar and over a light app
+    batteryGood: [0x18, 0xcc, 0x47],        // above 50 %: Android's charging green
+    batteryMedium: [0xf5, 0xb8, 0x00],      // 30 to 50 %
+    batteryLow: [0xff, 0x7a, 0x00],         // 15 to 29 %
+    batteryCritical: [0xff, 0x0e, 0x01],    // below 15 %: Android's battery error red
 };
 
 // translucent fills drawn over the blurred shade
