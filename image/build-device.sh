@@ -138,23 +138,32 @@ DEPS= DESC= KVER= POSTINST_EXTRA= POSTINST_SH= REGDB_KERNEL= REGDB_RD=
 
 case $DEV in
 s10e)
-	# The S10e's device stage (device.sh, read from the running phone 11-12..16; kernel 7.2.15-s10e and its 461
-	# modules checked identical to the phone by md5 on 11-16, + updates/exynos9820-decon-kms.ko). From 0.1.4.3:
-	# clean/device-20261124, whose sleep keeps Bluetooth on (s10e-minimal) and stays awake while Bluetooth audio
-	# runs (s10e-sleepd); its README-stage.txt has the rest
+	# The S10e's device stage (device.sh, read from the running phone 11-12..16). From 0.1.4.3: clean/device-20261124,
+	# whose sleep keeps Bluetooth on (s10e-minimal) and stays awake while Bluetooth audio runs (s10e-sleepd); its
+	# README-stage.txt has the rest. Its kernel and modules (7.2.15-s10e) are replaced below.
 	ST=${S10E_STAGE:?set S10E_STAGE}
 	K=${S10E_KIT:?set S10E_KIT}
 	(cd "$ST/root" && tar -cf - .) | tar -C "$P" -xpf - --no-same-owner
 	(cd "$P/usr/lib/firmware" 2>/dev/null && find . -type f | sed 's|^\./||' | LC_ALL=C sort) > "$L/stage-firmware.txt"
 	echo "stage firmware: $(wc -l < "$L/stage-firmware.txt") files from $ST/root: $(tr '\n' ' ' < "$L/stage-firmware.txt")" >> "$L/firmware.txt"
-	KVER=7.2.15-s10e
+	# The kernel (from 0.1.5) is 7.2.15-s10e-2 #58, the one the S10e has run since 11-23: S10E_IMAGE, its Image byte
+	# for byte (source: linux-beyond0lte's main at e4852ec, config mobian/kernel.config), and S10E_MODULES, its
+	# modules_install tree, in place of the stage's 7.2.15-s10e modules. updates/hci_uart.ko is hci_uart with
+	# linux-beyond0lte's hci_bcm commit, so the BCM4375 keeps its links through a system sleep
+	# (HCI_UART_NO_SUSPEND_NOTIFIER): S10E_HCI_UART, the module tested on the S10e on 11-25 (the S10e kit's
+	# bt/no-suspend-notifier, built against that kernel).
+	KVER=7.2.15-s10e-2
+	[ "$(sha256sum < "${S10E_IMAGE:?set S10E_IMAGE}" | cut -c1-16)" = 46a3099969c5f67a ] ||
+		{ echo "$S10E_IMAGE: not the Image of kernel #58" >&2; exit 1; }
+	[ "$(sha256sum < "${S10E_HCI_UART:?set S10E_HCI_UART}" | cut -c1-16)" = 3bbe9ee31b2e518e ] ||
+		{ echo "$S10E_HCI_UART: not the hci_uart.ko of 11-25" >&2; exit 1; }
+	[ "$(/usr/sbin/modinfo -F vermagic "$S10E_HCI_UART" | cut -d' ' -f1)" = $KVER ] || { echo "$S10E_HCI_UART: not for $KVER" >&2; exit 1; }
+	rm -rf "${P:?}/usr/lib/modules"
+	modules $KVER "${S10E_MODULES:?set S10E_MODULES}"
+	install -D -m 644 "$S10E_HCI_UART" "$P/usr/lib/modules/$KVER/updates/hci_uart.ko"
 	depmod -b "$P/usr" $KVER 2>> "$L/depmod.txt"
-	# S10E_IMAGE: the same kernel built again (7.2.15-s10e, the stage's modules are its own), e.g. with a neutral
-	# banner, shipped instead of the stage's
-	if [ -n "${S10E_IMAGE:-}" ]; then
-		install -m 755 "$S10E_IMAGE" "$P/boot/s10e/Image"
-		log "/boot/s10e/Image <- $S10E_IMAGE ($(sha256sum < "$S10E_IMAGE" | cut -c1-16))"
-	fi
+	install -m 755 "$S10E_IMAGE" "$P/boot/s10e/Image"
+	log "/boot/s10e/Image <- $S10E_IMAGE ($(sha256sum < "$S10E_IMAGE" | cut -c1-16)); updates/hci_uart.ko <- $S10E_HCI_UART"
 	cp "$P/boot/s10e/Image" "$P/boot/s10e/Image.prev"		# U-Boot's second menu entry
 	REGDB_KERNEL=$P/boot/s10e/Image
 	# the initramfs's /init <- s10e/init (11-23, owner: nothing stops the boot to the GUI): Mobian always boots,
@@ -207,7 +216,7 @@ s10e)
 	head -c 4194304 "${S10E_UBOOT:?set S10E_UBOOT}" > "$W/boot/uboot.img"
 	cp "$K/tools/s10e-logo" "$W/boot/s10e-logo"; mkdir -p "$W/boot/boot-logo"
 	cp "$K/boot-logo/logo.jpg" "$K/boot-logo/svb_orange.jpg" "$K/boot-logo/booting_warning.jpg" "$W/boot/boot-logo/"
-	DESC="Galaxy S10e (beyond0lte): kernel 7.2.15-s10e in /boot/s10e (U-Boot in recovery boots it), its modules, the vendor firmware, modem, sleep, GPU, audio, camera and sensor settings"
+	DESC="Galaxy S10e (beyond0lte): kernel 7.2.15-s10e-2 in /boot/s10e (U-Boot in recovery boots it), its modules, the vendor firmware, modem, sleep, GPU, audio, camera and sensor settings"
 	;;
 poco)
 	# The POCO X3 NFC as its k22 ROM ran on the phone (11-17 hardware check: cameras, speaker/mic, keyboard,

@@ -42,6 +42,9 @@ S10E_KIT=				# its kit: clean/60-s10e-gpu.conf, tools/s10e-logo, boot-logo/*.jpg
 S10E_VENDOR_FW=				# Samsung's firmware from its vendor partition (usr/lib/firmware of a root copy)
 S10E_CALLAUDIO_FW=			# optional: the call-audio kit's firmware, compared with the above
 S10E_UBOOT=				# U-Boot image for recovery (its first 4 MiB are taken)
+S10E_IMAGE=				# its kernel, 7.2.15-s10e-2 #58: the Image of that build, which the stage's replaces
+S10E_MODULES=				# that kernel build's modules_install tree (lib/modules)
+S10E_HCI_UART=				# hci_uart.ko with the hci_bcm sleep fix, built against that kernel (updates/)
 POCO_STAGE=				# POCO X3 NFC: device stage
 POCO_K22_IMG=				# its 0.1.1 ROM image (the ESP is read from it)
 POCO_K22_ZIP=				# its 0.1.1 ROM zip (recovery-uboot.img, which POCO_UBOOT must make again)
@@ -67,8 +70,6 @@ NABU_MODULES=				# its kernel build's modules_install tree (lib/modules)
 NABU_BOOT=				# its boot_b image (b3)
 # SYSIMG=				# the system image whose upstream-signed regulatory.db goes into the initramfs of a
 					# kernel with cfg80211 built in (default: OUT/system/rootfs.img)
-# S10E_IMAGE=				# a rebuild of the S10e's kernel (the same release, so the stage's modules fit) for
-					# /boot/s10e/Image instead of the stage's, e.g. one with a neutral banner
 # S5E_KERNEL=				# the same for the S5e: a gzip -9n Image for the slot image instead of Image-uc.gz
 # POCO_ESP_KERNEL=			# the same for the POCO: a vmlinuz.efi (EFI zboot) of vmlinuz-mobian's size, written
 					# over that file's clusters on the ESP
