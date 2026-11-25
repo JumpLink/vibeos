@@ -16,6 +16,11 @@
 --
 -- Only devices that ask for it: device property "vibeos.communication-device", the UCM device to play calls on
 -- ("Earpiece"), set by the device's monitor.alsa.rules.
+--
+-- A profile change removes every node of the card and makes new ones. Streams are moved to them, except those that
+-- asked never to be: GStreamer's pipewiresrc sets node.dont-reconnect, and its capture then fails ("target not
+-- found") the moment a call moves to the earpiece. A call app that records with pipewiresrc gives it
+-- stream-properties "props,node.dont-reconnect=false".
 
 cutils = require ("common-utils")
 log = Log.open_topic ("s-device")
