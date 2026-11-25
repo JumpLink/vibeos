@@ -1,0 +1,45 @@
+#!/bin/sh
+# wait-for-shell [LIMIT [STEADY]]: exits 0 once a GNOME Shell has run on seat0 for STEADY seconds (10) without a
+# restart, the greeter's or a user's, and 1 if none has after LIMIT seconds (120). qbootctl.service runs it before
+# it marks the boot slot good (qbootctl.service.d/vibeos-wait-for-shell.conf): a boot that hangs before the shell,
+# or whose shell keeps crashing, leaves the slot unmarked, and after its retries the bootloader starts the other one.
+# A GNOME Shell is a process named gnome-shell (the mobile shell's too) whose user has a session on seat0.
+limit=${1:-120}
+steady=${2:-10}
+hz=$(getconf CLK_TCK)
+
+# the age in seconds of the oldest GNOME Shell on seat0, or nothing
+shell_age() {
+	up=$(cut -d' ' -f1 /proc/uptime)
+	best=
+	for d in /proc/[0-9]*; do
+		[ "$(cat "$d/comm" 2> /dev/null)" = gnome-shell ] || continue
+		# its start, in clock ticks after boot: stat's 22nd field, the 20th after "PID (NAME) "
+		start=$(sed 's/^.*) //' "$d/stat" 2> /dev/null | cut -d' ' -f20)
+		uid=$(awk '$1 == "Uid:" {print $2}' "$d/status" 2> /dev/null)
+		[ -n "$start" ] && [ -n "$uid" ] || continue
+		onseat=
+		for s in $(loginctl show-user "$uid" -p Sessions --value 2> /dev/null); do
+			[ "$(loginctl show-session "$s" -p Seat --value 2> /dev/null)" != seat0 ] || { onseat=1; break; }
+		done
+		[ -n "$onseat" ] || continue
+		age=$(awk -v up="$up" -v start="$start" -v hz="$hz" 'BEGIN {printf "%d", up - start / hz}')
+		[ -n "$best" ] && [ "$best" -ge "$age" ] || best=$age
+	done
+	echo "$best"
+}
+
+waited=0
+while :; do
+	age=$(shell_age)
+	if [ -n "$age" ] && [ "$age" -ge "$steady" ]; then
+		echo "a GNOME Shell has run on seat0 for ${age} s: the boot counts as good"
+		exit 0
+	fi
+	if [ "$waited" -ge "$limit" ]; then
+		echo "no GNOME Shell on seat0 for ${steady} s within ${limit} s: the boot slot stays unmarked" >&2
+		exit 1
+	fi
+	sleep 2
+	waited=$((waited + 2))
+done

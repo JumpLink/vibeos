@@ -1,5 +1,5 @@
 #!/bin/sh
-# build-device.sh DEVICE: one device's half of VibeOS (s10e, poco, s5e, s20), into OUT/DEVICE/:
+# build-device.sh DEVICE: one device's half of VibeOS (s10e, poco, s5e, s20, nabu), into OUT/DEVICE/:
 #   vibeos-device-DEVICE_V_arm64.deb    the device layer as a package (V below): the kernel's modules, ALL the device's
 #                                         firmware, its units, udev/modprobe/UCM/sensor/GPU settings, its splash;
 #                                         the kernel too where it lives in the root file system (S10e: /boot/s10e)
@@ -15,7 +15,7 @@
 # below by its setting in image/local.conf (local.conf.example lists them).
 # Nothing is read from a phone. Run as root (sudo): payload files keep their modes, owned by root.
 set -eu
-DEV=${1:?s10e|poco|s5e|s20}
+DEV=${1:?s10e|poco|s5e|s20|nabu}
 [ "$(id -u)" = 0 ] || { echo "run as root (sudo)" >&2; exit 1; }
 T=$(cd "$(dirname "$0")" && pwd)
 [ ! -f "$T/local.conf" ] || . "$T/local.conf"	# this machine's settings (local.conf.example)
@@ -607,6 +607,63 @@ s20)
 		{ echo "$G/boot-logo: not the S20's pictures of 11-17" >&2; exit 1; }
 	DESC="Galaxy S20 FE (r8s, G780F): the modules of kernel $KVER (in BOOT with U-Boot), Wi-Fi and sensor-hub firmware, the modem stack with the phone's own NV and Wi-Fi MAC read from its EFS, sleep, the quiet boot, the r8s settings (USB network, watchdog, sensors, UCM, panel cutout, GPU)"
 	;;
+nabu)
+	# The Xiaomi Pad 5 (nabu, SM8150) with VibeOS in slot b: boot_b holds the boot image (header v0: kernel
+	# 7.3.6-nabu with its DTB, and VibeOS's initramfs), the root is the "linux" partition, and slot a keeps
+	# LineageOS, the way back (/etc/vibeos/android, below). NABU_STAGE (stage-20261125) is the tablet's device
+	# half as it ran on 2026-11-25: firmware from the tablet's own modem_a/bluetooth_a and postmarketOS's
+	# firmware-xiaomi-nabu (its firmware.txt names each file's source), hexagonrpcd (the PR#27 build) for the
+	# SLPI's sensors, the UCM, the speakers' PipeWire protection, udev, sleep, clock and boot settings, the
+	# restart into LineageOS, and debs/ (the Qualcomm packages and qbootctl). NABU_MODULES is kernel
+	# 7.3.6-nabu's modules_install tree, the kernel of NABU_BOOT.
+	ST=${NABU_STAGE:?set NABU_STAGE}
+	(cd "$ST/root" && tar -cf - .) | tar -C "$P" -xpf - --no-same-owner
+	# The SLPI's sensor registry, as on the POCO: the shipped one is postmarketOS's (sensors/registry, with the
+	# sensors/config files). The tablet's own copy (its state, the magnetometer's calibration among it) is never
+	# shipped: the state directory goes in empty, and the postinst seeds it once and gives it to fastrpc, the user
+	# hexagonrpcd-sdsp-sensorspd runs as. hexagonrpcd serves sensors/persist, a link to it, read-write
+	SR=usr/share/qcom/sm8150/Xiaomi/nabu/sensors
+	rm -rf "${P:?}/var/lib/hexagonrpc/nabu/persist" && install -d -m 755 "$P/var/lib/hexagonrpc/nabu/persist" || exit 1
+	[ "$(readlink "$P/$SR/persist")" = /var/lib/hexagonrpc/nabu/persist ] || { echo "$SR/persist: not the link to the state" >&2; exit 1; }
+	[ "$(ls "$P/$SR/registry" | wc -l)" -gt 100 ] && [ "$(ls "$P/$SR/config" | wc -l)" -gt 10 ] || { echo "no sensor registry or config in $SR" >&2; exit 1; }
+	[ -z "$(find "$P/var" -mindepth 1 ! -type d | head -n 1)" ] || { echo "state left in the stage's /var: $(find "$P/var" -mindepth 1 ! -type d | head -n 3 | tr '\n' ' ')" >&2; exit 1; }
+	# nothing of the bring-up: no ssh keys or ssh settings, no USB network
+	[ ! -e "$P/root" ] && [ ! -e "$P/etc/ssh" ] && [ -z "$(find "$P" -name '*usb-net*' -o -name '*bringup*' | head -n 1)" ] ||
+		{ echo "bring-up files in the nabu stage" >&2; exit 1; }
+	POSTINST_SH='# the sensor registry: a copy the SLPI may write, seeded once from the shipped one, never replaced
+	S=/var/lib/hexagonrpc/nabu/persist
+	if getent passwd fastrpc > /dev/null; then
+		[ -n "$(ls -A $S 2> /dev/null)" ] || { mkdir -p $S/registry && cp -a /usr/share/qcom/sm8150/Xiaomi/nabu/sensors/registry/. $S/registry/; }
+		chown -R fastrpc:fastrpc $S
+	fi
+	# hexagonrpcd'"'"'s library in /usr/local/lib
+	ldconfig'
+	KVER=7.3.6-nabu
+	rm -rf "$P/usr/lib/modules"; modules $KVER "${NABU_MODULES:?set NABU_MODULES}"
+	(cd "$P/usr/lib/firmware" && find . -type f | sed 's|^\./||') > "$L/stage-firmware.txt"
+	echo "stage firmware: $(wc -l < "$L/stage-firmware.txt") files from $ST/root (sources: $ST/firmware.txt)" >> "$L/firmware.txt"
+	# The SLPI's hexagonrpcd units (hexagonrpcd-sdsp*, started by 82-nabu-hexagonrpcd.rules) replace the generic
+	# ADSP ones, and the kernel has the QRTR name service and the PD mapper built in
+	mask hexagonrpcd.service hexagonrpcd-suspend.service pd-mapper.service qrtr-ns.service
+	# qbootctl.service marks slot b's boot good, so the bootloader does not go back to slot a after its retries;
+	# only once a GNOME Shell runs on seat0 (nabu/qbootctl-wait-for-shell.conf, nabu/wait-for-shell), not right
+	# after sysinit as shipped. A /etc mask, as the bring-up tablet has until its way back is tested, keeps it off
+	install -D -m 644 "$T/nabu/qbootctl-wait-for-shell.conf" "$P/etc/systemd/system/qbootctl.service.d/vibeos-wait-for-shell.conf"
+	install -D -m 755 "$T/nabu/wait-for-shell" "$P/usr/libexec/vibeos-device/wait-for-shell"
+	POSTINST_EXTRA="$POSTINST_EXTRA qbootctl.service"
+	identity nabu "Xiaomi Pad 5" Xiaomi "Xiaomi Pad 5"
+	video h264,hevc		# iris; VP9 decodes in software (60-nabu-gst-vp9.conf ranks the V4L2 decoder down)
+	DEPS="hexagonrpcd, rmtfs, qrtr-tools, tqftpserv, qbootctl"
+	(cd "$ST/debs" && sha256sum -c --quiet ../debs.sha256) || { echo "$ST/debs: not the stage's packages" >&2; exit 1; }
+	cp "$ST"/debs/*.deb "$W/debs/"
+	# boot: boot_b's image, byte for byte the one the tablet boots (b3, 2026-11-25: this kernel, NABU_MODULES's
+	# nt36523_ts in its initramfs, no bring-up masks on its command line)
+	BI=${NABU_BOOT:?set NABU_BOOT}
+	[ "$(sha256sum < "$BI" | cut -c1-16)" = cc210283410b6be0 ] || { echo "$BI: not the boot_b image b3" >&2; exit 1; }
+	cp "$BI" "$W/boot/boot_b.img"
+	log "boot_b $(sha256sum < "$W/boot/boot_b.img" | cut -c1-16)"
+	DESC="Xiaomi Pad 5 (nabu): kernel 7.3.6-nabu modules (the kernel and initramfs are in boot_b), the tablet's firmware, hexagonrpcd and the SLPI's sensors, UCM, speaker protection, video, clock and boot settings, the restart into LineageOS (slot a)"
+	;;
 *) echo "unknown device $DEV" >&2; exit 1 ;;
 esac
 
@@ -683,7 +740,7 @@ exit 0
 EOF
 chmod 755 "$P/DEBIAN/postinst"
 # vibeos-growroot (the system's, the first boot) is a oneshot, and vibeos-device-setup, ordered before gdm, waits for it
-case $DEV in s10e|s5e|poco|s20)
+case $DEV in s10e|s5e|poco|s20|nabu)
 	not_held vibeos-growroot.service 10min "The system's first-boot grow; vibeos-device-setup, ordered before gdm, comes after it." ;;
 esac
 # /etc/vibeos/android: how the shell's power menu restarts into Android (one line; no file, no menu item):
@@ -696,6 +753,9 @@ s5e)  A=helper=/usr/local/sbin/gts4lv-boot-android	# the stage's, polkit de.gts4
       [ -x "$P/usr/local/sbin/gts4lv-boot-android" ] && [ -f "$P/usr/share/polkit-1/actions/de.gts4lv.boot-android.policy" ] ||
 	{ echo "no gts4lv-boot-android in the S5e stage" >&2; exit 1; } ;;
 poco) A= ;;			# U-Boot in BOOT, Android gone or never started (since 2026-11-23): no Android entry
+nabu) A=helper=/usr/local/sbin/vibeos-boot-android	# qbootctl -s a (slot a: LineageOS), polkit top.vibeos.boot-android
+      [ -x "$P/usr/local/sbin/vibeos-boot-android" ] && [ -f "$P/usr/share/polkit-1/actions/top.vibeos.boot-android.policy" ] ||
+	{ echo "no vibeos-boot-android in the nabu stage" >&2; exit 1; } ;;
 *)    A= ;;
 esac
 [ -z "$A" ] || { install -d "$P/etc/vibeos"; echo "$A" > "$P/etc/vibeos/android"; chmod 644 "$P/etc/vibeos/android"; log "/etc/vibeos/android: $A"; }

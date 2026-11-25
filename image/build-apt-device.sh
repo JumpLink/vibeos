@@ -5,7 +5,7 @@
 #   vibeos-kernel-KVER      the modules of the kernel the device zip installed (/usr/lib/modules/KVER), one
 #                           package per uname -r, so that a later kernel's modules never replace them
 #   vibeos-kernel-DEVICE    depends on the current vibeos-kernel-KVER
-# s10e, s5e and poco only: the S20's kernel goes only through kexec-tested BOOT writes, never through apt.
+# s10e, s5e, poco and nabu only: the S20's kernel goes only through kexec-tested BOOT writes, never through apt.
 #
 # An upgrade from the zip's package (0.1.3, 0.1.3+1; no epoch, so older than any 1:) moves the modules to
 # vibeos-kernel-KVER, which Replaces vibeos-device-DEVICE << 1:0.1.4~: unpacked first, it takes them over, and the
@@ -23,9 +23,10 @@
 #         postinst sets update_initramfs=no in initramfs-tools' update-initramfs.conf (update-initramfs -u, which
 #         the firmware packages' triggers run, then does nothing).
 #   S5e   the kernel is in the recovery partition's slot (34 MiB), written only by the device zip.
+#   nabu  the kernel, its DTB and initramfs are in boot_b (slot b's boot image), written only by the install.
 set -eu
-DEV=${1:?s10e|s5e|poco} SRC=${2:?DEVDIR} OUTD=${3:?OUTDIR}
-case $DEV in s10e|s5e|poco) ;; *) echo "DEVICE: s10e, s5e or poco (the S20 never goes through apt)" >&2; exit 2 ;; esac
+DEV=${1:?s10e|s5e|poco|nabu} SRC=${2:?DEVDIR} OUTD=${3:?OUTDIR}
+case $DEV in s10e|s5e|poco|nabu) ;; *) echo "DEVICE: s10e, s5e, poco or nabu (the S20 never goes through apt)" >&2; exit 2 ;; esac
 V=${APT_VERSION:-1:0.1.4}
 case $V in 1:*) ;; *) echo "APT_VERSION $V: the archive's versions have epoch 1, which the zips' (0.1.3+1) are below" >&2; exit 2 ;; esac
 VF=${V#1:}
