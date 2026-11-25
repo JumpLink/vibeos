@@ -96,6 +96,12 @@ vibeos (1:0.1.4.3) unstable; urgency=medium
     a recording refused fails at once instead of waiting. Such an app
     reads which phone it is on (the device tree's model and compatible
     list), and its Open Settings button opens Settings.
+  * The on-screen keyboard goes over the app's window, which keeps its
+    size: nothing in it is laid out again. Only when the line being typed
+    on would be under the keys does the window slide up, just far enough,
+    and back down when they close. An app can still be fitted above the
+    keys (vibeos.Shell keyboard-fit-apps, which replaces
+    keyboard-slide-apps, or X-Vibeos-Keyboard=fit in its desktop file).
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 00:48:14 +0100
 
