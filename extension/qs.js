@@ -17,7 +17,7 @@ import * as Volume from 'resource:///org/gnome/shell/ui/status/volume.js';
 
 import {addEndMark} from './endmark.js';
 import {Canvas, hasIcon, paintIcon, VectorIcon} from './icons.js';
-import {_, DATE_SHORT, formatDate, N_, pgettext} from './l10n.js';
+import {_, DATE_SHORT, formatDate, N_, ngettext, pgettext} from './l10n.js';
 import {animate, animateSpring, clamp, lerp, Spring} from './motion.js';
 import {Color, cogl, font, mix, rgba, setSource, SurfaceEffect, TabletShade} from './palette.js';
 import {openSettings} from './settings.js';
@@ -815,7 +815,9 @@ class ActiveAppsPill extends St.Button {
 
     setCount(n) {
         this.count = n;
-        this._text.text = n === 1 ? '1 app is active' : `${n} apps are active`;
+        // the footer of quick settings: how many apps are running with no window (Android counts the apps with a
+        // foreground service)
+        this._text.text = ngettext('%d app is active', '%d apps are active', n).replace('%d', String(n));
         this.visible = n > 0;
         this.setWidthPx(this._w ?? 0);
     }

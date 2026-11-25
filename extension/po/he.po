@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-shell\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 00:24+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Hebrew\n"
@@ -362,6 +362,16 @@ msgstr "בהירות אוטומטית"
 msgctxt "media volume"
 msgid "Mute"
 msgstr "השתקה"
+
+#. the footer of quick settings: how many apps are running with no window (Android counts the apps with a
+#. foreground service)
+#: qs.js
+#, javascript-format
+msgid "%d app is active"
+msgid_plural "%d apps are active"
+msgstr[0] "אפליקציה פעילה אחת"
+msgstr[1] "%d אפליקציות פעילות"
+msgstr[2] "%d אפליקציות פעילות"
 
 # android: SystemUI hearing_devices_settings_button (several translations, short)
 #: qs.js
