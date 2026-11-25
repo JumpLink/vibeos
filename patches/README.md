@@ -50,4 +50,19 @@ Each device's kernel, with its patches and configuration, is in that device's re
 [linux-gts4lv](https://github.com/pulpoff/linux-gts4lv) (Galaxy Tab S5e),
 [linux-surya](https://github.com/pulpoff/linux-surya) (POCO X3 NFC),
 [linux-r8s](https://github.com/pulpoff/linux-r8s) (Galaxy S20 FE) and
-[linux-nabu](https://github.com/pulpoff/linux-nabu) (Xiaomi Pad 5).
+[linux-nabu](https://github.com/pulpoff/linux-nabu) (Xiaomi Pad 5). The kernel a release ships is tagged
+`vibeos-<release>` there (for example `vibeos-0.1.5`): the tag's tree builds that release's kernel, modules and
+devicetree, with the configuration it names.
+
+## U-Boot
+
+The U-Boot each device starts Linux from, as a patch series on its upstream U-Boot, with a README naming the base,
+the build and how it was checked against the shipped binary. The Xiaomi Pad 5 has none: its own bootloader starts
+the kernel.
+
+| Device | Applies to | Shipped in | Licence |
+| --- | --- | --- | --- |
+| [Galaxy S10e](u-boot-s10e/) | [chiffathefox/u-boot](https://github.com/chiffathefox/u-boot) `exynos9820` at `dec4927b4ad5` | 0.1.4.3, 0.1.5 | GPL-2.0-or-later; see the README |
+| [Galaxy Tab S5e](u-boot-s5e/) | [sm7150-mainline/u-boot](https://github.com/sm7150-mainline/u-boot) at `f8c04469e828` | 0.1.4.3, 0.1.5 | GPL-2.0-or-later; logo LGPL-3.0-or-later |
+| [POCO X3 NFC](u-boot-poco/) | [sm7150-mainline/u-boot](https://github.com/sm7150-mainline/u-boot) at `f8c04469e828` | 0.1.4.3, 0.1.5 | GPL-2.0-or-later; logo LGPL-3.0-or-later |
+| [Galaxy S20 FE](u-boot-s20/) | [chiffathefox/u-boot](https://github.com/chiffathefox/u-boot) at `dec4927b4ad5` | 0.1.4.3, 0.1.5 | GPL-2.0-or-later; see the README |

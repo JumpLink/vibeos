@@ -1,0 +1,166 @@
+From bfd84d0137491930cd44013d76f5af4b3089a265 Mon Sep 17 00:00:00 2001
+From: pulpoff <pashkovsky@gmail.com>
+Date: Wed, 25 Nov 2026 17:36:03 +0100
+Subject: [PATCH 4/4] qualcomm: quiet boot and a Linux partition for the POCO
+ X3 NFC
+
+qcom-quiet.config keeps the firmware splash on the panel (no framebuffer
+clear) and routes the console to serial only, adds CONFIG_BLKMAP, which
+qcom_defconfig lacks and preboot needs, and a few options the phone's
+earlier build had. qcom-recovery.config is for U-Boot in the recovery
+partition: its environment, qcom-phone-linuxpart.env, maps the "linux"
+partition as a block device (blkmap) and boots its ESP with bootefi
+bootmgr, picking the devicetree by panel (huaxing or tianma). It also
+selects the surya Huaxing devicetree as U-Boot's own. qcom-phone-quiet.env
+is the same for a system in userdata.
+---
+ board/qualcomm/qcom-phone-linuxpart.env | 51 +++++++++++++++++++++++++
+ board/qualcomm/qcom-phone-quiet.env     | 50 ++++++++++++++++++++++++
+ board/qualcomm/qcom-quiet.config        | 11 ++++++
+ board/qualcomm/qcom-recovery.config     |  4 ++
+ 4 files changed, 116 insertions(+)
+ create mode 100644 board/qualcomm/qcom-phone-linuxpart.env
+ create mode 100644 board/qualcomm/qcom-phone-quiet.env
+ create mode 100644 board/qualcomm/qcom-quiet.config
+ create mode 100644 board/qualcomm/qcom-recovery.config
+
+diff --git a/board/qualcomm/qcom-phone-linuxpart.env b/board/qualcomm/qcom-phone-linuxpart.env
+new file mode 100644
+index 00000000000..054878af782
+--- /dev/null
++++ b/board/qualcomm/qcom-phone-linuxpart.env
+@@ -0,0 +1,51 @@
++bootdelay=0
++bootretry=1
++stdin=serial,button-kbd
++stdout=serial
++stderr=serial
++show_console=setenv stdout serial,vidconsole; setenv stderr serial,vidconsole
++
++# Fastboot is keen to use the address from kconfig, but we
++# allocate its buffer at runtime.
++fastboot=fastboot -l $fastboot_addr_r usb 0
++
++# Set up a block map over the "linux" partition (carved from the end of userdata by the zip),
++# which holds a GPT of its own: the ESP and the root
++preboot=scsi scan; part start scsi 0 linux linux_start; part size scsi 0 linux linux_size; blkmap create root; blkmap map root 0 0x${linux_size} linear scsi 0 0x${linux_start}; run select_panel_dtb
++
++# neo: the POCO X3 NFC comes with a Huaxing or a Tianma panel. ABL names it ("panel", set from
++# its msm_drm.dsi_display0, e.g. dsi_nt36672c_huaxing_fhd_video_display), and bootefi bootmgr
++# loads the kernel DTB from the ESP as /dtb/${fdtfile}. Unknown panel or no file there: the
++# built-in (Huaxing) DTB.
++select_panel_dtb=setexpr pv sub ".*tianma.*" "tianma" "${panel}"; setexpr pv sub ".*huaxing.*" "huaxing" "${pv}"; if test "${pv}" = "tianma" || test "${pv}" = "huaxing"; then setenv fdtfile qcom/sm7150-xiaomi-surya-${pv}.dtb; fi; setenv pv
++
++# Shortcut to enable USB serial gadget and disable bootretry
++serial_gadget=setenv stdin serial,button-kbd,usbacm; setenv stdout serial,vidconsole,usbacm; setenv stderr serial,vidconsole,usbacm; setenv bootretry -1; echo Enabled U-Boot console serial gadget
++
++# bootretry will run this command over and over, if we fail once
++# then bail out to the boot menu instead (with a pause to read
++# the error message)
++bootcmd=bootefi bootmgr; run show_console; pause; run menucmd
++
++# When entering the menu (either from button press or failed boot)
++# remap bootcmd so it will re-open the menu and we won't get stuck
++# at the console with no way to type
++menucmd=run show_console; setenv bootcmd run menucmd; bootmenu -1
++
++# Pause is used so the output can be read on the display
++bootmenu_0=Boot=bootefi bootmgr; pause
++bootmenu_1=Enable serial console gadget=run serial_gadget
++bootmenu_2=Enable USB mass storage=echo "Press any key to exit UMS mode"; ums 0 scsi 0
++bootmenu_3=Enable fastboot mode=run fastboot
++# Disabling bootretry means we'll just drop the shell
++bootmenu_4=Drop to shell=setenv bootretry -1
++bootmenu_5=Restart to Android=reset
++bootmenu_6=Dump clocks=clk dump; pause
++bootmenu_7=Dump environment=printenv; pause
++bootmenu_8=Board info=bdinfo; pause
++bootmenu_9=Dump bootargs=fdt print /chosen bootargs; pause
++
++# Allow holding the volume down button while U-Boot loads to enter
++# the boot menu
++button_cmd_0_name=Volume Down
++button_cmd_0=run menucmd
+diff --git a/board/qualcomm/qcom-phone-quiet.env b/board/qualcomm/qcom-phone-quiet.env
+new file mode 100644
+index 00000000000..4b76e349bb8
+--- /dev/null
++++ b/board/qualcomm/qcom-phone-quiet.env
+@@ -0,0 +1,50 @@
++bootdelay=0
++bootretry=1
++stdin=serial,button-kbd
++stdout=serial
++stderr=serial
++show_console=setenv stdout serial,vidconsole; setenv stderr serial,vidconsole
++
++# Fastboot is keen to use the address from kconfig, but we
++# allocate its buffer at runtime.
++fastboot=fastboot -l $fastboot_addr_r usb 0
++
++# Set up a block map pointing to our subpartition
++preboot=scsi scan; part start scsi 0 userdata userdata_start; part size scsi 0 userdata userdata_size; blkmap create root; blkmap map root 0 0x${userdata_size} linear scsi 0 0x${userdata_start}; run select_panel_dtb
++
++# neo: the POCO X3 NFC comes with a Huaxing or a Tianma panel. ABL names it ("panel", set from
++# its msm_drm.dsi_display0, e.g. dsi_nt36672c_huaxing_fhd_video_display), and bootefi bootmgr
++# loads the kernel DTB from the ESP as /dtb/${fdtfile}. Unknown panel or no file there: the
++# built-in (Huaxing) DTB.
++select_panel_dtb=setexpr pv sub ".*tianma.*" "tianma" "${panel}"; setexpr pv sub ".*huaxing.*" "huaxing" "${pv}"; if test "${pv}" = "tianma" || test "${pv}" = "huaxing"; then setenv fdtfile qcom/sm7150-xiaomi-surya-${pv}.dtb; fi; setenv pv
++
++# Shortcut to enable USB serial gadget and disable bootretry
++serial_gadget=setenv stdin serial,button-kbd,usbacm; setenv stdout serial,vidconsole,usbacm; setenv stderr serial,vidconsole,usbacm; setenv bootretry -1; echo Enabled U-Boot console serial gadget
++
++# bootretry will run this command over and over, if we fail once
++# then bail out to the boot menu instead (with a pause to read
++# the error message)
++bootcmd=bootefi bootmgr; run show_console; pause; run menucmd
++
++# When entering the menu (either from button press or failed boot)
++# remap bootcmd so it will re-open the menu and we won't get stuck
++# at the console with no way to type
++menucmd=run show_console; setenv bootcmd run menucmd; bootmenu -1
++
++# Pause is used so the output can be read on the display
++bootmenu_0=Boot=bootefi bootmgr; pause
++bootmenu_1=Enable serial console gadget=run serial_gadget
++bootmenu_2=Enable USB mass storage=echo "Press any key to exit UMS mode"; ums 0 scsi 0
++bootmenu_3=Enable fastboot mode=run fastboot
++# Disabling bootretry means we'll just drop the shell
++bootmenu_4=Drop to shell=setenv bootretry -1
++bootmenu_5=Reset device=reset
++bootmenu_6=Dump clocks=clk dump; pause
++bootmenu_7=Dump environment=printenv; pause
++bootmenu_8=Board info=bdinfo; pause
++bootmenu_9=Dump bootargs=fdt print /chosen bootargs; pause
++
++# Allow holding the volume down button while U-Boot loads to enter
++# the boot menu
++button_cmd_0_name=Volume Down
++button_cmd_0=run menucmd
+diff --git a/board/qualcomm/qcom-quiet.config b/board/qualcomm/qcom-quiet.config
+new file mode 100644
+index 00000000000..fe84b69709a
+--- /dev/null
++++ b/board/qualcomm/qcom-quiet.config
+@@ -0,0 +1,11 @@
++# Quiet boot for phones with autologin UIs: keep the firmware splash on the panel
++# (no framebuffer clear at video probe) and route the console to serial only; the
++# boot menu re-enables the video console (see qcom-phone-quiet.env).
++CONFIG_ENV_DEFAULT_ENV_TEXT_FILE="board/qualcomm/qcom-phone-quiet.env"
++CONFIG_NO_FB_CLEAR=y
++# Options the phone's original build had that qcom_defconfig lacks (found by diffing the
++# binaries' strings): blkmap is what preboot uses to expose the ESP inside the Nura image.
++CONFIG_BLKMAP=y
++CONFIG_CMD_BLKMAP=y
++CONFIG_CMD_UFETCH=y
++CONFIG_IPV6=y
+diff --git a/board/qualcomm/qcom-recovery.config b/board/qualcomm/qcom-recovery.config
+new file mode 100644
+index 00000000000..172c0860cd1
+--- /dev/null
++++ b/board/qualcomm/qcom-recovery.config
+@@ -0,0 +1,4 @@
++# U-Boot in the RECOVERY partition (LineageOS keeps boot): Linux lives in the "linux" partition, and U-Boot
++# carries its own surya DT (ABL hands it LineageOS's DT, with that image's recovery_dtbo applied)
++CONFIG_ENV_DEFAULT_ENV_TEXT_FILE="board/qualcomm/qcom-phone-linuxpart.env"
++CONFIG_DEFAULT_DEVICE_TREE="qcom/sm7150-xiaomi-surya-huaxing"

@@ -1,0 +1,53 @@
+From 197f929132f1c31eb33bfaa5832ae935558ed302 Mon Sep 17 00:00:00 2001
+From: pulpoff <pashkovsky@gmail.com>
+Date: Wed, 25 Nov 2026 17:33:02 +0100
+Subject: [PATCH 3/5] video: logo placement for the Galaxy Tab S5e
+
+CONFIG_VIDEO_LOGO_GTS4LV clears the screen and draws the logo at the
+spot where the tablet's Plymouth theme has it, so U-Boot, the kernel and
+Plymouth show one picture.
+---
+ drivers/video/Kconfig        |  6 ++++++
+ drivers/video/video-uclass.c | 12 +++++++++++-
+ 2 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/video/Kconfig b/drivers/video/Kconfig
+index b5777da5218..6a54f21c269 100644
+--- a/drivers/video/Kconfig
++++ b/drivers/video/Kconfig
+@@ -1133,6 +1133,12 @@ config VIDEO_BMP_GZIP
+ 	  images, gzipped BMP images can be displayed via the
+ 	  splashscreen support or the bmp command.
+ 
++config VIDEO_LOGO_GTS4LV
++	bool "Galaxy Tab S5e boot logo placement"
++	depends on VIDEO_LOGO
++	help
++	  Clear the screen and draw the logo where the tablet's Plymouth theme has it.
++
+ config VIDEO_LOGO_MAX_SIZE
+ 	hex "Maximum size of the bitmap logo in bytes"
+ 	default 0x100000
+diff --git a/drivers/video/video-uclass.c b/drivers/video/video-uclass.c
+index 53641fc28b6..e1908fb8723 100644
+--- a/drivers/video/video-uclass.c
++++ b/drivers/video/video-uclass.c
+@@ -597,7 +597,17 @@ static int show_splash(struct udevice *dev)
+ 	u8 *data = SPLASH_START(u_boot_logo);
+ 	int ret;
+ 
+-	ret = video_bmp_display(dev, map_to_sysmem(data), -4, 4, true);
++	if (IS_ENABLED(CONFIG_VIDEO_LOGO_GTS4LV)) {
++		/*
++		 * Galaxy Tab S5e: black out the bootloader's screen and put Debian's swirl exactly where
++		 * the Debian Plymouth theme's full-screen boot.png has it (1159,650 on the
++		 * 2560x1600 panel), so U-Boot, the kernel and Plymouth all show one picture.
++		 */
++		video_fill(dev, 0);
++		ret = video_bmp_display(dev, map_to_sysmem(data), 1159, 650, true);
++	} else {
++		ret = video_bmp_display(dev, map_to_sysmem(data), -4, 4, true);
++	}
+ 
+ 	return 0;
+ }

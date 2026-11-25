@@ -1,0 +1,90 @@
+From d73d0915062e19647078db49b3de26af2f4066b6 Mon Sep 17 00:00:00 2001
+From: pulpoff <pashkovsky@gmail.com>
+Date: Tue, 17 Nov 2026 22:05:29 +0100
+Subject: [PATCH 3/5] exynos990-r8s: a crash comes back to U-Boot,
+ watchdog-guarded
+
+The shim in front of U-Boot now counts boots in PMU INFORM 0x85c, sets
+INFORM3 to normal and arms the cluster0 watchdog (82 s); the third boot in
+a row that doesn't reach the kernel's SSH goes to Lineage Recovery.
+
+- r8s_boot leaves INFORM3 = normal, so a panic or watchdog reset comes
+  back here instead of landing in recovery.
+- The kernel takes the watchdog over (s3c2410_wdt.tmr_atboot=1,
+  tmr_margin=60) and an RCU stall panics.
+- Holding Volume Down for the menu stops the watchdog and zeroes the
+  boot count: someone is holding the phone.
+- r8s_reset resets through the watchdog first (proven on this board),
+  then PMU SWRESET, then the generic reset.
+---
+ board/samsung/exynos-mobile/exynos990-r8s.env | 34 ++++++++++++++-----
+ 1 file changed, 25 insertions(+), 9 deletions(-)
+
+diff --git a/board/samsung/exynos-mobile/exynos990-r8s.env b/board/samsung/exynos-mobile/exynos990-r8s.env
+index 3e05867215b..e2e44c82802 100644
+--- a/board/samsung/exynos-mobile/exynos990-r8s.env
++++ b/board/samsung/exynos-mobile/exynos990-r8s.env
+@@ -16,7 +16,10 @@ stderr=serial,vidconsole
+ bootdelay=-2
+ bootmenu_delay=-1
+ 
+-r8s_args=console=tty0 loglevel=7 ignore_loglevel fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused panic=5 printk.devkmsg=on r8s.uboot
++/* The watchdog the shim armed is taken over by s3c2410_wdt (tmr_atboot)
++ * and fed by the initramfs. Oops, soft/hard lockup and hung-task panics
++ * come from the kernel config; an RCU stall panics through the sysctl. */
++r8s_args=console=tty0 loglevel=7 ignore_loglevel fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused panic=5 printk.devkmsg=on s3c2410_wdt.tmr_atboot=1 s3c2410_wdt.tmr_margin=60 sysctl.kernel.panic_on_rcu_stall=1 r8s.uboot
+ 
+ /* S-Boot picks normal / recovery / download from PMU INFORM3 0x1586080c
+  * = 0x12345600 | reason (0 normal, 1 download, 4 recovery) and leaves LPM
+@@ -27,8 +30,12 @@ r8s_reason=setexpr.l r8s_i2 *0x15860808 "&" 0xff00ffff;
+ 	mw.l 0x15860808 ${r8s_i2};
+ 	mw.l 0x1586080c ${r8s_inform3}
+ 
+-/* PMU SWRESET 0x15863a00 bit 1 (what Linux's syscon-reboot writes) */
+-r8s_reset=mw.l 0x15863a00 2; reset
++/* The cluster0 watchdog at ~0.65 s (the reset proven on this board), then
++ * PMU SWRESET 0x15863a00 bit 1, then the generic reset: the first to work. */
++r8s_reset=mw.l 0x10050000 0; mw.l 0x10050004 0x200; mw.l 0x10050008 0x200;
++	mw.l 0x10050000 0x1ff39;
++	setexpr.l r8s_m *0x15861244 "|" 4; mw.l 0x15861244 ${r8s_m};
++	mw.l 0x15863a00 2; reset
+ 
+ reboot_recovery=setenv r8s_inform3 0x12345604; run r8s_reason; run r8s_reset
+ reboot_download=setenv r8s_inform3 0x12345601; run r8s_reason; run r8s_reset
+@@ -39,15 +46,23 @@ reboot_uboot=setenv r8s_inform3 0x12345600; run r8s_reason; run r8s_reset
+ r8s_poweroff=setenv r8s_inform3 0x12345600; run r8s_reason;
+ 	setexpr.l r8s_ps *0x1586030c "&" 0xfffffeff; mw.l 0x1586030c ${r8s_ps}
+ 
+-/* Linux gets INFORM3 = recovery, as the shim did: a panic restart (which
+- * skips reboot-mode) lands in Lineage Recovery; a plain "reboot" from
+- * Linux writes "normal" and comes back here. */
++/* Linux gets INFORM3 = normal, as the shim left it: a panic or watchdog
++ * reset comes back through the shim (boot counter) to this U-Boot and the
++ * kernel in BOOT. The shim sends the third failed boot in a row to Lineage
++ * Recovery. The cluster0 watchdog keeps running into Linux. */
+ r8s_boot=echo "r8s: kernel from the boot image FIT at ${prevbl_initrd_start_addr}";
+-	setenv r8s_inform3 0x12345604; run r8s_reason;
++	setenv r8s_inform3 0x12345600; run r8s_reason;
+ 	setenv bootargs "${r8s_args}";
+ 	bootm ${prevbl_initrd_start_addr}
+ 
+-bootcmd=run r8s_boot; echo "r8s: boot failed"; bootmenu
++/* The shim's watchdog (cluster0 WTCON) and boot counter (PMU INFORM 0x85c,
++ * 0x5238 << 16 | count). */
++r8s_wdt_off=mw.l 0x10050000 0
++r8s_bootcnt_clear=mw.l 0x1586085c 0x52380000
++
++/* A failed boot leaves the watchdog running: the menu shows, and the board
++ * resets within ~82 s, back through the shim's counter. */
++bootcmd=run r8s_boot; echo "r8s: boot failed, the watchdog resets in about a minute"; bootmenu
+ 
+ bootmenu_0=Mainline Linux (bundled)=run r8s_boot
+ bootmenu_1=Lineage Recovery=run reboot_recovery
+@@ -56,5 +71,6 @@ bootmenu_3=Restart=run reboot_uboot
+ bootmenu_4=Power off=run r8s_poweroff
+ bootmenu_5=U-Boot console=echo "type: bootmenu"
+ 
++/* Someone is holding the phone: no watchdog, and the boot count starts over. */
+ button_cmd_0_name=Volume Down
+-button_cmd_0=bootmenu
++button_cmd_0=run r8s_wdt_off; run r8s_bootcnt_clear; bootmenu

@@ -1,0 +1,29 @@
+From 7c9acb34b713436cb3a0afc7b7e2b4d55a268134 Mon Sep 17 00:00:00 2001
+From: pulpoff <pashkovsky@gmail.com>
+Date: Tue, 24 Nov 2026 15:56:37 +0100
+Subject: [PATCH 5/5] exynos990-r8s: the rescue entry passes r8s.debug
+
+The S20's public initramfs starts its login shells (telnet, SSH, the ACM
+console, root without a password) only when the command line carries
+r8s.debug, so that a normal boot opens none. "Rescue shell (USB)" passes it;
+the normal entry does not.
+---
+ board/samsung/exynos-mobile/exynos990-r8s.env | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/board/samsung/exynos-mobile/exynos990-r8s.env b/board/samsung/exynos-mobile/exynos990-r8s.env
+index be00ccadd1d..27a321ab483 100644
+--- a/board/samsung/exynos-mobile/exynos990-r8s.env
++++ b/board/samsung/exynos-mobile/exynos990-r8s.env
+@@ -25,8 +25,9 @@ bootmenu_delay=-1
+ r8s_args=console=tty0 quiet loglevel=3 fbcon=vc:2-63 vt.global_cursor_default=0 splash systemd.show_status=error rd.udev.log_level=3 udev.log_level=3 r8s.root=vibeos clk_ignore_unused pd_ignore_unused panic=5 printk.devkmsg=on s3c2410_wdt.tmr_atboot=1 s3c2410_wdt.tmr_margin=60 sysctl.kernel.panic_on_rcu_stall=1 spidev.bufsiz=131072 r8s.uboot
+ 
+ /* The initramfs shell on USB (ssh/telnet 172.16.43.1), every kernel message
+- * on the panel: the way to kexec a test kernel. */
+-r8s_args_rescue=console=tty0 loglevel=7 ignore_loglevel fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused panic=5 printk.devkmsg=on s3c2410_wdt.tmr_atboot=1 s3c2410_wdt.tmr_margin=60 sysctl.kernel.panic_on_rcu_stall=1 r8s.uboot
++ * on the panel: the way to kexec a test kernel. The initramfs starts its
++ * shells only with r8s.debug (none on a normal boot). */
++r8s_args_rescue=console=tty0 loglevel=7 ignore_loglevel fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused panic=5 printk.devkmsg=on s3c2410_wdt.tmr_atboot=1 s3c2410_wdt.tmr_margin=60 sysctl.kernel.panic_on_rcu_stall=1 r8s.uboot r8s.debug
+ 
+ /* S-Boot picks normal / recovery / download from PMU INFORM3 0x1586080c
+  * = 0x12345600 | reason (0 normal, 1 download, 4 recovery) and leaves LPM

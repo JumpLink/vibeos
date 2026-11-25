@@ -1,0 +1,118 @@
+From bc7025b95dc1bdb069d63e4364bb2354e09570e5 Mon Sep 17 00:00:00 2001
+From: pulpoff <pashkovsky@gmail.com>
+Date: Tue, 24 Nov 2026 15:51:24 +0100
+Subject: [PATCH 4/5] exynos990-r8s: ub13, the boot image's U-Boot since
+ 2026-11-20
+
+The tree ub13 (U-Boot 2026.01-g239585af7636-dirty, Nov 20 16:23) was built
+from, committed:
+
+- exynos990-r8s-u-boot.dtsi: the high RAM bank of 0xfee00000 at
+  0x880000000, so that U-Boot hands the kernel all of the 6 GiB (it was
+  untracked).
+- exynos990-r8s.env: the environment of 2026-11-19: a quiet normal boot of
+  the partition named vibeos (r8s.root=vibeos), the menu entry "Rescue
+  shell (USB)" (r8s_rescue, r8s_args_rescue), the console on serial only
+  until the menu turns the panel on. The tree's file went back to the
+  2026-11-17 version for a LineageOS test on 2026-11-23; this is the
+  version it had when ub13 was built.
+---
+ arch/arm/dts/exynos990-r8s-u-boot.dtsi        | 17 +++++++++
+ board/samsung/exynos-mobile/exynos990-r8s.env | 38 +++++++++++++------
+ 2 files changed, 44 insertions(+), 11 deletions(-)
+ create mode 100644 arch/arm/dts/exynos990-r8s-u-boot.dtsi
+
+diff --git a/arch/arm/dts/exynos990-r8s-u-boot.dtsi b/arch/arm/dts/exynos990-r8s-u-boot.dtsi
+new file mode 100644
+index 00000000000..dc142597534
+--- /dev/null
++++ b/arch/arm/dts/exynos990-r8s-u-boot.dtsi
+@@ -0,0 +1,17 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * All of the G780F's 6 GiB. S-Boot lists the high bank as 8 x 512 MiB from
++ * 0x880000000; its top 18 MiB are the hypervisor's el2_earlymem, which this
++ * bank stops short of. The upstream devicetree has a 3 GiB high bank, and
++ * U-Boot hands its own banks to the kernel (ARCH_FIXUP_FDT_MEMORY), so the
++ * kernel saw 4.3 GiB whatever its devicetree said.
++ */
++
++/ {
++	memory@80000000 {
++		reg = <0x0 0x80000000 0x0 0x3ab00000>,
++		      <0x0 0xc1200000 0x0 0x1ee00000>,
++		      <0x0 0xe1900000 0x0 0x1e700000>,
++		      <0x8 0x80000000 0x0 0xfee00000>;
++	};
++};
+diff --git a/board/samsung/exynos-mobile/exynos990-r8s.env b/board/samsung/exynos-mobile/exynos990-r8s.env
+index e2e44c82802..be00ccadd1d 100644
+--- a/board/samsung/exynos-mobile/exynos990-r8s.env
++++ b/board/samsung/exynos-mobile/exynos990-r8s.env
+@@ -7,8 +7,11 @@
+  * exact-match stdin before jumptable_init() and dereferences gd->jt=NULL.
+  * "serial" is the debug-snapshot ring (recovery's /proc/last_kmsg). */
+ stdin=serial,button-kbd
+-stdout=serial,vidconsole
+-stderr=serial,vidconsole
++/* No vidconsole on a normal boot: with the console in the environment,
++ * U-Boot probes (and clears) the panel only for a vidconsole named here, so
++ * S-Boot's logo stays up until Linux draws. r8s_menu turns the panel on. */
++stdout=serial
++stderr=serial
+ 
+ /* -2: boot without checking for a key. A key in a countdown would drop to
+  * the "=>" prompt, which three buttons can't drive; the menu is reached
+@@ -19,7 +22,11 @@ bootmenu_delay=-1
+ /* The watchdog the shim armed is taken over by s3c2410_wdt (tmr_atboot)
+  * and fed by the initramfs. Oops, soft/hard lockup and hung-task panics
+  * come from the kernel config; an RCU stall panics through the sysctl. */
+-r8s_args=console=tty0 loglevel=7 ignore_loglevel fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused panic=5 printk.devkmsg=on s3c2410_wdt.tmr_atboot=1 s3c2410_wdt.tmr_margin=60 sysctl.kernel.panic_on_rcu_stall=1 r8s.uboot
++r8s_args=console=tty0 quiet loglevel=3 fbcon=vc:2-63 vt.global_cursor_default=0 splash systemd.show_status=error rd.udev.log_level=3 udev.log_level=3 r8s.root=vibeos clk_ignore_unused pd_ignore_unused panic=5 printk.devkmsg=on s3c2410_wdt.tmr_atboot=1 s3c2410_wdt.tmr_margin=60 sysctl.kernel.panic_on_rcu_stall=1 spidev.bufsiz=131072 r8s.uboot
++
++/* The initramfs shell on USB (ssh/telnet 172.16.43.1), every kernel message
++ * on the panel: the way to kexec a test kernel. */
++r8s_args_rescue=console=tty0 loglevel=7 ignore_loglevel fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused panic=5 printk.devkmsg=on s3c2410_wdt.tmr_atboot=1 s3c2410_wdt.tmr_margin=60 sysctl.kernel.panic_on_rcu_stall=1 r8s.uboot
+ 
+ /* S-Boot picks normal / recovery / download from PMU INFORM3 0x1586080c
+  * = 0x12345600 | reason (0 normal, 1 download, 4 recovery) and leaves LPM
+@@ -54,6 +61,13 @@ r8s_boot=echo "r8s: kernel from the boot image FIT at ${prevbl_initrd_start_addr
+ 	setenv r8s_inform3 0x12345600; run r8s_reason;
+ 	setenv bootargs "${r8s_args}";
+ 	bootm ${prevbl_initrd_start_addr}
++r8s_rescue=echo "r8s: rescue shell from the boot image FIT at ${prevbl_initrd_start_addr}";
++	setenv r8s_inform3 0x12345600; run r8s_reason;
++	setenv bootargs "${r8s_args_rescue}";
++	bootm ${prevbl_initrd_start_addr}
++
++/* The panel console, then the menu. */
++r8s_menu=setenv stdout serial,vidconsole; setenv stderr serial,vidconsole; bootmenu
+ 
+ /* The shim's watchdog (cluster0 WTCON) and boot counter (PMU INFORM 0x85c,
+  * 0x5238 << 16 | count). */
+@@ -62,15 +76,17 @@ r8s_bootcnt_clear=mw.l 0x1586085c 0x52380000
+ 
+ /* A failed boot leaves the watchdog running: the menu shows, and the board
+  * resets within ~82 s, back through the shim's counter. */
+-bootcmd=run r8s_boot; echo "r8s: boot failed, the watchdog resets in about a minute"; bootmenu
++bootcmd=run r8s_boot; setenv stdout serial,vidconsole; setenv stderr serial,vidconsole;
++	echo "r8s: boot failed, the watchdog resets in about a minute"; bootmenu
+ 
+-bootmenu_0=Mainline Linux (bundled)=run r8s_boot
+-bootmenu_1=Lineage Recovery=run reboot_recovery
+-bootmenu_2=Download mode=run reboot_download
+-bootmenu_3=Restart=run reboot_uboot
+-bootmenu_4=Power off=run r8s_poweroff
+-bootmenu_5=U-Boot console=echo "type: bootmenu"
++bootmenu_0=VibeOS=run r8s_boot
++bootmenu_1=Rescue shell (USB)=run r8s_rescue
++bootmenu_2=Lineage Recovery=run reboot_recovery
++bootmenu_3=Download mode=run reboot_download
++bootmenu_4=Restart=run reboot_uboot
++bootmenu_5=Power off=run r8s_poweroff
++bootmenu_6=U-Boot console=echo "type: bootmenu"
+ 
+ /* Someone is holding the phone: no watchdog, and the boot count starts over. */
+ button_cmd_0_name=Volume Down
+-button_cmd_0=run r8s_wdt_off; run r8s_bootcnt_clear; bootmenu
++button_cmd_0=run r8s_wdt_off; run r8s_bootcnt_clear; run r8s_menu

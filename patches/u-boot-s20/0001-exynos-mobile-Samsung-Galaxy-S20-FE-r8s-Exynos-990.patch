@@ -1,0 +1,646 @@
+From 7411fcf1e4c12b080a900bde29458f5edca72dea Mon Sep 17 00:00:00 2001
+From: pulpoff <pashkovsky@gmail.com>
+Date: Tue, 17 Nov 2026 20:44:11 +0100
+Subject: [PATCH 1/5] exynos-mobile: Samsung Galaxy S20 FE (r8s, Exynos 990)
+
+U-Boot in BOOT, chainloaded by S-Boot with a FIT (Image.gz + dtb) as the
+boot image's ramdisk; bootm ${prevbl_initrd_start_addr} boots it.
+
+- pinctrl-exynos990: bank tables of the seven Exynos 990 pin controllers
+  (from Linux), so gpio-keys work for the menu.
+- board: r8s entry (G780F), DRAM banks from U-Boot's own devicetree only
+  (S-Boot's FDT splits the high bank into 512 MiB nodes and lists the
+  hypervisor's el2_earlymem as memory), DECON0 HW_SW_TRIG_CONTROL so the
+  framebuffer refreshes.
+- dss-ring: console appended to the debug-snapshot kernel log ring right
+  after S-Boot's own log; a downstream recovery shows it in
+  /proc/last_kmsg after any reset.
+- exynos990-r8s.env: menu on Volume Down (mainline, Lineage Recovery,
+  download mode, restart, power off) via PMU INFORM3/INFORM2; Linux is
+  booted with INFORM3 = recovery so a panic lands in recovery.
+  stdin/stdout are lists: a bare stdin=button-kbd makes
+  input_stdio_register() assign the console before jumptable_init() and
+  dereference gd->jt = NULL. No single quotes in commands (old hush).
+- exynos-mobile.c: build without the fastboot configs.
+---
+ board/samsung/exynos-mobile/Kconfig           |  23 +++
+ board/samsung/exynos-mobile/Makefile          |   1 +
+ board/samsung/exynos-mobile/dss-ring.c        | 145 ++++++++++++++++
+ board/samsung/exynos-mobile/exynos-mobile.c   |  34 ++++
+ board/samsung/exynos-mobile/exynos990-r8s.env |  60 +++++++
+ configs/exynos990_defconfig                   |  60 +++++++
+ drivers/pinctrl/exynos/Kconfig                |   8 +
+ drivers/pinctrl/exynos/Makefile               |   1 +
+ drivers/pinctrl/exynos/pinctrl-exynos990.c    | 160 ++++++++++++++++++
+ 9 files changed, 492 insertions(+)
+ create mode 100644 board/samsung/exynos-mobile/dss-ring.c
+ create mode 100644 board/samsung/exynos-mobile/exynos990-r8s.env
+ create mode 100644 configs/exynos990_defconfig
+ create mode 100644 drivers/pinctrl/exynos/pinctrl-exynos990.c
+
+diff --git a/board/samsung/exynos-mobile/Kconfig b/board/samsung/exynos-mobile/Kconfig
+index ed7d16b8c6b..10b120257c4 100644
+--- a/board/samsung/exynos-mobile/Kconfig
++++ b/board/samsung/exynos-mobile/Kconfig
+@@ -15,4 +15,27 @@ config SYS_CONFIG_NAME
+ config SYS_VENDOR
+ 	default "samsung"
+ 
++config EXYNOS_MOBILE_DSS_LOG
++	bool "Console into S-Boot's debug-snapshot log ring"
++	depends on DM_SERIAL
++	help
++	  Append the console to the debug-snapshot kernel log ring, right
++	  after S-Boot's own log, so a downstream kernel (e.g. a recovery)
++	  shows it in /proc/last_kmsg after a reset.
++
++config EXYNOS_MOBILE_DSS_HEADER
++	hex "debug-snapshot header"
++	depends on EXYNOS_MOBILE_DSS_LOG
++	default 0xfd900000
++
++config EXYNOS_MOBILE_DSS_RING
++	hex "debug-snapshot kernel log ring"
++	depends on EXYNOS_MOBILE_DSS_LOG
++	default 0xfd910000
++
++config EXYNOS_MOBILE_DSS_RING_SIZE
++	hex "debug-snapshot kernel log ring size"
++	depends on EXYNOS_MOBILE_DSS_LOG
++	default 0x200000
++
+ endif # TARGET_EXYNOS_MOBILE
+diff --git a/board/samsung/exynos-mobile/Makefile b/board/samsung/exynos-mobile/Makefile
+index e049ed217c1..0d7fa7fe515 100644
+--- a/board/samsung/exynos-mobile/Makefile
++++ b/board/samsung/exynos-mobile/Makefile
+@@ -3,3 +3,4 @@
+ # Copyright (C) 2025 Kaustabh Chakraborty <kauschluss@disroot.org>
+ 
+ obj-y := exynos-mobile.o
++obj-$(CONFIG_EXYNOS_MOBILE_DSS_LOG) += dss-ring.o
+diff --git a/board/samsung/exynos-mobile/dss-ring.c b/board/samsung/exynos-mobile/dss-ring.c
+new file mode 100644
+index 00000000000..d211ef67834
+--- /dev/null
++++ b/board/samsung/exynos-mobile/dss-ring.c
+@@ -0,0 +1,145 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Console into Samsung's debug-snapshot kernel log ring.
++ *
++ * S-Boot (LK) writes its own log into the debug-snapshot "kernel" ring and
++ * keeps the ring's write pointer (a physical address) in the
++ * debug-snapshot header. A downstream kernel continues at that pointer and
++ * shows the previous boots' ring as /proc/last_kmsg, so text appended here
++ * can be read from a downstream recovery after any reset.
++ *
++ * The pointer's place in the header is not documented: find it as the word
++ * that points just past LK's last line, "Starting kernel...\n". Without
++ * it, append after that line anyway and leave the header alone.
++ */
++
++#include <cpu_func.h>
++#include <dm.h>
++#include <serial.h>
++#include <asm/cache.h>
++#include <asm/global_data.h>
++#include <asm/io.h>
++#include <linux/string.h>
++
++DECLARE_GLOBAL_DATA_PTR;
++
++#define DSS_HDR		CONFIG_EXYNOS_MOBILE_DSS_HEADER
++#define DSS_HDR_SIZE	0x10000UL
++#define RING		CONFIG_EXYNOS_MOBILE_DSS_RING
++#define RING_SIZE	CONFIG_EXYNOS_MOBILE_DSS_RING_SIZE
++
++static const char lk_tail[] = "Starting kernel...\n";
++
++/* .data, not .bss: these must survive relocation. */
++static ulong ring_wpos __section(".data") = 1;
++static ulong ring_ptr_loc __section(".data") = 1;
++
++static bool ring_text_before(ulong end, const char *s, size_t len)
++{
++	size_t i;
++
++	if (end < RING + len || end > RING + RING_SIZE)
++		return false;
++	for (i = 0; i < len; i++)
++		if (readb(end - len + i) != (u8)s[i])
++			return false;
++	return true;
++}
++
++static void ring_clean(ulong addr)
++{
++	ulong line = addr & ~(ulong)(ARCH_DMA_MINALIGN - 1);
++
++	if (gd->flags & GD_FLG_RELOC)
++		flush_dcache_range(line, line + ARCH_DMA_MINALIGN);
++}
++
++static void ring_find(void)
++{
++	size_t len = strlen(lk_tail);
++	ulong off, p, last = 0;
++
++	ring_wpos = 0;
++	ring_ptr_loc = 0;
++
++	for (off = 0; off < DSS_HDR_SIZE; off += 4) {
++		p = readl(DSS_HDR + off);
++		if (ring_text_before(p, lk_tail, len)) {
++			ring_ptr_loc = DSS_HDR + off;
++			ring_wpos = p;
++			return;
++		}
++	}
++
++	for (p = RING + len; p <= RING + RING_SIZE; p++)
++		if (readb(p - 1) == '\n' && ring_text_before(p, lk_tail, len))
++			last = p;
++	ring_wpos = last;
++}
++
++static void ring_putc_raw(char c)
++{
++	writeb(c, ring_wpos);
++	ring_clean(ring_wpos);
++	if (++ring_wpos >= RING + RING_SIZE)
++		ring_wpos = RING;
++	if (ring_ptr_loc) {
++		writel(ring_wpos, ring_ptr_loc);
++		ring_clean(ring_ptr_loc);
++	}
++}
++
++static int dss_ring_putc(struct udevice *dev, const char ch)
++{
++	if (!ring_wpos)
++		return 0;
++	ring_putc_raw(ch);
++	return 0;
++}
++
++static int dss_ring_pending(struct udevice *dev, bool input)
++{
++	return 0;
++}
++
++static int dss_ring_getc(struct udevice *dev)
++{
++	return -EAGAIN;
++}
++
++static int dss_ring_setbrg(struct udevice *dev, int baudrate)
++{
++	return 0;
++}
++
++static int dss_ring_probe(struct udevice *dev)
++{
++	const char *s = "\n[U-Boot] console in the debug-snapshot ring\n";
++
++	if (ring_wpos != 1)
++		return 0;	/* found before relocation */
++	ring_find();
++	if (ring_wpos)
++		while (*s)
++			ring_putc_raw(*s++);
++	return 0;
++}
++
++static const struct dm_serial_ops dss_ring_ops = {
++	.putc = dss_ring_putc,
++	.pending = dss_ring_pending,
++	.getc = dss_ring_getc,
++	.setbrg = dss_ring_setbrg,
++};
++
++U_BOOT_DRIVER(exynos_dss_ring) = {
++	.name	= "exynos_dss_ring",
++	.id	= UCLASS_SERIAL,
++	.probe	= dss_ring_probe,
++	.ops	= &dss_ring_ops,
++	.flags	= DM_FLAG_PRE_RELOC,
++};
++
++U_BOOT_DRVINFO(exynos_dss_ring) = {
++	.name = "exynos_dss_ring",
++};
+diff --git a/board/samsung/exynos-mobile/exynos-mobile.c b/board/samsung/exynos-mobile/exynos-mobile.c
+index 9416c8a57d9..d0a5840fcb4 100644
+--- a/board/samsung/exynos-mobile/exynos-mobile.c
++++ b/board/samsung/exynos-mobile/exynos-mobile.c
+@@ -6,6 +6,7 @@
+  */
+ 
+ #include <asm/armv8/mmu.h>
++#include <asm/io.h>
+ #include <blk.h>
+ #include <bootflow.h>
+ #include <ctype.h>
+@@ -35,6 +36,16 @@ struct exynos_board_info {
+ 	int (*const match)(struct exynos_board_info *);
+ 	const char *match_model;
+ 	const u8 match_max_rev;
++
++	/*
++	 * Take the memory map from U-Boot's devicetree only. S-Boot on the
++	 * Exynos 990 splits the high bank into 512 MiB nodes and lists the
++	 * hypervisor's el2_earlymem (top of DRAM) as plain memory.
++	 */
++	const bool dram_from_own_dt_only;
++	/* DECON0 HW_SW_TRIG_CONTROL: S-Boot leaves the framebuffer unrefreshed */
++	const phys_addr_t decon_trig_reg;
++	const u32 decon_trig_val;
+ };
+ 
+ /*
+@@ -63,6 +74,10 @@ static const u64 exynos9820_common_dram_bank_bases[CONFIG_NR_DRAM_BANKS] = {
+ 	0x80000000,  0xc0000000, 0xe1900000, 0x880000000, 0x900000000, 0x980000000
+ };
+ 
++static const u64 exynos990_common_dram_bank_bases[CONFIG_NR_DRAM_BANKS] = {
++	0x80000000, 0xc1200000, 0xe1900000, 0x880000000,
++};
++
+ static const char *exynos_prev_bl_get_bootargs(void)
+ {
+ 	void *prev_bl_fdt_base = (void *)get_prev_bl_fdt_addr();
+@@ -182,6 +197,17 @@ static struct exynos_board_info exynos_board_info_match[] = {
+ 		.match = exynos7870_fdt_match,
+ 		.match_model = "G610",
+ 		.match_max_rev = U8_MAX,
++	}, {
++		/* Samsung Galaxy S20 FE (SM-G780F) */
++		.name = "r8s",
++		.chip = "exynos990",
++		.dram_bank_bases = exynos990_common_dram_bank_bases,
++		.match = exynos7870_fdt_match,
++		.match_model = "G780F",
++		.match_max_rev = U8_MAX,
++		.dram_from_own_dt_only = true,
++		.decon_trig_reg = 0x19050070,
++		.decon_trig_val = 0x1281,
+ 	}, {
+ 		/* Samsung Galaxy S10 */
+ 		.name = "beyond1lte",
+@@ -244,6 +270,7 @@ log_debug("%s: %d, na = %u, ns = %u\n", __func__, __LINE__, na, ns);
+ 	}
+ }
+ 
++#if defined(CONFIG_FASTBOOT_FLASH_MMC_DEV) && defined(CONFIG_EFI_PARTITION_ENTRIES_NUMBERS)
+ static int exynos_fastboot_setup(void)
+ {
+ 	struct blk_desc *blk_dev;
+@@ -290,6 +317,7 @@ static int exynos_fastboot_setup(void)
+ 
+ 	return 0;
+ }
++#endif
+ 
+ int board_fit_config_name_match(const char *name)
+ {
+@@ -355,7 +383,13 @@ int board_early_init_f(void)
+ 		return -ENODATA;
+ 	board_info = (const struct exynos_board_info *)gd->board_type;
+ 
++	if (board_info->decon_trig_reg)
++		writel(board_info->decon_trig_val,
++		       (void __iomem *)board_info->decon_trig_reg);
++
+ 	exynos_parse_dram_banks(board_info, gd->fdt_blob);
++	if (board_info->dram_from_own_dt_only)
++		return 0;
+ 	/*
+ 	 * Some devices have multiple variants based on the amount of
+ 	 * memory and internal storage. The lowest bank base has been
+diff --git a/board/samsung/exynos-mobile/exynos990-r8s.env b/board/samsung/exynos-mobile/exynos990-r8s.env
+new file mode 100644
+index 00000000000..3f2ba587bef
+--- /dev/null
++++ b/board/samsung/exynos-mobile/exynos990-r8s.env
+@@ -0,0 +1,60 @@
++/* Old hush: never a single quote in a command, even inside "..." (syntax error). */
++/* Galaxy S20 FE (r8s, Exynos 990). S-Boot loads this U-Boot from BOOT as
++ * the "kernel" and a FIT (Image.gz + DTB) as the "ramdisk"; it puts the
++ * ramdisk's address in its own FDT's /chosen, which U-Boot keeps in
++ * prevbl_initrd_start_addr. */
++/* Lists, never a bare device name: input_stdio_register() assigns an
++ * exact-match stdin before jumptable_init() and dereferences gd->jt=NULL.
++ * "serial" is the debug-snapshot ring (recovery's /proc/last_kmsg). */
++stdin=serial,button-kbd
++stdout=serial,vidconsole
++stderr=serial,vidconsole
++
++/* -2: boot without checking for a key. A key in a countdown would drop to
++ * the "=>" prompt, which three buttons can't drive; the menu is reached
++ * only by holding Volume Down (button_cmd_0), and then waits for a choice. */
++bootdelay=-2
++bootmenu_delay=-1
++
++r8s_args=console=tty0 loglevel=7 ignore_loglevel fbcon=font:TER16x32 clk_ignore_unused pd_ignore_unused panic=5 printk.devkmsg=on r8s.uboot
++
++/* S-Boot picks normal / recovery / download from PMU INFORM3 0x1586080c
++ * = 0x12345600 | reason (0 normal, 1 download, 4 recovery) and leaves LPM
++ * charging alone when INFORM2 0x15860808 bits 16-23 = 0x4e
++ * (downstream drivers/samsung/debug/sec_reboot.c, Exynos 990). */
++r8s_reason=setexpr.l r8s_i2 *0x15860808 "&" 0xff00ffff;
++	setexpr r8s_i2 ${r8s_i2} "|" 0x4e0000;
++	mw.l 0x15860808 ${r8s_i2};
++	mw.l 0x1586080c ${r8s_inform3}
++
++/* PMU SWRESET 0x15863a00 bit 1 (what Linux's syscon-reboot writes) */
++r8s_reset=mw.l 0x15863a00 2; reset
++
++reboot_recovery=setenv r8s_inform3 0x12345604; run r8s_reason; run r8s_reset
++reboot_download=setenv r8s_inform3 0x12345601; run r8s_reason; run r8s_reset
++reboot_uboot=setenv r8s_inform3 0x12345600; run r8s_reason; run r8s_reset
++
++/* PS_HOLD_CONTROL 0x1586030c bit 8 off. With USB in, S-Boot comes back
++ * in charging mode. */
++r8s_poweroff=setenv r8s_inform3 0x12345600; run r8s_reason;
++	setexpr.l r8s_ps *0x1586030c "&" 0xfffffeff; mw.l 0x1586030c ${r8s_ps}
++
++/* Linux gets INFORM3 = recovery, as the shim did: a panic restart (which
++ * skips reboot-mode) lands in Lineage Recovery; a plain "reboot" from
++ * Linux writes "normal" and comes back here. */
++r8s_boot=echo "r8s: kernel from the boot image FIT at ${prevbl_initrd_start_addr}";
++	setenv r8s_inform3 0x12345604; run r8s_reason;
++	setenv bootargs "${r8s_args}";
++	bootm ${prevbl_initrd_start_addr}
++
++bootcmd=run r8s_boot; echo "r8s: boot failed"; bootmenu
++
++bootmenu_0=Mainline Linux (bundled)=run r8s_boot
++bootmenu_1=Lineage Recovery=run reboot_recovery
++bootmenu_2=Download mode=run reboot_download
++bootmenu_3=Restart (this menu again)=run reboot_uboot
++bootmenu_4=Power off=run r8s_poweroff
++bootmenu_5=U-Boot console=echo "type: bootmenu"
++
++button_cmd_0_name=Volume Down
++button_cmd_0=bootmenu
+diff --git a/configs/exynos990_defconfig b/configs/exynos990_defconfig
+new file mode 100644
+index 00000000000..bb53f24795e
+--- /dev/null
++++ b/configs/exynos990_defconfig
+@@ -0,0 +1,60 @@
++CONFIG_ARM=y
++CONFIG_SKIP_LOWLEVEL_INIT=y
++CONFIG_COUNTER_FREQUENCY=26000000
++CONFIG_POSITION_INDEPENDENT=y
++CONFIG_ARM_SMCCC=y
++CONFIG_ARCH_EXYNOS=y
++CONFIG_SYS_MALLOC_LEN=0x2000000
++CONFIG_SYS_MALLOC_F_LEN=0x16000
++CONFIG_TARGET_EXYNOS_MOBILE=y
++CONFIG_ENV_SOURCE_FILE="exynos990-r8s"
++CONFIG_NR_DRAM_BANKS=6
++CONFIG_DEFAULT_DEVICE_TREE="exynos/exynos990-r8s"
++CONFIG_SYS_BOOTM_LEN=0x4000000
++CONFIG_SYS_LOAD_ADDR=0x84000000
++CONFIG_ARMV8_CNTFRQ_BROKEN=y
++# CONFIG_PSCI_RESET is not set
++CONFIG_FIT=y
++CONFIG_FIT_VERBOSE=y
++CONFIG_BUTTON_CMD=y
++CONFIG_SAVE_PREV_BL_FDT_ADDR=y
++CONFIG_SAVE_PREV_BL_INITRAMFS_START_ADDR=y
++CONFIG_SYS_PBSIZE=1024
++CONFIG_LOGLEVEL=6
++CONFIG_LOG=y
++CONFIG_LOG_MAX_LEVEL=8
++CONFIG_LOG_DEFAULT_LEVEL=6
++CONFIG_BOARD_TYPES=y
++# CONFIG_DISPLAY_CPUINFO is not set
++CONFIG_MISC_INIT_R=y
++CONFIG_HUSH_PARSER=y
++CONFIG_CMD_BOOTMENU=y
++CONFIG_CMD_PART=y
++CONFIG_CMD_CACHE=y
++CONFIG_CMD_SETEXPR=y
++CONFIG_CMD_FDT=y
++CONFIG_OF_UPSTREAM=y
++CONFIG_OF_LIST="exynos/exynos990-r8s"
++CONFIG_MULTI_DTB_FIT=y
++CONFIG_BUTTON=y
++CONFIG_BUTTON_REMAP_PHONE_KEYS=y
++CONFIG_BUTTON_KEYBOARD=y
++CONFIG_MISC=y
++CONFIG_PINCTRL=y
++CONFIG_PINCTRL_EXYNOS990=y
++CONFIG_DM_REGULATOR=y
++CONFIG_DM_REGULATOR_FIXED=y
++CONFIG_SOC_SAMSUNG=y
++CONFIG_EXYNOS_PMU=y
++CONFIG_SYSRESET=y
++CONFIG_SYSRESET_SYSCON=y
++CONFIG_VIDEO=y
++CONFIG_VIDEO_FONT_16X32=y
++# CONFIG_VIDEO_FONT_8X16 is not set
++CONFIG_VIDEO_SIMPLE=y
++CONFIG_NO_FB_CLEAR=y
++# CONFIG_VIDEO_LOGO is not set
++CONFIG_SUPPORT_RAW_INITRD=y
++# CONFIG_REQUIRE_SERIAL_CONSOLE is not set
++CONFIG_EXYNOS_MOBILE_DSS_LOG=y
++CONFIG_BOOTDELAY=-2
+diff --git a/drivers/pinctrl/exynos/Kconfig b/drivers/pinctrl/exynos/Kconfig
+index ca1e18146f5..1356ecc7652 100644
+--- a/drivers/pinctrl/exynos/Kconfig
++++ b/drivers/pinctrl/exynos/Kconfig
+@@ -25,6 +25,14 @@ config PINCTRL_EXYNOS850
+ 	  Support pin multiplexing and pin configuration control on
+ 	  Samsung's Exynos850 SoC.
+ 
++config PINCTRL_EXYNOS990
++	bool "Samsung Exynos990 pinctrl driver"
++	depends on ARCH_EXYNOS && PINCTRL_FULL
++	select PINCTRL_EXYNOS
++	help
++	  Support pin multiplexing and pin configuration control on
++	  Samsung's Exynos990 SoC.
++
+ config PINCTRL_EXYNOS9820
+ 	bool "Samsung Exynos9820 pinctrl driver"
+ 	depends on ARCH_EXYNOS && PINCTRL_FULL
+diff --git a/drivers/pinctrl/exynos/Makefile b/drivers/pinctrl/exynos/Makefile
+index 4485f2ebdaa..d431d3ef1bf 100644
+--- a/drivers/pinctrl/exynos/Makefile
++++ b/drivers/pinctrl/exynos/Makefile
+@@ -8,3 +8,4 @@ obj-$(CONFIG_PINCTRL_EXYNOS7420)	+= pinctrl-exynos7420.o
+ obj-$(CONFIG_PINCTRL_EXYNOS78x0)	+= pinctrl-exynos78x0.o
+ obj-$(CONFIG_PINCTRL_EXYNOS850)		+= pinctrl-exynos850.o
+ obj-$(CONFIG_PINCTRL_EXYNOS9820)	+= pinctrl-exynos9820.o
++obj-$(CONFIG_PINCTRL_EXYNOS990)	+= pinctrl-exynos990.o
+diff --git a/drivers/pinctrl/exynos/pinctrl-exynos990.c b/drivers/pinctrl/exynos/pinctrl-exynos990.c
+new file mode 100644
+index 00000000000..88a74afd353
+--- /dev/null
++++ b/drivers/pinctrl/exynos/pinctrl-exynos990.c
+@@ -0,0 +1,160 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * Exynos990 pinctrl driver.
++ *
++ * Bank layout from Linux drivers/pinctrl/samsung/pinctrl-exynos-arm64.c;
++ * structure as pinctrl-exynos9820.c (chiffathefox).
++ */
++
++#include <dm.h>
++#include <dm/pinctrl.h>
++#include <asm/arch/pinmux.h>
++#include "pinctrl-exynos.h"
++
++static const struct pinctrl_ops exynos990_pinctrl_ops = {
++	.set_state	= exynos_pinctrl_set_state
++};
++
++/* pin banks of exynos990 pin-controller 0 (ALIVE) */
++static const struct samsung_pin_bank_data exynos990_pin_banks0[] = {
++	EXYNOS_PIN_BANK(8, 0x000, "gpa0"),
++	EXYNOS_PIN_BANK(8, 0x020, "gpa1"),
++	EXYNOS_PIN_BANK(8, 0x040, "gpa2"),
++	EXYNOS_PIN_BANK(8, 0x060, "gpa3"),
++	EXYNOS_PIN_BANK(2, 0x080, "gpa4"),
++	EXYNOS_PIN_BANK(7, 0x0A0, "gpq0"),
++};
++
++/* pin banks of exynos990 pin-controller 1 (CMGP) */
++static const struct samsung_pin_bank_data exynos990_pin_banks1[] = {
++	EXYNOS_PIN_BANK(1, 0x000, "gpm0"),
++	EXYNOS_PIN_BANK(1, 0x020, "gpm1"),
++	EXYNOS_PIN_BANK(1, 0x040, "gpm2"),
++	EXYNOS_PIN_BANK(1, 0x060, "gpm3"),
++	EXYNOS_PIN_BANK(1, 0x080, "gpm4"),
++	EXYNOS_PIN_BANK(1, 0x0A0, "gpm5"),
++	EXYNOS_PIN_BANK(1, 0x0C0, "gpm6"),
++	EXYNOS_PIN_BANK(1, 0x0E0, "gpm7"),
++	EXYNOS_PIN_BANK(1, 0x100, "gpm8"),
++	EXYNOS_PIN_BANK(1, 0x120, "gpm9"),
++	EXYNOS_PIN_BANK(1, 0x140, "gpm10"),
++	EXYNOS_PIN_BANK(1, 0x160, "gpm11"),
++	EXYNOS_PIN_BANK(1, 0x180, "gpm12"),
++	EXYNOS_PIN_BANK(1, 0x1A0, "gpm13"),
++	EXYNOS_PIN_BANK(1, 0x1C0, "gpm14"),
++	EXYNOS_PIN_BANK(1, 0x1E0, "gpm15"),
++	EXYNOS_PIN_BANK(1, 0x200, "gpm16"),
++	EXYNOS_PIN_BANK(1, 0x220, "gpm17"),
++	EXYNOS_PIN_BANK(1, 0x240, "gpm18"),
++	EXYNOS_PIN_BANK(1, 0x260, "gpm19"),
++	EXYNOS_PIN_BANK(1, 0x280, "gpm20"),
++	EXYNOS_PIN_BANK(1, 0x2A0, "gpm21"),
++	EXYNOS_PIN_BANK(1, 0x2C0, "gpm22"),
++	EXYNOS_PIN_BANK(1, 0x2E0, "gpm23"),
++	EXYNOS_PIN_BANK(1, 0x300, "gpm24"),
++	EXYNOS_PIN_BANK(1, 0x320, "gpm25"),
++	EXYNOS_PIN_BANK(1, 0x340, "gpm26"),
++	EXYNOS_PIN_BANK(1, 0x360, "gpm27"),
++	EXYNOS_PIN_BANK(1, 0x380, "gpm28"),
++	EXYNOS_PIN_BANK(1, 0x3A0, "gpm29"),
++	EXYNOS_PIN_BANK(1, 0x3C0, "gpm30"),
++	EXYNOS_PIN_BANK(1, 0x3E0, "gpm31"),
++	EXYNOS_PIN_BANK(1, 0x400, "gpm32"),
++	EXYNOS_PIN_BANK(1, 0x420, "gpm33"),
++};
++
++/* pin banks of exynos990 pin-controller 2 (HSI1) */
++static const struct samsung_pin_bank_data exynos990_pin_banks2[] = {
++	EXYNOS_PIN_BANK(4, 0x000, "gpf0"),
++	EXYNOS_PIN_BANK(6, 0x020, "gpf1"),
++	EXYNOS_PIN_BANK(3, 0x040, "gpf2"),
++};
++
++/* pin banks of exynos990 pin-controller 3 (HSI2) */
++static const struct samsung_pin_bank_data exynos990_pin_banks3[] = {
++	EXYNOS_PIN_BANK(2, 0x000, "gpf3"),
++};
++
++/* pin banks of exynos990 pin-controller 4 (PERIC0) */
++static const struct samsung_pin_bank_data exynos990_pin_banks4[] = {
++	EXYNOS_PIN_BANK(8, 0x000, "gpp0"),
++	EXYNOS_PIN_BANK(8, 0x020, "gpp1"),
++	EXYNOS_PIN_BANK(8, 0x040, "gpp2"),
++	EXYNOS_PIN_BANK(8, 0x060, "gpp3"),
++	EXYNOS_PIN_BANK(8, 0x080, "gpp4"),
++	EXYNOS_PIN_BANK(2, 0x0A0, "gpg0"),
++};
++
++/* pin banks of exynos990 pin-controller 5 (PERIC1) */
++static const struct samsung_pin_bank_data exynos990_pin_banks5[] = {
++	EXYNOS_PIN_BANK(8, 0x000, "gpp5"),
++	EXYNOS_PIN_BANK(8, 0x020, "gpp6"),
++	EXYNOS_PIN_BANK(8, 0x040, "gpp7"),
++	EXYNOS_PIN_BANK(8, 0x060, "gpp8"),
++	EXYNOS_PIN_BANK(8, 0x080, "gpp9"),
++	EXYNOS_PIN_BANK(6, 0x0A0, "gpc0"),
++	EXYNOS_PIN_BANK(4, 0x0C0, "gpg1"),
++	EXYNOS_PIN_BANK(8, 0x0E0, "gpb0"),
++	EXYNOS_PIN_BANK(8, 0x100, "gpb1"),
++	EXYNOS_PIN_BANK(8, 0x120, "gpb2"),
++};
++
++/* pin banks of exynos990 pin-controller 6 (VTS) */
++static const struct samsung_pin_bank_data exynos990_pin_banks6[] = {
++	EXYNOS_PIN_BANK(7, 0x000, "gpv0"),
++};
++
++const struct samsung_pin_ctrl exynos990_pin_ctrl[] = {
++	{
++		/* pin-controller instance 0 ALIVE data */
++		.pin_banks	= exynos990_pin_banks0,
++		.nr_banks	= ARRAY_SIZE(exynos990_pin_banks0),
++	},
++	{
++		/* pin-controller instance 1 CMGP data */
++		.pin_banks	= exynos990_pin_banks1,
++		.nr_banks	= ARRAY_SIZE(exynos990_pin_banks1),
++	},
++	{
++		/* pin-controller instance 2 HSI1 data */
++		.pin_banks	= exynos990_pin_banks2,
++		.nr_banks	= ARRAY_SIZE(exynos990_pin_banks2),
++	},
++	{
++		/* pin-controller instance 3 HSI2 data */
++		.pin_banks	= exynos990_pin_banks3,
++		.nr_banks	= ARRAY_SIZE(exynos990_pin_banks3),
++	},
++	{
++		/* pin-controller instance 4 PERIC0 data */
++		.pin_banks	= exynos990_pin_banks4,
++		.nr_banks	= ARRAY_SIZE(exynos990_pin_banks4),
++	},
++	{
++		/* pin-controller instance 5 PERIC1 data */
++		.pin_banks	= exynos990_pin_banks5,
++		.nr_banks	= ARRAY_SIZE(exynos990_pin_banks5),
++	},
++	{
++		/* pin-controller instance 6 VTS data */
++		.pin_banks	= exynos990_pin_banks6,
++		.nr_banks	= ARRAY_SIZE(exynos990_pin_banks6),
++	},
++	{/* list terminator */}
++};
++
++static const struct udevice_id exynos990_pinctrl_ids[] = {
++	{ .compatible = "samsung,exynos990-pinctrl",
++		.data = (ulong)exynos990_pin_ctrl },
++	{ }
++};
++
++U_BOOT_DRIVER(pinctrl_exynos990) = {
++	.name		= "pinctrl_exynos990",
++	.id		= UCLASS_PINCTRL,
++	.of_match	= exynos990_pinctrl_ids,
++	.priv_auto	= sizeof(struct exynos_pinctrl_priv),
++	.ops		= &exynos990_pinctrl_ops,
++	.probe		= exynos_pinctrl_probe,
++	.bind		= exynos_pinctrl_bind,
++};

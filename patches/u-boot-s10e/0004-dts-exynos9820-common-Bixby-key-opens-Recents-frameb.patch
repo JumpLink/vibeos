@@ -1,0 +1,82 @@
+From 4f5c4aaf7426c55a36b8c1b00c03cce15190f544 Mon Sep 17 00:00:00 2001
+From: pulpoff <pashkovsky@gmail.com>
+Date: Wed, 25 Nov 2026 17:37:29 +0100
+Subject: [PATCH 4/7] dts: exynos9820-common: Bixby key opens Recents,
+ framebuffer region labels; tmu: GPU passive trip
+
+The Wink (Bixby) key reports KEY_APPSELECT instead of KEY_COFFEE, which
+is the screensaver key and locks the screen. The framebuffer and modem
+regions get labels, and the framebuffer region an iommu-addresses entry
+so DECON's SysMMU maps S-Boot's scanout buffer 1:1. The GPU thermal zone
+gets a passive trip at 85 degrees that throttles the GPU.
+---
+ .../src/arm64/exynos/exynos9820-common.dtsi         |  9 ++++++---
+ dts/upstream/src/arm64/exynos/exynos9820-tmu.dtsi   | 13 +++++++++++++
+ 2 files changed, 19 insertions(+), 3 deletions(-)
+
+diff --git a/dts/upstream/src/arm64/exynos/exynos9820-common.dtsi b/dts/upstream/src/arm64/exynos/exynos9820-common.dtsi
+index 2fef85232b6..d5d82ccdd61 100644
+--- a/dts/upstream/src/arm64/exynos/exynos9820-common.dtsi
++++ b/dts/upstream/src/arm64/exynos/exynos9820-common.dtsi
+@@ -46,7 +46,8 @@
+ 
+ 		key-wink {
+ 			label = "Wink Key";
+-			linux,code = <KEY_COFFEE>;
++			/* Bixby: opens Recents; KEY_COFFEE is the screensaver key, which locks */
++			linux,code = <KEY_APPSELECT>;
+ 			gpios = <&gpa0 6 GPIO_ACTIVE_LOW>;
+ 		};
+ 
+@@ -93,8 +94,10 @@
+ 			no-map;
+ 		};
+ 
+-		framebuffer_region@ca000000 {
++		/* S-Boot's scanout buffer, mapped 1:1 for DECON's SysMMU */
++		fb_region: framebuffer_region@ca000000 {
+ 			reg = <0x0 0xca000000 (1440 * 3040 * 4)>;
++			iommu-addresses = <&decon 0xca000000 (1440 * 3040 * 4)>;
+ 			no-map;
+ 		};
+ 
+@@ -103,7 +106,7 @@
+ 			no-map;
+ 		};
+ 
+-		modem_if@f0000000 {
++		modem_if: modem_if@f0000000 {
+ 			reg = <0x0 0xf0000000 0xb900000>;
+ 			no-map;
+ 		};
+diff --git a/dts/upstream/src/arm64/exynos/exynos9820-tmu.dtsi b/dts/upstream/src/arm64/exynos/exynos9820-tmu.dtsi
+index ecbd426a174..c7798a81a95 100644
+--- a/dts/upstream/src/arm64/exynos/exynos9820-tmu.dtsi
++++ b/dts/upstream/src/arm64/exynos/exynos9820-tmu.dtsi
+@@ -151,6 +151,12 @@
+ 			thermal-sensors = <&tmu_top EXYNOS9820_TMU_TOP_G3D>;
+ 
+ 			trips {
++				g3d_alert: g3d-alert {
++					temperature = <85000>;
++					hysteresis = <5000>;
++					type = "passive";
++				};
++
+ 				g3d_hot: g3d-hot {
+ 					temperature = <100000>;
+ 					hysteresis = <5000>;
+@@ -163,6 +169,13 @@
+ 					type = "critical";
+ 				};
+ 			};
++
++			cooling-maps {
++				map0 {
++					trip = <&g3d_alert>;
++					cooling-device = <&gpu THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++				};
++			};
+ 		};
+ 
+ 		isp-thermal {
