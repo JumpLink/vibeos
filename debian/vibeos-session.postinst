@@ -5,6 +5,9 @@
 # and the dock switcher's opt-in udev rule and settings have the old names too. All of it is carried over to the
 # vibeos session once, when this package is first installed, so the phone comes back to the same shell after the
 # reboot that follows the upgrade. The old files stay where they are.
+#
+# On every configure, and whenever a package changes /usr/share/applications (the trigger), GNOME's apps that a
+# VibeOS app replaces are hidden again from the app lists (vibeos-hide-replaced-apps).
 set -e
 
 OLD=gnome-phone
@@ -52,6 +55,10 @@ configure)
             echo "/etc/udev/rules.d/71-vibeos-dock.rules: linked, as 71-neo-dock.rules was"
         fi
     fi
+    /usr/libexec/vibeos-hide-replaced-apps || echo "could not hide GNOME's apps that VibeOS's replace" >&2
+    ;;
+triggered)
+    /usr/libexec/vibeos-hide-replaced-apps || echo "could not hide GNOME's apps that VibeOS's replace" >&2
     ;;
 esac
 

@@ -11,6 +11,9 @@ ConditionPathExists=/dev/tty0
 Environment=XDG_CURRENT_DESKTOP=GNOME
 Environment=XDG_SESSION_DESKTOP=gnome
 Environment=XDG_SESSION_TYPE=wayland
+# GNOME's data directory first, as a display manager's GNOME session has it (Debian's Xsession): the GNOME apps that
+# VibeOS's replace are hidden there (vibeos-hide-replaced-apps)
+Environment=XDG_DATA_DIRS=/usr/share/gnome:/usr/local/share/:/usr/share/
 EnvironmentFile=-/run/s10e-gpu.env
 # in the user's language (Settings' Language: AccountsService's), as a display manager would start it
 ExecStart=/usr/local/libexec/vibeos-session-language /usr/bin/gnome-session

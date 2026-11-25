@@ -1,0 +1,106 @@
+#!/bin/sh
+# GNOME's apps that a VibeOS app replaces, hidden from every app list while both are installed: Files and GNOME's
+# Files (Nautilus), Terminal and Console, Software and GNOME Software... Hidden as GNOME itself hides an entry: a copy
+# of GNOME's own .desktop file with NoDisplay=true, in /usr/share/gnome/applications, which a GNOME session searches
+# before /usr/share/applications (XDG_DATA_DIRS). GNOME's app stays installed: it still opens the files it is the
+# default for, and other apps can still start it.
+#
+# The copies are made again from GNOME's files whenever a package changes /usr/share/applications (vibeos-session's
+# dpkg trigger), so an upgrade of Nautilus brings its new file into the copy, and a copy goes when GNOME's app or
+# ours is removed. Only files this script wrote (their first line) are replaced or removed.
+#
+# GLib takes an app's file types from the mimeinfo.cache of the directory its entry is found in, so the copies'
+# directory gets one of its own, of the copies' types only (as update-desktop-database writes it): Nautilus stays an
+# app that opens folders.
+#
+# vibeos-hide-replaced-apps          the copies made again
+# vibeos-hide-replaced-apps --clear  the copies removed (vibeos-session removed)
+# VIBEOS_APPS_DIR, VIBEOS_HIDDEN_DIR: the two directories, for a test
+set -eu
+APPS=${VIBEOS_APPS_DIR:-/usr/share/applications}
+HIDDEN=${VIBEOS_HIDDEN_DIR:-/usr/share/gnome/applications}
+MARK="# Hidden by vibeos-session (vibeos-hide-replaced-apps), made from $APPS/"
+
+# GNOME's app, and the VibeOS app that replaces it (the launcher's list)
+PAIRS="org.gnome.Nautilus.desktop vibeos.Files.desktop
+org.gnome.Console.desktop vibeos.Terminal.desktop
+org.gnome.Software.desktop vibeos.Software.desktop
+org.gnome.Calls.desktop vibeos.Dialer.desktop
+sm.puri.Chatty.desktop vibeos.Messaging.desktop
+org.gnome.Calculator.desktop vibeos.Calculator.desktop
+org.gnome.Calendar.desktop vibeos.Calendar.desktop
+org.gnome.Snapshot.desktop vibeos.Camera.desktop
+org.gnome.Weather.desktop vibeos.Weather.desktop"
+
+ours() { [ -f "$1" ] && [ "$(head -n 1 "$1")" = "$MARK$(basename "$1")" ]; }
+CACHE=$HIDDEN/mimeinfo.cache
+CACHE_MARK="# Written by vibeos-session (vibeos-hide-replaced-apps): the file types of its copies here"
+ours_cache() { [ -f "$CACHE" ] && [ "$(head -n 1 "$CACHE")" = "$CACHE_MARK" ]; }
+
+# FILE: GNOME's file with NoDisplay=true in its [Desktop Entry] group (any NoDisplay it had there dropped); the
+# other groups (its actions) as they are
+hide() {
+	printf '%s\n' "$MARK$(basename "$1")"
+	awk '
+		/^\[/ { entry = ($0 == "[Desktop Entry]"); print; if (entry) print "NoDisplay=true"; next }
+		entry && /^[ \t]*NoDisplay[ \t]*=/ { next }
+		{ print }
+	' "$1"
+}
+
+clear=false
+[ "${1:-}" = --clear ] && clear=true
+echo "$PAIRS" | while read -r gnome vibeos; do
+	copy=$HIDDEN/$gnome
+	if ! $clear && [ -f "$APPS/$gnome" ] && [ -f "$APPS/$vibeos" ]; then
+		if [ -e "$copy" ] && ! ours "$copy"; then
+			echo "vibeos-hide-replaced-apps: $copy is not ours: left as it is" >&2
+			continue
+		fi
+		mkdir -p "$HIDDEN"
+		hide "$APPS/$gnome" > "$copy.new"
+		chmod 644 "$copy.new"
+		if [ -f "$copy" ] && cmp -s "$copy.new" "$copy"; then
+			rm -f "$copy.new"
+		else
+			mv -f "$copy.new" "$copy"
+		fi
+	elif ours "$copy"; then
+		rm -f "$copy"
+	fi
+done
+
+# the copies' file types: type=id;id; under [MIME Cache], sorted
+types() {
+	for f in "$HIDDEN"/*.desktop; do
+		ours "$f" || continue
+		awk -v id="$(basename "$f")" '
+			/^\[/ { entry = ($0 == "[Desktop Entry]"); next }
+			entry && /^MimeType[ \t]*=/ {
+				sub(/^MimeType[ \t]*=[ \t]*/, ""); n = split($0, t, ";")
+				for (i = 1; i <= n; i++) if (t[i] != "") print t[i] "\t" id
+			}
+		' "$f"
+	done | sort -u | awk -F '\t' '
+		$1 != type { if (type != "") print type "=" ids; type = $1; ids = "" }
+		{ ids = ids $2 ";" }
+		END { if (type != "") print type "=" ids }
+	'
+}
+[ -d "$HIDDEN" ] || exit 0
+if [ -e "$CACHE" ] && ! ours_cache; then
+	echo "vibeos-hide-replaced-apps: $CACHE is not ours: left as it is" >&2
+	exit 0
+fi
+list=$(types)
+if [ -n "$list" ]; then
+	printf '%s\n[MIME Cache]\n%s\n' "$CACHE_MARK" "$list" > "$CACHE.new"
+	chmod 644 "$CACHE.new"
+	if [ -f "$CACHE" ] && cmp -s "$CACHE.new" "$CACHE"; then
+		rm -f "$CACHE.new"
+	else
+		mv -f "$CACHE.new" "$CACHE"
+	fi
+elif ours_cache; then
+	rm -f "$CACHE"
+fi

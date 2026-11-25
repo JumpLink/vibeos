@@ -28,6 +28,9 @@ install_data('vibeos-session-language', install_dir: libexecdir, install_mode: '
 # logind's record of the logged-in user brought up to date after an automatic login, for polkit (see the file)
 install_data('vibeos-logind-user-refresh', install_dir: libexecdir, install_mode: 'rwxr-xr-x')
 test('logind-user-refresh', find_program('tests/logind-user-refresh.sh'), args: [meson.current_source_dir()])
+# GNOME's apps that a VibeOS app replaces, hidden from the app lists (see the file; run by the package's trigger)
+install_data('vibeos-hide-replaced-apps', install_dir: libexecdir, install_mode: 'rwxr-xr-x')
+test('hide-replaced-apps', find_program('tests/hide-replaced-apps.sh'), args: [meson.current_source_dir()])
 # the dock switcher's udev rule is opt-in: on a plug or an unplug vibeos-dock starts a session, which would take over a
 # desktop that did not ask for it. Linked into /etc/udev/rules.d by whoever wants it
 install_data('71-vibeos-dock.rules', install_dir: datadir / 'vibeos-session')

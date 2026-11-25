@@ -1,0 +1,14 @@
+#!/bin/sh
+# vibeos-session removed: GNOME's apps it hid are shown again (vibeos-hide-replaced-apps's copies removed). An
+# upgrade keeps them: the new postinst makes them again.
+set -e
+
+case "$1" in
+remove|deconfigure)
+    /usr/libexec/vibeos-hide-replaced-apps --clear || true
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

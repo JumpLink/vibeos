@@ -1,0 +1,3 @@
+# GNOME's apps that a VibeOS app replaces are hidden again whenever an app is installed, upgraded or removed
+# (the postinst runs vibeos-hide-replaced-apps)
+interest-noawait /usr/share/applications
