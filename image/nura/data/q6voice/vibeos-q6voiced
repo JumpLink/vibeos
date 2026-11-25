@@ -31,19 +31,25 @@ def find_device(proc='/proc/asound/pcm'):
 
 
 class Alsa:
-    """the voice PCM, opened as q6voiced does: capture started, playback prepared (the DSP feeds both)"""
+    """the voice PCM, opened as q6voiced does: capture started, playback prepared (the DSP feeds both). Without a
+    device given, it is looked up at each open: the sound card comes with the audio DSP and can register after
+    ModemManager has started"""
     CAPTURE, PLAYBACK = 1, 0
 
-    def __init__(self, dev):
+    def __init__(self, dev=None, find=find_device):
         self.lib = ctypes.CDLL('libasound.so.2')
-        self.dev = dev.encode()
+        self.dev, self.find = dev, find
         self.handles = []
 
     def open(self):
         a = self.lib
+        dev = self.dev or self.find()
+        if not dev:
+            log('no %s PCM (yet): this call stays silent' % PCM_NAME)
+            return False
         for stream in (self.CAPTURE, self.PLAYBACK):
             h = ctypes.c_void_p()
-            r = a.snd_pcm_open(ctypes.byref(h), self.dev, stream, 0)
+            r = a.snd_pcm_open(ctypes.byref(h), dev.encode(), stream, 0)
             if r < 0:
                 log('open %s: error %d' % ('capture' if stream else 'playback', r))
                 continue
@@ -83,16 +89,13 @@ class Voice:
 
 def main():
     from gi.repository import Gio, GLib
-    dev = sys.argv[1] if len(sys.argv) > 1 else find_device()
-    if not dev:
-        log('no %s PCM: nothing to do' % PCM_NAME)
-        return 0
+    dev = sys.argv[1] if len(sys.argv) > 1 else None
     voice = Voice(Alsa(dev))
     bus = Gio.bus_get_sync(Gio.BusType.SYSTEM)
     bus.signal_subscribe('org.freedesktop.ModemManager1', 'org.freedesktop.ModemManager1.Call', 'StateChanged',
                          None, None, Gio.DBusSignalFlags.NONE,
                          lambda c, s, path, i, n, p: voice.state(path, p.unpack()[1]))
-    log('watching ModemManager calls; voice PCM %s' % dev)
+    log('watching ModemManager calls; voice PCM %s' % (dev or '%s, looked up per call' % PCM_NAME))
     GLib.MainLoop().run()
 
 

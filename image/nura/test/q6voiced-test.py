@@ -75,4 +75,25 @@ f = FakePcm(ok=False); v = q.Voice(f)
 v.state('/Call/1', ACTIVE); v.state('/Call/1', TERMINATED)
 check('open failed: no close', f.log, ['open'])
 
+# the sound card registers after the service started: looked up again at the next call, not given up
+class FakeLib:
+    def __init__(self):
+        self.opened = []
+
+    def snd_pcm_open(self, h, dev, stream, mode):
+        self.opened.append(dev)
+        return 0
+
+    def __getattr__(self, name):
+        return lambda *a: 0
+
+
+card = {'dev': None}
+a = q.Alsa.__new__(q.Alsa)
+a.lib, a.dev, a.find, a.handles = FakeLib(), None, lambda: card['dev'], []
+check('late card: no PCM at the first call', a.open(), False)
+card['dev'] = 'hw:0,6'
+check('late card: opens at the next call', a.open(), True)
+check('late card: both directions on the PCM found', a.lib.opened, [b'hw:0,6', b'hw:0,6'])
+
 sys.exit(1 if fails else 0)
