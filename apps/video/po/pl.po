@@ -1,0 +1,159 @@
+# Polish translations of vibeos-video.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: vibeos-video\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Polish\n"
+"Language: pl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 "
+"|| n%100>=20) ? 1 : 2);\n"
+
+#. the name the sound settings list it under
+#: data/vibeos.Video.desktop.in main.c
+msgid "Video Player"
+msgstr "Odtwarzacz wideo"
+
+#: data/vibeos.Video.desktop.in
+msgid "Play videos"
+msgstr "Odtwarzaj filmy"
+
+#: main.c
+msgid "Playing a video"
+msgstr "Odtwarzanie filmu"
+
+# android: Framework VideoView_error_text_unknown (adapted)
+#: main.c
+msgid "Can’t play this video"
+msgstr "Nie można odtworzyć tego filmu"
+
+#: main.c
+msgid "Exit full screen"
+msgstr "Zamknij pełny ekran"
+
+# android: Settings accessibility_magnification_area_settings_full_screen_summary (short)
+#: main.c
+msgid "Full screen"
+msgstr "Pełny ekran"
+
+#. TRANSLATORS: keep the links' markup as it is
+#: main.c
+msgid "Videos are played by <a href=\"https://mpv.io/\">mpv</a> (libmpv), under the GNU GPL 2.0 or later."
+msgstr "Filmy odtwarza <a href=\"https://mpv.io/\">mpv</a> (libmpv) na licencji GNU GPL 2.0 lub nowszej."
+
+#. TRANSLATORS: keep the links' markup as it is
+#: main.c
+msgid "<a href=\"https://ffmpeg.org/\">FFmpeg</a> reads and decodes them, under the GNU LGPL 2.1 or later (the GPL 2.0 or later as Debian builds it)."
+msgstr "<a href=\"https://ffmpeg.org/\">FFmpeg</a> je odczytuje i dekoduje na licencji GNU LGPL 2.1 lub nowszej (GPL 2.0 lub nowszej w kompilacji Debiana)."
+
+#: main.c
+msgid "Timed text"
+msgstr "Tekst synchronizowany"
+
+#. TRANSLATORS: a track with neither a title nor a language; %u is its number
+#: main.c
+#, c-format
+msgid "Track %u"
+msgstr "Ścieżka %u"
+
+# android: SettingsLib bluetooth_a2dp_codec_channel_mode_titles[1] (short)
+#: main.c
+msgid "Mono"
+msgstr "Mono"
+
+# android: SettingsLib bluetooth_a2dp_codec_channel_mode_titles[2] (short)
+#: main.c
+msgid "Stereo"
+msgstr "Stereo"
+
+#. TRANSLATORS: a subtitle track read from a file of its own, next to the video
+#: main.c
+msgid "From a file"
+msgstr "Z pliku"
+
+#: main.c
+msgctxt "no track"
+msgid "Off"
+msgstr "Brak"
+
+#: main.c
+msgid "Audio track"
+msgstr "Ścieżka dźwiękowa"
+
+#: main.c
+msgid "Subtitles"
+msgstr "Napisy"
+
+#: main.c
+msgid "Black bar at the camera"
+msgstr "Czarny pasek przy aparacie"
+
+#: main.c
+msgid "Keep full screen clear of the camera hole instead of playing under it"
+msgstr "Na pełnym ekranie nie wyświetlaj obrazu pod otworem aparatu"
+
+# android: Framework global_action_settings (short)
+#: main.c
+msgid "Settings"
+msgstr "Ustawienia"
+
+# android: Framework volume_unknown (short)
+#: main.c
+msgid "Volume"
+msgstr "Głośność"
+
+# android: Settings category_name_brightness (short)
+#: main.c
+msgid "Brightness"
+msgstr "Jasność"
+
+# android: Framework input_method_nav_back_button_desc (several translations, short)
+#: main.c
+msgid "Back"
+msgstr "Wstecz"
+
+#. TRANSLATORS: shown in the video player's top bar while a film plays without sound because the device has no sound
+#. output (no speaker, headphones or Bluetooth device that takes it)
+#: main.c
+msgid "No audio output"
+msgstr "Brak wyjścia audio"
+
+# android: Framework action_menu_overflow_description (short)
+#: main.c
+msgid "More options"
+msgstr "Więcej opcji"
+
+#: main.c
+msgid "Back 10 seconds"
+msgstr "10 sekund do tyłu"
+
+#: main.c
+msgid "Play or pause"
+msgstr "Odtwórz lub wstrzymaj"
+
+#: main.c
+msgid "On 10 seconds"
+msgstr "10 sekund do przodu"
+
+#: main.c
+msgid "Open a video from Files"
+msgstr "Otwórz film z aplikacji Pliki"
+
+#: main.c
+msgid "Opening…"
+msgstr "Otwieram…"
+
+#: main.c
+msgid "Can’t reach this video"
+msgstr "Brak dostępu do tego filmu"
+
+#: main.c
+msgid "The player could not start"
+msgstr "Nie udało się uruchomić odtwarzacza"

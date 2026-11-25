@@ -1,0 +1,105 @@
+# Polish translations of libvibeos-1.
+# Translations marked "android:" come from the Android Open Source Project and LineageOS,
+# under the Apache License 2.0 (see tools/i18n/NOTICE).
+msgid ""
+msgstr ""
+"Project-Id-Version: libvibeos-1\n"
+"Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
+"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"PO-Revision-Date: 2026-11-25 22:34+0100\n"
+"Last-Translator: VibeOS translators\n"
+"Language-Team: Polish\n"
+"Language: pl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=(n==1 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 "
+"|| n%100>=20) ? 1 : 2);\n"
+
+#: vibeos-about.c
+msgid "Developed by"
+msgstr "Twórca"
+
+#. TRANSLATORS: keep the link's markup as it is
+#: vibeos-about.c
+msgid ""
+"The VibeOS Project\n"
+"<a href=\"https://github.com/pulpoff/vibeos\">github.com/pulpoff/vibeos</a>"
+msgstr ""
+"Projekt VibeOS\n"
+"<a href=\"https://github.com/pulpoff/vibeos\">github.com/pulpoff/vibeos</a>"
+
+#: vibeos-about.c
+msgid "Built on"
+msgstr "Na bazie"
+
+#: vibeos-about.c
+msgid "Debian, GNOME and GTK."
+msgstr "Debian, GNOME i GTK."
+
+#. TRANSLATORS: keep the markup (the link and the line breaks) as it is
+#: vibeos-about.c
+msgid ""
+"© 2026 pulpoff\n"
+"\n"
+"VibeOS is free software under the <a href=\"https://github.com/pulpoff/vibeos/blob/main/LICENSE\">MIT License</a>. It comes with absolutely no warranty.\n"
+"\n"
+"Some of its icons and images come from the Android Open Source Project and LineageOS, under the Apache License 2.0, and so do many of its translations."
+msgstr ""
+"© 2026 pulpoff\n"
+"\n"
+"VibeOS to wolne oprogramowanie na <a href=\"https://github.com/pulpoff/vibeos/blob/main/LICENSE\">licencji MIT</a>. Nie jest objęte żadną gwarancją.\n"
+"\n"
+"Część ikon i grafik, a także wiele tłumaczeń, pochodzi z Android Open Source Project i LineageOS i jest dostępna na licencji Apache 2.0."
+
+#: vibeos-about.c
+msgid "Credits"
+msgstr "Autorzy"
+
+#: vibeos-about.c
+msgid "Legal"
+msgstr "Informacje prawne"
+
+# android: Contacts header_website_entry (other app, short)
+#: vibeos-about.c
+msgid "Website"
+msgstr "Strona internetowa"
+
+#: vibeos-about.c
+msgid "Report an Issue"
+msgstr "Zgłoś problem"
+
+#. TRANSLATORS: the About sheet's name for a screen reader; %s is the app's name
+#: vibeos-about.c
+#, c-format
+msgid "About %s"
+msgstr "%s – informacje"
+
+#: vibeos-menu.c
+msgid "About"
+msgstr "Informacje"
+
+# android: Framework input_method_nav_back_button_desc (several translations, short)
+#: vibeos-search.c vibeos-top-bar.c
+msgid "Back"
+msgstr "Wstecz"
+
+# android: Settings proxy_clear_text (several translations, short)
+#: vibeos-search.c
+msgid "Clear"
+msgstr "Wyczyść"
+
+# android: Framework aerr_close
+#: vibeos-sheet.c vibeos-top-bar.c
+msgid "Close"
+msgstr "Zamknij"
+
+# android: Framework cancel
+#: vibeos-time-picker.c
+msgid "Cancel"
+msgstr "Anuluj"
+
+# android: Framework httpErrorOk
+#: vibeos-time-picker.c
+msgid "OK"
+msgstr "OK"

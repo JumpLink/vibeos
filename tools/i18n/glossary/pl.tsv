@@ -1,0 +1,103 @@
+English	Polish	Note
+Settings	Ustawienia	app and screen name
+Notifications	Powiadomienia
+Notification	Powiadomienie
+Do Not Disturb	Nie przeszkadzać
+Wi-Fi	Wi-Fi
+Bluetooth	Bluetooth
+Airplane mode	Tryb samolotowy
+Lock screen	Ekran blokady	Android's name for the screen and its settings
+Screen lock	Blokada ekranu	the PIN/password/pattern lock itself
+Home screen	Ekran główny
+Wallpaper	Tapeta
+Alarm	Alarm	Clock's alarm; the sound is "Dźwięk alarmu"
+Timer	Minutnik	as DeskClock says it
+Stopwatch	Stoper
+Reminder	Przypomnienie
+Event	Wydarzenie	as Etar says it, and the Contacts event field
+Calendar	Kalendarz
+Contact	Kontakt
+Conversation	Rozmowa	as Android's Messages and SystemUI say it; the list: Rozmowy
+Message	Wiadomość	the app: Wiadomości
+Call (noun)	Połączenie	as Android's Phone says it ("Historia połączeń")
+Call (verb, button)	Zadzwoń
+Download	Pobierz	verb; the noun: pobieranie; the list: Pobrane
+Install	Zainstaluj	in progress: Instaluję…
+Uninstall	Odinstaluj
+Update (verb)	Aktualizuj
+Update (noun)	Aktualizacja
+Share	Udostępnij
+Delete	Usuń
+Remove	Usuń	"Odłącz" or "Zapomnij" where Android says so
+Clear	Wyczyść
+Cancel	Anuluj
+OK	OK
+Done	Gotowe
+Save	Zapisz
+Back	Wstecz
+Close	Zamknij
+Search	Szukaj	the field: Szukaj / Wyszukaj …; the screen: Wyszukiwanie
+Edit	Edytuj
+Add	Dodaj
+Open	Otwórz
+Rename	Zmień nazwę
+Copy	Kopiuj
+Retry	Ponów	"Spróbuj ponownie" in a sentence or a dialog's button
+Next	Dalej
+Continue	Dalej	as Android's PackageInstaller; "Kontynuuj" only where "Dalej" reads oddly
+Allow	Zezwól
+Deny	Odmów	"Nie zezwalaj" as a permission dialog's button
+Turn on	Włącz
+Turn off	Wyłącz
+On	Włączono	a state; agrees with its noun where one is named: Włączony, Włączona
+Off	Wyłączono	a state; agrees with its noun
+Menu	Menu
+More options	Więcej opcji	Android's name for the ⋮ menu
+About	Informacje	the app's About sheet; "About %s" = "%s – informacje"
+Credits	Autorzy
+Legal	Informacje prawne
+Website	Strona internetowa
+Report an Issue	Zgłoś problem
+App	Aplikacja
+Storage	Pamięć wewnętrzna	Android's name for the device storage page
+Battery	Bateria
+Display	Wyświetlacz
+Sound	Dźwięk
+Location	Lokalizacja
+Privacy	Prywatność
+Security	Bezpieczeństwo	the Settings page; a Wi-Fi network's security: Zabezpieczenia
+Accessibility	Ułatwienia dostępu
+Mobile data	Dane mobilne
+Ringtone	Dzwonek
+Vibrate	Wibracje
+Password	Hasło
+PIN	Kod PIN
+Pattern	Wzór
+Fingerprint	Odcisk palca
+Dark theme	Ciemny motyw
+Folder	Folder
+File	Plik
+Tab (browser)	Karta
+Bookmark	Zakładka
+History	Historia
+Favorites	Ulubione
+Undo	Cofnij
+Device	Urządzenie
+Phone	Telefon
+Tablet	Tablet
+Keyboard	Klawiatura
+Language	Język
+Date & time	Data i godzina
+Time zone	Strefa czasowa
+Wi-Fi hotspot	Hotspot Wi-Fi
+Apps list / app drawer	Lista aplikacji	as the launcher's long-press menu says it
+Online accounts	Konta online
+Software (the app)	Oprogramowanie	the app store's name, as GNOME's
+App Installer (the app)	Instalator aplikacji
+Hardware keyboard	Klawiatura fizyczna	as Android
+On-screen keyboard	Klawiatura ekranowa
+Keyboard layout	Układ klawiatury	short: Układ
+Pair (Bluetooth)	Sparuj	as Android; "Unpair" = Zapomnij, as Android's "Forget device"
+Account	Konto
+Address (you)	ty	informal second person singular, as Android ("Włącz", "Wybierz", "Twój"); never Pan/Pani
+Quotes	„…”
