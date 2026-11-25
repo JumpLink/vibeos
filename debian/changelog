@@ -50,6 +50,7 @@ vibeos (1:0.1.5) unstable; urgency=medium
     behind the lock that took every touch; after the unlock the app can
     ask again. While the phone is locked, removable media are mounted
     only at the unlock.
+  * Xiaomi Pad 5: the rear and front cameras work (no image tuning yet).
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
