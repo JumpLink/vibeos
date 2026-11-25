@@ -12,6 +12,7 @@ src/ns-caps.c
 src/ns-charge.c
 src/ns-displays.c
 src/ns-net.c
+src/ns-mobile-modes.c
 src/ns-pages.c
 src/ns-parallax.c
 src/ns-pattern.c

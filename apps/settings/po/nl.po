@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 18:05+0100\n"
+"POT-Creation-Date: 2026-11-25 22:30+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Dutch\n"
@@ -2069,7 +2069,7 @@ msgid "Private key password"
 msgstr "Wachtwoord van privésleutel"
 
 # android: Settings cdma_system_select_choices[1]
-#: src/ns-net.c
+#: src/ns-net.c src/ns-mobile-modes.c
 msgid "Automatic"
 msgstr "Automatisch"
 
@@ -2141,6 +2141,18 @@ msgstr "In gebruik"
 msgid "Automatic APN"
 msgstr "Automatische APN"
 
+#: src/ns-net.c
+msgid "Could not set network mode"
+msgstr ""
+
+#: src/ns-net.c
+msgid "Applying…"
+msgstr ""
+
+#: src/ns-net.c
+msgid "Network mode"
+msgstr ""
+
 # android: Settings sim_card (several translations, short)
 #: src/ns-net.c
 msgid "SIM"
@@ -2203,6 +2215,10 @@ msgstr "Als de tablet opstart"
 #: src/ns-net.c
 msgid "Access point names"
 msgstr "Namen van toegangspunten"
+
+#: src/ns-net.c
+msgid "The selected modes also apply to mobile data."
+msgstr ""
 
 #: src/ns-net.c
 msgid "SIM and network"
@@ -2381,6 +2397,40 @@ msgstr "Geen printers gevonden."
 #: src/ns-net.c
 msgid "Add printer"
 msgstr "Printer toevoegen"
+
+#: src/ns-mobile-modes.c
+msgid "CS"
+msgstr ""
+
+#: src/ns-mobile-modes.c
+msgid "2G"
+msgstr ""
+
+#: src/ns-mobile-modes.c
+msgid "3G"
+msgstr ""
+
+#: src/ns-mobile-modes.c
+msgid "4G"
+msgstr ""
+
+#: src/ns-mobile-modes.c
+msgid "5G"
+msgstr ""
+
+#: src/ns-mobile-modes.c
+msgid "Unknown"
+msgstr ""
+
+#: src/ns-mobile-modes.c
+#, c-format
+msgid "%s only"
+msgstr ""
+
+#: src/ns-mobile-modes.c
+#, c-format
+msgid "%s, prefer %s"
+msgstr ""
 
 #: src/ns-pages.c
 msgid "Networks, saved networks"
