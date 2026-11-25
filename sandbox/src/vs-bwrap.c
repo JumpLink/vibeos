@@ -374,6 +374,15 @@ vs_proxy_rules (const VsSandbox *sb)
   add (a, "--talk=org.freedesktop.portal.*");
   add (a, "--call=org.freedesktop.portal.*=*");
   add (a, "--broadcast=org.freedesktop.portal.*=@/org/freedesktop/portal/*");
+  /* an "Open Settings" button: Settings (its name, and GNOME's, which it answers too) is started, shown, or told to
+   * open a page, as GApplication does it; nothing else of it, and it is not on the app's name list */
+  static const char *const settings[][2] = { { "vibeos.Settings", "/vibeos/Settings" },
+                                             { "org.gnome.Settings", "/org/gnome/Settings" } };
+  for (guint i = 0; i < G_N_ELEMENTS (settings); i++) {
+    add_fmt (a, "--call=%s=org.gtk.Application.Activate@%s", settings[i][0], settings[i][1]);
+    add_fmt (a, "--call=%s=org.gtk.Application.Open@%s", settings[i][0], settings[i][1]);
+    add_fmt (a, "--call=%s=org.gtk.Actions.Activate@%s", settings[i][0], settings[i][1]);
+  }
   /* notifications: the shell's own notification policy applies */
   add (a, "--talk=org.freedesktop.Notifications");
   /* push messages: UnifiedPush distributors; each app only receives what is sent to its own registration, encrypted

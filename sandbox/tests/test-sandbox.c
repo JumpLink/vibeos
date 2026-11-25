@@ -481,6 +481,12 @@ test_proxy_rules (void)
   g_assert_true (has (r, "--talk=org.freedesktop.portal.*"));
   g_assert_true (has (r, "--talk=org.freedesktop.Notifications"));
   g_assert_true (has (r, "--talk=org.unifiedpush.Distributor.*"));
+  /* "Open Settings": starting, showing and opening a page of Settings, and no more of it */
+  g_assert_true (has (r, "--call=vibeos.Settings=org.gtk.Application.Activate@/vibeos/Settings"));
+  g_assert_true (has (r, "--call=vibeos.Settings=org.gtk.Actions.Activate@/vibeos/Settings"));
+  g_assert_true (has (r, "--call=org.gnome.Settings=org.gtk.Application.Open@/org/gnome/Settings"));
+  g_assert_false (has (r, "--talk=vibeos.Settings"));
+  g_assert_false (has (r, "--talk=org.gnome.Settings"));
   /* nothing of the user's data by default */
   g_assert_false (has_prefix (r, "--talk=org.gnome.evolution"));
   g_assert_false (has_prefix (r, "--talk=vibeos."));
