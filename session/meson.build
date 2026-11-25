@@ -42,6 +42,8 @@ install_data('pam.d/vibeos', install_dir: get_option('sysconfdir') / 'pam.d')
 install_data('vibeos.Wakeup.conf', install_dir: datadir / 'dbus-1' / 'system.d')
 # logind leaves the power key's long press to the shell (see the file)
 install_data('logind.conf.d/vibeos-power-key.conf', install_dir: prefix / 'lib' / 'systemd' / 'logind.conf.d')
+# logind leaves a cover's lid switch to the shell (see the file)
+install_data('logind.conf.d/vibeos-lid.conf', install_dir: prefix / 'lib' / 'systemd' / 'logind.conf.d')
 
 # a car's hands-free kit gets the phone's calls from ModemManager (PipeWire's HFP gateway)
 install_data('wireplumber/60-vibeos-bluetooth.conf', 'wireplumber/60-vibeos-no-v4l2.conf', install_dir: datadir / 'wireplumber' / 'wireplumber.conf.d')
