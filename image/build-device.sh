@@ -638,8 +638,11 @@ nabu)
 	# The SLPI's hexagonrpcd units (hexagonrpcd-sdsp*, started by 82-nabu-hexagonrpcd.rules) replace the generic
 	# ADSP ones, and the kernel has the QRTR name service and the PD mapper built in
 	mask hexagonrpcd.service hexagonrpcd-suspend.service pd-mapper.service qrtr-ns.service
-	# qbootctl.service marks slot b's boot good, so the bootloader does not go back to slot a after its retries
-	# (a /etc mask, as the bring-up tablet has until its way back is tested, keeps it off)
+	# qbootctl.service marks slot b's boot good, so the bootloader does not go back to slot a after its retries;
+	# only once a GNOME Shell runs on seat0 (nabu/qbootctl-wait-for-shell.conf, nabu/wait-for-shell), not right
+	# after sysinit as shipped. A /etc mask, as the bring-up tablet has until its way back is tested, keeps it off
+	install -D -m 644 "$T/nabu/qbootctl-wait-for-shell.conf" "$P/etc/systemd/system/qbootctl.service.d/vibeos-wait-for-shell.conf"
+	install -D -m 755 "$T/nabu/wait-for-shell" "$P/usr/libexec/vibeos-device/wait-for-shell"
 	POSTINST_EXTRA="$POSTINST_EXTRA qbootctl.service"
 	identity nabu "Xiaomi Pad 5" Xiaomi "Xiaomi Pad 5"
 	video h264,hevc		# iris; VP9 decodes in software (60-nabu-gst-vp9.conf ranks the V4L2 decoder down)
