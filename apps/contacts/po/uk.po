@@ -707,10 +707,9 @@ msgstr "Вилучити контакти"
 msgid "All contacts"
 msgstr "Усі контакти"
 
-# android: Contacts set_up_profile
 #: src/ct-people.c src/ct-settings.c
 msgid "Set up your profile"
-msgstr "Налаштування профілю"
+msgstr "Налаштуйте профіль"
 
 #: src/ct-people.c
 msgid "Your info"

@@ -38,11 +38,10 @@ msgstr "Головна"
 msgid "Up"
 msgstr "Угору"
 
-# android: DocumentsUI root_available_bytes (several translations)
 #: src/fm-browser.c src/fm-home.c
 #, c-format
 msgid "%s free"
-msgstr "%s вільного місця"
+msgstr "Вільно: %s"
 
 #: src/fm-browser.c
 msgid "No results"
