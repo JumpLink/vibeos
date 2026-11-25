@@ -63,6 +63,11 @@ if gjs.found()
   test('charge-power', find_program('tests/charge-power.sh'), args: [meson.current_source_dir()], timeout: 60)
 endif
 
+# the shell's components kept to the session mode, the keyring's dialog off under the lock (tests/componentsync.sh)
+if gjs.found()
+  test('componentsync', find_program('tests/componentsync.sh'), args: [meson.current_source_dir()], timeout: 60)
+endif
+
 # every name a module uses is declared or imported (tests/undefined-names.sh); needs TypeScript's checker
 # TypeScript 5 or later: tests/tsconfig.json's moduleResolution "bundler" is 5.0's (4.x refuses the configuration, and
 # 6 no longer reads 4.x's "node"); an older checker leaves the test out

@@ -8,6 +8,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {Bluetooth} from './bluetooth.js';
 import {ScreenshotChord} from './chord.js';
 import {CollectWhenStill} from './gc.js';
+import {ComponentSync} from './componentsync.js';
 import {Cutout, CutoutBand} from './cutout.js';
 import {Desktop, isDesktopSession} from './dock.js';
 import {DisplayChangeOnPanel} from './displaychange.js';
@@ -68,6 +69,8 @@ export default class VibeosExtension extends Extension {
         this._frameLog = new FrameLog();
 
         this._keepThroughLock();
+        // the keyring's dialog and the other components off while locked, as the mode has it (componentsync.js)
+        this._componentSync = new ComponentSync(Main.componentManager, Main.sessionMode);
 
         // Android apps' keyboard requests open GNOME's on-screen keyboard, docked as on the phone; without it the rest
         // still comes up
@@ -310,6 +313,8 @@ export default class VibeosExtension extends Extension {
         if (this._keptThroughLock)
             delete Main.extensionManager._getModeExtensions;
         this._keptThroughLock = false;
+        this._componentSync?.destroy();
+        this._componentSync = null;
         this._androidKeyboard?.destroy();
         this._androidKeyboard = null;
         this._touchFocusKeyboard?.destroy();
