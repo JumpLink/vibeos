@@ -1,0 +1,5 @@
+0001-clutter-blur-keep-the-blur-s-buffers-for-the-next-frame.patch
+0002-monitor-manager-let-the-compositor-keep-the-outputs-on.patch
+0003-monitor-allow-a-phone-s-logical-size.patch
+0004-orientation-manager-export-the-tracking-inhibit.patch
+0005-window-actor-wayland-sync-again-when-a-surface-changes-size.patch

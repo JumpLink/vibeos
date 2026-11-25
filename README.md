@@ -124,6 +124,10 @@ The release also carries **mutter 51.0-3+gp1**: Debian's mutter 51.0-3 with the 
 display, the other lets a 1080x2280 panel use scale 3. Without them VibeOS still runs, but with no always-on
 display and at scale 2.5. All five patches do nothing on a desktop.
 
+[`patches/`](patches/README.md) holds the source changes of every open-source package VibeOS ships in a changed
+build (mutter, the mobile shell, ModemManager, libcamera, WebKitGTK, iio-sensor-proxy, hexagonrpc), with the
+version each applies to, how to rebuild it, and where it ships.
+
 ## Requirements
 
 - Debian unstable (sid) or Mobian staging, arm64, with GNOME Session 51 and GNOME Shell 51. On a phone that means
@@ -252,4 +256,5 @@ VibeOS's own code is under the [MIT license](LICENSE). Icons, images and the wor
 and LineageOS are Apache-2.0, as are the Material Symbols glyphs of both icon packs. The solar-system wallpaper's
 planets, Moon and Sun are NASA's public-domain images; its README credits each one. The calculator's constructive
 reals are under the SGI/HP CRCalc notice, and Roboto is OFL-1.1. [`debian/copyright`](debian/copyright) lists every
-file. The mutter patches are GPL-2.0-or-later, like mutter.
+file. The patches in [`patches/`](patches/README.md) are under the licences of what they change (the mutter patches
+are GPL-2.0-or-later, like mutter); each folder's README names its licence.
