@@ -1,0 +1,15 @@
+#!/bin/sh
+# Derive a stable, locally administered Bluetooth address from androidboot.serialno. The OnePlus 6T's device tree
+# and bootloader give the QCA controller (wcn399x) no local-bd-address, so the kernel reports it as "unconfigured,
+# missing options: public-address" and BlueZ hides it. Debian has no bootmac to set one. hci0 appears before its
+# firmware download finishes and mgmt answers "Invalid Index" until then, hence the retry.
+# VIBEOS_CMDLINE overrides /proc/cmdline (tests).
+s=$(tr ' ' '\n' < "${VIBEOS_CMDLINE:-/proc/cmdline}" | sed -n 's/^androidboot\.serialno=//p')
+[ -n "$s" ] || exit 0
+a=$(printf 'bt-%s' "$s" | sha256sum | sed -E 's/^(..)(..)(..)(..)(..).*/02:\1:\2:\3:\4:\5/')
+for i in $(seq 1 30); do
+	btmgmt info 2>/dev/null | grep -qi "addr $a" && exit 0
+	btmgmt --index 0 public-addr "$a" >/dev/null 2>&1 && exit 0
+	sleep 1
+done
+exit 1
