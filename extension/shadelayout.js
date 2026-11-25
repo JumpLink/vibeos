@@ -84,6 +84,7 @@ function tabletShade() {
                 scrollEnd: panel.bottom - ROW_END_INSET,
                 clipX: panel.x,
                 clipW: panel.right - panel.x,
+                fitPanel: true,
             },
         };
     }
@@ -106,7 +107,8 @@ function tabletShade() {
             footerCY: H - 62 * DP, powerCX, settingsCX: powerCX - FOOTER_PITCH,
         },
         panel: {x: columnX, top: 248 * DP, width: columnW, height: H, radius: PANEL_RADIUS, roundBottom: false},
-        rows: {top: ROW_INSET_PORT, left, width, end: H, scrollEnd: H - ROW_END_INSET, clipX: columnX, clipW: columnW},
+        rows: {top: ROW_INSET_PORT, left, width, end: H, scrollEnd: H - ROW_END_INSET, clipX: columnX, clipW: columnW,
+            fitPanel: true},
     };
 }
 

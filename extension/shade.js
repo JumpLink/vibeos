@@ -473,6 +473,12 @@ export const Shade = GObject.registerClass({
         this._queueApply();
     }
 
+    // a tablet's panel ends under the notifications: its height as the stack lays them out now (screen px)
+    stackPanelChanged(height) {
+        if (this._layout && !this._layout.phone)
+            this._scrim.height = px(height);
+    }
+
     _closed() {
         this._qsAfterOpen = false;
         this._f = 0;
@@ -683,7 +689,8 @@ export const Shade = GObject.registerClass({
     // whose edge follows the pull. The quick settings and the notification panel come down with the finger, from a
     // whole pull above their places, out from under the header, fading in; a fast fling takes them a little past, they
     // spring back, and closing they go back up the same way. Upright the second pull takes the panel on down off the
-    // screen as it fades. With no notifications there is no panel: "No notifications" on the scrim.
+    // screen as it fades. The panel ends under its notifications' footer, or is a short one around "No notifications",
+    // and grows to the screen's bottom at most (the stack's panelHeight), translucent over the scrim as a phone's is.
     _applyTablet() {
         const f = this._f, q = this._q, m = this._mirror, layout = this._layout;
         this.visible = f > 0 || this._tracking;
@@ -710,7 +717,7 @@ export const Shade = GObject.registerClass({
         this._stackY = top;
         const alpha = content * (1 - m) * (1 - q);
         this._scrim.set_position(px(panel.x), px(top));
-        this._scrim.opacity = Math.round(255 * alpha * (1 - this._stack.emptyAlpha));
+        this._scrim.opacity = Math.round(255 * alpha);
         this._scrim.visible = this._scrim.opacity > 0;
         clipAbove(this._scrim, px(header.height));
         this._stack.layoutFor({stackY: top, ratio: lerp(STACK_START_FRACTION, 1, f), alpha,
@@ -743,12 +750,14 @@ export const Shade = GObject.registerClass({
             this._scrim.style = `background-color: ${rgba(Color.notificationScrim, 0.5)}; ` +
                 `border-radius: ${r}px ${r}px 0 0;`;
         } else {
+            // the panel as long as its notifications (stackPanelChanged), every corner round, translucent as a
+            // phone's
             this._tint.style = `background-color: ${rgba(TabletShade.scrim)};`;
-            this._scrim.style = `background-color: ${rgba(TabletShade.panel)}; ` +
-                `border-radius: ${panel.roundBottom ? `${r}px` : `${r}px ${r}px 0 0`};`;
+            this._scrim.style = `background-color: ${rgba(Color.notificationScrim, 0.5)}; border-radius: ${r}px;`;
             this._qs.remove_clip();
         }
-        // a panel that runs off the bottom of the screen is a pull longer, so its end never shows on the way down
+        // a phone's panel that runs off the bottom of the screen is a pull longer, so its end never shows on the way
+        // down; a tablet's has the stack's height (setFrame below)
         this._scrim.set_size(px(panel.width), px(panel.height + (panel.roundBottom ? 0 : H)));
         this._qs.setLayout(layout);
         this._syncBarLine();

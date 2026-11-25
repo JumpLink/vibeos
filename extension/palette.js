@@ -63,13 +63,12 @@ export function mix(a, b, t) {
 }
 
 // A tablet's shade: an opaque scrim under the quick settings, their pill tiles (a two-target tile's icon circle when
-// off, a tile that is unavailable) and the dark panel the notification cards sit in
+// off, a tile that is unavailable) and the notification cards
 export const TabletShade = {
     scrim: [17, 53, 58],
     tile: [16, 35, 38],
     tileTarget: [40, 65, 69],
     unavailable: [20, 47, 50],
-    panel: Color.surface,
     card: Color.surfaceContainer,
 };
 

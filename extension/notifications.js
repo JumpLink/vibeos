@@ -33,6 +33,7 @@ const SECTION_GAP = 48;                 // before a new section
 const TOP_PADDING = 48;                 // between the scrim top and the first row
 const DISMISS_X = 1032;                 // a dismissed row leaves to ±(W − side padding)
 const BOTTOM_INSET = 48;                // the stack scrolls to end above the navigation handle
+const EMPTY_ROW = 64;                   // a tablet's short panel for "No notifications": this, the inset above and below
 const MAX_FLING_VELOCITY = 24000;       // px/s
 
 // --- a row (the 2025 templates); y relative to the row's top
@@ -1075,6 +1076,25 @@ class NotificationStack extends St.Widget {
         this._place();
     }
 
+    // A tablet's panel (frame.fitPanel) ends under the stack: its height from the scrim's top, screen px, as the
+    // stack is shown now. The footer's bottom with the inset the panel has above its first row under it, or a short
+    // panel around "No notifications", between the two while the stack empties or fills; never past the panel's
+    // end, where the stack scrolls inside it. What is leaving holds its place only when nothing stays.
+    get panelHeight() {
+        const bounds = this._bounds;
+        let bottom = 0, leaving = 0;
+        for (const state of this._layout.values()) {
+            if (state.leaving)
+                leaving = Math.max(leaving, state.offset + state.h);
+            else
+                bottom = Math.max(bottom, state.offset + state.h);
+        }
+        bottom ||= leaving;
+        const empty = 2 * bounds.top + EMPTY_ROW;
+        const content = bottom > 0 ? 2 * bounds.top + this._ratio * bottom : empty;
+        return Math.min(lerp(content, empty, this._emptyAlpha.now), Math.max(bounds.end - this._stackY, 0));
+    }
+
     // --- scrolling, when the stack is longer than the screen under the QQS; the shade hands its drags over
 
     // from the heights as shown, so a row leaving a scrolled stack does not jump it
@@ -1376,15 +1396,19 @@ class NotificationStack extends St.Widget {
             actor.setVisibleHeight(state.h * this._ratio);
             actor.opacity = Math.round(255 * state.alpha);
         }
-        // "No notifications", centred in the space under the QQS
+        // "No notifications", centred in the space under the QQS, or in a tablet's short panel
+        const fit = !!bounds.fitPanel;
+        const panelHeight = fit ? this.panelHeight : 0;
         const emptyAlpha = this._emptyAlpha.now;
         this._empty.visible = emptyAlpha > 0;
         if (emptyAlpha > 0) {
             const [w, h] = this._empty.get_size();
-            this._empty.set_position(px(bounds.left + bounds.width / 2) - w / 2,
-                px((this._stackY + bounds.end) / 2) - h / 2);
+            const centreY = fit ? this._stackY + panelHeight / 2 : (this._stackY + bounds.end) / 2;
+            this._empty.set_position(px(bounds.left + bounds.width / 2) - w / 2, px(centreY) - h / 2);
             this._empty.opacity = Math.round(255 * emptyAlpha);
         }
+        if (fit)
+            this._shade.stackPanelChanged?.(panelHeight);
     }
 
     // --- swipes
