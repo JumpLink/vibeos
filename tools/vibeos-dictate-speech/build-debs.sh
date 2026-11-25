@@ -66,7 +66,9 @@ a2840585f8411be8e6826a31ef15ae65c950bd74a2437a73b013398a934ad0c6 core/third-part
 c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566 core/third-party/utf-8/LICENSE.txt
 3b510150d34f248a221bb88e1d811238d6c6c18b51231822c42974c39bb07256 core/third-party/utf8proc/LICENSE.md
 "
-ORT_NOTICES_URL=https://raw.githubusercontent.com/microsoft/onnxruntime/v1.23.2/ThirdPartyNotices.txt
+# ORT_NOTICES_URL from the environment: another copy of the same file (its sum is checked), e.g. a file:// URL to
+# an earlier build's usr/share/doc/vibeos-dictate-moonshine/licenses/onnxruntime-ThirdPartyNotices.txt
+ORT_NOTICES_URL=${ORT_NOTICES_URL:-https://raw.githubusercontent.com/microsoft/onnxruntime/v1.23.2/ThirdPartyNotices.txt}
 ORT_NOTICES_SHA256=e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc
 
 VOSK_VERSION=0.3.45
