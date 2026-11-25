@@ -5,8 +5,8 @@
  * This file is its face on D-Bus (vibeos.Messaging.Sms) and its notifications. It is bugle_db's only writer: the
  * app reads the store itself, read-only, and is told by Changed what to read again.
  *
- * It stands aside while gsm2sip is in gateway mode, as the Phone's service does: then gsm2sipd takes the modem's
- * messages to SIP, and a second taker would delete them off the modem before it got them. */
+ * It stands aside while a SIP gateway has the modem (gateway mode), as the Phone's service does: then the gateway
+ * takes the modem's messages to SIP, and a second taker would delete them off the modem before it got them. */
 #include "messaging-types.h"
 #include "sms-modem.h"
 #include "sms-store.h"
@@ -789,7 +789,7 @@ stop_modem (Service *self)
   emit_properties (self);
 }
 
-/* --- gsm2sip's gateway mode */
+/* --- gateway mode (a SIP gateway has the modem) */
 
 static void
 sync_gateway (Service *self)
@@ -800,7 +800,7 @@ sync_gateway (Service *self)
   if (enabled && g_variant_get_boolean (enabled))
     {
       if (self->modem)
-        g_message ("sms: gateway mode, the messages are gsm2sipd's");
+        g_message ("sms: gateway mode, the messages are the SIP gateway's");
       stop_modem (self);
     }
   else
@@ -829,7 +829,7 @@ on_gateway_proxy (GObject *source, GAsyncResult *result, gpointer data)
 
   self->gateway = g_dbus_proxy_new_finish (result, &error);
   if (!self->gateway)
-    g_warning ("no gsm2sip proxy: %s", error->message);
+    g_warning ("no SIP gateway proxy: %s", error->message);
   else
     {
       g_signal_connect (self->gateway, "g-properties-changed", G_CALLBACK (on_gateway_properties), self);

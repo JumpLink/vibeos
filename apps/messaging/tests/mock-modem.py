@@ -7,7 +7,7 @@
 # parts are still RECEIVING and turns RECEIVED when the last one is in; one made by Create is announced with
 # received FALSE, and once sent carries the network's message reference; a deleted one is gone. A delivery report is
 # a message of its own (a STATUS_REPORT carrying the reference of the one it reports on), as ModemManager does not
-# tie it to the message it reports on. And gsm2sipd, whose Enabled is gateway mode.
+# tie it to the message it reports on. And the SIP gateway, whose Enabled is gateway mode.
 #
 # On the session bus: a notification server, and the Messaging app's org.freedesktop.Application (what a tap on a
 # notification opens).

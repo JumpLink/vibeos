@@ -40,7 +40,7 @@ void        calls_free (Calls *self);
 GVariant   *calls_get_calls (Calls *self);
 gboolean    calls_get_muted (Calls *self);
 gboolean    calls_get_speaker (Calls *self);
-/* "ready"; "no-modem"; "emergency-only" (no SIM, or not registered); "gateway" (gsm2sip has the modem) */
+/* "ready"; "no-modem"; "emergency-only" (no SIM, or not registered); "gateway" (a SIP gateway has the modem) */
 const char *calls_get_status (Calls *self);
 /* what the modem can do besides calling and answering: "hold" (and so swap and answer-and-hold), "dtmf" */
 GStrv       calls_get_features (Calls *self);
@@ -50,7 +50,7 @@ const char *calls_get_country (Calls *self);
  * on, the announcement can be played into the call (it has the PCM for it, and the announcement's sound) */
 gboolean    calls_get_can_record (Calls *self);
 
-/* gsm2sip took the modem (its gateway mode) or gave it back: the service stands aside meanwhile */
+/* a SIP gateway took the modem (gateway mode) or gave it back: the service stands aside meanwhile */
 void        calls_set_gateway (Calls *self, gboolean gateway);
 
 /* the user's asks. Each answers with an error when it cannot be done; the call's state says when it is done */

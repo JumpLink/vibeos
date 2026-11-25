@@ -95,7 +95,7 @@ struct _Calls {
 
   gboolean call_audio;          /* the call audio is switched in (CallAudio's mode 1) */
   gboolean muted, speaker;
-  gboolean gateway;             /* gsm2sip has the modem */
+  gboolean gateway;             /* a SIP gateway has the modem */
   gboolean incall_visible;      /* the in-call screen is in front */
   guint full_screen_call;       /* the call whose answer screen the shell put up */
   guint silenced_call;          /* the call whose ringing was silenced */
@@ -1555,10 +1555,10 @@ calls_set_gateway (Calls *self, gboolean gateway)
   if (gateway == self->gateway)
     return;
   self->gateway = gateway;
-  g_message ("calls: %s", gateway ? "gateway mode: gsm2sip has the modem" : "gateway mode off");
+  g_message ("calls: %s", gateway ? "gateway mode: a SIP gateway has the modem" : "gateway mode off");
   if (gateway)
     {
-      /* gsm2sip answers and ends the calls now: ours are let go of without a word to the modem */
+      /* the gateway answers and ends the calls now: ours are let go of without a word to the modem */
       ringer_stop (self->ringer);
       g_ptr_array_set_size (self->calls, 0);
       call_notifications_clear_call (self->notifications);

@@ -386,7 +386,7 @@ def run(t):
         check('this one', opened[0][1:] == ['open-conversation', [anna]], opened)
     t.wait('and the notification goes', lambda: t.notification('0170 1234567') is None)
 
-    # --- gateway mode: the messages are gsm2sipd's
+    # --- gateway mode: the messages are the SIP gateway's
     t.modem('SetGateway', (True,), '(b)')
     t.wait('in gateway mode, not available', lambda: not t.prop('Available'))
     sms = t.incoming(BOB, 'For the gateway')

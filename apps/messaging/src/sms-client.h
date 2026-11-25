@@ -18,7 +18,7 @@ SmsClient *sms_client_new (void);
 
 /* the store, or NULL until the service has made it (its first start) */
 SmsStore  *sms_client_get_store (SmsClient *self);
-/* a modem that can send (FALSE also in gsm2sip's gateway mode) */
+/* a modem that can send (FALSE also in gateway mode, while a SIP gateway has the modem) */
 gboolean   sms_client_get_available (SmsClient *self);
 /* the network's country for formatting numbers ("DE"), or NULL */
 const char *sms_client_get_country (SmsClient *self);

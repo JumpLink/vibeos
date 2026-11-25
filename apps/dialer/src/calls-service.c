@@ -5,8 +5,8 @@
  * This file is its face on D-Bus (vibeos.Dialer.Calls): the apps ask it to dial, answer and hang up, and read
  * the calls and the call log from it. What it does about calls is in calls.c.
  *
- * It also stands aside while gsm2sip is in gateway mode: then gsm2sipd answers the modem's calls and bridges them
- * to SIP, and a second answerer on the same modem would ring and pick up the same call. */
+ * It also stands aside while a SIP gateway has the modem (gateway mode): then the gateway answers the modem's calls
+ * and bridges them to SIP, and a second answerer on the same modem would ring and pick up the same call. */
 #include "call-log.h"
 #include "calls.h"
 
@@ -349,7 +349,7 @@ on_method_call (GDBusConnection *bus, const char *sender, const char *path, cons
 
 static const GDBusInterfaceVTable vtable = { .method_call = on_method_call, .get_property = get_property };
 
-/* --- gsm2sip's gateway mode */
+/* --- gateway mode (a SIP gateway has the modem) */
 
 static void
 sync_gateway (Service *self)
