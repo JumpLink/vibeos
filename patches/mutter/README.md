@@ -17,9 +17,11 @@ Five patches to mutter 51, for a phone. They do nothing on a desktop.
 **mutter 51.0-3+gp1** (`libmutter-51-0`, `gir1.2-mutter-51`, `mutter-common`, `mutter-common-bin`), in the
 VibeOS apt archive (component `mutter`, with its source package) and in the system image (0.1.4.3 and later):
 Debian's `mutter` 51.0-3 (`mutter_51.0-3.dsc`, sha256
-`c8277b85d7cd80f11c9c47fe804573a248fb5e60e7dd888f37a31d5b9ad22759`) with these five after Debian's own series, in
-`debian/patches/gnome-phone/`, and the two symbols 0004 exports added to `debian/libmutter-51-0.symbols`.
-[`image/build-mutter.sh`](../../image/build-mutter.sh) rebuilds it:
+`c8277b85d7cd80f11c9c47fe804573a248fb5e60e7dd888f37a31d5b9ad22759`) with these five after Debian's own series, and
+the two symbols 0004 exports added to `debian/libmutter-51-0.symbols`. The archive's 51.0-3+gp1 source package
+carries these patches in its `debian/patches/` under the project's former directory name;
+[`image/build-mutter.sh`](../../image/build-mutter.sh) now puts them in `debian/patches/vibeos/`, so a rebuild has
+the same patches and code but is not byte-identical to the archive's source package. To rebuild it:
 
     sudo image/build-mutter.sh OUTDIR       # Debian's mutter 51.0-3 + patches/mutter = 51.0-3+gp1
 
@@ -38,9 +40,9 @@ GPL-2.0-or-later, as mutter.
 
 ## How this set was checked
 
-- 51.0-3+gp1: the archive's source package carries these five in `debian/patches/gnome-phone/`, byte-identical except
-  0004, whose description says "vibeos" where the built copy said "gnome-phone" (the project's rename; the code is
-  the same). Debian's 51.0-3 with that series is file for file the build's tree, and the system image's
-  `libmutter-51.so.0.0.0` matches the .deb the build's `.changes` lists.
+- 51.0-3+gp1: the archive's source package carries these five (in its patch directory under the project's former
+  name), byte-identical except 0004, whose description now says "vibeos" where the built copy had the project's
+  former name (the code is the same). Debian's 51.0-3 with that series is file for file the build's tree, and the
+  system image's `libmutter-51.so.0.0.0` matches the .deb the build's `.changes` lists.
 - mutter-mobile in `/opt/gnome-mobile`: the build tree no longer exists. The shipped libraries carry the strings
   0001 and 0002 add, and their build times follow the commits of 0001-0003 and 0005 in this repository.

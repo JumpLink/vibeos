@@ -34,6 +34,6 @@ GPL-2.0-or-later, as GNOME Shell.
 ## How this set was checked
 
 The tag with these five is file for file the tree the shipped `libshell-51.so` was built in, except one comment in
-0003 that now says "vibeos" where the built copy said "gnome-phone" (the project's rename). All 162 JavaScript
+0003 that now says "vibeos" where the built copy had the project's former name. All 162 JavaScript
 resources in the shipped library equal that tree's files; the shipped library is byte-identical to the build's
 output.
