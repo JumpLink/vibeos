@@ -45,6 +45,7 @@ S10E_UBOOT=				# U-Boot image for recovery (its first 4 MiB are taken)
 S10E_IMAGE=				# its kernel, 7.2.15-s10e-2 #58: the Image of that build, which the stage's replaces
 S10E_MODULES=				# that kernel build's modules_install tree (lib/modules)
 S10E_HCI_UART=				# hci_uart.ko with the hci_bcm sleep fix, built against that kernel (updates/)
+S10E_SHUB=				# bcm4775-shub.ko with the GNSS device, built against that kernel (stripped, uncompressed)
 POCO_STAGE=				# POCO X3 NFC: device stage
 POCO_K22_IMG=				# its 0.1.1 ROM image (the ESP is read from it)
 POCO_K22_ZIP=				# its 0.1.1 ROM zip (recovery-uboot.img, which POCO_UBOOT must make again)

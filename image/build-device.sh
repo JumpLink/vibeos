@@ -160,10 +160,19 @@ s10e)
 	[ "$(/usr/sbin/modinfo -F vermagic "$S10E_HCI_UART" | cut -d' ' -f1)" = $KVER ] || { echo "$S10E_HCI_UART: not for $KVER" >&2; exit 1; }
 	rm -rf "${P:?}/usr/lib/modules"
 	modules $KVER "${S10E_MODULES:?set S10E_MODULES}"
+	# the sensor hub's module with the GNSS engine as /dev/bcm4775-gnss (linux-beyond0lte's bcm4775_shub commit),
+	# which the S10e has run since 11-25: S10E_SHUB, compressed as modules_install compresses the others, in place
+	# of that build's own
+	SH=$P/usr/lib/modules/$KVER/kernel/drivers/iio/common/bcm4775_shub/bcm4775-shub.ko.zst
+	[ -f "$SH" ] || { echo "no bcm4775-shub.ko.zst in S10E_MODULES" >&2; exit 1; }
+	[ "$(sha256sum < "${S10E_SHUB:?set S10E_SHUB}" | cut -c1-16)" = af89843586657515 ] ||
+		{ echo "$S10E_SHUB: not the GNSS hub module of 11-25" >&2; exit 1; }
+	zstd -q -19 -f "$S10E_SHUB" -o "$SH" && chmod 644 "$SH"
+	[ "$(sha256sum < "$SH" | cut -c1-16)" = 65f247c2e0e20566 ] || { echo "$SH: not the S10e's compressed copy" >&2; exit 1; }
 	install -D -m 644 "$S10E_HCI_UART" "$P/usr/lib/modules/$KVER/updates/hci_uart.ko"
 	depmod -b "$P/usr" $KVER 2>> "$L/depmod.txt"
 	install -m 755 "$S10E_IMAGE" "$P/boot/s10e/Image"
-	log "/boot/s10e/Image <- $S10E_IMAGE ($(sha256sum < "$S10E_IMAGE" | cut -c1-16)); updates/hci_uart.ko <- $S10E_HCI_UART"
+	log "/boot/s10e/Image <- $S10E_IMAGE ($(sha256sum < "$S10E_IMAGE" | cut -c1-16)); updates/hci_uart.ko <- $S10E_HCI_UART; bcm4775-shub <- $S10E_SHUB"
 	cp "$P/boot/s10e/Image" "$P/boot/s10e/Image.prev"		# U-Boot's second menu entry
 	REGDB_KERNEL=$P/boot/s10e/Image
 	# the initramfs's /init <- s10e/init (11-23, owner: nothing stops the boot to the GUI): Mobian always boots,
