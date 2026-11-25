@@ -198,6 +198,18 @@ s10e)
 	install -d "$P/etc/systemd/system/s10e-arm-reset.service.d"	# the same trap: sysinit.target, oneshot, re-run
 	cp "$P/etc/systemd/system/s10e-touch-bind.service.d/run-once.conf" "$P/etc/systemd/system/s10e-arm-reset.service.d/"
 	sed -i 's| dyndbg="[^"]*"||' "$P/boot/s10e/bootargs.env"
+	# softlockup_panic=1 on the command line (owner 11-23: nothing stops the boot): a soft lockup before
+	# 60-hang-panic.conf's sysctl sets it hung the phone for ever; with it, panic=10 restarts it
+	grep -q 'softlockup_panic' "$P/boot/s10e/bootargs.env" || sed -i 's|\( panic=10\) |\1 softlockup_panic=1 |' "$P/boot/s10e/bootargs.env"
+	[ "$(grep -o ' panic=10 softlockup_panic=1 ' "$P/boot/s10e/bootargs.env" | wc -l)" = 1 ] ||
+		{ echo "bootargs.env: not one softlockup_panic=1 after panic=10" >&2; exit 1; }
+	# UCM: S10e.conf with the Voice Call verb (VoiceCall.conf), which the card has only with the call's own PCMs
+	# (hw:,4 "Call Record" first: a kernel whose ABOX driver makes them); on 7.2.15-s10e-2 it has HiFi alone, as
+	# with the stage's S10e.conf. exynos-callaudio-pw (the stage's) and the Phone app's call recording use them.
+	[ "$(sha256sum < "$P/usr/share/alsa/ucm2/conf.d/S10e/S10e.conf" | cut -c1-16)" = bb5d0855c9c4c7ff ] ||
+		{ echo "the stage's S10e.conf is not bb5d0855 (its HiFi-only one): look at it before replacing it" >&2; exit 1; }
+	install -m 644 "$T/s10e/ucm/S10e.conf" "$T/s10e/ucm/VoiceCall.conf" "$P/usr/share/alsa/ucm2/conf.d/S10e/"
+	log "UCM S10e: S10e.conf and VoiceCall.conf <- s10e/ucm ($(sha256sum < "$T/s10e/ucm/S10e.conf" | cut -c1-16), $(sha256sum < "$T/s10e/ucm/VoiceCall.conf" | cut -c1-16))"
 	# Samsung's firmware from the vendor partition (audio DSP, Wi-Fi, Bluetooth, the video codec): what
 	# s10e-firstboot copies on a first boot, bundled here (11-21). Source: a root copy of our S10e (s10e-firstboot's
 	# copies from that phone's vendor partition, 2026-10-29).
