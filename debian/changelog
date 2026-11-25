@@ -1,3 +1,13 @@
+vibeos (1:0.1.5) unstable; urgency=medium
+
+  * Browser: a page whose process ended, because it crashed or because
+    the phone ran out of memory, shows "This page stopped working" (or
+    "used too much memory") with a Reload button, in place of an empty
+    grey view. The address typed is looked up while it is typed, so the
+    page starts loading sooner (never in incognito).
+
+ -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
+
 vibeos (1:0.1.4.3) unstable; urgency=medium
 
   * VibeOS in German, Spanish, French, Italian, Dutch and Russian, as well
