@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-shell\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 00:24+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -205,7 +205,8 @@ msgstr "Kod PIN zawiera litery lub symbole"
 # android: Settings bluetooth_enter_pin_other_device
 #: pairdialog.js
 msgid "You may also need to type this PIN on the other device."
-msgstr "Może być również konieczne wpisanie tego kodu PIN na drugim urządzeniu."
+msgstr ""
+"Może być również konieczne wpisanie tego kodu PIN na drugim urządzeniu."
 
 # android: SystemUI usb_device_dialog_cancel_button
 #. authorize: a device pairing without a code
@@ -370,6 +371,16 @@ msgstr "Automatyczna jasność"
 msgctxt "media volume"
 msgid "Mute"
 msgstr "Wyciszenie"
+
+#. the footer of quick settings: how many apps are running with no window (Android counts the apps with a
+#. foreground service)
+#: qs.js
+#, javascript-format
+msgid "%d app is active"
+msgid_plural "%d apps are active"
+msgstr[0] "%d aktywna aplikacja"
+msgstr[1] "%d aktywne aplikacje"
+msgstr[2] "%d aktywnych aplikacji"
 
 # android: SystemUI hearing_devices_settings_button
 #: qs.js
