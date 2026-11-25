@@ -2149,15 +2149,15 @@ msgstr "APN automatico"
 
 #: src/ns-net.c
 msgid "Could not set network mode"
-msgstr ""
+msgstr "Impossibile impostare la modalità di rete"
 
 #: src/ns-net.c
 msgid "Applying…"
-msgstr ""
+msgstr "Applicazione…"
 
 #: src/ns-net.c
 msgid "Network mode"
-msgstr ""
+msgstr "Modalità di rete"
 
 # android: Settings wifi_peap_phase2_entries_with_sim_auth[2]
 #: src/ns-net.c
@@ -2227,6 +2227,8 @@ msgid ""
 "The modem keeps this choice after a restart. If it finds no network, choose "
 "Automatic."
 msgstr ""
+"Il modem mantiene questa scelta dopo il riavvio. Se non trova nessuna rete, "
+"scegli «Automatico»."
 
 #: src/ns-net.c
 msgid "SIM and network"
@@ -2410,37 +2412,37 @@ msgstr "Aggiungi stampante"
 
 #: src/ns-mobile-modes.c
 msgid "CS"
-msgstr ""
+msgstr "CS"
 
 #: src/ns-mobile-modes.c
 msgid "2G"
-msgstr ""
+msgstr "2G"
 
 #: src/ns-mobile-modes.c
 msgid "3G"
-msgstr ""
+msgstr "3G"
 
 #: src/ns-mobile-modes.c
 msgid "4G"
-msgstr ""
+msgstr "4G"
 
 #: src/ns-mobile-modes.c
 msgid "5G"
-msgstr ""
+msgstr "5G"
 
 #: src/ns-mobile-modes.c
 msgid "Unknown"
-msgstr ""
+msgstr "Sconosciuto"
 
 #: src/ns-mobile-modes.c
 #, c-format
 msgid "%s only"
-msgstr ""
+msgstr "Solo %s"
 
 #: src/ns-mobile-modes.c
 #, c-format
 msgid "%s, prefer %s"
-msgstr ""
+msgstr "%1$s, preferito %2$s"
 
 #: src/ns-pages.c
 msgid "Networks, saved networks"

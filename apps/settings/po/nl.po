@@ -2143,15 +2143,15 @@ msgstr "Automatische APN"
 
 #: src/ns-net.c
 msgid "Could not set network mode"
-msgstr ""
+msgstr "Kan netwerkmodus niet instellen"
 
 #: src/ns-net.c
 msgid "Applying…"
-msgstr ""
+msgstr "Toepassen…"
 
 #: src/ns-net.c
 msgid "Network mode"
-msgstr ""
+msgstr "Netwerkmodus"
 
 # android: Settings sim_card (several translations, short)
 #: src/ns-net.c
@@ -2221,6 +2221,8 @@ msgid ""
 "The modem keeps this choice after a restart. If it finds no network, choose "
 "Automatic."
 msgstr ""
+"De modem onthoudt deze keuze na een herstart. Vindt hij geen netwerk, kies "
+"dan “Automatisch”."
 
 #: src/ns-net.c
 msgid "SIM and network"
@@ -2402,37 +2404,37 @@ msgstr "Printer toevoegen"
 
 #: src/ns-mobile-modes.c
 msgid "CS"
-msgstr ""
+msgstr "CS"
 
 #: src/ns-mobile-modes.c
 msgid "2G"
-msgstr ""
+msgstr "2G"
 
 #: src/ns-mobile-modes.c
 msgid "3G"
-msgstr ""
+msgstr "3G"
 
 #: src/ns-mobile-modes.c
 msgid "4G"
-msgstr ""
+msgstr "4G"
 
 #: src/ns-mobile-modes.c
 msgid "5G"
-msgstr ""
+msgstr "5G"
 
 #: src/ns-mobile-modes.c
 msgid "Unknown"
-msgstr ""
+msgstr "Onbekend"
 
 #: src/ns-mobile-modes.c
 #, c-format
 msgid "%s only"
-msgstr ""
+msgstr "Alleen %s"
 
 #: src/ns-mobile-modes.c
 #, c-format
 msgid "%s, prefer %s"
-msgstr ""
+msgstr "%1$s, voorkeur voor %2$s"
 
 #: src/ns-pages.c
 msgid "Networks, saved networks"
