@@ -25,7 +25,7 @@
 #      exim4's settings); the first-boot units every device shares (grow the root; install the device package);
 #      a developer image only (VIBEOS_DEV=1): the USB network on the gadget port, which a release image never has
 #   4. VibeOS SYSTEM_VERSION (apt in an arm64 chroot, local .debs + Debian for new dependencies: mpv, libmpv2): every
-#      package of the build except -dev, -dbgsym and the neo-* transitional ones; mutter gp1 held; GNOME's own
+#      package of the build except -dev and -dbgsym; mutter gp1 held; GNOME's own
 #      apps out (the ROM list), Showtime out, GNOME Settings out (vibeos-settings replaces it), Files and Vim
 #      hidden; the home screen and the drawer list of the POCO ROM (Showtime's place: Video Player); user's
 #      session vibeos
@@ -73,7 +73,7 @@ for f in "$VDEBS"/*_1:${SV}_*.deb "$VDEBS"/*_${SV}_*.deb; do
 	[ -f "$f" ] || continue
 	p=$(dpkg-deb -f "$f" Package); v=$(dpkg-deb -f "$f" Version)
 	[ "$v" = 1:$SV ] || { echo "$f: version $v, not 1:$SV" >&2; exit 1; }
-	case $p in *-dbgsym|*-dev|neo-*) continue ;; esac
+	case $p in *-dbgsym|*-dev) continue ;; esac
 	cp "$f" "$P/"
 done
 for p in gir1.2-mutter-51 libmutter-51-0 mutter-common mutter-common-bin; do
@@ -129,8 +129,7 @@ if [ "$BASEKIND" = s10e ]; then
 	LC_ALL=C comm -12 "$L/stage-files.txt" "$L/packaged.txt" > "$L/stage-packaged-kept.txt"
 	LC_ALL=C comm -23 "$L/stage-files.txt" "$L/packaged.txt" | while read -r f; do rmv "$f"; done
 	# and what build.sh added around it
-	rmv /boot/s10e /usr/lib/modules/7.2.15-s10e /var/lib/initramfs-tools/7.2.15-s10e /var/lib/s10e /var/lib/exynos-cp /usr/local/share/s10e-gnome-phone \
-		/usr/local/sbin/s10e-gnome-phone-setup /etc/systemd/system/s10e-gnome-phone-setup.service \
+	rmv /boot/s10e /usr/lib/modules/7.2.15-s10e /var/lib/initramfs-tools/7.2.15-s10e /var/lib/s10e /var/lib/exynos-cp \
 		/etc/systemd/system/s10e-ssh-keygen.service /etc/environment.d/60-s10e-gpu.conf /etc/machine-info
 	for f in "$M"/usr/local/sbin/s10e-* "$M"/usr/local/sbin/exynos-* "$M"/usr/local/bin/exynos-*; do rmv "${f#$M}"; done
 	# enablement links whose unit is gone, and any S10e/Exynos unit or link left

@@ -1,7 +1,7 @@
 # The ROM's home screen is our POCO's (2026-11-12: these apps and this default icon placement):
 # home-layout.json places the icons; Clock and Compass stay in the drawer as VibeOS has them (the home screen's clock
 # widget opens the clock), and so does Files, which the POCO's home screen does not have.
-# VibeOS names its schema vibeos.Shell (gnome-phone's was neo.Phone): an override naming a schema that does not exist
-# is skipped without a word, so this one must name VibeOS's.
+# The launcher's schema is vibeos.Shell: an override naming a schema that does not exist is skipped without a word,
+# so this one must name it exactly.
 [vibeos.Shell]
 hidden-from-home=['vibeos.Clock.desktop', 'vibeos.Compass.desktop', 'vibeos.Files.desktop']
