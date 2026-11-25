@@ -8,6 +8,8 @@
 
 #include <errno.h>
 #include <gio/gdesktopappinfo.h>
+#include <glib/gstdio.h>
+#include <sys/stat.h>
 #include <sys/utsname.h>
 #include <unistd.h>
 
@@ -691,6 +693,31 @@ typedef struct {
   GtkWidget *name, *login, *type, *others;
 } Users;
 
+/* the text's inset in the rows under the one with the picture, so that the card's text lines up (libvibeos's
+ * TEXT_AFTER_START, the inset after a row's start) */
+#define AFTER_PICTURE 68
+
+/* the user's picture at the row's start: AccountsService's IconFile (the picture chosen in Settings, or ~/.face for a
+ * user who has chosen none), or the generic one when there is none or it cannot be read (another user's home often
+ * is not) */
+static void
+user_picture (GtkWidget *row, GVariant *props)
+{
+  const char *path = NULL;
+  g_autoptr (GdkTexture) t = NULL;
+  GStatBuf st;
+  g_variant_lookup (props, "IconFile", "&s", &path);
+  /* a picture, not something huge (AccountsService takes a chosen one up to 1 MB) */
+  if (path && *path && g_stat (path, &st) == 0 && S_ISREG (st.st_mode) && st.st_size > 0 && st.st_size <= 4 << 20)
+    t = gdk_texture_new_from_filename (path, NULL);
+  if (t) {
+    const GdkRGBA none = { 0, 0, 0, 0 };
+    vibeos_list_row_set_avatar (VIBEOS_LIST_ROW (row), GDK_PAINTABLE (t), NULL, &none);
+  } else {
+    vibeos_list_row_set_icon (VIBEOS_LIST_ROW (row), "avatar-default-symbolic");
+  }
+}
+
 static void
 other_got (GObject *src, GAsyncResult *res, gpointer group)
 {
@@ -701,7 +728,7 @@ other_got (GObject *src, GAsyncResult *res, gpointer group)
     const char *real = "", *login = "";
     g_variant_lookup (props, "RealName", "&s", &real);
     g_variant_lookup (props, "UserName", "&s", &login);
-    ns_row (group, "avatar-default-symbolic", *real ? real : login, login);
+    user_picture (ns_row (group, NULL, *real ? real : login, login), props);
     ns_group_set_visible (group, TRUE);
   }
   g_object_unref (group);
@@ -724,6 +751,7 @@ me_got (GObject *src, GAsyncResult *res, gpointer page)
     g_object_set_data_full (G_OBJECT (u->name), "ns-name", g_strdup (real), g_free);
     ns_row_set_subtitle (u->login, login);
     ns_row_set_subtitle (u->type, type == 1 ? _("Administrator") : _("Standard"));
+    user_picture (u->name, props);
   }
   g_object_unref (page);
 }
@@ -775,10 +803,13 @@ ns_page_users (GtkWidget *row, gpointer data)
   Users *u = g_new0 (Users, 1);
   g_object_set_data_full (G_OBJECT (page), "ns-users", u, g_free);
   GtkWidget *g = ns_group (c, _("Your account"));
-  u->name = ns_row (g, NULL, _("Name"), NULL);
+  /* the picture on the name's row; the generic one until AccountsService answers */
+  u->name = ns_row (g, "avatar-default-symbolic", _("Name"), NULL);
   ns_row_on_activate (u->name, real_name_tapped, NULL);
   u->login = ns_row_info (g, _("User name"), g_get_user_name ());
   u->type = ns_row_info (g, _("Account type"), NULL);
+  vibeos_list_row_set_text_inset (VIBEOS_LIST_ROW (u->login), AFTER_PICTURE);
+  vibeos_list_row_set_text_inset (VIBEOS_LIST_ROW (u->type), AFTER_PICTURE);
   g = ns_group (c, NULL);
   GtkWidget *r = ns_row (g, NULL, _("Screen lock and password"), _("A pattern or PIN is also your password"));
   ns_row_on_activate (r, ns_page_lock_screen, NULL);
