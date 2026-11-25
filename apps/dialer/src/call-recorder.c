@@ -2,6 +2,7 @@
  * the "Voice Call" profile by their PCMs, GStreamer to record and to play the announcement. */
 #include "call-recorder.h"
 #include "call-recording.h"
+#include "gst-start.h"
 
 #include <fcntl.h>
 #include <gio/gio.h>
@@ -38,6 +39,7 @@ struct _CallRecorder {
   gboolean look_again;          /* a source or sink came meanwhile */
 
   GstElement *recording;
+  guint gst_wait_id;            /* the recording waits for GStreamer */
   GstElement *uplink, *local;   /* the announcement, into the call and on the phone */
   gboolean announced;
 
@@ -80,6 +82,9 @@ static void
 finish (CallRecorder *self, gboolean failed, gboolean report)
 {
   g_clear_handle_id (&self->wait_id, g_source_remove);
+  if (self->gst_wait_id)
+    gst_start_cancel (self->gst_wait_id);
+  self->gst_wait_id = 0;
   drop_pipeline (&self->uplink);
   drop_pipeline (&self->local);
   drop_pipeline (&self->recording);
@@ -191,9 +196,9 @@ announce (CallRecorder *self)
   self->local = announce_pipeline (self, NULL, on_local_message, &error);
   if (!self->local)
     g_warning ("recorder: no announcement on the phone: %s", error->message);
-  gst_element_set_state (self->uplink, GST_STATE_PLAYING);
+  gst_start_set_state (self->uplink, GST_STATE_PLAYING, NULL, NULL);
   if (self->local)
-    gst_element_set_state (self->local, GST_STATE_PLAYING);
+    gst_start_set_state (self->local, GST_STATE_PLAYING, NULL, NULL);
 }
 
 /* --- the recording */
@@ -296,6 +301,23 @@ record_pipeline (CallRecorder *self, GError **error)
   return pipeline;
 }
 
+static void begin (CallRecorder *self);
+
+static void
+on_gst_ready (gboolean ready, gpointer data)
+{
+  CallRecorder *self = data;
+
+  self->gst_wait_id = 0;
+  if (ready)
+    begin (self);
+  else
+    {
+      g_warning ("recorder: no recording without GStreamer");
+      finish (self, TRUE, TRUE);
+    }
+}
+
 /* the source (and the sink) found: the recording starts */
 static void
 begin (CallRecorder *self)
@@ -303,6 +325,13 @@ begin (CallRecorder *self)
   g_autoptr(GError) error = NULL;
 
   g_clear_handle_id (&self->wait_id, g_source_remove);
+  /* GStreamer is started with the service: a recording that comes before it is up waits for it */
+  if (!gst_start_is_ready ())
+    {
+      if (!self->gst_wait_id)
+        self->gst_wait_id = gst_start_wait (on_gst_ready, self);
+      return;
+    }
   if (!make_file (self->path, &error))
     {
       g_warning ("recorder: cannot make the file: %s", error->message);
@@ -319,8 +348,8 @@ begin (CallRecorder *self)
     }
   self->state = RECORDING;
   g_message ("recorder: recording from %s", self->source ? self->source : self->test_source);
-  if (gst_element_set_state (self->recording, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE)
-    finish (self, TRUE, TRUE);
+  /* a source that cannot be opened ends it by the bus's error */
+  gst_start_set_state (self->recording, GST_STATE_PLAYING, NULL, NULL);
 }
 
 static gboolean
@@ -472,6 +501,7 @@ call_recorder_new (CallRecorderStopped stopped, gpointer data)
   self->stopped = stopped;
   self->data = data;
   self->pa_loop = pa_glib_mainloop_new (NULL);
+  gst_start_begin (NULL);
   return self;
 }
 
@@ -503,8 +533,6 @@ call_recorder_start (CallRecorder *self, const char *path, const char *capture_p
       g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_BUSY, "a call is being recorded already");
       return FALSE;
     }
-  /* GStreamer from the first recording on, as the ringer has it */
-  gst_init (NULL, NULL);
   self->path = g_strdup (path);
   self->capture = g_strdup (capture_pcm);
   self->playback = announcement ? g_strdup (playback_pcm) : NULL;

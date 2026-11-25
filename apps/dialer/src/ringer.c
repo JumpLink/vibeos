@@ -2,6 +2,8 @@
  * for the speaker's volume, feedbackd for the vibration and for the ringer mode. */
 #include "ringer.h"
 
+#include "gst-start.h"
+
 #include <gst/app/gstappsrc.h>
 #include <gst/gst.h>
 #include <math.h>
@@ -52,10 +54,13 @@ struct _Ringer {
   GstElement *player;
   char *uri;
   gboolean previewing;          /* the player plays a ringtone once, for Settings */
+  guint gst_wait_id;            /* the ringtone waits for GStreamer */
   guint vibrate_id;
 
   GstElement *tone;             /* the keypad tones: the key's two sines, made by tone_need_data, into the speaker */
   guint tone_idle_id;
+  gboolean tones_open;          /* the keypad is up: the tones' stream starts as soon as GStreamer is up */
+  guint tone_wait_id;
   /* the key, from the main thread to the one making the tones */
   GMutex tone_lock;
   double tone_low, tone_high;   /* Hz, of the key held or last held */
@@ -217,11 +222,11 @@ on_player_message (GstBus *bus, GstMessage *message, gpointer data)
   fallback = default_ringtone ();
   if (fallback && g_strcmp0 (fallback, self->uri) != 0)
     {
-      gst_element_set_state (self->player, GST_STATE_NULL);
+      gst_start_set_state (self->player, GST_STATE_NULL, NULL, NULL);
       g_free (self->uri);
       self->uri = g_steal_pointer (&fallback);
       g_object_set (self->player, "uri", self->uri, NULL);
-      gst_element_set_state (self->player, GST_STATE_PLAYING);
+      gst_start_set_state (self->player, GST_STATE_PLAYING, NULL, NULL);
     }
   return G_SOURCE_CONTINUE;
 }
@@ -232,8 +237,6 @@ make_player (Ringer *self)
   GstElement *player, *sink;
   g_autoptr(GstBus) bus = NULL;
 
-  /* GStreamer from the first call on: the service waits most of its life, in less memory without it */
-  gst_init (NULL, NULL);
   player = gst_element_factory_make ("playbin", "ringer");
   sink = gst_element_factory_make ("pulsesink", NULL);
   bus = gst_element_get_bus (player);
@@ -249,6 +252,52 @@ make_player (Ringer *self)
   g_signal_connect (player, "about-to-finish", G_CALLBACK (on_about_to_finish), self);
   gst_bus_add_watch (bus, on_player_message, self);
   return player;
+}
+
+/* the ringtone, or the preview, from self->uri; GStreamer is up */
+static void
+start_player (Ringer *self)
+{
+  if (!self->player)
+    self->player = make_player (self);
+  connect_sound_server (self);
+  sync_volume (self);
+  g_object_set (self->player, "uri", self->uri, "volume", 1.0, NULL);
+  gst_start_set_state (self->player, GST_STATE_PLAYING, NULL, NULL);
+}
+
+static void
+cancel_player_wait (Ringer *self)
+{
+  if (self->gst_wait_id)
+    gst_start_cancel (self->gst_wait_id);
+  self->gst_wait_id = 0;
+}
+
+static void
+on_gst_ready (gboolean ready, gpointer data)
+{
+  Ringer *self = data;
+
+  self->gst_wait_id = 0;
+  if (!ready && self->previewing)
+    {
+      /* no sound for the preview */
+      self->previewing = FALSE;
+      sync_volume (self);
+    }
+  else if (ready && (self->ringing || self->previewing))
+    start_player (self);
+}
+
+/* the sound at once if GStreamer is up, else as soon as it is: the call's screen and vibration do not wait for it */
+static void
+start_when_ready (Ringer *self)
+{
+  if (gst_start_is_ready ())
+    start_player (self);
+  else if (!self->gst_wait_id)
+    self->gst_wait_id = gst_start_wait (on_gst_ready, self);
 }
 
 static void
@@ -269,12 +318,7 @@ play_ringtone (Ringer *self)
       g_warning ("ringer: no ringtone installed");
       return;
     }
-  if (!self->player)
-    self->player = make_player (self);
-  connect_sound_server (self);
-  sync_volume (self);
-  g_object_set (self->player, "uri", self->uri, "volume", 1.0, NULL);
-  gst_element_set_state (self->player, GST_STATE_PLAYING);
+  start_when_ready (self);
 }
 
 void
@@ -284,7 +328,9 @@ ringer_preview (Ringer *self, const char *uri)
 
   if (self->previewing)
     {
-      gst_element_set_state (self->player, GST_STATE_NULL);
+      cancel_player_wait (self);
+      if (self->player)
+        gst_start_set_state (self->player, GST_STATE_NULL, NULL, NULL);
       self->previewing = FALSE;
       sync_volume (self);
     }
@@ -292,16 +338,11 @@ ringer_preview (Ringer *self, const char *uri)
     return;
   if (g_str_equal (uri, RINGER_DEFAULT) && !(file = default_ringtone ()))
     return;
-  if (!self->player)
-    self->player = make_player (self);
   g_free (self->uri);
   self->uri = file ? g_steal_pointer (&file) : g_strdup (uri);
   self->previewing = TRUE;
   /* at the ring volume, as the picker plays it on the ring stream */
-  connect_sound_server (self);
-  sync_volume (self);
-  g_object_set (self->player, "uri", self->uri, "volume", 1.0, NULL);
-  gst_element_set_state (self->player, GST_STATE_PLAYING);
+  start_when_ready (self);
 }
 
 /* --- the keypad tones */
@@ -382,18 +423,29 @@ tone_need_data (GstAppSrc *src, guint length, gpointer data)
   gst_app_src_push_buffer (src, piece);
 }
 
-/* the stream stopped, and the tone maker back at the start for the next one (its thread has ended) */
+/* the tone maker back at the start for the next stream: after the stream stopped (its thread has ended), in the thread
+ * that stopped it */
 static void
-tone_stop_stream (Ringer *self)
+tone_reset (gpointer data)
 {
-  gst_element_set_state (self->tone, GST_STATE_NULL);
+  Ringer *self = data;
+
   g_mutex_lock (&self->tone_lock);
-  self->tone_on = FALSE;
   self->tone_presses_seen = self->tone_presses;
   g_mutex_unlock (&self->tone_lock);
   self->tone_min_left = 0;
   self->tone_level = self->tone_phase_low = self->tone_phase_high = 0;
   self->tone_samples = 0;
+}
+
+/* the stream stopped, and the tone maker back at the start for the next one */
+static void
+tone_stop_stream (Ringer *self)
+{
+  g_mutex_lock (&self->tone_lock);
+  self->tone_on = FALSE;
+  g_mutex_unlock (&self->tone_lock);
+  gst_start_set_state (self->tone, GST_STATE_NULL, tone_reset, self);
 }
 
 static gboolean
@@ -416,7 +468,6 @@ make_tone (Ringer *self)
   GstAppSrcCallbacks callbacks = { .need_data = tone_need_data };
   GstElement *tone, *src, *sink;
 
-  gst_init (NULL, NULL);
   /* the stream runs from the dialpad's opening to its closing, silent between keys: a stream started or resumed for
    * each key woke the speaker every time (the tone came late) and first played out what the last key had left in
    * its buffer (garbled). The source holds one piece at most, so each is made just before the sound server needs it */
@@ -448,15 +499,38 @@ tones_wanted (Ringer *self)
          && !self->ringing;
 }
 
-/* the stream running, silent, with the idle timeout started again */
+static gboolean tone_running (Ringer *self);
+
+static void
+on_tone_gst_ready (gboolean ready, gpointer data)
+{
+  Ringer *self = data;
+
+  self->tone_wait_id = 0;
+  /* the keypad is still up: its stream starts now (a key pressed before is lost) */
+  if (ready && self->tones_open && tones_wanted (self))
+    tone_running (self);
+}
+
+/* the stream running, silent, with the idle timeout started again; FALSE while GStreamer is not up */
 static gboolean
 tone_running (Ringer *self)
 {
-  if (!self->tone && !(self->tone = make_tone (self)))
-    return FALSE;
+  if (!self->tone)
+    {
+      if (!gst_start_is_ready ())
+        {
+          self->tones_open = TRUE;
+          if (!self->tone_wait_id)
+            self->tone_wait_id = gst_start_wait (on_tone_gst_ready, self);
+          return FALSE;
+        }
+      if (!(self->tone = make_tone (self)))
+        return FALSE;
+    }
   g_clear_handle_id (&self->tone_idle_id, g_source_remove);
   self->tone_idle_id = g_timeout_add (TONE_IDLE_MS, tone_idle, self);
-  gst_element_set_state (self->tone, GST_STATE_PLAYING);
+  gst_start_set_state (self->tone, GST_STATE_PLAYING, NULL, NULL);
   return TRUE;
 }
 
@@ -494,6 +568,10 @@ void
 ringer_release_tones (Ringer *self)
 {
   g_clear_handle_id (&self->tone_idle_id, g_source_remove);
+  self->tones_open = FALSE;
+  if (self->tone_wait_id)
+    gst_start_cancel (self->tone_wait_id);
+  self->tone_wait_id = 0;
   if (self->tone)
     tone_stop_stream (self);
 }
@@ -565,8 +643,9 @@ ringer_stop (Ringer *self)
   if (!self->ringing)
     return;
   self->ringing = FALSE;
+  cancel_player_wait (self);
   if (self->player)
-    gst_element_set_state (self->player, GST_STATE_NULL);
+    gst_start_set_state (self->player, GST_STATE_NULL, NULL, NULL);
   g_clear_handle_id (&self->vibrate_id, g_source_remove);
   sync_volume (self);
 }
@@ -589,6 +668,9 @@ ringer_new (GSettings *settings)
   if (feedback)
     self->feedback = g_settings_new ("org.sigxcpu.feedbackd");
   self->pa_loop = pa_glib_mainloop_new (NULL);
+  /* GStreamer starts with the service, so that it is up by the first call; the ringtone's and the tones' elements are
+   * loaded with it */
+  gst_start_begin ((const char * const[]) { "playbin", "pulsesink", "appsrc", "audioconvert", "audioresample", NULL });
   g_mutex_init (&self->tone_lock);
   return self;
 }
@@ -597,6 +679,9 @@ void
 ringer_free (Ringer *self)
 {
   ringer_stop (self);
+  cancel_player_wait (self);
+  if (self->tone_wait_id)
+    gst_start_cancel (self->tone_wait_id);
   g_clear_handle_id (&self->tone_idle_id, g_source_remove);
   if (self->tone)
     {
