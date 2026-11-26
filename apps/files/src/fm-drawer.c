@@ -948,7 +948,7 @@ build_rail (FmDrawer *drawer)
   while ((child = gtk_widget_get_first_child (drawer->rail_box)))
     gtk_box_remove (GTK_BOX (drawer->rail_box), child);
   g_ptr_array_set_size (drawer->rail_places, 0);
-  menu = fm_icon_button ("open-menu-symbolic", _("Navigation menu"), 56, 56);
+  menu = fm_icon_button_sized ("vibeos-menu-symbolic", _("Navigation menu"), 56, 56, 24);
   /* ☰ a little lower than the rail's own header: the places start under it where DocumentsUI's do */
   gtk_widget_set_margin_top (menu, 16);
   g_signal_connect (menu, "clicked", G_CALLBACK (on_rail_menu), drawer);

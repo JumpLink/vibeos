@@ -9,7 +9,7 @@
 
 #include <math.h>
 
-#define BAR_H          64
+#define BAR_H          VIBEOS_TOP_BAR_HEIGHT
 #define COMPACT_H      56
 #define BACK           40     /* the back button's circle */
 #define TABLET_BACK    44     /* and on a tablet: 56 filled the 64 bar and touched the card under it (owner, 11-21) */
@@ -17,7 +17,7 @@
 #define TITLE_GAP      20     /* from the circle to the title */
 #define TITLE_X        24     /* the title without a back button */
 #define BUTTON         48     /* an icon button's touch target */
-#define END_PAD        4
+#define END_PAD        (VIBEOS_TOP_BAR_END_CENTRE - BUTTON / 2.0)   /* -1.83: the last target runs off the end */
 
 struct _VibeosTopBar {
   GtkWidget      parent;
@@ -114,7 +114,10 @@ vibeos_top_bar_size_allocate (GtkWidget *widget, int width, int height, int base
   GtkWidget *actions = self->selecting ? self->selection_actions : self->actions;
   double x = title_x (self), end;
 
-  put (self->back, width, BACK_CENTRE_X - d / 2.0, (bar - d) / 2.0, d, d);
+  /* the circle drawn is d across, but a finger gets the whole touch target around it: a tap just off the circle
+   * still goes back (it was the circle alone, 40 dp, under the 48 every other button has) */
+  put (self->back, width, BACK_CENTRE_X - MAX (d, BUTTON) / 2.0, (bar - MAX (d, BUTTON)) / 2.0, MAX (d, BUTTON),
+       MAX (d, BUTTON));
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (self->back), VIBEOS_RIPPLE_CIRCLE, d / 2.0);
   put (self->close, width, BACK_CENTRE_X - BUTTON / 2.0, (bar - BUTTON) / 2.0, BUTTON, BUTTON);
 

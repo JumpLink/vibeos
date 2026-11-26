@@ -172,7 +172,7 @@ page_new (const char *title, gboolean back, Win *win, GtkWidget **bar_out)
   gtk_widget_add_css_class (page, "inst-page");
   vibeos_top_bar_set_back (VIBEOS_TOP_BAR (bar), back);
   g_signal_connect (bar, "back", G_CALLBACK (on_top_bar_back), win);
-  more = vibeos_top_bar_add_action (VIBEOS_TOP_BAR (bar), "view-more-symbolic");
+  more = vibeos_top_bar_add_action (VIBEOS_TOP_BAR (bar), "vibeos-more-symbolic");
   gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
   g_signal_connect (more, "clicked", G_CALLBACK (on_more), win);
   gtk_box_append (GTK_BOX (page), bar);

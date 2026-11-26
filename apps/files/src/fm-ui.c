@@ -377,31 +377,11 @@ fm_progress_set_fraction (GtkWidget *progress, double fraction)
 
 typedef struct {
   GtkWidget *layer;
+  GtkWidget *bin;               /* the card's, which opens and closes it (vibeos_menu_bin_new) */
   FmPopupChosen chosen;
   gpointer data;
-  VibeosAnim *anim;
   gboolean closing;
 } Popup;
-
-static void
-popup_free (gpointer data)
-{
-  Popup *popup = data;
-
-  g_clear_pointer (&popup->anim, vibeos_anim_free);
-  g_free (popup);
-}
-
-static void
-on_popup_anim (VibeosAnim *anim, double value, gpointer data)
-{
-  Popup *popup = data;
-  GtkWidget *parent;
-
-  gtk_widget_set_opacity (popup->layer, value);
-  if (popup->closing && value <= 0 && (parent = gtk_widget_get_parent (popup->layer)))
-    gtk_overlay_remove_overlay (GTK_OVERLAY (parent), popup->layer);
-}
 
 static void
 popup_close (Popup *popup)
@@ -409,9 +389,8 @@ popup_close (Popup *popup)
   if (popup->closing)
     return;
   popup->closing = TRUE;
-  gtk_widget_set_can_target (popup->layer, FALSE);
-  /* closing: a fade */
-  vibeos_anim_start (popup->anim, gtk_widget_get_opacity (popup->layer), 0, 150, 0, SPONGY_LINEAR);
+  /* closing: the menus' motion, back into the corner it came from */
+  vibeos_menu_bin_close (popup->bin, popup->layer);
 }
 
 static void
@@ -470,8 +449,7 @@ fm_popup_show_icons (GtkWidget *anchor, const char *const *labels, const char *c
   popup->data = data;
   layer = gtk_overlay_new ();
   popup->layer = layer;
-  popup->anim = vibeos_anim_new (layer, on_popup_anim, popup);
-  g_object_set_data_full (G_OBJECT (layer), "fm-popup", popup, popup_free);
+  g_object_set_data_full (G_OBJECT (layer), "fm-popup", popup, g_free);
 
   scrim = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
   press = gtk_gesture_click_new ();
@@ -549,12 +527,12 @@ fm_popup_show_icons (GtkWidget *anchor, const char *const *labels, const char *c
   gtk_widget_set_valign (card, GTK_ALIGN_START);
   gtk_widget_set_margin_top (card, (int) top);
   gtk_widget_set_margin_start (card, (int) left);
-  gtk_overlay_add_overlay (GTK_OVERLAY (layer), card);
+  /* opening: the modal motion, as About's dialog (and every ⋮ menu) opens, out of the corner by the anchor */
+  popup->bin = vibeos_menu_bin_new (card, anchor);
+  gtk_overlay_add_overlay (GTK_OVERLAY (layer), popup->bin);
   gtk_overlay_add_overlay (overlay, layer);
   gtk_overlay_set_measure_overlay (overlay, layer, FALSE);
   gtk_widget_grab_focus (layer);
-  gtk_widget_set_opacity (layer, 0.1);
-  vibeos_anim_start (popup->anim, 0.1, 1, 100, 0, SPONGY_LINEAR);
 }
 
 gboolean

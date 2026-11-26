@@ -682,12 +682,13 @@ on_activate (GtkApplication *app, gpointer data)
   gtk_box_append (GTK_BOX (box), c->status);
   GtkWidget *over = gtk_overlay_new ();
   gtk_overlay_set_child (GTK_OVERLAY (over), box);
-  GtkWidget *more = vibeos_icon_button_new ("view-more-symbolic");
+  GtkWidget *more = vibeos_icon_button_new ("vibeos-more-symbolic");
   gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
+  /* where every top bar has its ⋮ (vibeos-top-bar.h): centred on the bar's 64 dp, 22.17 dp from the end */
+  gtk_widget_add_css_class (more, "vibeos-top-bar-end");
   gtk_widget_set_halign (more, GTK_ALIGN_END);
   gtk_widget_set_valign (more, GTK_ALIGN_START);
-  gtk_widget_set_margin_top (more, 4);
-  gtk_widget_set_margin_end (more, 4);
+  gtk_widget_set_margin_top (more, (VIBEOS_TOP_BAR_HEIGHT - 48) / 2);
   g_signal_connect (more, "clicked", G_CALLBACK (on_more), NULL);
   gtk_overlay_add_overlay (GTK_OVERLAY (over), more);
   vibeos_window_set_content (GTK_WINDOW (c->win), over);

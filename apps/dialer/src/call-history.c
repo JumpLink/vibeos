@@ -11,7 +11,6 @@
 #define BAR_HEIGHT      56      /* the action bar */
 #define UP_SIZE         56      /* the Up button, at the start */
 #define TITLE_START     72      /* the title's start, past Up */
-#define OVERFLOW_WIDTH  40      /* the ⋮, flush with the end */
 #define OVERFLOW_HEIGHT 48
 #define TAB_HEIGHT      48
 #define TAB_PAD         10      /* a tab label's side padding */
@@ -351,9 +350,11 @@ make_bar (CallHistory *self)
   gtk_box_append (GTK_BOX (bar), title);
 
   self->overflow = vibeos_icon_button_new ("dialer-more-symbolic");
-  gtk_widget_set_size_request (self->overflow, OVERFLOW_WIDTH, OVERFLOW_HEIGHT);
+  /* the ⋮ where every top bar has it, the class's width (.vibeos-top-bar-end) */
+  gtk_widget_set_size_request (self->overflow, -1, OVERFLOW_HEIGHT);
   gtk_widget_set_valign (self->overflow, GTK_ALIGN_CENTER);
   gtk_widget_add_css_class (self->overflow, "dialer-history-icon");
+  gtk_widget_add_css_class (self->overflow, "vibeos-top-bar-end");
   gtk_accessible_update_property (GTK_ACCESSIBLE (self->overflow), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"),
                                   -1);
   gtk_widget_set_visible (self->overflow, FALSE);

@@ -266,7 +266,10 @@ make_toolbar (Picker *picker, const char *title)
   picker->bar = ct_page_toolbar (CT_PAGE (picker->page), NULL, "ct-arrow-back-symbolic", _("Back"), title, &actions,
                                  NULL);
   picker->search_action = ct_icon_button ("ct-search-symbolic", _("Search contacts"), 56, 48);
-  picker->overflow = ct_icon_button ("ct-more-vert-symbolic", _("More options"), 40, 48);
+  picker->overflow = ct_icon_button ("ct-more-vert-symbolic", _("More options"), 48, 48);
+  /* where every top bar has its ⋮ (vibeos-top-bar.h) */
+  gtk_widget_add_css_class (picker->overflow, "vibeos-top-bar-end");
+  gtk_widget_set_size_request (picker->overflow, -1, 48);
   g_signal_connect (picker->search_action, "clicked", G_CALLBACK (on_search_action), picker);
   g_signal_connect (picker->overflow, "clicked", G_CALLBACK (on_overflow), picker);
   for (GtkWidget *w = picker->search_action; w; w = w == picker->search_action ? picker->overflow : NULL)

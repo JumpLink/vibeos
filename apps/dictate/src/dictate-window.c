@@ -3539,7 +3539,7 @@ dictate_content (Window *self)
     /* Material's ⋮, as the other actions' glyphs (Adwaita's view-more is a size larger beside them) */
     GtkWidget *more = action ("dictate-more-symbolic", _("More options"), G_CALLBACK (on_more), self);
 
-    gtk_widget_add_css_class (more, "dictate-bar-end");
+    gtk_widget_add_css_class (more, "vibeos-top-bar-end");
     gtk_box_append (GTK_BOX (bar), more);
   }
   gtk_box_append (GTK_BOX (content), bar);

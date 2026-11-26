@@ -1576,7 +1576,7 @@ static const char CSS[] =
   "window.video, window.video .video-bg { background-color: black; color: white; }"
   ".video-controls { transition: opacity 200ms ease-out; }"
   ".video-controls.hidden { opacity: 0; }"
-  ".video-top { background-image: linear-gradient(to bottom, alpha(black, 0.6), transparent); padding: 8dp 8dp 32dp 4dp; }"
+  ".video-top { background-image: linear-gradient(to bottom, alpha(black, 0.6), transparent); padding: 8dp 0 32dp 4dp; }"
   ".video-bottom { background-image: linear-gradient(to top, alpha(black, 0.6), transparent); padding: 32dp 16dp 12dp 16dp; }"
   ".video-title { font-size: 18sp; font-weight: 500; }"
   ".video-notice { font-size: 14sp; color: alpha(white, 0.8); }"
@@ -1665,6 +1665,8 @@ build (Player *p)
   p->full = icon_button (p, ICON_FULLSCREEN, TOP_BUTTON_DP, _("Full screen"), G_CALLBACK (toggle_fullscreen));
   gtk_box_append (GTK_BOX (top), p->full);
   p->more = icon_button (p, ICON_MORE, TOP_BUTTON_DP, _("More options"), G_CALLBACK (open_menu));
+  /* where every top bar has its ⋮ (vibeos-top-bar.h) */
+  gtk_widget_add_css_class (p->more, "vibeos-top-bar-end");
   gtk_box_append (GTK_BOX (top), p->more);
   gtk_box_append (GTK_BOX (p->controls), top);
 

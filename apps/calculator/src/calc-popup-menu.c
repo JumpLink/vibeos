@@ -14,8 +14,6 @@
 #define CORNER          4       /* the card's corners */
 #define END_MARGIN      4       /* between the card and the window's sides */
 #define ANCHOR_GAP      4       /* between the anchor's edge and the card's */
-#define ENTER_MS        250
-#define EXIT_MS         150
 
 typedef struct {
   char          *label;
@@ -83,23 +81,21 @@ calc_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   CalcPopupMenu *self = CALC_POPUP_MENU (widget);
   int scale = vibeos_device_scale (widget);
-  double reveal = self->closing ? 1 : spongy_curve (SPONGY_FAST_OUT_SLOW_IN, self->shown);
   GdkRGBA background = vibeos_color (VIBEOS_SURFACE_CONTAINER), text = vibeos_color (VIBEOS_ON_SURFACE);
   GskRoundedRect shape;
+  graphene_point_t origin;
   double px = TEXT_SIZE * scale;
   /* the text's box (font padding) centred in its row, rounded down: the baseline 90 px into a 144 px row */
   double box = ceil (CALC_BOTTOM * px) - floor (-CALC_TOP * px);
   double baseline = (floor ((ROW_HEIGHT * scale - box) / 2) - floor (-CALC_TOP * px)) / scale;
 
-  gtk_snapshot_push_opacity (snapshot, self->closing ? self->shown : MIN (1, self->shown * 2));
+  /* the modal motion, as About's dialog opens (vibeos-anim.h): grown out of the anchor's corner as it fades in */
+  vibeos_modal_menu_origin (&self->card, &self->anchor, &origin);
+  vibeos_modal_snapshot_push (snapshot, self->shown, &origin);
   gsk_rounded_rect_init_from_rect (&shape, &self->card, CORNER);
   /* a faint shadow, just enough to lift the card off the background */
   gtk_snapshot_append_outset_shadow (snapshot, &shape, (GdkRGBA[]) { vibeos_color_alpha (VIBEOS_SHADOW, 0.3f) },
                                      0, 2, 0, 6);
-  /* the clip reveal, away from the anchor: from the top edge down, or for a menu above it from the foot up */
-  gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (self->card.origin.x, self->card.origin.y +
-                                                         (self->upward ? self->card.size.height * (1 - reveal) : 0),
-                                                         self->card.size.width, self->card.size.height * reveal));
   gtk_snapshot_push_rounded_clip (snapshot, &shape);
   gtk_snapshot_append_color (snapshot, &background, &self->card);
   for (guint i = 0; i < self->rows->len; i++) {
@@ -114,8 +110,7 @@ calc_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
     calc_text_draw (snapshot, row->layout, r.origin.x + TEXT_PAD, r.origin.y + baseline, &text);
   }
   gtk_snapshot_pop (snapshot);
-  gtk_snapshot_pop (snapshot);
-  gtk_snapshot_pop (snapshot);
+  vibeos_modal_snapshot_pop (snapshot);
 }
 
 static void
@@ -139,7 +134,7 @@ calc_popup_menu_dismiss (CalcPopupMenu *self)
   if (self->closing)
     return;
   self->closing = TRUE;
-  vibeos_anim_start (self->anim, self->shown, 0, EXIT_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start_modal (self->anim, FALSE);
 }
 
 static int
@@ -287,5 +282,5 @@ calc_popup_menu_present (CalcPopupMenu *self, GtkWidget *anchor)
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
   gtk_widget_grab_focus (GTK_WIDGET (self));
-  vibeos_anim_start (self->anim, 0, 1, ENTER_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start_modal (self->anim, TRUE);
 }

@@ -59,6 +59,13 @@ window.vibeos label {
   color: @vibeos_on_surface;
 }
 
+/* the last button of a bar an app lays out itself: 48 dp wide, its glyph's centre 22 dp from the end, as the top
+ * bar's ⋮ (VIBEOS_TOP_BAR_END_CENTRE, 22.17, vibeos-top-bar.h: a box's margins are whole pixels). Its width is this
+ * one's, not a size request's: a size request takes in the margin. */
+.vibeos-top-bar-end { min-width: 48dp; }
+.vibeos-top-bar-end:dir(ltr) { margin-right: -2dp; }
+.vibeos-top-bar-end:dir(rtl) { margin-left: -2dp; }
+
 /* --- floating action buttons: full circles (vibeos_fab_new draws the fill, so that it scales with the button) */
 
 .vibeos-fab {

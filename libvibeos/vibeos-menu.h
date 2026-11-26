@@ -4,9 +4,10 @@
  * next to its anchor and never over it: its top 4 px below the anchor's foot, or, when it does not fit there, its foot
  * 4 px above the anchor's top. It lines up with the anchor on the side the anchor is on: right edges for an anchor in
  * the window's right half (a header's ⋮), left edges for one in the left half (a rail's menu button), and it stays
- * 4 px in from the window's edges. It opens with its clip growing away from the anchor (down, or up for a menu above it)
- * while it fades in. A tap on a row runs the row's action and closes the menu; a tap outside, Back, Escape or Alt+Left
- * (VibeOS's back gesture) just closes it.
+ * 4 px in from the window's edges. It opens with the modal motion, as About's dialog does (vibeos-anim.h): it grows
+ * out of its corner nearest the anchor as it fades in, a little past, and closes back the same way. A tap on a row
+ * runs the row's action and closes the menu; a tap outside, Back, Escape or Alt+Left (VibeOS's back gesture) just
+ * closes it.
  *
  *   VibeosMenu *menu = vibeos_menu_new ();
  *   vibeos_menu_append (menu, "Audio track", choose_audio, self);
@@ -36,5 +37,12 @@ void        vibeos_menu_append_about (VibeosMenu *self, const VibeosAboutInfo *i
 /* shows it in `anchor`'s window, below the anchor (above it when there is no room below); it destroys itself once
  * closed */
 void        vibeos_menu_present      (VibeosMenu *self, GtkWidget *anchor);
+
+/* A menu an app makes of widgets itself (its card placed in a layer of its own) opens and closes the same way: the
+ * card goes in a bin, put in the layer where the card would go (it takes the card's alignment and margins), which
+ * opens it as it shows, out of the corner nearest `anchor`. vibeos_menu_bin_close () takes it out, then `layer` (the
+ * bin itself when NULL) out of the GtkOverlay it is in. */
+GtkWidget  *vibeos_menu_bin_new      (GtkWidget *card, GtkWidget *anchor);
+void        vibeos_menu_bin_close    (GtkWidget *bin, GtkWidget *layer);
 
 G_END_DECLS

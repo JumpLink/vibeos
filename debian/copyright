@@ -98,6 +98,15 @@ Comment:
  Samuel in NVIDIA's Hi-Fi Multi-Speaker English TTS Dataset (CC BY 4.0,
  https://www.openslr.org/109/).
 
+Files: libvibeos/icons/scalable/actions/vibeos-menu-symbolic.svg
+       libvibeos/icons/scalable/actions/vibeos-more-symbolic.svg
+       libvibeos/icons/scalable/actions/vibeos-refresh-symbolic.svg
+Copyright: Google LLC (Material Symbols)
+License: Apache-2.0
+Comment:
+ libvibeos's top bar glyphs, every app's ⋮, reload and navigation menu, are
+ Material Symbols and Material Icons glyphs (more_vert, refresh, menu).
+
 Files: apps/installer/data/icons/*
        apps/installer/data/vibeos.Installer.svg
 Copyright: Google LLC (Material Symbols)

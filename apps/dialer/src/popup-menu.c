@@ -12,8 +12,6 @@
 #define ANCHOR_GAP      4       /* between a menu button's edge and the card's */
 #define END_MARGIN      4       /* a button's menu, at least this far in from the window's top and foot */
 #define EDGE            8       /* closer than this to the window's edge, it is flush with it */
-#define ENTER_MS        250     /* the clip reveal and the fade in */
-#define EXIT_MS         150
 
 typedef struct
 {
@@ -30,7 +28,7 @@ struct _DialerPopupMenu
   int corner;
   graphene_rect_t anchor_bounds;
   VibeosAnim *anim;
-  double shown;                 /* 0 … 1 */
+  double shown;                 /* 0 … 1: the modal motion's value */
   gboolean closing;
   gboolean upward;              /* it opened above the anchor */
 };
@@ -112,25 +110,22 @@ dialer_popup_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   DialerPopupMenu *self = DIALER_POPUP_MENU (widget);
   graphene_rect_t card;
   GskRoundedRect shape;
+  graphene_point_t origin;
   GdkRGBA far, near;
-  double reveal = self->closing ? 1 : spongy_curve (SPONGY_FAST_OUT_SLOW_IN, self->shown);
 
   if (!gtk_widget_compute_bounds (self->card, widget, &card))
     return;
-  gtk_snapshot_push_opacity (snapshot, self->closing ? self->shown : MIN (1, self->shown * 2));
+  /* the modal motion, as About's dialog opens (vibeos-anim.h): grown out of the anchor's corner as it fades in */
+  vibeos_modal_menu_origin (&card, &self->anchor_bounds, &origin);
+  vibeos_modal_snapshot_push (snapshot, self->shown, &origin);
   /* a soft shadow under the card */
   gsk_rounded_rect_init_from_rect (&shape, &card, self->corner);
   far = vibeos_color_alpha (VIBEOS_SHADOW, 0.3f);
   near = vibeos_color_alpha (VIBEOS_SHADOW, 0.2f);
   gtk_snapshot_append_outset_shadow (snapshot, &shape, &far, 0, 8, 2, 16);
   gtk_snapshot_append_outset_shadow (snapshot, &shape, &near, 0, 2, 0, 4);
-  /* the clip reveal, away from the anchor: from the top edge down, or for a menu above it from the foot up */
-  gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (card.origin.x,
-                                                         card.origin.y + (self->upward ? card.size.height * (1 - reveal) : 0),
-                                                         card.size.width, card.size.height * reveal));
   gtk_widget_snapshot_child (widget, self->card, snapshot);
-  gtk_snapshot_pop (snapshot);
-  gtk_snapshot_pop (snapshot);
+  vibeos_modal_snapshot_pop (snapshot);
 }
 
 static void
@@ -155,7 +150,7 @@ dismiss (DialerPopupMenu *self)
   if (self->closing)
     return;
   self->closing = TRUE;
-  vibeos_anim_start (self->anim, self->shown, 0, EXIT_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start_modal (self->anim, FALSE);
 }
 
 static void
@@ -304,7 +299,7 @@ present (DialerPopupMenu *self, GtkOverlay *overlay)
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
   gtk_widget_grab_focus (GTK_WIDGET (self));
-  vibeos_anim_start (self->anim, 0, 1, ENTER_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start_modal (self->anim, TRUE);
 }
 
 void

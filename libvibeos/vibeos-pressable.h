@@ -1,8 +1,9 @@
 /* VibeosPressable: one child made tappable, with the ripple (vibeos-ripple.h) behind it.
  *
  * It is anything tapped that shows a ripple: a list row, a text button, an icon button, a FAB. It emits "clicked" on a
- * tap and "long-pressed" after 400 ms held still; a press it loses to a scroll (a drag past the slop, a scroll view
- * taking the touch) does neither, and its ripple just fades.
+ * tap and "long-pressed" after 400 ms held; the finger may move meanwhile, as long as it stays on the widget or within
+ * the 8 dp touch slop around it. A press it loses (the finger off it past the slop, a scroll view taking the touch)
+ * does neither, and its ripple just fades.
  *
  * Inside a scroll view the ripple waits 100 ms before it starts, so a finger that is about to scroll does not flash the
  * row it began on. A tap shorter than that still shows the whole ripple.

@@ -510,7 +510,8 @@ url_group (NbTab *t)
 
   gtk_box_append (GTK_BOX (row), count_button (t));
   t->more = bar_icon_button ("jelly-menu-symbolic", _("More"), "nb-bar-icon");
-  gtk_widget_set_margin_end (t->more, 4);
+  /* where every top bar has its ⋮ (vibeos-top-bar.h) */
+  gtk_widget_add_css_class (t->more, "vibeos-top-bar-end");
   g_signal_connect_swapped (t->more, "clicked", G_CALLBACK (nb_menu_open), t);
   gtk_box_append (GTK_BOX (row), t->more);
   return row;

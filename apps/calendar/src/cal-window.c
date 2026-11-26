@@ -919,7 +919,8 @@ close_menu (Shell *shell)
 {
   if (!shell->menu)
     return;
-  gtk_overlay_remove_overlay (vibeos_window_get_overlay (shell->window), shell->menu);
+  /* back into the ⋮ with the menus' motion (vibeos-menu.h); the layer goes once it is out */
+  vibeos_menu_bin_close (g_object_get_data (G_OBJECT (shell->menu), "cal-menu-bin"), shell->menu);
   shell->menu = NULL;
 }
 
@@ -973,6 +974,9 @@ on_more (VibeosPressable *button, Shell *shell)
   if (shell->view == VIEW_MONTH)
     gtk_box_append (GTK_BOX (menu), menu_item (shell, _("View settings"), G_CALLBACK (on_menu_view_settings)));
   gtk_box_append (GTK_BOX (menu), menu_item (shell, _("About"), G_CALLBACK (on_menu_about)));
+  /* it opens with the modal motion, as About's dialog (and every ⋮ menu), out of the ⋮'s corner */
+  menu = vibeos_menu_bin_new (menu, GTK_WIDGET (button));
+  g_object_set_data (G_OBJECT (layer), "cal-menu-bin", menu);
   gtk_overlay_add_overlay (GTK_OVERLAY (layer), menu);
   shell->menu = layer;
   gtk_overlay_add_overlay (overlay, layer);
@@ -1104,6 +1108,7 @@ make_toolbar (Shell *shell)
 
   more = vibeos_icon_button_new ("cal-more-symbolic");
   gtk_widget_add_css_class (more, "cal-toolbar-more");
+  gtk_widget_add_css_class (more, "vibeos-top-bar-end");
   gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
   g_signal_connect (more, "clicked", G_CALLBACK (on_more), shell);
   gtk_box_append (GTK_BOX (bar), more);

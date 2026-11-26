@@ -665,7 +665,8 @@ close_menu (Info *info)
 {
   if (!info->menu)
     return;
-  gtk_overlay_remove_overlay (vibeos_window_get_overlay (info->window), info->menu);
+  /* back into the ⋮ with the menus' motion (vibeos-menu.h); the layer goes once it is out */
+  vibeos_menu_bin_close (g_object_get_data (G_OBJECT (info->menu), "cal-menu-bin"), info->menu);
   info->menu = NULL;
 }
 
@@ -717,6 +718,9 @@ on_more (VibeosPressable *button, Info *info)
       g_signal_connect (item, "clicked", G_CALLBACK (on_menu_item), info);
       gtk_box_append (GTK_BOX (menu), item);
     }
+  /* it opens with the modal motion, as About's dialog (and every ⋮ menu), out of the ⋮'s corner */
+  menu = vibeos_menu_bin_new (menu, GTK_WIDGET (button));
+  g_object_set_data (G_OBJECT (layer), "cal-menu-bin", menu);
   gtk_overlay_add_overlay (GTK_OVERLAY (layer), menu);
   info->menu = layer;
   gtk_overlay_add_overlay (vibeos_window_get_overlay (info->window), layer);
@@ -770,9 +774,10 @@ update_actions (Info *info)
     {
       GtkWidget *more = cal_page_action ("cal-more-symbolic", _("More options"));
 
-      /* the overflow button, narrower than an action, as the main toolbar's */
+      /* the overflow button, as the main toolbar's */
       gtk_widget_remove_css_class (more, "cal-action");
       gtk_widget_add_css_class (more, "cal-toolbar-more");
+      gtk_widget_add_css_class (more, "vibeos-top-bar-end");
 
       rest = g_memdup2 (all + shown, sizeof (Action) * (n - shown));
       g_object_set_data_full (G_OBJECT (more), "cal-actions", rest, g_free);

@@ -6,10 +6,8 @@
 #include <spongy-gtk.h>
 
 #define MENU_MARGIN 16          /* px around the menu's list */
-/* the menu grows in from the top: scale 0.9 <-> 1 about the top centre over 220 ms (a quintic deceleration), alpha
- * over 150 ms (a cubic deceleration), both ways */
-#define SCALE_MS    220
-#define ALPHA_MS    150
+/* the menu opens and closes with the modal motion, as About's dialog and every ⋮ menu do (vibeos-anim.h): it grows out
+ * of its corner by the ⋮ as it fades in, a little past, and goes back the same way */
 
 /* ==== the popup window: placed under (reach mode: over) the URL bar at the window's end, a tap outside closes it */
 
@@ -20,7 +18,7 @@ struct _NbPopup {
   GtkWidget  parent;
   GtkWidget *content;
   NbTab     *tab;
-  double     t;                 /* the running animation's linear time, 0..1 */
+  double     t;                 /* the modal motion's value: 0 (gone) .. 1 (in place) */
   gboolean   closing;
   VibeosAnim   *anim;
   GtkWidget *indicator;
@@ -63,27 +61,18 @@ static void
 nb_popup_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
 {
   NbPopup *self = NB_POPUP (widget);
-  graphene_rect_t box;
+  graphene_rect_t box, anchor;
+  graphene_point_t origin;
 
   if (!gtk_widget_compute_bounds (self->content, widget, &box))
     return;
-  double scale = spongy_curve (SPONGY_DECELERATE_QUINT, self->t);
-  double alpha = spongy_curve (SPONGY_DECELERATE_CUBIC, MIN (1, self->t * SCALE_MS / ALPHA_MS));
-  if (self->closing) {
-    scale = 1 - scale;
-    alpha = 1 - alpha;
-  }
-  scale = 0.9 + 0.1 * scale;
-  /* the pivot: the window's top centre (the content's margins are the popup window's) */
-  double px = box.origin.x + box.size.width / 2, py = box.origin.y - MENU_MARGIN;
-  gtk_snapshot_push_opacity (snapshot, alpha);
-  gtk_snapshot_save (snapshot);
-  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (px, py));
-  gtk_snapshot_scale (snapshot, scale, scale);
-  gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (-px, -py));
+  /* out of the corner by the ⋮ (the top end, under the URL bar; the foot's in reach mode) */
+  if (!self->tab->more || !gtk_widget_compute_bounds (self->tab->more, widget, &anchor))
+    graphene_rect_init (&anchor, box.origin.x + box.size.width, box.origin.y, 0, 0);
+  vibeos_modal_menu_origin (&box, &anchor, &origin);
+  vibeos_modal_snapshot_push (snapshot, self->t, &origin);
   gtk_widget_snapshot_child (widget, self->content, snapshot);
-  gtk_snapshot_restore (snapshot);
-  gtk_snapshot_pop (snapshot);
+  vibeos_modal_snapshot_pop (snapshot);
 }
 
 static void
@@ -107,9 +96,7 @@ nb_popup_dismiss (NbPopup *self)
     return;
   self->closing = TRUE;
   gtk_widget_set_can_target (GTK_WIDGET (self), FALSE);
-  vibeos_anim_stop (self->anim);
-  self->t = 0;
-  vibeos_anim_start (self->anim, 0, 1, SCALE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start_modal (self->anim, FALSE);
 }
 
 static void
@@ -411,7 +398,7 @@ nb_menu_open (NbTab *t)
   gtk_overlay_add_overlay (overlay, GTK_WIDGET (p));
   gtk_overlay_set_measure_overlay (overlay, GTK_WIDGET (p), FALSE);
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (p), TRUE);
-  vibeos_anim_start (p->anim, 0, 1, SCALE_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start_modal (p->anim, TRUE);
   nb_indicator_awaken (indicator);
   t->menu = GTK_WIDGET (p);
   nb_tab_sync_back (t);

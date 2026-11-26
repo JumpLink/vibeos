@@ -10,6 +10,7 @@
 #include "vibeos-sheet.h"
 
 #include <glib/gi18n-lib.h>
+#include "vibeos-anim.h"
 #include "vibeos-pressable.h"
 #include "vibeos-style.h"
 #include "vibeos-top-bar.h"
@@ -32,7 +33,8 @@
  * middle of a larger one (a tablet's), as wide as its content (360 px, AdwAboutDialog's width, unless the sheet says
  * otherwise) and as tall as it needs, at least 30 px in from the window's sides and 20 px from its top and bottom,
  * more on a larger window (120 px at 1440). It opens growing from 80 % of its size and fading in, on a spring that
- * goes a little past (damping 0.62, stiffness 500), and closes back, without going past */
+ * goes a little past (damping 0.62, stiffness 500), and closes back, without going past: the modal motion
+ * (vibeos-anim.h), which the ⋮ menus open with too */
 #define SHEET_MAX_W      450
 #define SHEET_MAX_H      360
 #define FLOAT_WIDTH      360
@@ -42,9 +44,8 @@
 #define FLOAT_ENDS_BIG   120.0
 #define FLOAT_FROM       720.0
 #define FLOAT_TO         1440.0
-#define FLOAT_MIN_SCALE  0.8
-#define FLOAT_STIFFNESS  500.0
-#define FLOAT_DAMPING    0.62
+#define FLOAT_STIFFNESS  VIBEOS_MODAL_STIFFNESS
+#define FLOAT_DAMPING    VIBEOS_MODAL_DAMPING
 /* The dim over the window: libadwaita's for a dark sheet, deep enough to set a dark sheet apart from a dark window;
  * Material's scrim for a light one, which also has to show over the Weather's dark sky */
 #define DIM_DARK         0.5
@@ -63,6 +64,7 @@ struct _VibeosSheet {
   SpongySpring  slide;          /* the page sliding: 0 in place .. 1 past the right edge */
   double        rise_to, slide_to;
   gboolean      rise_start, slide_start;   /* a run to start on the next frame */
+  double        trace_start;    /* the rise's start, ms on the frame clock (its frames logged) */
   guint         tick;
   gboolean      full_height;
   gboolean      closing;
@@ -261,18 +263,13 @@ vibeos_sheet_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   if (self->floating)
     {
       /* the card grows from 80 % about the window's middle as it fades in, as libadwaita's floating dialog */
-      double scale = FLOAT_MIN_SCALE + (1 - FLOAT_MIN_SCALE) * shown;
-
-      gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (width / 2, height / 2));
-      gtk_snapshot_scale (snapshot, scale, scale);
-      gtk_snapshot_translate (snapshot, &GRAPHENE_POINT_INIT (-width / 2, -height / 2));
-      gtk_snapshot_push_opacity (snapshot, CLAMP (shown, 0, 1));
+      vibeos_modal_snapshot_push (snapshot, shown, &GRAPHENE_POINT_INIT (width / 2, height / 2));
       gsk_rounded_rect_init_from_rect (&shape, (graphene_rect_t *) r, CORNER);
       /* elevation level 3, as a Material dialog: a soft shadow round the card */
       gtk_snapshot_append_outset_shadow (snapshot, &shape, (GdkRGBA[]) { vibeos_color_alpha (VIBEOS_SHADOW, 0.3f) },
                                          0, 4, 0, 12);
       snapshot_sheet (self, snapshot, &shape);
-      gtk_snapshot_pop (snapshot);
+      vibeos_modal_snapshot_pop (snapshot);
     }
   else
     {
@@ -325,14 +322,24 @@ on_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
 
   /* each run starts on the frame after it was asked for, from where the spring is, at its speed */
   if (self->rise_start)
-    spongy_spring_animate (&self->rise, self->rise.value, self->rise.velocity, self->rise_to, now);
+    {
+      spongy_spring_animate (&self->rise, self->rise.value, self->rise.velocity, self->rise_to, now);
+      self->trace_start = now;
+    }
   if (self->slide_start)
     spongy_spring_animate (&self->slide, self->slide.value, self->slide.velocity, self->slide_to, now);
   self->rise_start = self->slide_start = FALSE;
   was_sliding = self->slide.running;
 
   if (self->rise.running)
-    moving |= spongy_spring_update (&self->rise, now);
+    {
+      moving |= spongy_spring_update (&self->rise, now);
+      /* its frames beside the ⋮ menus' (vibeos-anim.c), with G_MESSAGES_DEBUG=vibeos-modal */
+      if (!g_log_writer_default_would_drop (G_LOG_LEVEL_DEBUG, "vibeos-modal"))
+        g_log ("vibeos-modal", G_LOG_LEVEL_DEBUG, "VibeosSheet %s %s: frame %.1f ms, value %.4f",
+               self->floating ? "card" : "bottom sheet", self->rise_to > 0 ? "open" : "close", now - self->trace_start,
+               self->rise.value);
+    }
   if (self->slide.running)
     {
       moving |= spongy_spring_update (&self->slide, now);

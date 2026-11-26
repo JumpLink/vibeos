@@ -10,17 +10,20 @@
 
 typedef struct {
   GtkWidget *layer;
+  GtkWidget *bin;                       /* the card's, which opens and closes it (vibeos_menu_bin_new) */
   CalPopupChosen chosen;
   gpointer data;
+  gboolean closing;
 } Popup;
 
+/* back into the corner it came from, with the menus' motion; the layer goes once it is out */
 static void
 popup_close (Popup *popup)
 {
-  GtkWidget *parent = gtk_widget_get_parent (popup->layer);
-
-  if (parent)
-    gtk_overlay_remove_overlay (GTK_OVERLAY (parent), popup->layer);
+  if (popup->closing)
+    return;
+  popup->closing = TRUE;
+  vibeos_menu_bin_close (popup->bin, popup->layer);
 }
 
 static void
@@ -30,6 +33,8 @@ on_row (VibeosPressable *row, Popup *popup)
   CalPopupChosen chosen = popup->chosen;
   gpointer data = popup->data;
 
+  if (popup->closing)
+    return;
   /* the popup goes first: the callback may open another */
   popup_close (popup);
   chosen (index, data);
@@ -122,7 +127,9 @@ cal_popup_show (GtkWidget *anchor, const char *const *labels, int n_labels, int 
   gtk_widget_set_margin_top (card, (int) top);
   gtk_widget_set_margin_start (card, (int) CLAMP (end ? at.x + gtk_widget_get_width (anchor) - width : at.x, 0,
                                                   window_width - width));
-  gtk_overlay_add_overlay (GTK_OVERLAY (layer), card);
+  /* it opens with the modal motion, as About's dialog (and every ⋮ menu), out of the corner by the anchor */
+  popup->bin = vibeos_menu_bin_new (card, anchor);
+  gtk_overlay_add_overlay (GTK_OVERLAY (layer), popup->bin);
   gtk_overlay_add_overlay (overlay, layer);
   /* the selected row in view */
   if (selected > 0)
@@ -141,7 +148,7 @@ cal_popup_dismiss (GtkWidget *widget)
     {
       Popup *popup = g_object_get_data (G_OBJECT (child), "cal-popup");
 
-      if (popup)
+      if (popup && !popup->closing)
         {
           popup_close (popup);
           return TRUE;

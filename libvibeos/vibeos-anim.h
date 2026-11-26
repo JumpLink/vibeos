@@ -29,6 +29,24 @@ void     vibeos_anim_stop       (VibeosAnim *anim);
 /* jumps to the end, with the last callback */
 void     vibeos_anim_finish     (VibeosAnim *anim);
 
+/* The modal motion: how About's dialog card opens (a VibeosSheet floating on a tablet) and every ⋮ menu: it grows from
+ * VIBEOS_MODAL_MIN_SCALE as it fades in, on a spring that goes a little past (libadwaita's dialog: stiffness 500,
+ * damping 0.62), and closes back on the same spring, stopping where it is gone rather than going past. The value
+ * runs from 0 (gone) to 1 (in place), a little over 1 as it goes past; draw it with vibeos_modal_snapshot_push. The
+ * first frame is already a frame into the motion, so what opens shows on the frame after the tap. With Reduce
+ * animations on (gtk-enable-animations off) it jumps to the end. */
+#define VIBEOS_MODAL_MIN_SCALE  0.8
+#define VIBEOS_MODAL_STIFFNESS  500.0
+#define VIBEOS_MODAL_DAMPING    0.62
+void     vibeos_anim_start_modal (VibeosAnim *anim, gboolean open);
+
+/* What is drawn between the two, at the modal motion's `value`: scaled about `origin` and faded */
+void     vibeos_modal_snapshot_push (GtkSnapshot *snapshot, double value, const graphene_point_t *origin);
+void     vibeos_modal_snapshot_pop  (GtkSnapshot *snapshot);
+/* A menu's `origin`: the corner of its card nearest the anchor it opened from (a ⋮ over its right end: the top right),
+ * so that it grows out of the button */
+void     vibeos_modal_menu_origin (const graphene_rect_t *card, const graphene_rect_t *anchor, graphene_point_t *origin);
+
 gboolean vibeos_anim_is_running (VibeosAnim *anim);
 double   vibeos_anim_get_value  (VibeosAnim *anim);
 /* the target of the run in progress (or of the last one) */

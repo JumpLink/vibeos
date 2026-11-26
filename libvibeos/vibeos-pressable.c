@@ -9,6 +9,7 @@
 
 #define TAP_TIMEOUT_MS        100      /* in a scroll view, the press shows only after this */
 #define LONG_PRESS_TIMEOUT_MS 400      /* held still this long, a press is a long press */
+#define TOUCH_SLOP            8        /* dp: how far outside the widget the finger may wander and still tap it */
 
 struct _VibeosPressable {
   GtkWidget       parent;
@@ -87,10 +88,10 @@ vibeos_pick_is_tappable (GtkWidget *widget, double x, double y)
 }
 
 static void
-on_pressed (GtkGestureClick *click, int n_press, double x, double y, VibeosPressable *self)
+on_pressed (GtkGestureDrag *drag, double x, double y, VibeosPressable *self)
 {
   if (self->scale <= 0 || vibeos_pick_is_tappable (GTK_WIDGET (self), x, y)) {
-    gtk_gesture_set_state (GTK_GESTURE (click), GTK_EVENT_SEQUENCE_DENIED);
+    gtk_gesture_set_state (GTK_GESTURE (drag), GTK_EVENT_SEQUENCE_DENIED);
     return;
   }
   clear_timeouts (self);
@@ -107,7 +108,7 @@ on_pressed (GtkGestureClick *click, int n_press, double x, double y, VibeosPress
 }
 
 static void
-on_released (GtkGestureClick *click, int n_press, double x, double y, VibeosPressable *self)
+on_released (GtkGestureDrag *drag, double dx, double dy, VibeosPressable *self)
 {
   if (!self->down)
     return;
@@ -123,7 +124,7 @@ on_released (GtkGestureClick *click, int n_press, double x, double y, VibeosPres
     g_signal_emit (self, signals[CLICKED], 0);
 }
 
-/* the press is lost: the finger moved away (on_stopped, on_update) or a scroll view took the touch ("cancel") */
+/* the press is lost: the finger went off the widget (on_moved) or a scroll view took the touch ("cancel") */
 static void
 on_lost (GtkGesture *gesture, gpointer unused, VibeosPressable *self)
 {
@@ -134,37 +135,21 @@ on_lost (GtkGesture *gesture, gpointer unused, VibeosPressable *self)
   vibeos_ripple_release (&self->ripple);
 }
 
-/* the finger is up, or further from where it went down than a click allows (gtk-double-click-distance, the
- * distance GtkGestureClick itself stops at) */
-static gboolean
-moved_away (VibeosPressable *self, GtkGesture *gesture)
-{
-  GdkEventSequence *sequence = gtk_gesture_single_get_current_sequence (GTK_GESTURE_SINGLE (gesture));
-  int distance = 5;
-  double x, y;
-
-  if (!gtk_gesture_get_point (gesture, sequence, &x, &y))
-    return TRUE;
-  g_object_get (gtk_widget_get_settings (GTK_WIDGET (self)), "gtk-double-click-distance", &distance, NULL);
-  return hypot (x - self->down_x, y - self->down_y) > distance;
-}
-
-/* GtkGestureClick stops for two reasons: the finger moved away, or its double-click time (400 ms) ran out with the
- * finger still down. Only the first loses the press: the second is a press held, which goes on to be a long press
- * (whose 400 ms the click's timer would otherwise always beat) */
+/* A finger that moves stays a tap for as long as it is on the widget or within the touch slop around it, as an Android
+ * view is lenient about moving outside its button: only leaving that area loses the press (and its long press). A
+ * finger never lies quite still, least of all a thumb stretched to a corner, and the press used to be lost after
+ * GtkGestureClick's 5 dp (its double-click distance) anywhere: a Back button tapped with a thumb that rolled 6 dp as it
+ * lifted did nothing, so it had to be tapped again (11-26, measured on the Tab S5e: every tap that slid 6 dp was lost,
+ * every one of 5 dp went back). A drag that should scroll is still the scroll view's: it takes the touch past its own
+ * slop, and the press is cancelled ("cancel"). */
 static void
-on_stopped (GtkGestureClick *click, VibeosPressable *self)
+on_moved (GtkGestureDrag *drag, double dx, double dy, VibeosPressable *self)
 {
-  if (moved_away (self, GTK_GESTURE (click)))
-    on_lost (GTK_GESTURE (click), NULL, self);
-}
+  double x = self->down_x + dx, y = self->down_y + dy;
+  int w = gtk_widget_get_width (GTK_WIDGET (self)), h = gtk_widget_get_height (GTK_WIDGET (self));
 
-/* once the click has stopped on its timer it says nothing more, so a finger moving away after that is seen here */
-static void
-on_update (GtkGesture *gesture, GdkEventSequence *sequence, VibeosPressable *self)
-{
-  if (self->down && moved_away (self, gesture))
-    on_lost (gesture, NULL, self);
+  if (self->down && (x < -TOUCH_SLOP || y < -TOUCH_SLOP || x > w + TOUCH_SLOP || y > h + TOUCH_SLOP))
+    on_lost (GTK_GESTURE (drag), NULL, self);
 }
 
 /* ---- drawing --------------------------------------------------------------------------------------------------- */
@@ -301,14 +286,14 @@ vibeos_pressable_init (VibeosPressable *self)
   g_object_set_data (G_OBJECT (self), "vibeos-tappable", GINT_TO_POINTER (TRUE));
   vibeos_ripple_init (&self->ripple, GTK_WIDGET (self));
 
-  GtkGesture *click = gtk_gesture_click_new ();
-  gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (click), GDK_BUTTON_PRIMARY);
-  g_signal_connect (click, "pressed", G_CALLBACK (on_pressed), self);
-  g_signal_connect (click, "released", G_CALLBACK (on_released), self);
-  g_signal_connect (click, "stopped", G_CALLBACK (on_stopped), self);
-  g_signal_connect (click, "update", G_CALLBACK (on_update), self);
-  g_signal_connect (click, "cancel", G_CALLBACK (on_lost), self);
-  gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (click));
+  /* a drag gesture, not GtkGestureClick, which gives up on a press once the finger has moved 5 dp (on_moved) */
+  GtkGesture *press = gtk_gesture_drag_new ();
+  gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (press), GDK_BUTTON_PRIMARY);
+  g_signal_connect (press, "drag-begin", G_CALLBACK (on_pressed), self);
+  g_signal_connect (press, "drag-update", G_CALLBACK (on_moved), self);
+  g_signal_connect (press, "drag-end", G_CALLBACK (on_released), self);
+  g_signal_connect (press, "cancel", G_CALLBACK (on_lost), self);
+  gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (press));
 }
 
 GtkWidget *
