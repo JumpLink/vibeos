@@ -138,8 +138,6 @@
 #define CT_POPUP_ITEM_PAD_DP             16.0f
 #define CT_POPUP_SPINNER_PAD_DP           8.0f
 #define CT_POPUP_TEXT_SP                 16.0f
-#define CT_POPUP_ENTER_FADE_MS          100          /* from alpha 0.1 */
-#define CT_POPUP_EXIT_MS                300
 #define CT_DIALOG_W_DP                  320.0f       /* CT_DIALOG_FRAMEWORK dialogs */
 #define CT_DIALOG_TITLE_SP               20.0f
 #define CT_TOAST_SHORT_MS              2000

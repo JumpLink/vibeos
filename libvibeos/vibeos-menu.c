@@ -1,5 +1,5 @@
 /* The overflow menu: see vibeos-menu.h. It opens next to its anchor, never over it: below it, or above it when there is
- * no room below. The card's clip grows away from the anchor (down below it, up above it) while it fades in. */
+ * no room below. It opens and closes with the modal motion, as About's dialog (vibeos-anim.h). */
 #include "vibeos-menu.h"
 
 #include <glib/gi18n-lib.h>
@@ -19,8 +19,6 @@
 #define CORNER          4
 #define END_MARGIN      4       /* the card's ends, at least this far in from the window's */
 #define ANCHOR_GAP      4       /* between the anchor's edge and the card's */
-#define ENTER_MS        250     /* the clip reveal and the fade in */
-#define EXIT_MS         150
 
 typedef struct
 {
@@ -35,7 +33,7 @@ struct _VibeosMenu
   GArray *rows;                 /* Row, by the rows' order */
   graphene_rect_t anchor_bounds;
   VibeosAnim *anim;
-  double shown;                 /* 0 … 1 */
+  double shown;                 /* 0 … 1: the modal motion's value */
   gboolean upward;              /* it opened above the anchor */
   gboolean closing;
 };
@@ -89,22 +87,19 @@ vibeos_menu_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
   VibeosMenu *self = VIBEOS_MENU (widget);
   graphene_rect_t card;
   GskRoundedRect shape;
-  double reveal = self->closing ? 1 : spongy_curve (SPONGY_FAST_OUT_SLOW_IN, self->shown);
+  graphene_point_t origin;
 
   if (!gtk_widget_compute_bounds (self->card, widget, &card))
     return;
-  gtk_snapshot_push_opacity (snapshot, self->closing ? self->shown : MIN (1, self->shown * 2));
+  /* the modal motion, as About's dialog opens (vibeos-anim.h): grown out of the anchor's corner as it fades in */
+  vibeos_modal_menu_origin (&card, &self->anchor_bounds, &origin);
+  vibeos_modal_snapshot_push (snapshot, self->shown, &origin);
   /* elevation level 2: a faint shadow */
   gsk_rounded_rect_init_from_rect (&shape, &card, CORNER);
   gtk_snapshot_append_outset_shadow (snapshot, &shape, (GdkRGBA[]) { vibeos_color_alpha (VIBEOS_SHADOW, 0.3f) },
                                      0, 2, 0, 6);
-  /* the clip reveal, away from the anchor: from the top edge down, or for a menu above it from the foot up */
-  gtk_snapshot_push_clip (snapshot, &GRAPHENE_RECT_INIT (card.origin.x,
-                                                         card.origin.y + (self->upward ? card.size.height * (1 - reveal) : 0),
-                                                         card.size.width, card.size.height * reveal));
   gtk_widget_snapshot_child (widget, self->card, snapshot);
-  gtk_snapshot_pop (snapshot);
-  gtk_snapshot_pop (snapshot);
+  vibeos_modal_snapshot_pop (snapshot);
 }
 
 static void
@@ -129,7 +124,7 @@ dismiss (VibeosMenu *self)
   if (self->closing)
     return;
   self->closing = TRUE;
-  vibeos_anim_start (self->anim, self->shown, 0, EXIT_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start_modal (self->anim, FALSE);
 }
 
 static void
@@ -267,7 +262,7 @@ present (VibeosMenu *self, GtkOverlay *overlay)
   gtk_overlay_set_clip_overlay (overlay, GTK_WIDGET (self), TRUE);
   gtk_widget_set_focusable (GTK_WIDGET (self), TRUE);
   gtk_widget_grab_focus (GTK_WIDGET (self));
-  vibeos_anim_start (self->anim, 0, 1, ENTER_MS, 0, SPONGY_LINEAR);
+  vibeos_anim_start_modal (self->anim, TRUE);
 }
 
 void
@@ -282,4 +277,153 @@ vibeos_menu_present (VibeosMenu *self, GtkWidget *anchor)
   if (!gtk_widget_compute_bounds (anchor, GTK_WIDGET (overlay), &self->anchor_bounds))
     graphene_rect_init (&self->anchor_bounds, 0, 0, 0, 0);
   present (self, overlay);
+}
+
+/* ---- a menu made of the app's own widgets: the bin that moves it --------------------------------------------- */
+
+#define VIBEOS_TYPE_MENU_BIN (vibeos_menu_bin_get_type ())
+G_DECLARE_FINAL_TYPE (VibeosMenuBin, vibeos_menu_bin, VIBEOS, MENU_BIN, GtkWidget)
+
+struct _VibeosMenuBin
+{
+  GtkWidget parent;
+  GtkWidget *card;
+  GtkWidget *anchor;            /* weak */
+  GtkWidget *layer;             /* weak: what goes once it has closed */
+  graphene_rect_t anchor_bounds;
+  VibeosAnim *anim;
+  double shown;
+  gboolean closing;
+};
+
+G_DEFINE_FINAL_TYPE (VibeosMenuBin, vibeos_menu_bin, GTK_TYPE_WIDGET)
+
+static void
+vibeos_menu_bin_measure (GtkWidget *widget, GtkOrientation orientation, int for_size, int *minimum, int *natural,
+                         int *minimum_baseline, int *natural_baseline)
+{
+  gtk_widget_measure (VIBEOS_MENU_BIN (widget)->card, orientation, for_size, minimum, natural, minimum_baseline,
+                      natural_baseline);
+}
+
+static void
+vibeos_menu_bin_size_allocate (GtkWidget *widget, int width, int height, int baseline)
+{
+  gtk_widget_allocate (VIBEOS_MENU_BIN (widget)->card, width, height, baseline, NULL);
+}
+
+static void
+vibeos_menu_bin_snapshot (GtkWidget *widget, GtkSnapshot *snapshot)
+{
+  VibeosMenuBin *self = VIBEOS_MENU_BIN (widget);
+  graphene_rect_t card = GRAPHENE_RECT_INIT (0, 0, gtk_widget_get_width (widget), gtk_widget_get_height (widget));
+  graphene_rect_t at;
+  graphene_point_t origin;
+
+  /* where the anchor is, while it is there (the last place it was, after) */
+  if (self->anchor && gtk_widget_compute_bounds (self->anchor, widget, &at))
+    self->anchor_bounds = at;
+  vibeos_modal_menu_origin (&card, &self->anchor_bounds, &origin);
+  vibeos_modal_snapshot_push (snapshot, self->shown, &origin);
+  gtk_widget_snapshot_child (widget, self->card, snapshot);
+  vibeos_modal_snapshot_pop (snapshot);
+}
+
+static void
+on_bin_anim (VibeosAnim *anim, double value, gpointer data)
+{
+  VibeosMenuBin *self = data;
+  GtkWidget *gone, *parent;
+
+  self->shown = value;
+  gtk_widget_queue_draw (GTK_WIDGET (self));
+  if (!self->closing || vibeos_anim_is_running (anim))
+    return;
+  gone = self->layer ? self->layer : GTK_WIDGET (self);
+  parent = gtk_widget_get_parent (gone);
+  if (GTK_IS_OVERLAY (parent))
+    gtk_overlay_remove_overlay (GTK_OVERLAY (parent), gone);
+}
+
+static void
+vibeos_menu_bin_map (GtkWidget *widget)
+{
+  VibeosMenuBin *self = VIBEOS_MENU_BIN (widget);
+
+  GTK_WIDGET_CLASS (vibeos_menu_bin_parent_class)->map (widget);
+  if (!self->closing)
+    vibeos_anim_start_modal (self->anim, TRUE);
+}
+
+static void
+vibeos_menu_bin_dispose (GObject *object)
+{
+  VibeosMenuBin *self = VIBEOS_MENU_BIN (object);
+
+  g_clear_pointer (&self->anim, vibeos_anim_free);
+  g_clear_pointer (&self->card, gtk_widget_unparent);
+  g_clear_weak_pointer (&self->anchor);
+  g_clear_weak_pointer (&self->layer);
+  G_OBJECT_CLASS (vibeos_menu_bin_parent_class)->dispose (object);
+}
+
+static void
+vibeos_menu_bin_class_init (VibeosMenuBinClass *klass)
+{
+  GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
+
+  G_OBJECT_CLASS (klass)->dispose = vibeos_menu_bin_dispose;
+  widget_class->measure = vibeos_menu_bin_measure;
+  widget_class->size_allocate = vibeos_menu_bin_size_allocate;
+  widget_class->snapshot = vibeos_menu_bin_snapshot;
+  widget_class->map = vibeos_menu_bin_map;
+}
+
+static void
+vibeos_menu_bin_init (VibeosMenuBin *self)
+{
+  self->anim = vibeos_anim_new (GTK_WIDGET (self), on_bin_anim, self);
+}
+
+GtkWidget *
+vibeos_menu_bin_new (GtkWidget *card, GtkWidget *anchor)
+{
+  VibeosMenuBin *self;
+  GtkWidget *bin;
+
+  g_return_val_if_fail (GTK_IS_WIDGET (card), NULL);
+  self = g_object_new (VIBEOS_TYPE_MENU_BIN, NULL);
+  bin = GTK_WIDGET (self);
+  /* the card's place is the bin's */
+  gtk_widget_set_halign (bin, gtk_widget_get_halign (card));
+  gtk_widget_set_valign (bin, gtk_widget_get_valign (card));
+  gtk_widget_set_margin_top (bin, gtk_widget_get_margin_top (card));
+  gtk_widget_set_margin_bottom (bin, gtk_widget_get_margin_bottom (card));
+  gtk_widget_set_margin_start (bin, gtk_widget_get_margin_start (card));
+  gtk_widget_set_margin_end (bin, gtk_widget_get_margin_end (card));
+  gtk_widget_set_halign (card, GTK_ALIGN_FILL);
+  gtk_widget_set_valign (card, GTK_ALIGN_FILL);
+  gtk_widget_set_margin_top (card, 0);
+  gtk_widget_set_margin_bottom (card, 0);
+  gtk_widget_set_margin_start (card, 0);
+  gtk_widget_set_margin_end (card, 0);
+  self->card = card;
+  gtk_widget_set_parent (card, bin);
+  g_set_weak_pointer (&self->anchor, anchor);
+  return bin;
+}
+
+void
+vibeos_menu_bin_close (GtkWidget *bin, GtkWidget *layer)
+{
+  VibeosMenuBin *self;
+
+  g_return_if_fail (VIBEOS_IS_MENU_BIN (bin));
+  self = VIBEOS_MENU_BIN (bin);
+  if (self->closing)
+    return;
+  self->closing = TRUE;
+  g_set_weak_pointer (&self->layer, layer);
+  gtk_widget_set_can_target (layer ? layer : bin, FALSE);
+  vibeos_anim_start_modal (self->anim, FALSE);
 }
