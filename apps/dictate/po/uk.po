@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-dictate\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Ukrainian\n"
@@ -548,8 +548,12 @@ msgstr "Мова %s недоступна"
 #. * third its Debian package (vibeos-dictate-vosk)
 #: src/dictate-download-dialog.c
 #, c-format
-msgid "%s is heard by %s, which is not installed on this phone. Install the %s package, then choose %s again."
-msgstr "Мову %s розпізнає %s, який не встановлено на цьому телефоні. Установіть пакет %s, а потім знову виберіть %s."
+msgid ""
+"%s is heard by %s, which is not installed on this phone. Install the %s "
+"package, then choose %s again."
+msgstr ""
+"Мову %s розпізнає %s, який не встановлено на цьому телефоні. Установіть "
+"пакет %s, а потім знову виберіть %s."
 
 # android: Framework httpErrorOk (several translations, short)
 #: src/dictate-download-dialog.c
@@ -623,8 +627,12 @@ msgid "There is no speech model for %s. Install the %s package."
 msgstr "Немає мовленнєвої моделі для мови %s. Установіть пакет %s."
 
 #: src/dictate-engine.c
-msgid "There is no speech model. Install a vibeos-dictate language package, such as vibeos-dictate-en."
-msgstr "Немає мовленнєвої моделі. Установіть мовний пакет vibeos-dictate, наприклад vibeos-dictate-en."
+msgid ""
+"There is no speech model. Install a vibeos-dictate language package, such as "
+"vibeos-dictate-en."
+msgstr ""
+"Немає мовленнєвої моделі. Установіть мовний пакет vibeos-dictate, наприклад "
+"vibeos-dictate-en."
 
 #. TRANSLATORS: %s is the package's name (vibeos-dictate-moonshine)
 #: src/dictate-engine.c
@@ -651,16 +659,26 @@ msgid "No microphone"
 msgstr "Немає мікрофона"
 
 #: src/dictate-enroll.c
-msgid "Vibe, what time is it now? I'm teaching you how my voice sounds, so that you only listen to me."
-msgstr "Vibe, котра зараз година? Так ти запам’ятаєш мій голос і слухатимеш лише мене."
+msgid ""
+"Vibe, what time is it now? I'm teaching you how my voice sounds, so that you "
+"only listen to me."
+msgstr ""
+"Vibe, котра зараз година? Так ти запам’ятаєш мій голос і слухатимеш лише "
+"мене."
 
 #: src/dictate-enroll.c
-msgid "Read my new messages out loud, then tell me what is on my calendar for tomorrow morning."
-msgstr "Прочитай уголос мої нові повідомлення, а потім скажи, що в мене в календарі на завтрашній ранок."
+msgid ""
+"Read my new messages out loud, then tell me what is on my calendar for "
+"tomorrow morning."
+msgstr ""
+"Прочитай уголос мої нові повідомлення, а потім скажи, що в мене в календарі "
+"на завтрашній ранок."
 
 #: src/dictate-enroll.c
-msgid "Call my sister on her mobile, and set an alarm for seven thirty tomorrow."
-msgstr "Зателефонуй сестрі на мобільний і постав будильник на пів на восьму завтра."
+msgid ""
+"Call my sister on her mobile, and set an alarm for seven thirty tomorrow."
+msgstr ""
+"Зателефонуй сестрі на мобільний і постав будильник на пів на восьму завтра."
 
 #: src/dictate-enroll.c
 msgid "What's the time? Call Anna. Set a timer."
@@ -748,7 +766,9 @@ msgstr "Це все, що мені потрібно."
 
 #: src/dictate-enroll.c
 msgid "Voice match is on. Say any command to test it. Nothing is carried out."
-msgstr "Voice Match увімкнено. Скажіть будь-яку команду, щоб перевірити. Нічого не виконуватиметься."
+msgstr ""
+"Voice Match увімкнено. Скажіть будь-яку команду, щоб перевірити. Нічого не "
+"виконуватиметься."
 
 #: src/dictate-enroll.c
 msgid "Tap anywhere, then speak"
@@ -827,19 +847,31 @@ msgstr "Не вдалося почати слухати."
 #. TRANSLATORS: Voice match's first words, said aloud; %u: how many phrases it asks (4)
 #: src/dictate-enroll.c
 #, c-format
-msgid "I'll learn your voice from %u short phrase, so I only take commands from you. The sample stays on this phone."
-msgid_plural "I'll learn your voice from %u short phrases, so I only take commands from you. The sample stays on this phone."
-msgstr[0] "Я вивчу ваш голос з %u короткої фрази, щоб виконувати команди лише від вас. Зразок залишиться на цьому телефоні."
-msgstr[1] "Я вивчу ваш голос з %u коротких фраз, щоб виконувати команди лише від вас. Зразок залишиться на цьому телефоні."
-msgstr[2] "Я вивчу ваш голос з %u коротких фраз, щоб виконувати команди лише від вас. Зразок залишиться на цьому телефоні."
+msgid ""
+"I'll learn your voice from %u short phrase, so I only take commands from "
+"you. The sample stays on this phone."
+msgid_plural ""
+"I'll learn your voice from %u short phrases, so I only take commands from "
+"you. The sample stays on this phone."
+msgstr[0] ""
+"Я вивчу ваш голос з %u короткої фрази, щоб виконувати команди лише від вас. "
+"Зразок залишиться на цьому телефоні."
+msgstr[1] ""
+"Я вивчу ваш голос з %u коротких фраз, щоб виконувати команди лише від вас. "
+"Зразок залишиться на цьому телефоні."
+msgstr[2] ""
+"Я вивчу ваш голос з %u коротких фраз, щоб виконувати команди лише від вас. "
+"Зразок залишиться на цьому телефоні."
 
 #: src/dictate-enroll.c src/dictate-voicematch-page.c
 msgid "Test voice match"
 msgstr "Перевірити Voice Match"
 
 #: src/dictate-enroll.c
-msgid "For example “Vibe, what's the weather?” Nothing is carried out during a test."
-msgstr "Наприклад: «Vibe, яка погода?» Під час перевірки нічого не виконується."
+msgid ""
+"For example “Vibe, what's the weather?” Nothing is carried out during a test."
+msgstr ""
+"Наприклад: «Vibe, яка погода?» Під час перевірки нічого не виконується."
 
 # android: Framework lockscreen_transport_stop_description (several translations, short)
 #: src/dictate-mic.c
@@ -953,12 +985,21 @@ msgid "Try saying"
 msgstr "Спробуйте сказати"
 
 #: src/dictate-onboarding.c
-msgid "Before I call or send anything, I read it back, and it goes after three seconds unless you cancel it. Nothing is deleted until you tap to confirm."
-msgstr "Перш ніж зателефонувати чи щось надіслати, я зачитую це вам, і через три секунди воно надсилається, якщо ви не скасуєте. Нічого не видаляється, доки ви не підтвердите натисканням."
+msgid ""
+"Before I call or send anything, I read it back, and it goes after three "
+"seconds unless you cancel it. Nothing is deleted until you tap to confirm."
+msgstr ""
+"Перш ніж зателефонувати чи щось надіслати, я зачитую це вам, і через три "
+"секунди воно надсилається, якщо ви не скасуєте. Нічого не видаляється, доки "
+"ви не підтвердите натисканням."
 
 #: src/dictate-onboarding.c
-msgid "Before I call, send or delete anything, I show you exactly what will happen, and nothing happens until you confirm it."
-msgstr "Перш ніж зателефонувати, щось надіслати чи видалити, я показую, що саме станеться, і нічого не відбувається, доки ви не підтвердите."
+msgid ""
+"Before I call, send or delete anything, I show you exactly what will happen, "
+"and nothing happens until you confirm it."
+msgstr ""
+"Перш ніж зателефонувати, щось надіслати чи видалити, я показую, що саме "
+"станеться, і нічого не відбувається, доки ви не підтвердите."
 
 # android: Framework skip_button_label (short)
 #: src/dictate-onboarding.c
@@ -975,8 +1016,12 @@ msgid "Hello. I'm Vibe."
 msgstr "Привіт. Я Vibe."
 
 #: src/dictate-onboarding.c
-msgid "I run this phone by voice. Everything I say is also written here, and everything can be tapped."
-msgstr "Я керую цим телефоном голосом. Усе, що я кажу, також з’являється тут, і на все можна натиснути."
+msgid ""
+"I run this phone by voice. Everything I say is also written here, and "
+"everything can be tapped."
+msgstr ""
+"Я керую цим телефоном голосом. Усе, що я кажу, також з’являється тут, і на "
+"все можна натиснути."
 
 #: src/dictate-onboarding.c
 msgid "Tap anywhere, or say “continue”"
@@ -1054,8 +1099,13 @@ msgid "What may I use on this phone?"
 msgstr "Що мені можна використовувати на цьому телефоні?"
 
 #: src/dictate-onboarding.c
-msgid "What I read goes only to VibeOS's own model server, never to anyone else. For the weather, the town's rough position goes to Open-Meteo."
-msgstr "Те, що я читаю, надходить лише на власний сервер моделі VibeOS і більше нікому. Для прогнозу погоди приблизне розташування міста передається в Open-Meteo."
+msgid ""
+"What I read goes only to VibeOS's own model server, never to anyone else. "
+"For the weather, the town's rough position goes to Open-Meteo."
+msgstr ""
+"Те, що я читаю, надходить лише на власний сервер моделі VibeOS і більше "
+"нікому. Для прогнозу погоди приблизне розташування міста передається в Open-"
+"Meteo."
 
 #: src/dictate-onboarding.c
 msgid "Say “turn off files”, or “continue”"
@@ -1063,7 +1113,9 @@ msgstr "Скажіть «вимкни файли» або «далі»"
 
 #: src/dictate-onboarding.c
 msgid "Tap one to turn it off or on, or anywhere else to go on"
-msgstr "Торкніться пункту, щоб вимкнути чи ввімкнути його, або будь-де, щоб продовжити"
+msgstr ""
+"Торкніться пункту, щоб вимкнути чи ввімкнути його, або будь-де, щоб "
+"продовжити"
 
 #: src/dictate-onboarding.c
 msgid "I'm ready. One rule:"
@@ -1075,7 +1127,9 @@ msgstr "Торкніться будь-де й говоріть"
 
 #: src/dictate-package.c
 msgid "Software cannot be installed on this phone: PackageKit is not there"
-msgstr "На цьому телефоні не можна встановлювати програмне забезпечення: немає PackageKit"
+msgstr ""
+"На цьому телефоні не можна встановлювати програмне забезпечення: немає "
+"PackageKit"
 
 #: src/dictate-package.c
 msgid "The password was not given"
@@ -1087,7 +1141,8 @@ msgstr "Установлення скасовано"
 
 #: src/dictate-package.c
 msgid "The VibeOS archive could not be reached. Is the phone online?"
-msgstr "Не вдається зв’язатися з архівом VibeOS. Телефон підключено до Інтернету?"
+msgstr ""
+"Не вдається зв’язатися з архівом VibeOS. Телефон підключено до Інтернету?"
 
 #. TRANSLATORS: %s is a package's name (vibeos-dictate-vosk)
 #: src/dictate-package.c
@@ -1252,8 +1307,12 @@ msgstr "Видалити мову %s?"
 #. TRANSLATORS: %s is a size: 90.4 MB
 #: src/dictate-settings.c
 #, c-format
-msgid "Its speech recognition and voice are removed from the phone, which frees %s. You can download them again."
-msgstr "Розпізнавання мовлення й голос для цієї мови буде видалено з телефона, що звільнить %s. Їх можна буде завантажити знову."
+msgid ""
+"Its speech recognition and voice are removed from the phone, which frees %s. "
+"You can download them again."
+msgstr ""
+"Розпізнавання мовлення й голос для цієї мови буде видалено з телефона, що "
+"звільнить %s. Їх можна буде завантажити знову."
 
 #: src/dictate-settings.c
 msgid "Remove"
@@ -1298,7 +1357,9 @@ msgstr "Звуки"
 
 #: src/dictate-settings.c
 msgid "A short sound when Vibe listens, works, is done or fails"
-msgstr "Короткий звук, коли Vibe слухає, працює, завершує роботу або натрапляє на помилку"
+msgstr ""
+"Короткий звук, коли Vibe слухає, працює, завершує роботу або натрапляє на "
+"помилку"
 
 # android: Settings notification_vibrate_title (short)
 #: src/dictate-settings.c
@@ -1328,12 +1389,20 @@ msgid "Announce calls"
 msgstr "Оголошувати дзвінки"
 
 #: src/dictate-settings.c
-msgid "Vibe says who is calling and listens for answer or decline, also when it is closed"
-msgstr "Vibe каже, хто телефонує, і чекає команди «відповісти» чи «відхилити», навіть коли його закрито"
+msgid ""
+"Vibe says who is calling and listens for answer or decline, also when it is "
+"closed"
+msgstr ""
+"Vibe каже, хто телефонує, і чекає команди «відповісти» чи «відхилити», "
+"навіть коли його закрито"
 
 #: src/dictate-settings.c
-msgid "Replies only in headphones; on the speaker short, with no names or messages read out"
-msgstr "Відповіді лише в навушниках; через динамік – коротко, без імен і текстів повідомлень"
+msgid ""
+"Replies only in headphones; on the speaker short, with no names or messages "
+"read out"
+msgstr ""
+"Відповіді лише в навушниках; через динамік – коротко, без імен і текстів "
+"повідомлень"
 
 #: src/dictate-settings.c
 msgid "Vibe says nothing and plays no sound on its own"
@@ -1358,8 +1427,14 @@ msgid "Only to VibeOS"
 msgstr "Лише до VibeOS"
 
 #: src/dictate-settings.c
-msgid "What Vibe reads on the phone goes only to VibeOS's own model server, never to anyone else. For the weather, the town's rough position goes to Open-Meteo, as from the Weather app"
-msgstr "Те, що Vibe читає на телефоні, надходить лише на власний сервер моделі VibeOS і більше нікому. Для прогнозу погоди приблизне розташування міста передається в Open-Meteo, як і з додатка «Погода»"
+msgid ""
+"What Vibe reads on the phone goes only to VibeOS's own model server, never "
+"to anyone else. For the weather, the town's rough position goes to Open-"
+"Meteo, as from the Weather app"
+msgstr ""
+"Те, що Vibe читає на телефоні, надходить лише на власний сервер моделі "
+"VibeOS і більше нікому. Для прогнозу погоди приблизне розташування міста "
+"передається в Open-Meteo, як і з додатка «Погода»"
 
 #. the conversation kept on the screen, which is what Vibe remembers
 #: src/dictate-settings.c
@@ -1391,8 +1466,11 @@ msgid "Help"
 msgstr "Довідка"
 
 #: src/dictate-settings.c
-msgid "Each turn is recorded on the phone, and only there, to find what went wrong"
-msgstr "Кожна репліка записується на телефоні, і лише там, щоб можна було знайти причину проблеми"
+msgid ""
+"Each turn is recorded on the phone, and only there, to find what went wrong"
+msgstr ""
+"Кожна репліка записується на телефоні, і лише там, щоб можна було знайти "
+"причину проблеми"
 
 #: src/dictate-settings.c
 msgid "View debug log"
@@ -2204,8 +2282,12 @@ msgid "Delete voice sample?"
 msgstr "Видалити зразок голосу?"
 
 #: src/dictate-voicematch-page.c
-msgid "Voice match turns off and Vibe takes commands from any voice until you record a new sample."
-msgstr "Voice Match буде вимкнено, і Vibe прийматиме команди від будь-якого голосу, доки ви не запишете новий зразок."
+msgid ""
+"Voice match turns off and Vibe takes commands from any voice until you "
+"record a new sample."
+msgstr ""
+"Voice Match буде вимкнено, і Vibe прийматиме команди від будь-якого голосу, "
+"доки ви не запишете новий зразок."
 
 # android: Framework delete (several translations, short)
 #: src/dictate-voicematch-page.c
@@ -2220,7 +2302,8 @@ msgstr "Потрібен збіг %.0f%%"
 
 #: src/dictate-voicematch-page.c
 msgid "Works with a cold or in noise, but a similar voice may get through."
-msgstr "Працює під час застуди чи в шумі, але схожий голос може пройти перевірку."
+msgstr ""
+"Працює під час застуди чи в шумі, але схожий голос може пройти перевірку."
 
 #: src/dictate-voicematch-page.c
 msgid "Right for most people and rooms."
@@ -2237,8 +2320,12 @@ msgstr "Вимкнено: Vibe відповідає будь-кому"
 #. on, and nothing to check a voice with: what asks for it is refused, as for
 #. * too little speech (dictate-talk.c)
 #: src/dictate-voicematch-page.c
-msgid "Voices can't be checked now: personal and action commands that ask for my voice are not carried out"
-msgstr "Зараз неможливо перевіряти голоси: особисті команди й команди дій, для яких потрібен мій голос, не виконуються"
+msgid ""
+"Voices can't be checked now: personal and action commands that ask for my "
+"voice are not carried out"
+msgstr ""
+"Зараз неможливо перевіряти голоси: особисті команди й команди дій, для яких "
+"потрібен мій голос, не виконуються"
 
 #: src/dictate-voicematch-page.c
 msgid "Other voices can't give Vibe commands"
@@ -2285,28 +2372,43 @@ msgstr[1] "%u фрази · записано %s"
 msgstr[2] "%u фраз · записано %s"
 
 #: src/dictate-voicematch-page.c
-msgid "Vibe can't tell voices apart on this phone yet, so it answers anyone who speaks to it."
-msgstr "Vibe поки не розрізняє голоси на цьому телефоні, тому відповідає будь-кому, хто до нього звертається."
+msgid ""
+"Vibe can't tell voices apart on this phone yet, so it answers anyone who "
+"speaks to it."
+msgstr ""
+"Vibe поки не розрізняє голоси на цьому телефоні, тому відповідає будь-кому, "
+"хто до нього звертається."
 
 #: src/dictate-voicematch-page.c
-msgid "Vibe learns your voice and won't carry out commands from anyone who doesn't sound like you. The sample never leaves this phone."
-msgstr "Vibe запам’ятовує ваш голос і не виконуватиме команди тих, чий голос не схожий на ваш. Зразок ніколи не залишає цей телефон."
+msgid ""
+"Vibe learns your voice and won't carry out commands from anyone who doesn't "
+"sound like you. The sample never leaves this phone."
+msgstr ""
+"Vibe запам’ятовує ваш голос і не виконуватиме команди тих, чий голос не "
+"схожий на ваш. Зразок ніколи не залишає цей телефон."
 
 #: src/dictate-voicematch-page.c
 msgid "Voice match is coming"
 msgstr "Voice Match незабаром"
 
 #: src/dictate-voicematch-page.c
-msgid "Then Vibe learns your voice and won't carry out commands from anyone who doesn't sound like you. Recording your voice will be offered here."
-msgstr "Тоді Vibe запам’ятає ваш голос і не виконуватиме команди тих, чий голос не схожий на ваш. Записати голос можна буде тут."
+msgid ""
+"Then Vibe learns your voice and won't carry out commands from anyone who "
+"doesn't sound like you. Recording your voice will be offered here."
+msgstr ""
+"Тоді Vibe запам’ятає ваш голос і не виконуватиме команди тих, чий голос не "
+"схожий на ваш. Записати голос можна буде тут."
 
 #: src/dictate-voicematch-page.c
 #, c-format
 msgid "Read %u short phrase aloud. About a minute, somewhere quiet."
 msgid_plural "Read %u short phrases aloud. About a minute, somewhere quiet."
-msgstr[0] "Прочитайте вголос %u коротку фразу. Це займе близько хвилини, у тихому місці."
-msgstr[1] "Прочитайте вголос %u короткі фрази. Це займе близько хвилини, у тихому місці."
-msgstr[2] "Прочитайте вголос %u коротких фраз. Це займе близько хвилини, у тихому місці."
+msgstr[0] ""
+"Прочитайте вголос %u коротку фразу. Це займе близько хвилини, у тихому місці."
+msgstr[1] ""
+"Прочитайте вголос %u короткі фрази. Це займе близько хвилини, у тихому місці."
+msgstr[2] ""
+"Прочитайте вголос %u коротких фраз. Це займе близько хвилини, у тихому місці."
 
 #: src/dictate-voicematch-page.c
 msgid "No voice sample yet"
@@ -2321,12 +2423,20 @@ msgid "The voice model is not installed"
 msgstr "Голосову модель не встановлено"
 
 #: src/dictate-voicematch-page.c
-msgid "Your voice sample is kept, but Vibe can't check voices until the model is installed again."
-msgstr "Зразок вашого голосу збережено, але Vibe не зможе перевіряти голоси, доки модель не буде встановлено знову."
+msgid ""
+"Your voice sample is kept, but Vibe can't check voices until the model is "
+"installed again."
+msgstr ""
+"Зразок вашого голосу збережено, але Vibe не зможе перевіряти голоси, доки "
+"модель не буде встановлено знову."
 
 #: src/dictate-voicematch-page.c
-msgid "Voice match was updated, and your sample was made for the earlier version. Vibe can't check voices with it."
-msgstr "Voice Match оновлено, а ваш зразок записано для попередньої версії. Vibe не може перевіряти голоси за ним."
+msgid ""
+"Voice match was updated, and your sample was made for the earlier version. "
+"Vibe can't check voices with it."
+msgstr ""
+"Voice Match оновлено, а ваш зразок записано для попередньої версії. Vibe не "
+"може перевіряти голоси за ним."
 
 #: src/dictate-voicematch-page.c src/dictate-window.c
 msgid "Record again"
@@ -2405,8 +2515,10 @@ msgid "Too little speech to tell whose voice it is"
 msgstr "Замало мовлення, щоб визначити, чий це голос"
 
 #: src/dictate-voicematch.c
-msgid "The voice sample was made for another Voice Match model: record it again"
-msgstr "Зразок голосу записано для іншої моделі Voice Match: запишіть його знову"
+msgid ""
+"The voice sample was made for another Voice Match model: record it again"
+msgstr ""
+"Зразок голосу записано для іншої моделі Voice Match: запишіть його знову"
 
 #: src/dictate-voicematch.c
 #, c-format
@@ -2632,7 +2744,9 @@ msgstr "Що ти вмієш?"
 #. * punctuation; only the whole sentence counts
 #: src/dictate-window.c
 msgid "what can i say|what can you do|what can i ask|help"
-msgstr "що я можу сказати|що можна сказати|що ти вмієш|що ти можеш|що ти вмієш робити|що можна запитати|допомога|довідка|допоможи"
+msgstr ""
+"що я можу сказати|що можна сказати|що ти вмієш|що ти можеш|що ти вмієш "
+"робити|що можна запитати|допомога|довідка|допоможи"
 
 # android: Dialer private_num_non_verizon (short)
 #: src/dictate-window.c
@@ -2690,11 +2804,14 @@ msgstr "Завершити виклик"
 
 #: src/dictate-window.c
 msgid "Tap anywhere and say “mute”, “hold”, “speaker” or “hang up”"
-msgstr "Торкніться будь-де й скажіть «вимкнути мікрофон», «утримувати», «динамік» або «завершити»"
+msgstr ""
+"Торкніться будь-де й скажіть «вимкнути мікрофон», «утримувати», «динамік» "
+"або «завершити»"
 
 #: src/dictate-window.c
 msgid "Tap anywhere and say “mute”, “speaker” or “hang up”"
-msgstr "Торкніться будь-де й скажіть «вимкнути мікрофон», «динамік» або «завершити»"
+msgstr ""
+"Торкніться будь-де й скажіть «вимкнути мікрофон», «динамік» або «завершити»"
 
 #. TRANSLATORS: over a call whose person has no name to show (a noun)
 #: src/dictate-window.c
@@ -2718,12 +2835,19 @@ msgid "I'm keeping quiet."
 msgstr "Я мовчу."
 
 #: src/dictate-window.c
-msgid "I won't speak or play sounds on my own. Calls are still announced. Ask me anything and I'll answer."
-msgstr "Без запиту я не говоритиму й не відтворюватиму звуків. Дзвінки все одно оголошуватимуться. Запитайте мене про будь-що, і я відповім."
+msgid ""
+"I won't speak or play sounds on my own. Calls are still announced. Ask me "
+"anything and I'll answer."
+msgstr ""
+"Без запиту я не говоритиму й не відтворюватиму звуків. Дзвінки все одно "
+"оголошуватимуться. Запитайте мене про будь-що, і я відповім."
 
 #: src/dictate-window.c
-msgid "I won't speak or play sounds on my own. Ask me anything and I'll answer."
-msgstr "Без запиту я не говоритиму й не відтворюватиму звуків. Запитайте мене про будь-що, і я відповім."
+msgid ""
+"I won't speak or play sounds on my own. Ask me anything and I'll answer."
+msgstr ""
+"Без запиту я не говоритиму й не відтворюватиму звуків. Запитайте мене про "
+"будь-що, і я відповім."
 
 #: src/dictate-window.c
 msgid "Good evening."
@@ -2762,17 +2886,29 @@ msgid "I can't check your voice right now."
 msgstr "Зараз я не можу перевірити ваш голос."
 
 #: src/dictate-window.c
-msgid "Voice match was updated since your voice was recorded. Record it again and I can check it."
-msgstr "Після запису вашого голосу Voice Match оновився. Запишіть голос ще раз, і я зможу його перевіряти."
+msgid ""
+"Voice match was updated since your voice was recorded. Record it again and I "
+"can check it."
+msgstr ""
+"Після запису вашого голосу Voice Match оновився. Запишіть голос ще раз, і я "
+"зможу його перевіряти."
 
 #: src/dictate-window.c
-msgid "The voice model is not installed any more, so I can't tell your voice from anyone else's."
-msgstr "Голосової моделі більше немає, тому я не можу відрізнити ваш голос від чужого."
+msgid ""
+"The voice model is not installed any more, so I can't tell your voice from "
+"anyone else's."
+msgstr ""
+"Голосової моделі більше немає, тому я не можу відрізнити ваш голос від "
+"чужого."
 
 #. the model is there and the sample made for it, and the check failed to run
 #: src/dictate-window.c
-msgid "Voice match couldn't run just now, so I can't tell your voice from anyone else's."
-msgstr "Щойно не вдалося запустити Voice Match, тому я не можу відрізнити ваш голос від чужого."
+msgid ""
+"Voice match couldn't run just now, so I can't tell your voice from anyone "
+"else's."
+msgstr ""
+"Щойно не вдалося запустити Voice Match, тому я не можу відрізнити ваш голос "
+"від чужого."
 
 #: src/dictate-window.c
 msgid "Use PIN instead"
@@ -2799,12 +2935,20 @@ msgid "Has your voice changed?"
 msgstr "Ваш голос змінився?"
 
 #: src/dictate-window.c
-msgid "A cold or a new microphone can do that. Enter your PIN and I'll learn it again."
-msgstr "Таке буває через застуду або новий мікрофон. Введіть PIN-код, і я вивчу ваш голос знову."
+msgid ""
+"A cold or a new microphone can do that. Enter your PIN and I'll learn it "
+"again."
+msgstr ""
+"Таке буває через застуду або новий мікрофон. Введіть PIN-код, і я вивчу ваш "
+"голос знову."
 
 #: src/dictate-window.c
-msgid "A cold or a new microphone can do that. Record your voice again and I'll learn it."
-msgstr "Таке буває через застуду або новий мікрофон. Запишіть голос ще раз, і я його вивчу."
+msgid ""
+"A cold or a new microphone can do that. Record your voice again and I'll "
+"learn it."
+msgstr ""
+"Таке буває через застуду або новий мікрофон. Запишіть голос ще раз, і я його "
+"вивчу."
 
 # android: Framework autofill_save_notnow (short)
 #: src/dictate-window.c
@@ -2825,8 +2969,12 @@ msgid "That didn't sound like my owner."
 msgstr "Це не схоже на голос мого власника."
 
 #: src/dictate-window.c
-msgid "I only take commands from the voice I was taught. Try again, closer to the phone."
-msgstr "Я виконую команди лише того голосу, який мені знайомий. Спробуйте ще раз, ближче до телефона."
+msgid ""
+"I only take commands from the voice I was taught. Try again, closer to the "
+"phone."
+msgstr ""
+"Я виконую команди лише того голосу, який мені знайомий. Спробуйте ще раз, "
+"ближче до телефона."
 
 #: src/dictate-window.c
 msgid "Leave it off"

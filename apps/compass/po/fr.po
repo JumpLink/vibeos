@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-compass\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: French\n"
@@ -69,7 +69,8 @@ msgstr "NO"
 
 #: main.c
 msgid "The sensor service is not running, so the compass cannot be read."
-msgstr "Le service des capteurs n'est pas lancé : impossible de lire la boussole."
+msgstr ""
+"Le service des capteurs n'est pas lancé : impossible de lire la boussole."
 
 #: main.c
 msgid "The compass cannot be read right now."
@@ -78,7 +79,9 @@ msgstr "Impossible de lire la boussole pour le moment."
 #: main.c
 msgid ""
 "Hold the device flat, away from metal. Move it in a figure 8 to calibrate."
-msgstr "Tenez l'appareil à plat, loin de tout objet métallique. Décrivez un 8 pour l'étalonner."
+msgstr ""
+"Tenez l'appareil à plat, loin de tout objet métallique. Décrivez un 8 pour "
+"l'étalonner."
 
 #: main.c
 msgid "This device has no compass."

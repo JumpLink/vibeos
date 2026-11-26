@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-contacts\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -29,7 +29,9 @@ msgstr "Wszyscy Twoi znajomi na jednej liście"
 
 #: data/vibeos.Contacts.desktop.in
 msgid "Contacts;People;Address;Book;vCard;Friends;"
-msgstr "Kontakty;Osoby;Ludzie;Adres;Książka adresowa;vCard;Znajomi;Przyjaciele;Contacts;People;"
+msgstr ""
+"Kontakty;Osoby;Ludzie;Adres;Książka "
+"adresowa;vCard;Znajomi;Przyjaciele;Contacts;People;"
 
 # android: Framework phoneTypes[1] (several translations, short)
 #. the Device account's spinner

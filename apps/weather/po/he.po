@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-weather\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:55+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Hebrew\n"
@@ -202,11 +202,8 @@ msgstr "לחץ אוויר"
 
 #: src/main.c
 msgid "No forecast: Open-Meteo did not answer. Tap reload to try again."
-msgstr "אין תחזית: Open-Meteo לא הגיב. אפשר להקיש על \"טעינה מחדש\" כדי לנסות שוב."
-
-#: src/main.c
-msgid "No location. Turn on Location in Settings, then tap reload, or set a city in the ⋮ menu."
-msgstr "אין מיקום. יש להפעיל את \"מיקום\" בהגדרות ואז להקיש על \"טעינה מחדש\", או להגדיר עיר בתפריט ⋮."
+msgstr ""
+"אין תחזית: Open-Meteo לא הגיב. אפשר להקיש על \"טעינה מחדש\" כדי לנסות שוב."
 
 #: src/main.c
 #, c-format
@@ -246,17 +243,34 @@ msgstr "ניקוי"
 
 #: src/main.c
 msgid ""
-"Weather forecasts by <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, under <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n"
+"Weather forecasts by <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, "
+"under <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</"
+"a>.\n"
 "\n"
-"Set City finds cities with Open-Meteo's geocoding, on data from <a href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0."
+"Set City finds cities with Open-Meteo's geocoding, on data from <a "
+"href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0."
 msgstr ""
-"תחזיות מזג האוויר מ-<a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, במסגרת <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n"
+"תחזיות מזג האוויר מ-<a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, "
+"במסגרת <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</"
+"a>.\n"
 "\n"
-"\"הגדרת עיר\" מוצאת ערים באמצעות שירות הגיאוקודינג של Open-Meteo, על סמך נתונים מ-<a href=\"https://www.geonames.org/\">GeoNames</a>, במסגרת CC BY 4.0."
+"\"הגדרת עיר\" מוצאת ערים באמצעות שירות הגיאוקודינג של Open-Meteo, על סמך "
+"נתונים מ-<a href=\"https://www.geonames.org/\">GeoNames</a>, במסגרת CC BY "
+"4.0."
 
 #: src/main.c
-msgid "The place's name, where the phone is, from OpenStreetMap's <a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a>. Data © <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the <a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)."
-msgstr "שם המקום שבו נמצא הטלפון, מ-<a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a> של OpenStreetMap. הנתונים © <a href=\"https://www.openstreetmap.org/copyright\">התורמים של OpenStreetMap</a>, במסגרת <a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)."
+msgid ""
+"The place's name, where the phone is, from OpenStreetMap's <a href=\"https://"
+"nominatim.openstreetmap.org/\">Nominatim</a>. Data © <a href=\"https://"
+"www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the "
+"<a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database "
+"License</a> (ODbL)."
+msgstr ""
+"שם המקום שבו נמצא הטלפון, מ-<a href=\"https://nominatim.openstreetmap.org/"
+"\">Nominatim</a> של OpenStreetMap. הנתונים © <a href=\"https://"
+"www.openstreetmap.org/copyright\">התורמים של OpenStreetMap</a>, במסגרת <a "
+"href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</"
+"a> (ODbL)."
 
 #: src/main.c
 msgid "About"
@@ -274,3 +288,18 @@ msgstr "אפשרויות נוספות"
 #: src/main.c
 msgid "Finding where you are…"
 msgstr "מתבצע איתור של המיקום…"
+
+#: src/wx-place.c
+msgid ""
+"No location yet. Set a city in the ⋮ menu, or tap reload under open sky."
+msgstr ""
+"עדיין אין מיקום. יש להגדיר עיר בתפריט ⋮, או להקיש על \"טעינה מחדש\" תחת כיפת "
+"השמיים."
+
+#: src/wx-place.c
+msgid ""
+"No location. Turn on Location in Settings, then tap reload, or set a city in "
+"the ⋮ menu."
+msgstr ""
+"אין מיקום. יש להפעיל את \"מיקום\" בהגדרות ואז להקיש על \"טעינה מחדש\", או "
+"להגדיר עיר בתפריט ⋮."

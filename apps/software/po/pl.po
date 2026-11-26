@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-software\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -47,8 +47,11 @@ msgid "Sign in"
 msgstr "Zaloguj się"
 
 #: src/sw-account-pages.c
-msgid "Sign in to rate and review apps, and to see your apps on all your devices."
-msgstr "Zaloguj się, aby oceniać aplikacje, pisać opinie i widzieć swoje aplikacje na wszystkich urządzeniach."
+msgid ""
+"Sign in to rate and review apps, and to see your apps on all your devices."
+msgstr ""
+"Zaloguj się, aby oceniać aplikacje, pisać opinie i widzieć swoje aplikacje "
+"na wszystkich urządzeniach."
 
 # android: Settings preview_pager_email_title (short)
 #: src/sw-account-pages.c
@@ -78,8 +81,12 @@ msgid "Enter a name. It shows on your reviews."
 msgstr "Wpisz nazwę. Będzie widoczna przy Twoich opiniach."
 
 #: src/sw-account-pages.c
-msgid "With an account you can rate and review apps, and see your apps on all your devices. The store emails you a code to confirm the address."
-msgstr "Z kontem możesz oceniać aplikacje, pisać opinie i widzieć swoje aplikacje na wszystkich urządzeniach. Sklep wyśle Ci e-mailem kod do potwierdzenia adresu."
+msgid ""
+"With an account you can rate and review apps, and see your apps on all your "
+"devices. The store emails you a code to confirm the address."
+msgstr ""
+"Z kontem możesz oceniać aplikacje, pisać opinie i widzieć swoje aplikacje na "
+"wszystkich urządzeniach. Sklep wyśle Ci e-mailem kod do potwierdzenia adresu."
 
 # android: Settings security_settings_fingerprint_enroll_dialog_name_label (several translations, short)
 #: src/sw-account-pages.c
@@ -120,14 +127,22 @@ msgstr[2] "%s Zostało %d prób."
 #. TRANSLATORS: %d is the code's length in digits, %s the email address
 #: src/sw-account-pages.c
 #, c-format
-msgid "The store sent a %d-digit code to %s. Enter it here to confirm the address. It works for 15 minutes."
-msgstr "Sklep wysłał %d-cyfrowy kod na adres %s. Wpisz go tutaj, aby potwierdzić adres. Kod jest ważny przez 15 minut."
+msgid ""
+"The store sent a %d-digit code to %s. Enter it here to confirm the address. "
+"It works for 15 minutes."
+msgstr ""
+"Sklep wysłał %d-cyfrowy kod na adres %s. Wpisz go tutaj, aby potwierdzić "
+"adres. Kod jest ważny przez 15 minut."
 
 #. TRANSLATORS: %d is the code's length in digits, %s the email address
 #: src/sw-account-pages.c
 #, c-format
-msgid "Confirm your address to rate and review apps: enter the %d-digit code the store emailed to %s, or ask for a new one."
-msgstr "Potwierdź adres, aby oceniać aplikacje i pisać opinie: wpisz %d-cyfrowy kod, który sklep wysłał na adres %s, albo poproś o nowy."
+msgid ""
+"Confirm your address to rate and review apps: enter the %d-digit code the "
+"store emailed to %s, or ask for a new one."
+msgstr ""
+"Potwierdź adres, aby oceniać aplikacje i pisać opinie: wpisz %d-cyfrowy kod, "
+"który sklep wysłał na adres %s, albo poproś o nowy."
 
 #: src/sw-account-pages.c
 msgid "A new code is on its way"
@@ -156,8 +171,12 @@ msgid "Your password is changed, and you are signed in"
 msgstr "Zmieniono hasło i zalogowano Cię"
 
 #: src/sw-account-pages.c
-msgid "Enter the address you signed up with. If it has an account, the store emails a code to it to set a new password."
-msgstr "Wpisz adres użyty przy rejestracji. Jeśli jest z nim powiązane konto, sklep wyśle na niego kod do ustawienia nowego hasła."
+msgid ""
+"Enter the address you signed up with. If it has an account, the store emails "
+"a code to it to set a new password."
+msgstr ""
+"Wpisz adres użyty przy rejestracji. Jeśli jest z nim powiązane konto, sklep "
+"wyśle na niego kod do ustawienia nowego hasła."
 
 #: src/sw-account-pages.c
 msgid "Send the code"
@@ -166,8 +185,11 @@ msgstr "Wyślij kod"
 #. TRANSLATORS: %s is the email address (partly hidden), %d the code's length in digits
 #: src/sw-account-pages.c
 #, c-format
-msgid "If %s has an account, a %d-digit code is on its way to it. Enter it here."
-msgstr "Jeśli z adresem %s jest powiązane konto, wysłano na niego %d-cyfrowy kod. Wpisz go tutaj."
+msgid ""
+"If %s has an account, a %d-digit code is on its way to it. Enter it here."
+msgstr ""
+"Jeśli z adresem %s jest powiązane konto, wysłano na niego %d-cyfrowy kod. "
+"Wpisz go tutaj."
 
 # android: Settings next_label (several translations, short)
 #: src/sw-account-pages.c
@@ -175,8 +197,12 @@ msgid "Next"
 msgstr "Dalej"
 
 #: src/sw-account-pages.c
-msgid "Choose a new password. Every device signed in to the account is signed out, and this one signed in."
-msgstr "Wybierz nowe hasło. Wszystkie urządzenia zalogowane na to konto zostaną wylogowane, a to urządzenie – zalogowane."
+msgid ""
+"Choose a new password. Every device signed in to the account is signed out, "
+"and this one signed in."
+msgstr ""
+"Wybierz nowe hasło. Wszystkie urządzenia zalogowane na to konto zostaną "
+"wylogowane, a to urządzenie – zalogowane."
 
 #: src/sw-account-pages.c
 msgid "New password"
@@ -231,8 +257,12 @@ msgid "Look for updates"
 msgstr "Sprawdzanie aktualizacji"
 
 #: src/sw-account-pages.c
-msgid "Software looks for updates when it starts and when apps change. It does not install them by itself: update from Mine."
-msgstr "Oprogramowanie sprawdza aktualizacje przy uruchomieniu i po zmianach w aplikacjach. Nie instaluje ich samo: aktualizuj w karcie „Moje”."
+msgid ""
+"Software looks for updates when it starts and when apps change. It does not "
+"install them by itself: update from Mine."
+msgstr ""
+"Oprogramowanie sprawdza aktualizacje przy uruchomieniu i po zmianach w "
+"aplikacjach. Nie instaluje ich samo: aktualizuj w karcie „Moje”."
 
 # android: Etar preferences_theme (other app, short)
 #: src/sw-account-pages.c
@@ -261,13 +291,27 @@ msgid "The catalog"
 msgstr "Katalog"
 
 #: src/sw-account-pages.c
-msgid "The apps, their descriptions and pictures come from the store at vibeos.top, which takes them from Debian's and VibeOS's software sources and the apps' own AppStream data."
-msgstr "Aplikacje, ich opisy i obrazy pochodzą ze sklepu vibeos.top, który pobiera je ze źródeł oprogramowania Debiana i VibeOS oraz z danych AppStream samych aplikacji."
+msgid ""
+"The apps, their descriptions and pictures come from the store at vibeos.top, "
+"which takes them from Debian's and VibeOS's software sources and the apps' "
+"own AppStream data."
+msgstr ""
+"Aplikacje, ich opisy i obrazy pochodzą ze sklepu vibeos.top, który pobiera "
+"je ze źródeł oprogramowania Debiana i VibeOS oraz z danych AppStream samych "
+"aplikacji."
 
 #. TRANSLATORS: keep the links' markup as it is
 #: src/sw-account-pages.c
-msgid "The category icons are Font Awesome Free 7.0.0 by Fonticons, Inc. (solid style, unchanged), under the <a href=\"https://creativecommons.org/licenses/by/4.0/\">Creative Commons Attribution 4.0</a> licence. <a href=\"https://fontawesome.com\">fontawesome.com</a>"
-msgstr "Ikony kategorii to Font Awesome Free 7.0.0 od Fonticons, Inc. (styl solid, bez zmian), na licencji <a href=\"https://creativecommons.org/licenses/by/4.0/\">Creative Commons Attribution 4.0</a>. <a href=\"https://fontawesome.com\">fontawesome.com</a>"
+msgid ""
+"The category icons are Font Awesome Free 7.0.0 by Fonticons, Inc. (solid "
+"style, unchanged), under the <a href=\"https://creativecommons.org/licenses/"
+"by/4.0/\">Creative Commons Attribution 4.0</a> licence. <a href=\"https://"
+"fontawesome.com\">fontawesome.com</a>"
+msgstr ""
+"Ikony kategorii to Font Awesome Free 7.0.0 od Fonticons, Inc. (styl solid, "
+"bez zmian), na licencji <a href=\"https://creativecommons.org/licenses/by/"
+"4.0/\">Creative Commons Attribution 4.0</a>. <a href=\"https://"
+"fontawesome.com\">fontawesome.com</a>"
 
 #: src/sw-account-pages.c
 msgid "You are signed out"
@@ -279,7 +323,8 @@ msgstr "Wylogować się?"
 
 #: src/sw-account-pages.c
 msgid "Your reviews and your apps stay. Sign in again to write reviews."
-msgstr "Twoje opinie i aplikacje zostaną. Zaloguj się ponownie, aby pisać opinie."
+msgstr ""
+"Twoje opinie i aplikacje zostaną. Zaloguj się ponownie, aby pisać opinie."
 
 # android: PackageInstaller cancel
 #: src/sw-account-pages.c src/sw-app-page.c src/sw-reviews.c
@@ -324,16 +369,23 @@ msgid "Enter your password to delete the account."
 msgstr "Wpisz hasło, aby usunąć konto."
 
 #: src/sw-account-pages.c
-msgid "The store deletes the account, its devices, the list of apps it had and its helpful votes. It cannot be undone. Your apps stay installed."
-msgstr "Sklep usunie konto, jego urządzenia, listę jego aplikacji i jego głosy „Pomocna”. Tego nie można cofnąć. Twoje aplikacje pozostaną zainstalowane."
+msgid ""
+"The store deletes the account, its devices, the list of apps it had and its "
+"helpful votes. It cannot be undone. Your apps stay installed."
+msgstr ""
+"Sklep usunie konto, jego urządzenia, listę jego aplikacji i jego głosy "
+"„Pomocna”. Tego nie można cofnąć. Twoje aplikacje pozostaną zainstalowane."
 
 #: src/sw-account-pages.c
 msgid "Delete my reviews too"
 msgstr "Usuń też moje opinie"
 
 #: src/sw-account-pages.c
-msgid "Otherwise they stay, under \"Deleted account\", and nobody can change them"
-msgstr "W przeciwnym razie zostaną jako „Usunięte konto” i nikt nie będzie mógł ich zmienić"
+msgid ""
+"Otherwise they stay, under \"Deleted account\", and nobody can change them"
+msgstr ""
+"W przeciwnym razie zostaną jako „Usunięte konto” i nikt nie będzie mógł ich "
+"zmienić"
 
 #: src/sw-account-pages.c
 msgid "A moderator hid this review: only you see it."
@@ -341,7 +393,9 @@ msgstr "Moderator ukrył tę opinię: widzisz ją tylko Ty."
 
 #: src/sw-account-pages.c
 msgid "You have not reviewed any apps yet. An app's page has its stars to tap."
-msgstr "Nie masz jeszcze żadnych opinii. Na stronie aplikacji możesz kliknąć gwiazdki."
+msgstr ""
+"Nie masz jeszcze żadnych opinii. Na stronie aplikacji możesz kliknąć "
+"gwiazdki."
 
 # android: Settings request_manage_credentials_more (short)
 #: src/sw-account-pages.c
@@ -349,8 +403,12 @@ msgid "Show more"
 msgstr "Pokaż więcej"
 
 #: src/sw-account.c
-msgid "Software could not keep your sign-in in the keyring. You will need to sign in again next time."
-msgstr "Nie udało się zapisać logowania w bazie kluczy. Następnym razem trzeba będzie zalogować się ponownie."
+msgid ""
+"Software could not keep your sign-in in the keyring. You will need to sign "
+"in again next time."
+msgstr ""
+"Nie udało się zapisać logowania w bazie kluczy. Następnym razem trzeba "
+"będzie zalogować się ponownie."
 
 #. TRANSLATORS: the keyring entry's name, as a password manager shows it; %s is the store's address
 #: src/sw-account.c
@@ -400,8 +458,11 @@ msgid "Something went wrong."
 msgstr "Coś poszło nie tak."
 
 #: src/sw-api.c
-msgid "Software cannot reach the store. Check the internet connection and try again."
-msgstr "Nie można połączyć się ze sklepem. Sprawdź połączenie z internetem i spróbuj ponownie."
+msgid ""
+"Software cannot reach the store. Check the internet connection and try again."
+msgstr ""
+"Nie można połączyć się ze sklepem. Sprawdź połączenie z internetem i spróbuj "
+"ponownie."
 
 #: src/sw-api.c
 msgid "The store's address is not valid."
@@ -419,7 +480,8 @@ msgstr "Odinstalować aplikację %s?"
 
 #: src/sw-app-page.c
 msgid "The app goes. What it keeps in your home folder stays."
-msgstr "Aplikacja zostanie usunięta. To, co zapisała w katalogu domowym, pozostanie."
+msgstr ""
+"Aplikacja zostanie usunięta. To, co zapisała w katalogu domowym, pozostanie."
 
 # android: Settings uninstall_text (short)
 #: src/sw-app-page.c
@@ -512,20 +574,36 @@ msgid "Permissions"
 msgstr "Uprawnienia"
 
 #: src/sw-app-page.c
-msgid "What the app says it uses. VibeOS's own apps are part of the system: they do not run in a sandbox."
-msgstr "Z czego aplikacja według swoich deklaracji korzysta. Własne aplikacje VibeOS są częścią systemu: nie działają w piaskownicy."
+msgid ""
+"What the app says it uses. VibeOS's own apps are part of the system: they do "
+"not run in a sandbox."
+msgstr ""
+"Z czego aplikacja według swoich deklaracji korzysta. Własne aplikacje VibeOS "
+"są częścią systemu: nie działają w piaskownicy."
 
 #: src/sw-app-page.c
-msgid "What the app asks for. VibeOS enforces these permissions: the app runs in a sandbox, and you allow or deny each one in Settings. Taking one away stops the app."
-msgstr "O co prosi aplikacja. VibeOS egzekwuje te uprawnienia: aplikacja działa w piaskownicy, a Ty w Ustawieniach zezwalasz na każde z nich lub odmawiasz. Odebranie uprawnienia zatrzymuje aplikację."
+msgid ""
+"What the app asks for. VibeOS enforces these permissions: the app runs in a "
+"sandbox, and you allow or deny each one in Settings. Taking one away stops "
+"the app."
+msgstr ""
+"O co prosi aplikacja. VibeOS egzekwuje te uprawnienia: aplikacja działa w "
+"piaskownicy, a Ty w Ustawieniach zezwalasz na każde z nich lub odmawiasz. "
+"Odebranie uprawnienia zatrzymuje aplikację."
 
 #: src/sw-app-page.c
 msgid "The app declares no permissions."
 msgstr "Aplikacja nie deklaruje żadnych uprawnień."
 
 #: src/sw-app-page.c
-msgid "The app declares no permissions. Until you change them in Settings, it may use the network, and you are asked before it gets your location or the camera, or runs in the background."
-msgstr "Aplikacja nie deklaruje żadnych uprawnień. Dopóki nie zmienisz ich w Ustawieniach, może korzystać z sieci, a zanim uzyska dostęp do lokalizacji lub aparatu albo zacznie działać w tle, zapyta Cię o zgodę."
+msgid ""
+"The app declares no permissions. Until you change them in Settings, it may "
+"use the network, and you are asked before it gets your location or the "
+"camera, or runs in the background."
+msgstr ""
+"Aplikacja nie deklaruje żadnych uprawnień. Dopóki nie zmienisz ich w "
+"Ustawieniach, może korzystać z sieci, a zanim uzyska dostęp do lokalizacji "
+"lub aparatu albo zacznie działać w tle, zapyta Cię o zgodę."
 
 #: src/sw-app-page.c
 msgid "Permissions in Settings"
@@ -540,8 +618,12 @@ msgid "Confirm your email address to rate and review apps."
 msgstr "Potwierdź adres e-mail, aby oceniać aplikacje i pisać opinie."
 
 #: src/sw-app-page.c
-msgid "Install the app to rate it: the store takes reviews from people who have had it on one of their devices."
-msgstr "Zainstaluj aplikację, aby ją ocenić: sklep przyjmuje opinie od osób, które miały ją na jednym ze swoich urządzeń."
+msgid ""
+"Install the app to rate it: the store takes reviews from people who have had "
+"it on one of their devices."
+msgstr ""
+"Zainstaluj aplikację, aby ją ocenić: sklep przyjmuje opinie od osób, które "
+"miały ją na jednym ze swoich urządzeń."
 
 #: src/sw-app-page.c
 msgid "The store does not take a review of this app from your account."
@@ -819,8 +901,12 @@ msgid "Finishing…"
 msgstr "Kończę…"
 
 #: src/sw-installer.c
-msgid "App Installer is not installed. Software installs and uninstalls apps through it."
-msgstr "Instalator aplikacji nie jest zainstalowany. Oprogramowanie instaluje i odinstalowuje aplikacje za jego pomocą."
+msgid ""
+"App Installer is not installed. Software installs and uninstalls apps "
+"through it."
+msgstr ""
+"Instalator aplikacji nie jest zainstalowany. Oprogramowanie instaluje i "
+"odinstalowuje aplikacje za jego pomocą."
 
 #. TRANSLATORS: %s is the error's own message
 #: src/sw-installer.c
@@ -830,11 +916,14 @@ msgstr "Nie udało się uruchomić Instalatora aplikacji: %s"
 
 #: src/sw-installer.c
 msgid "Software cannot reach the session bus to ask App Installer."
-msgstr "Oprogramowanie nie może połączyć się z magistralą sesji, aby użyć Instalatora aplikacji."
+msgstr ""
+"Oprogramowanie nie może połączyć się z magistralą sesji, aby użyć "
+"Instalatora aplikacji."
 
 #: src/sw-installer.c
 msgid "App Installer stopped before it was done. Try again."
-msgstr "Instalator aplikacji przerwał pracę przed jej zakończeniem. Spróbuj ponownie."
+msgstr ""
+"Instalator aplikacji przerwał pracę przed jej zakończeniem. Spróbuj ponownie."
 
 #: src/sw-installer.c
 msgid "No session bus."
@@ -961,8 +1050,11 @@ msgid "Every app your account had is on this device."
 msgstr "Wszystkie aplikacje z Twojego konta są na tym urządzeniu."
 
 #: src/sw-mine.c
-msgid "Sign in to see the apps your account had on your other devices, or before."
-msgstr "Zaloguj się, aby zobaczyć aplikacje, które Twoje konto miało na innych urządzeniach lub wcześniej."
+msgid ""
+"Sign in to see the apps your account had on your other devices, or before."
+msgstr ""
+"Zaloguj się, aby zobaczyć aplikacje, które Twoje konto miało na innych "
+"urządzeniach lub wcześniej."
 
 #: src/sw-mine.c
 msgid "On this device"
@@ -1048,7 +1140,9 @@ msgstr "Usunąć opinię?"
 
 #: src/sw-reviews.c
 msgid "Your stars and text go, and the app's rating no longer counts them."
-msgstr "Twoje gwiazdki i tekst zostaną usunięte i przestaną się liczyć do oceny aplikacji."
+msgstr ""
+"Twoje gwiazdki i tekst zostaną usunięte i przestaną się liczyć do oceny "
+"aplikacji."
 
 # android: Settings security_settings_fingerprint_enroll_dialog_delete (several translations, short)
 #: src/sw-reviews.c
@@ -1069,8 +1163,12 @@ msgid "Your review (if you want to say more)"
 msgstr "Twoja opinia (jeśli chcesz dodać coś więcej)"
 
 #: src/sw-reviews.c
-msgid "Your review shows with your account's name. Be kind, and say what you think of the app."
-msgstr "Opinia pojawi się z nazwą Twojego konta. Pisz uprzejmie i powiedz, co sądzisz o aplikacji."
+msgid ""
+"Your review shows with your account's name. Be kind, and say what you think "
+"of the app."
+msgstr ""
+"Opinia pojawi się z nazwą Twojego konta. Pisz uprzejmie i powiedz, co "
+"sądzisz o aplikacji."
 
 # android: Settings save (short)
 #: src/sw-reviews.c

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-installer\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Hebrew\n"
@@ -39,7 +39,8 @@ msgid ""
 "\n"
 "Nothing is installed or removed while the demo runs."
 msgstr ""
-"החבילה הזו לא אמיתית: ההדגמה של מתקין האפליקציות מציגה אותה כדי לנסות את המסכים שלו.\n"
+"החבילה הזו לא אמיתית: ההדגמה של מתקין האפליקציות מציגה אותה כדי לנסות את "
+"המסכים שלו.\n"
 "\n"
 "בזמן ההדגמה שום דבר לא מותקן ולא מוסר."
 
@@ -112,19 +113,29 @@ msgid "The password was not given, so nothing was installed."
 msgstr "לא הוזנה סיסמה, ולכן שום דבר לא הותקן."
 
 #: src/inst-job.c
-msgid "Another app is installing or updating software right now. Try again once it has finished."
+msgid ""
+"Another app is installing or updating software right now. Try again once it "
+"has finished."
 msgstr "אפליקציה אחרת מתקינה או מעדכנת תוכנה כרגע. אפשר לנסות שוב כשהיא תסיים."
 
 #: src/inst-job.c
-msgid "Something it needs cannot be installed: it is not in the software sources, or not in a version that fits."
-msgstr "רכיב שנדרש לה לא ניתן להתקנה: הוא לא נמצא במקורות התוכנה, או שאין לו גרסה מתאימה."
+msgid ""
+"Something it needs cannot be installed: it is not in the software sources, "
+"or not in a version that fits."
+msgstr ""
+"רכיב שנדרש לה לא ניתן להתקנה: הוא לא נמצא במקורות התוכנה, או שאין לו גרסה "
+"מתאימה."
 
 #: src/inst-job.c
-msgid "Packages it needs could not be downloaded. Check the internet connection and try again."
-msgstr "לא ניתן היה להוריד חבילות שנדרשות לה. יש לבדוק את החיבור לאינטרנט ולנסות שוב."
+msgid ""
+"Packages it needs could not be downloaded. Check the internet connection and "
+"try again."
+msgstr ""
+"לא ניתן היה להוריד חבילות שנדרשות לה. יש לבדוק את החיבור לאינטרנט ולנסות שוב."
 
 #: src/inst-job.c
-msgid "The package is broken: the file is damaged, or it is not a proper package."
+msgid ""
+"The package is broken: the file is damaged, or it is not a proper package."
 msgstr "החבילה פגומה: הקובץ ניזוק, או שזו לא חבילה תקינה."
 
 #: src/inst-job.c
@@ -132,7 +143,8 @@ msgid "There is not enough free storage for it."
 msgstr "אין מספיק נפח אחסון פנוי."
 
 #: src/inst-job.c
-msgid "It clashes with software that is already installed: both have the same files."
+msgid ""
+"It clashes with software that is already installed: both have the same files."
 msgstr "היא מתנגשת בתוכנה שכבר מותקנת: לשתיהן יש אותם קבצים."
 
 #: src/inst-job.c
@@ -140,7 +152,8 @@ msgid "The package's own setup failed. It may be only partly installed."
 msgstr "ההגדרה של החבילה עצמה נכשלה. ייתכן שהיא מותקנת רק בחלקה."
 
 #: src/inst-job.c
-msgid "The package's own removal script failed. It may be only partly uninstalled."
+msgid ""
+"The package's own removal script failed. It may be only partly uninstalled."
 msgstr "סקריפט ההסרה של החבילה עצמה נכשל. ייתכן שהיא הוסרה רק בחלקה."
 
 #: src/inst-job.c
@@ -148,7 +161,9 @@ msgid "It is made for another kind of device."
 msgstr "היא מיועדת לסוג אחר של מכשיר."
 
 #: src/inst-job.c
-msgid "The software sources could not be verified, so nothing was downloaded from them."
+msgid ""
+"The software sources could not be verified, so nothing was downloaded from "
+"them."
 msgstr "לא ניתן היה לאמת את מקורות התוכנה, ולכן לא הורד מהם דבר."
 
 #: src/inst-job.c
@@ -164,7 +179,9 @@ msgid "Cannot install software"
 msgstr "לא ניתן להתקין תוכנה"
 
 #: src/inst-job.c
-msgid "PackageKit, the system service that installs software, is missing or not running."
+msgid ""
+"PackageKit, the system service that installs software, is missing or not "
+"running."
 msgstr "PackageKit, שירות המערכת שמתקין תוכנה, חסר או לא פועל."
 
 #: src/inst-job.c
@@ -273,7 +290,9 @@ msgid "Not a package"
 msgstr "זו לא חבילה"
 
 #: src/inst-job.c
-msgid "This file is not a software package that can be installed here, or it is damaged."
+msgid ""
+"This file is not a software package that can be installed here, or it is "
+"damaged."
 msgstr "הקובץ הזה הוא לא חבילת תוכנה שאפשר להתקין כאן, או שהוא פגום."
 
 #: src/inst-job.c
@@ -401,13 +420,21 @@ msgstr "הגרסה הזמינה ישנה יותר"
 
 #: src/inst-view.c
 #, c-format
-msgid "%s %s is installed. This file has %s, which is older. Replace the installed version with the older one?"
-msgstr "במכשיר יש את %s %s. בקובץ הזה יש את %s, גרסה ישנה יותר. להחליף את הגרסה המותקנת בגרסה הישנה יותר?"
+msgid ""
+"%s %s is installed. This file has %s, which is older. Replace the installed "
+"version with the older one?"
+msgstr ""
+"במכשיר יש את %s %s. בקובץ הזה יש את %s, גרסה ישנה יותר. להחליף את הגרסה "
+"המותקנת בגרסה הישנה יותר?"
 
 #: src/inst-view.c
 #, c-format
-msgid "%s %s is installed. The software sources have %s, which is older. Replace the installed version with the older one?"
-msgstr "במכשיר יש את %s %s. במקורות התוכנה יש את %s, גרסה ישנה יותר. להחליף את הגרסה המותקנת בגרסה הישנה יותר?"
+msgid ""
+"%s %s is installed. The software sources have %s, which is older. Replace "
+"the installed version with the older one?"
+msgstr ""
+"במכשיר יש את %s %s. במקורות התוכנה יש את %s, גרסה ישנה יותר. להחליף את הגרסה "
+"המותקנת בגרסה הישנה יותר?"
 
 #: src/inst-view.c
 msgid "Already installed"
@@ -415,12 +442,14 @@ msgstr "כבר מותקנת"
 
 #: src/inst-view.c
 #, c-format
-msgid "%s %s is installed already. Reinstalling puts its files back as they came."
+msgid ""
+"%s %s is installed already. Reinstalling puts its files back as they came."
 msgstr "כבר יש במכשיר את %s %s. התקנה מחדש תחזיר את הקבצים שלה למצבם המקורי."
 
 #: src/inst-view.c
 #, c-format
-msgid "%s %s is installed already. The same version cannot be installed over itself."
+msgid ""
+"%s %s is installed already. The same version cannot be installed over itself."
 msgstr "כבר יש במכשיר את %s %s. אי אפשר להתקין את אותה גרסה מעל עצמה."
 
 #: src/inst-view.c
@@ -503,8 +532,12 @@ msgid "Website"
 msgstr "אתר"
 
 #: src/inst-view.c
-msgid "A package can change anything on this device: it installs with full rights. Install only what you trust."
-msgstr "חבילה יכולה לשנות כל דבר במכשיר הזה: היא מותקנת עם הרשאות מלאות. כדאי להתקין רק חבילות מהימנות."
+msgid ""
+"A package can change anything on this device: it installs with full rights. "
+"Install only what you trust."
+msgstr ""
+"חבילה יכולה לשנות כל דבר במכשיר הזה: היא מותקנת עם הרשאות מלאות. כדאי להתקין "
+"רק חבילות מהימנות."
 
 # android: PackageInstaller cancel (several translations, short)
 #: src/inst-view.c
@@ -568,9 +601,15 @@ msgid "Install apps from packages"
 msgstr "התקנת אפליקציות מחבילות"
 
 #: src/inst-window.c
-msgid "App Installer installs .deb package files. Tap one in Files, or choose one here: it shows what the package is and asks before anything changes."
-msgstr "מתקין האפליקציות מתקין קובצי חבילה מסוג .deb. אפשר להקיש על קובץ כזה ב\"קבצים\" או לבחור אותו כאן: מוצג מהי החבילה, והאישור מתבקש לפני כל שינוי."
+msgid ""
+"App Installer installs .deb package files. Tap one in Files, or choose one "
+"here: it shows what the package is and asks before anything changes."
+msgstr ""
+"מתקין האפליקציות מתקין קובצי חבילה מסוג .deb. אפשר להקיש על קובץ כזה "
+"ב\"קבצים\" או לבחור אותו כאן: מוצג מהי החבילה, והאישור מתבקש לפני כל שינוי."
 
 #: src/inst-window.c
-msgid "Software uses it too, to install and uninstall apps from the software sources."
+msgid ""
+"Software uses it too, to install and uninstall apps from the software "
+"sources."
 msgstr "גם \"תוכנות\" משתמשת בו כדי להתקין ולהסיר אפליקציות ממקורות התוכנה."

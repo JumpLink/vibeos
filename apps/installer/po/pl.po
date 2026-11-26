@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-installer\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -40,7 +40,8 @@ msgid ""
 "\n"
 "Nothing is installed or removed while the demo runs."
 msgstr ""
-"To nie jest prawdziwy pakiet: wersja demonstracyjna Instalatora aplikacji pokazuje go, abyś mógł wypróbować jego ekrany.\n"
+"To nie jest prawdziwy pakiet: wersja demonstracyjna Instalatora aplikacji "
+"pokazuje go, abyś mógł wypróbować jego ekrany.\n"
 "\n"
 "Podczas demonstracji nic nie jest instalowane ani usuwane."
 
@@ -113,44 +114,70 @@ msgid "The password was not given, so nothing was installed."
 msgstr "Nie podano hasła, więc niczego nie zainstalowano."
 
 #: src/inst-job.c
-msgid "Another app is installing or updating software right now. Try again once it has finished."
-msgstr "Inna aplikacja właśnie instaluje lub aktualizuje oprogramowanie. Spróbuj ponownie, gdy skończy."
+msgid ""
+"Another app is installing or updating software right now. Try again once it "
+"has finished."
+msgstr ""
+"Inna aplikacja właśnie instaluje lub aktualizuje oprogramowanie. Spróbuj "
+"ponownie, gdy skończy."
 
 #: src/inst-job.c
-msgid "Something it needs cannot be installed: it is not in the software sources, or not in a version that fits."
-msgstr "Nie można zainstalować czegoś, czego potrzebuje: nie ma tego w źródłach oprogramowania albo nie ma pasującej wersji."
+msgid ""
+"Something it needs cannot be installed: it is not in the software sources, "
+"or not in a version that fits."
+msgstr ""
+"Nie można zainstalować czegoś, czego potrzebuje: nie ma tego w źródłach "
+"oprogramowania albo nie ma pasującej wersji."
 
 #: src/inst-job.c
-msgid "Packages it needs could not be downloaded. Check the internet connection and try again."
-msgstr "Nie udało się pobrać potrzebnych pakietów. Sprawdź połączenie z internetem i spróbuj ponownie."
+msgid ""
+"Packages it needs could not be downloaded. Check the internet connection and "
+"try again."
+msgstr ""
+"Nie udało się pobrać potrzebnych pakietów. Sprawdź połączenie z internetem i "
+"spróbuj ponownie."
 
 #: src/inst-job.c
-msgid "The package is broken: the file is damaged, or it is not a proper package."
-msgstr "Pakiet jest uszkodzony: plik jest uszkodzony albo nie jest prawidłowym pakietem."
+msgid ""
+"The package is broken: the file is damaged, or it is not a proper package."
+msgstr ""
+"Pakiet jest uszkodzony: plik jest uszkodzony albo nie jest prawidłowym "
+"pakietem."
 
 #: src/inst-job.c
 msgid "There is not enough free storage for it."
 msgstr "Za mało wolnego miejsca."
 
 #: src/inst-job.c
-msgid "It clashes with software that is already installed: both have the same files."
-msgstr "Koliduje z już zainstalowanym oprogramowaniem: oba zawierają te same pliki."
+msgid ""
+"It clashes with software that is already installed: both have the same files."
+msgstr ""
+"Koliduje z już zainstalowanym oprogramowaniem: oba zawierają te same pliki."
 
 #: src/inst-job.c
 msgid "The package's own setup failed. It may be only partly installed."
-msgstr "Konfiguracja pakietu nie powiodła się. Może być zainstalowany tylko częściowo."
+msgstr ""
+"Konfiguracja pakietu nie powiodła się. Może być zainstalowany tylko "
+"częściowo."
 
 #: src/inst-job.c
-msgid "The package's own removal script failed. It may be only partly uninstalled."
-msgstr "Skrypt usuwania pakietu nie powiódł się. Może być odinstalowany tylko częściowo."
+msgid ""
+"The package's own removal script failed. It may be only partly uninstalled."
+msgstr ""
+"Skrypt usuwania pakietu nie powiódł się. Może być odinstalowany tylko "
+"częściowo."
 
 #: src/inst-job.c
 msgid "It is made for another kind of device."
 msgstr "Jest przeznaczony dla innego rodzaju urządzeń."
 
 #: src/inst-job.c
-msgid "The software sources could not be verified, so nothing was downloaded from them."
-msgstr "Nie udało się zweryfikować źródeł oprogramowania, więc niczego z nich nie pobrano."
+msgid ""
+"The software sources could not be verified, so nothing was downloaded from "
+"them."
+msgstr ""
+"Nie udało się zweryfikować źródeł oprogramowania, więc niczego z nich nie "
+"pobrano."
 
 #: src/inst-job.c
 msgid "The software sources do not have it (any more)."
@@ -158,15 +185,20 @@ msgstr "Nie ma go w źródłach oprogramowania (już)."
 
 #: src/inst-job.c
 msgid "Software was installed or removed meanwhile. Try again."
-msgstr "W międzyczasie zainstalowano lub usunięto oprogramowanie. Spróbuj ponownie."
+msgstr ""
+"W międzyczasie zainstalowano lub usunięto oprogramowanie. Spróbuj ponownie."
 
 #: src/inst-job.c
 msgid "Cannot install software"
 msgstr "Nie można instalować oprogramowania"
 
 #: src/inst-job.c
-msgid "PackageKit, the system service that installs software, is missing or not running."
-msgstr "Brak usługi systemowej PackageKit, która instaluje oprogramowanie, albo nie jest uruchomiona."
+msgid ""
+"PackageKit, the system service that installs software, is missing or not "
+"running."
+msgstr ""
+"Brak usługi systemowej PackageKit, która instaluje oprogramowanie, albo nie "
+"jest uruchomiona."
 
 #: src/inst-job.c
 msgid "Something went wrong while uninstalling."
@@ -236,7 +268,8 @@ msgstr "Nie znaleziono"
 
 #: src/inst-job.c
 msgid "Removing it would leave other software with something it needs missing."
-msgstr "Po jego usunięciu innemu oprogramowaniu zabrakłoby czegoś, czego potrzebuje."
+msgstr ""
+"Po jego usunięciu innemu oprogramowaniu zabrakłoby czegoś, czego potrzebuje."
 
 #: src/inst-job.c
 #, c-format
@@ -274,8 +307,12 @@ msgid "Not a package"
 msgstr "To nie jest pakiet"
 
 #: src/inst-job.c
-msgid "This file is not a software package that can be installed here, or it is damaged."
-msgstr "Ten plik nie jest pakietem oprogramowania, który można tu zainstalować, albo jest uszkodzony."
+msgid ""
+"This file is not a software package that can be installed here, or it is "
+"damaged."
+msgstr ""
+"Ten plik nie jest pakietem oprogramowania, który można tu zainstalować, albo "
+"jest uszkodzony."
 
 #: src/inst-job.c
 #, c-format
@@ -402,13 +439,21 @@ msgstr "Dostępna wersja jest STARSZA"
 
 #: src/inst-view.c
 #, c-format
-msgid "%s %s is installed. This file has %s, which is older. Replace the installed version with the older one?"
-msgstr "Zainstalowano %s %s. Ten plik zawiera starszą wersję %s. Zastąpić zainstalowaną wersję starszą?"
+msgid ""
+"%s %s is installed. This file has %s, which is older. Replace the installed "
+"version with the older one?"
+msgstr ""
+"Zainstalowano %s %s. Ten plik zawiera starszą wersję %s. Zastąpić "
+"zainstalowaną wersję starszą?"
 
 #: src/inst-view.c
 #, c-format
-msgid "%s %s is installed. The software sources have %s, which is older. Replace the installed version with the older one?"
-msgstr "Zainstalowano %s %s. Źródła oprogramowania mają starszą wersję %s. Zastąpić zainstalowaną wersję starszą?"
+msgid ""
+"%s %s is installed. The software sources have %s, which is older. Replace "
+"the installed version with the older one?"
+msgstr ""
+"Zainstalowano %s %s. Źródła oprogramowania mają starszą wersję %s. Zastąpić "
+"zainstalowaną wersję starszą?"
 
 #: src/inst-view.c
 msgid "Already installed"
@@ -416,13 +461,19 @@ msgstr "Już zainstalowano"
 
 #: src/inst-view.c
 #, c-format
-msgid "%s %s is installed already. Reinstalling puts its files back as they came."
-msgstr "%s %s jest już zainstalowany. Ponowna instalacja przywróci jego pliki do stanu pierwotnego."
+msgid ""
+"%s %s is installed already. Reinstalling puts its files back as they came."
+msgstr ""
+"%s %s jest już zainstalowany. Ponowna instalacja przywróci jego pliki do "
+"stanu pierwotnego."
 
 #: src/inst-view.c
 #, c-format
-msgid "%s %s is installed already. The same version cannot be installed over itself."
-msgstr "%s %s jest już zainstalowany. Tej samej wersji nie można zainstalować na niej samej."
+msgid ""
+"%s %s is installed already. The same version cannot be installed over itself."
+msgstr ""
+"%s %s jest już zainstalowany. Tej samej wersji nie można zainstalować na "
+"niej samej."
 
 #: src/inst-view.c
 #, c-format
@@ -505,8 +556,12 @@ msgid "Website"
 msgstr "Strona internetowa"
 
 #: src/inst-view.c
-msgid "A package can change anything on this device: it installs with full rights. Install only what you trust."
-msgstr "Pakiet może zmienić wszystko na tym urządzeniu: instaluje się z pełnymi uprawnieniami. Instaluj tylko to, czemu ufasz."
+msgid ""
+"A package can change anything on this device: it installs with full rights. "
+"Install only what you trust."
+msgstr ""
+"Pakiet może zmienić wszystko na tym urządzeniu: instaluje się z pełnymi "
+"uprawnieniami. Instaluj tylko to, czemu ufasz."
 
 # android: PackageInstaller cancel
 #: src/inst-view.c
@@ -570,9 +625,18 @@ msgid "Install apps from packages"
 msgstr "Instaluj aplikacje z pakietów"
 
 #: src/inst-window.c
-msgid "App Installer installs .deb package files. Tap one in Files, or choose one here: it shows what the package is and asks before anything changes."
-msgstr "Instalator aplikacji instaluje pliki pakietów .deb. Kliknij plik w aplikacji Pliki albo wybierz go tutaj: instalator pokaże, co to za pakiet, i zapyta, zanim cokolwiek zmieni."
+msgid ""
+"App Installer installs .deb package files. Tap one in Files, or choose one "
+"here: it shows what the package is and asks before anything changes."
+msgstr ""
+"Instalator aplikacji instaluje pliki pakietów .deb. Kliknij plik w aplikacji "
+"Pliki albo wybierz go tutaj: instalator pokaże, co to za pakiet, i zapyta, "
+"zanim cokolwiek zmieni."
 
 #: src/inst-window.c
-msgid "Software uses it too, to install and uninstall apps from the software sources."
-msgstr "Aplikacja Oprogramowanie też z niego korzysta, by instalować i odinstalowywać aplikacje ze źródeł oprogramowania."
+msgid ""
+"Software uses it too, to install and uninstall apps from the software "
+"sources."
+msgstr ""
+"Aplikacja Oprogramowanie też z niego korzysta, by instalować i "
+"odinstalowywać aplikacje ze źródeł oprogramowania."

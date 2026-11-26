@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-camera\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Hebrew\n"
@@ -137,8 +137,12 @@ msgid "Copy to clipboard"
 msgstr "העתקה ללוח"
 
 #: src/cam-settings.c
-msgid "The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, under the GNU LGPL 2.1 or later."
-msgstr "המצלמות מופעלות באמצעות <a href=\"https://libcamera.org/\">libcamera</a>, במסגרת רישיון GNU LGPL 2.1 ואילך."
+msgid ""
+"The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, "
+"under the GNU LGPL 2.1 or later."
+msgstr ""
+"המצלמות מופעלות באמצעות <a href=\"https://libcamera.org/\">libcamera</a>, "
+"במסגרת רישיון GNU LGPL 2.1 ואילך."
 
 # android: Aperture title_activity_settings (several translations, short)
 #: src/cam-settings.c
@@ -325,7 +329,8 @@ msgstr "הגישה למצלמה מושבתת. אפשר להפעיל אותה ב�
 
 # android: Aperture force_torch_help
 #: src/cam-window.c
-msgid "On photo mode, you can long press the flash button to switch into torch mode."
+msgid ""
+"On photo mode, you can long press the flash button to switch into torch mode."
 msgstr "במצב תמונה, ניתן ללחוץ לחיצה ארוכה על לחצן המבזק כדי לעבור למצב פנס."
 
 # android: Framework httpErrorOk (short)
@@ -390,7 +395,9 @@ msgstr "הגדרות"
 
 # android: Aperture error_stream_config
 #: src/cam-window.c
-msgid "There was an error while preparing the stream. Please report this to the developers."
+msgid ""
+"There was an error while preparing the stream. Please report this to the "
+"developers."
 msgstr "אירעה שגיאה בעת הכנת התזרים. נא לדווח על כך למפתחים."
 
 #: src/cam-window.c
@@ -413,12 +420,16 @@ msgstr "הסרטון בהכנה…"
 
 # android: Aperture thermal_status_moderate
 #: src/cam-window.c
-msgid "Moderate thermal throttling, make sure the device isn't under direct sunlight."
+msgid ""
+"Moderate thermal throttling, make sure the device isn't under direct "
+"sunlight."
 msgstr "האטה תרמית מתונה. יש לוודא שהמכשיר אינו חשוף לאור שמש ישירה."
 
 # android: Aperture thermal_status_severe
 #: src/cam-window.c
-msgid "Severe thermal throttling, it is recommended to let the device cool down a bit."
+msgid ""
+"Severe thermal throttling, it is recommended to let the device cool down a "
+"bit."
 msgstr "האטה תרמית חמורה. מומלץ לאפשר למכשיר להתקרר מעט."
 
 #: src/cam-window.c

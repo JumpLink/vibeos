@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-clock\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 14:32+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -2685,7 +2685,7 @@ msgid "Search"
 msgstr "Cerca"
 
 # android: Framework action_menu_overflow_description (several translations, short)
-#. the overflow button: narrower than the search, a little in from the edge
+#. the overflow button where every top bar has its ⋮ (vibeos-top-bar.h)
 #: src/city-picker.c src/clock-window.c src/ringtone-picker.c
 msgid "More options"
 msgstr "Altre opzioni"

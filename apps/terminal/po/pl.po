@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-terminal\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -26,7 +26,9 @@ msgstr "Wiersz poleceń stworzony do obsługi dotykiem"
 
 #: data/vibeos.Terminal.desktop.in
 msgid "Terminal;Shell;Command;Prompt;Console;"
-msgstr "Terminal;Powłoka;Polecenie;Wiersz poleceń;Konsola;Shell;Command;Prompt;Console;"
+msgstr ""
+"Terminal;Powłoka;Polecenie;Wiersz "
+"poleceń;Konsola;Shell;Command;Prompt;Console;"
 
 # android: SystemUI keyboard_key_esc (short)
 #: src/term-keys.c
@@ -67,8 +69,14 @@ msgstr "Zaznacz wszystko"
 
 #. TRANSLATORS: keep the link's markup as it is
 #: src/term-window.c
-msgid "The terminal itself is <a href=\"https://gitlab.gnome.org/GNOME/vte\">VTE</a>, GNOME's terminal widget, under the GNU Lesser General Public License, version 3 or later."
-msgstr "Sam terminal to <a href=\"https://gitlab.gnome.org/GNOME/vte\">VTE</a>, widżet terminala GNOME, na licencji GNU Lesser General Public License w wersji 3 lub nowszej."
+msgid ""
+"The terminal itself is <a href=\"https://gitlab.gnome.org/GNOME/vte\">VTE</"
+"a>, GNOME's terminal widget, under the GNU Lesser General Public License, "
+"version 3 or later."
+msgstr ""
+"Sam terminal to <a href=\"https://gitlab.gnome.org/GNOME/vte\">VTE</a>, "
+"widżet terminala GNOME, na licencji GNU Lesser General Public License w "
+"wersji 3 lub nowszej."
 
 # android: DocumentsUI menu_new_window (short)
 #: src/term-window.c

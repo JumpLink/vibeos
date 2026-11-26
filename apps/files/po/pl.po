@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-files\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -27,8 +27,13 @@ msgid "Browse the phone's files and the servers on your network"
 msgstr "Przeglądaj pliki na telefonie i serwery w swojej sieci"
 
 #: data/vibeos.Files.desktop.in
-msgid "Files;Folders;File Manager;Browse;SMB;Samba;SFTP;FTP;WebDAV;Network;Recycle Bin;Trash;"
-msgstr "Pliki;Foldery;Katalogi;Menedżer plików;Przeglądaj;SMB;Samba;SFTP;FTP;WebDAV;Sieć;Kosz;Files;File Manager;Trash;"
+msgid ""
+"Files;Folders;File Manager;Browse;SMB;Samba;SFTP;FTP;WebDAV;Network;Recycle "
+"Bin;Trash;"
+msgstr ""
+"Pliki;Foldery;Katalogi;Menedżer "
+"plików;Przeglądaj;SMB;Samba;SFTP;FTP;WebDAV;Sieć;Kosz;Files;File "
+"Manager;Trash;"
 
 #: src/fm-browser.c src/fm-drawer.c
 msgid "Home"
@@ -314,6 +319,7 @@ msgstr "Kosz"
 
 # android: Framework action_menu_overflow_description (short)
 #. a smaller ⋮ than the toolbar's
+#. ⋮ where every top bar has it (vibeos-top-bar.h)
 #: src/fm-drawer.c src/fm-window.c
 msgid "More options"
 msgstr "Więcej opcji"

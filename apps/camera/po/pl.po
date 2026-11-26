@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-camera\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -27,7 +27,8 @@ msgstr "Rób zdjęcia i filmy, skanuj kody kreskowe"
 
 #: data/vibeos.Camera.desktop.in
 msgid "Camera;Photo;Video;Picture;Selfie;QR;Barcode;"
-msgstr "Aparat;Kamera;Zdjęcie;Wideo;Film;Obraz;Selfie;QR;Kod kreskowy;Camera;Photo;"
+msgstr ""
+"Aparat;Kamera;Zdjęcie;Wideo;Film;Obraz;Selfie;QR;Kod kreskowy;Camera;Photo;"
 
 # android: Aperture cancel_button_description
 #: src/cam-dialogs.c
@@ -42,7 +43,8 @@ msgstr "Dodaj lokalizacje zdjęć oraz filmów"
 # android: Aperture location_permission_dialog_description
 #: src/cam-dialogs.c
 msgid "Map your memories by including location metadata with each capture."
-msgstr "Mapuj swoje wspomnienia, dołączając metadane lokalizacji do każdego zdjęcia."
+msgstr ""
+"Mapuj swoje wspomnienia, dołączając metadane lokalizacji do każdego zdjęcia."
 
 # android: Aperture location_permission_dialog_later
 #: src/cam-dialogs.c
@@ -136,8 +138,12 @@ msgid "Copy to clipboard"
 msgstr "Skopiuj do schowka"
 
 #: src/cam-settings.c
-msgid "The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, under the GNU LGPL 2.1 or later."
-msgstr "Aparaty obsługuje biblioteka <a href=\"https://libcamera.org/\">libcamera</a> na licencji GNU LGPL 2.1 lub nowszej."
+msgid ""
+"The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, "
+"under the GNU LGPL 2.1 or later."
+msgstr ""
+"Aparaty obsługuje biblioteka <a href=\"https://libcamera.org/\">libcamera</"
+"a> na licencji GNU LGPL 2.1 lub nowszej."
 
 # android: Aperture title_activity_settings
 #: src/cam-settings.c
@@ -265,7 +271,8 @@ msgstr "Lustrzane odbicie przedniego aparatu"
 # android: Aperture photo_ffc_mirror_summary
 #: src/cam-settings.c
 msgid "Save front camera photos as they appear in the preview"
-msgstr "Zapisywanie zdjęć z przedniego aparatu tak, jak są widoczne na podglądzie"
+msgstr ""
+"Zapisywanie zdjęć z przedniego aparatu tak, jak są widoczne na podglądzie"
 
 # android: Aperture video_header (several translations, short)
 #: src/cam-settings.c
@@ -324,12 +331,17 @@ msgstr "Galeria"
 
 #: src/cam-window.c
 msgid "Camera access is off. Turn it on in Settings, Security and privacy."
-msgstr "Dostęp do aparatu jest wyłączony. Włącz go w Ustawieniach, w sekcji Bezpieczeństwo i prywatność."
+msgstr ""
+"Dostęp do aparatu jest wyłączony. Włącz go w Ustawieniach, w sekcji "
+"Bezpieczeństwo i prywatność."
 
 # android: Aperture force_torch_help
 #: src/cam-window.c
-msgid "On photo mode, you can long press the flash button to switch into torch mode."
-msgstr "W trybie fotografowania można włączyć latarkę, przytrzymując przycisk lampy błyskowej."
+msgid ""
+"On photo mode, you can long press the flash button to switch into torch mode."
+msgstr ""
+"W trybie fotografowania można włączyć latarkę, przytrzymując przycisk lampy "
+"błyskowej."
 
 # android: Framework httpErrorOk (short)
 #: src/cam-window.c
@@ -394,13 +406,19 @@ msgstr "USTAWIENIA"
 
 # android: Aperture error_stream_config
 #: src/cam-window.c
-msgid "There was an error while preparing the stream. Please report this to the developers."
-msgstr "Wystąpił błąd podczas przygotowywania strumienia. Prosimy zgłosić go programistom."
+msgid ""
+"There was an error while preparing the stream. Please report this to the "
+"developers."
+msgstr ""
+"Wystąpił błąd podczas przygotowywania strumienia. Prosimy zgłosić go "
+"programistom."
 
 # android: Aperture error_camera_in_use
 #: src/cam-window.c
 msgid "This camera is already in use, try closing the app using it."
-msgstr "Ten aparat jest już w użyciu, spróbuj zamknąć aplikację, która go obecnie używa."
+msgstr ""
+"Ten aparat jest już w użyciu, spróbuj zamknąć aplikację, która go obecnie "
+"używa."
 
 # android: Aperture error_other_recoverable_error
 #: src/cam-window.c
@@ -419,18 +437,27 @@ msgstr "Przygotowuję wideo…"
 
 # android: Aperture thermal_status_moderate
 #: src/cam-window.c
-msgid "Moderate thermal throttling, make sure the device isn't under direct sunlight."
-msgstr "Umiarkowane dławienie termiczne, upewnij się, że urządzenie nie jest narażone na bezpośrednie działanie promieni słonecznych."
+msgid ""
+"Moderate thermal throttling, make sure the device isn't under direct "
+"sunlight."
+msgstr ""
+"Umiarkowane dławienie termiczne, upewnij się, że urządzenie nie jest "
+"narażone na bezpośrednie działanie promieni słonecznych."
 
 # android: Aperture thermal_status_severe
 #: src/cam-window.c
-msgid "Severe thermal throttling, it is recommended to let the device cool down a bit."
-msgstr "W przypadku poważnego dławienia termicznego zaleca się zaprzestanie używania urządzenia aż do jego ostygnięcia."
+msgid ""
+"Severe thermal throttling, it is recommended to let the device cool down a "
+"bit."
+msgstr ""
+"W przypadku poważnego dławienia termicznego zaleca się zaprzestanie używania "
+"urządzenia aż do jego ostygnięcia."
 
 # android: Aperture thermal_status_critical
 #: src/cam-window.c
 msgid "Critical thermal throttling, the app might be closed soon."
-msgstr "Krytyczny dławienie termiczne, aplikacja może zostać wkrótce zamknięta."
+msgstr ""
+"Krytyczny dławienie termiczne, aplikacja może zostać wkrótce zamknięta."
 
 # android: Aperture thermal_status_emergency
 #: src/cam-window.c

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-calendar\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Ukrainian\n"
@@ -54,8 +54,12 @@ msgstr "Додати автономний календар"
 
 # android: Etar preferences_list_add_offline_message
 #: src/cal-accounts.c
-msgid "Offline calendars are NOT synchronized to a cloud service and only available on your phone."
-msgstr "Автономні календарі НЕ синхронізуються із хмарними службами та доступні лише на вашому пристрої."
+msgid ""
+"Offline calendars are NOT synchronized to a cloud service and only available "
+"on your phone."
+msgstr ""
+"Автономні календарі НЕ синхронізуються із хмарними службами та доступні лише "
+"на вашому пристрої."
 
 # android: Etar preferences_list_add_offline_name (several translations, short)
 #. the field in a padded frame
@@ -128,8 +132,11 @@ msgid "Account added. Its calendars appear once they are synchronized."
 msgstr "Обліковий запис додано. Його календарі з’являться після синхронізації."
 
 #: src/cal-accounts.c
-msgid "The password could not be kept (no keyring), so the account was not added."
-msgstr "Не вдалося зберегти пароль (немає зв’язки ключів), тому обліковий запис не додано."
+msgid ""
+"The password could not be kept (no keyring), so the account was not added."
+msgstr ""
+"Не вдалося зберегти пароль (немає зв’язки ключів), тому обліковий запис не "
+"додано."
 
 #: src/cal-accounts.c
 msgid "Enter an account name"
@@ -188,8 +195,10 @@ msgid "Warning"
 msgstr "Увага"
 
 #: src/cal-accounts.c
-msgid "Changing the color may be reverted when the calendar is synchronized again."
-msgstr "Під час наступної синхронізації календаря зміну кольору може бути скасовано."
+msgid ""
+"Changing the color may be reverted when the calendar is synchronized again."
+msgstr ""
+"Під час наступної синхронізації календаря зміну кольору може бути скасовано."
 
 # android: Etar preferences_calendar_color_warning_button
 #: src/cal-accounts.c
@@ -1123,8 +1132,10 @@ msgstr "Використовувати домашній часовий пояс"
 
 # android: Etar preferences_use_home_tz_descrip
 #: src/cal-settings.c
-msgid "Displays calendars and event times in your home time zone when traveling"
-msgstr "Показувати календарі й час події у домашньому часовому поясі під час подорожі"
+msgid ""
+"Displays calendars and event times in your home time zone when traveling"
+msgstr ""
+"Показувати календарі й час події у домашньому часовому поясі під час подорожі"
 
 # android: DeskClock home_time_zone (other app, several translations)
 #: src/cal-settings.c

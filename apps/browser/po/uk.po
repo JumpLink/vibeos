@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-browser\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:53+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Ukrainian\n"
@@ -55,8 +55,12 @@ msgstr "Завантаження завершено"
 
 #. TRANSLATORS: keep the link's markup as it is
 #: src/nb-menu.c
-msgid "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, under the GNU LGPL 2.1 and BSD licences."
-msgstr "Вебсторінки показує <a href=\"https://webkitgtk.org/\">WebKitGTK</a> за ліцензіями GNU LGPL 2.1 і BSD."
+msgid ""
+"Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, "
+"under the GNU LGPL 2.1 and BSD licences."
+msgstr ""
+"Вебсторінки показує <a href=\"https://webkitgtk.org/\">WebKitGTK</a> за "
+"ліцензіями GNU LGPL 2.1 і BSD."
 
 #: src/nb-menu.c
 msgid "Desktop site"
@@ -201,8 +205,12 @@ msgstr "Очищення історії…"
 
 # android: Jelly history_delete_message
 #: src/nb-pages.c
-msgid "You're going to delete all the history, this action cannot be undone. Do you want to proceed?"
-msgstr "Ви збираєтеся видалити всю історію. Цю дію скасувати не можна. Бажаєте продовжити?"
+msgid ""
+"You're going to delete all the history, this action cannot be undone. Do you "
+"want to proceed?"
+msgstr ""
+"Ви збираєтеся видалити всю історію. Цю дію скасувати не можна. Бажаєте "
+"продовжити?"
 
 # android: Jelly history_delete_positive
 #: src/nb-pages.c
@@ -211,7 +219,8 @@ msgstr "Очистити"
 
 #: src/nb-pages.c
 msgid "There's nothing here, browse on the internet to see your history here"
-msgstr "Тут нічого немає. Відкривайте сайти, і тут з’явиться історія переглядів."
+msgstr ""
+"Тут нічого немає. Відкривайте сайти, і тут з’явиться історія переглядів."
 
 #: src/nb-pages.c
 msgid "Insert a valid URL"

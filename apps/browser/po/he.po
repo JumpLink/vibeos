@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-browser\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:53+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Hebrew\n"
@@ -55,8 +55,12 @@ msgstr "ההורדה הושלמה"
 
 #. TRANSLATORS: keep the link's markup as it is
 #: src/nb-menu.c
-msgid "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, under the GNU LGPL 2.1 and BSD licences."
-msgstr "דפי האינטרנט מוצגים באמצעות <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, במסגרת הרישיונות GNU LGPL 2.1 ו-BSD."
+msgid ""
+"Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, "
+"under the GNU LGPL 2.1 and BSD licences."
+msgstr ""
+"דפי האינטרנט מוצגים באמצעות <a href=\"https://webkitgtk.org/\">WebKitGTK</"
+"a>, במסגרת הרישיונות GNU LGPL 2.1 ו-BSD."
 
 # android: Jelly menu_desktop_mode
 #: src/nb-menu.c
@@ -200,7 +204,9 @@ msgid "Clearing history…"
 msgstr "ההיסטוריה נמחקת…"
 
 #: src/nb-pages.c
-msgid "You're going to delete all the history, this action cannot be undone. Do you want to proceed?"
+msgid ""
+"You're going to delete all the history, this action cannot be undone. Do you "
+"want to proceed?"
 msgstr "כל ההיסטוריה תימחק, ואי אפשר לבטל את הפעולה הזו. להמשיך?"
 
 # android: Settings proxy_clear_text (other app, several translations, short)

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-clock\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -2706,7 +2706,7 @@ msgid "Search"
 msgstr "Szukaj"
 
 # android: Framework action_menu_overflow_description (short)
-#. the overflow button: narrower than the search, a little in from the edge
+#. the overflow button where every top bar has its ⋮ (vibeos-top-bar.h)
 #: src/city-picker.c src/clock-window.c src/ringtone-picker.c
 msgid "More options"
 msgstr "Więcej opcji"
@@ -2910,7 +2910,9 @@ msgstr "Dzwoni alarm"
 # android: DeskClock confirm_remove_custom_ringtone
 #: src/ringtone-picker.c
 msgid "Alarms and timers using this sound will play the default sound instead."
-msgstr "Alarmy i minutniki, które używały tego dźwięku, będą odtwarzać dźwięk domyślny."
+msgstr ""
+"Alarmy i minutniki, które używały tego dźwięku, będą odtwarzać dźwięk "
+"domyślny."
 
 # android: DeskClock remove_sound
 #: src/ringtone-picker.c
@@ -2995,7 +2997,8 @@ msgstr "Zegar dla domowej strefy czasowej"
 
 # android: DeskClock automatic_home_clock_summary
 #: src/settings-page.c
-msgid "While traveling in an area where the time is different, add a clock for home"
+msgid ""
+"While traveling in an area where the time is different, add a clock for home"
 msgstr "Gdy jestem w innej strefie czasowej, pokazuj też czas w moim kraju"
 
 # android: DeskClock home_time_zone

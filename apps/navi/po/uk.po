@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Ukrainian\n"
@@ -283,8 +283,12 @@ msgid "Drive to this place?"
 msgstr "Їхати сюди?"
 
 #: src/navi-panels.c
-msgid "Add it as a stop on the way, or make it the new destination and cancel the current route."
-msgstr "Додайте це місце як зупинку на шляху або зробіть його новим пунктом призначення й скасуйте поточний маршрут."
+msgid ""
+"Add it as a stop on the way, or make it the new destination and cancel the "
+"current route."
+msgstr ""
+"Додайте це місце як зупинку на шляху або зробіть його новим пунктом "
+"призначення й скасуйте поточний маршрут."
 
 #: src/navi-panels.c
 msgid "Add a stop"
@@ -508,8 +512,12 @@ msgid "Speed camera alerts"
 msgstr "Попередження про камери"
 
 #: src/navi-panels.c
-msgid "Where the law allows them: never in Switzerland, only danger zones in France, and in Germany not for the driver while driving"
-msgstr "Там, де це дозволено законом: ніколи у Швейцарії, у Франції – лише небезпечні зони, а в Німеччині – не для водія під час руху"
+msgid ""
+"Where the law allows them: never in Switzerland, only danger zones in "
+"France, and in Germany not for the driver while driving"
+msgstr ""
+"Там, де це дозволено законом: ніколи у Швейцарії, у Франції – лише "
+"небезпечні зони, а в Німеччині – не для водія під час руху"
 
 #: src/navi-panels.c
 msgid "The speedometer turns red above the limit"
@@ -706,11 +714,15 @@ msgstr "Без обмеження швидкості"
 
 #: src/navi-panels.c
 msgid ""
-"Not allowed everywhere. In Germany the driver may not use them while driving (§23 (1c) StVO); a passenger may. In Switzerland Navi never shows them, and in France only danger zones.\n"
+"Not allowed everywhere. In Germany the driver may not use them while driving "
+"(§23 (1c) StVO); a passenger may. In Switzerland Navi never shows them, and "
+"in France only danger zones.\n"
 "\n"
 "You can turn them off in Settings at any time."
 msgstr ""
-"Дозволено не всюди. У Німеччині водієві не можна користуватися ними під час руху (§23 (1c) StVO), а пасажирові можна. У Швейцарії Navi ніколи їх не показує, а у Франції – лише небезпечні зони.\n"
+"Дозволено не всюди. У Німеччині водієві не можна користуватися ними під час "
+"руху (§23 (1c) StVO), а пасажирові можна. У Швейцарії Navi ніколи їх не "
+"показує, а у Франції – лише небезпечні зони.\n"
 "\n"
 "Ви будь-коли можете вимкнути їх у Налаштуваннях."
 
@@ -985,8 +997,12 @@ msgstr "Мова %s недоступна"
 #. * third its Debian package (vibeos-dictate-vosk)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
-msgid "%s is heard by %s, which is not installed on this phone. Install the %s package, then choose %s again."
-msgstr "Мову %s розпізнає %s, який не встановлено на цьому телефоні. Установіть пакет %s, а потім знову виберіть %s."
+msgid ""
+"%s is heard by %s, which is not installed on this phone. Install the %s "
+"package, then choose %s again."
+msgstr ""
+"Мову %s розпізнає %s, який не встановлено на цьому телефоні. Установіть "
+"пакет %s, а потім знову виберіть %s."
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "There is nothing to download for it."
