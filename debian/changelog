@@ -56,6 +56,33 @@ vibeos (1:0.1.5) unstable; urgency=medium
     a landscape screen).
   * The upgrade path from gnome-phone is gone: its transitional packages
     and the settings migration are no longer built.
+  * Settings › SIMs has a Network mode row, as Android's preferred
+    network type: Automatic first, then the modes the modem supports,
+    one alone ("4G only") or several with one preferred, and the one in
+    use marked. The modem keeps the choice after a restart; a mode it
+    refuses is not taken, and the row says why.
+  * Polish, Hebrew and Ukrainian: every app, the shell and the keyboard
+    (a Polish layout, and Ukrainian's apostrophe). Hebrew's apps read
+    right to left; the shell's layout, the home grid and a few widgets do
+    not yet. After a language change, Settings switches at once; open apps
+    and the status bar follow after a restart, which Settings offers.
+  * Location comes only from the device's own satellite receiver:
+    GeoClue's network sources (Wi-Fi networks, cell towers, the IP
+    address) are off, so no network or cell nearby is sent to a location
+    service. Weather asks for the exact position and rounds it to a tenth
+    of a degree before it uses it; with no fix (indoors, or a receiver
+    starting cold) it says "No location yet" instead of asking to turn
+    Location on.
+  * Vibe and Navi speak English with a voice that comes with the system;
+    the other languages' voices are downloaded once, with the language.
+  * Camera quits only after the camera has closed, so closing it right
+    after a recording no longer crashes it.
+  * The lock screen shows the wallpaper as the home screen shows it,
+    zoomed and with a parallax set's layers, so unlocking no longer jumps.
+    It never holds up the start-up.
+  * On a tablet, the app drawer's sheet is the notification shade's
+    frosted glass, the screen behind it blurred under a tint, or the
+    shade's solid colour where the graphics cannot keep up with the blur.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
