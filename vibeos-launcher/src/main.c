@@ -1,6 +1,6 @@
 /* VibeOS Launcher 2: the home screen as a Wayland client drawn with Vulkan or OpenGL ES (gfx.h): the parallax
  * wallpaper zoomed ×1.10, the workspace and dock, and the app drawer sheet whose depth zooms the wallpaper out, shrinks
- * the home to 0.97 and blurs both behind it. */
+ * the home to 0.97 and blurs both behind it (a tablet's: only under its sheet, as the tablet's shade blurs). */
 #include <errno.h>
 #include <glib.h>
 #include <glib-unix.h>
@@ -28,6 +28,8 @@
 #define DRAG_SLOP_DP       16         /* a held finger moving this far leaves the menu */
 
 void drawer_prepare (void);
+float drawer_backdrop_sigma (void);
+void drawer_set_backdrop (GfxTex *blurred, bool changed);
 
 Vibeos N;
 
@@ -47,6 +49,13 @@ static struct {
   guint       apps_id;            /* the app list's read, once they settle and no tile is held */
   guint       locale_id;          /* the texts again in a new language, once no tile is held */
   GfxTex     *home_target, *bg_target;
+  /* a tablet's drawer sheet: the blur it shows, and what it is a blur of. The screen behind the open sheet keeps still
+   * (the wallpaper holds while the drawer shows), so a scroll through the list blurs nothing again. What changes in
+   * the home behind it meanwhile (the clock's minute, an icon arriving), under a blur of σ 51 px, waits for the next
+   * change of these */
+  GfxTex     *sheet_blur;
+  float       sheet_key[9];
+  guint       wallpaper_gen, sheet_wallpaper;   /* each wallpaper loaded (a set, a picture, the light or dark one) */
 
   int         touch;              /* the finger being followed, or -1 */
   Owner       owner;
@@ -262,6 +271,7 @@ wallpaper_load (void)
     p = parallax_new (set, wake, NULL);
   parallax_free (A.par);
   A.par = p;
+  A.wallpaper_gen++;
   if (p) {
     parallax_set_wake (p, wake, NULL);
     parallax_resize (p, N.W, N.H, N.dp);
@@ -582,8 +592,9 @@ on_frame (gpointer data, gint64 time)
   float sdepth = SPRING_DEPTH * drag_spring ();
   bool sharp_home = sdepth > 0;      /* a drag: only the wallpaper blurs, the workspace stays sharp over the scrim */
   float depth = floorf (MAX (MAX (DRAWER_DEPTH * de, nav_depth ()), sdepth) * 256) / 256;
-  /* (a tablet's drawer blurs nothing: its sheet is opaque, the scrim around it plain) */
+  /* (a tablet's drawer blurs the screen only under its sheet, the shade's way (drawer.c); the scrim around it plain) */
   float drawer_blur = N.tablet ? 0 : DRAWER_DEPTH * de;
+  float sheet_sigma = drawer_backdrop_sigma ();
   float blurring = floorf (MAX (MAX (drawer_blur, nav_blurs () ? nav_depth () : 0), sdepth) * 256) / 256;
   float radius = MAX (floorf (MIN (1, blurring / BLUR_FULL_DEPTH) * dp (BLUR_MAX_DP)), nav_scrim_blur ());
   float scrim = nav_scrim_alpha ();
@@ -612,9 +623,16 @@ on_frame (gpointer data, gint64 time)
     home_draw (scale);
     gfx_pass_end ();
   }
-  GfxTex *blurred = NULL;
-  if (radius >= 1) {
-    /* the wallpaper and home at half size, blurred with σ = 0.57735·r + 0.5, as the reference blurs a radius r */
+  GfxTex *blurred = NULL, *sheet = NULL;
+  bool sheet_new = false;
+  float key[9] = { sheet_sigma, zoom, scale, stretch, nav_home_alpha (), nav_home_ty (), N.W, N.H, sharp_home };
+  if (sheet_sigma > 0 && A.sheet_blur && A.sheet_wallpaper == A.wallpaper_gen && !memcmp (key, A.sheet_key, sizeof key))
+    sheet = A.sheet_blur;          /* the same picture behind as last frame */
+  else
+    A.sheet_blur = NULL;
+  if (radius >= 1 || (sheet_sigma > 0 && !sheet)) {
+    /* the wallpaper and home at half size, blurred with σ = 0.57735·r + 0.5, as the reference blurs a radius r; and
+     * for a tablet's drawer, with the σ its sheet shows them at */
     gfx_pass_begin (target (&A.bg_target, N.W / 2, N.H / 2), (GfxColor) { 0, 0, 0, 1 });
     gfx_scale (0.5f, 0.5f, 0, 0);
     if (A.par)
@@ -624,9 +642,19 @@ on_frame (gpointer data, gint64 time)
     gfx_pass_end ();
     int levels;
     float offset;
-    blur_params (0.57735f * radius + 0.5f, &levels, &offset);
-    blurred = gfx_blur (A.bg_target, levels, offset, 0);
+    if (radius >= 1) {
+      blur_params (0.57735f * radius + 0.5f, &levels, &offset);
+      blurred = gfx_blur (A.bg_target, levels, offset, 0);
+    }
+    if (sheet_sigma > 0 && !sheet) {
+      blur_params (sheet_sigma, &levels, &offset);
+      sheet = A.sheet_blur = gfx_blur (A.bg_target, levels, offset, 1);
+      sheet_new = true;
+      memcpy (A.sheet_key, key, sizeof key);
+      A.sheet_wallpaper = A.wallpaper_gen;
+    }
   }
+  drawer_set_backdrop (sheet, sheet_new);
   drawer_prepare ();
 
   gfx_pass_begin (NULL, (GfxColor) { 0, 0, 0, 1 });
