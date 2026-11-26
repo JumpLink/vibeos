@@ -1,0 +1,11 @@
+#!/bin/sh
+# Give a Wi-Fi interface a stable, locally administered address derived from androidboot.serialno. The OnePlus 6T's
+# wcn3990 gets no MAC from the device tree or the bootloader, so ath10k picks a random one at every boot: each boot
+# looks like a new device to the router, and a DHCP server whose leases last days runs out of addresses. Debian has no
+# bootmac. Runs from udev when the interface appears, before NetworkManager brings it up.
+# VIBEOS_CMDLINE overrides /proc/cmdline (tests).
+[ -n "$1" ] || exit 0
+s=$(tr ' ' '\n' < "${VIBEOS_CMDLINE:-/proc/cmdline}" | sed -n 's/^androidboot\.serialno=//p')
+[ -n "$s" ] || exit 0
+a=$(printf 'wlan-%s' "$s" | sha256sum | sed -E 's/^(..)(..)(..)(..)(..).*/02:\1:\2:\3:\4:\5/')
+exec ip link set dev "$1" address "$a"

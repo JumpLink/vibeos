@@ -60,7 +60,7 @@ NO_DEBIAN = {
                 'audio itself (vibeos-q6voiced)',
     'msm-modem-uim-selection': 'SIM slot selection for the msm modem: not in Debian',
     'bootmac': 'Wi-Fi/Bluetooth MAC addresses from the boot serial: not in Debian (Mobian has bootmac); '
-               'the payload sets the Bluetooth address itself (vibeos-bt-addr), Wi-Fi keeps the driver\'s',
+               'the payload sets both addresses itself (vibeos-bt-addr, vibeos-wlan-addr)',
     'swclock-offset': 'keeps the RTC offset across boots: not in Debian',
     'soc-qcom-pulseaudio': 'call_audio_idle_suspend_workaround (PulseAudio; VibeOS runs PipeWire)',
     'droid-juicer': 'not needed: the firmware is in the payload',
@@ -757,14 +757,18 @@ def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset
             pl.not_carried[:] = [x for x in pl.not_carried if x[0] != r2]
         if pl.add(src, rel, pkg) and re.search(r'^\s*WantedBy\s*=', text, re.M):
             enable.append(('--user ' if '/user/' in rel else '') + os.path.basename(rel))
-    # bootmac is not in Debian: its Bluetooth half is vibeos-bt-addr (a QCA controller without an address stays hidden)
+    # bootmac is not in Debian: its Bluetooth half is vibeos-bt-addr (a QCA controller without an address stays hidden),
+    # its Wi-Fi half vibeos-wlan-addr (a random address at every boot fills the router's DHCP pool)
     if 'bootmac' in nura.pkgs:
-        for name, dst, mode in (('vibeos-bt-addr', 'usr/libexec/vibeos-bt-addr', 0o755),
-                                ('vibeos-bt-addr.service', 'usr/lib/systemd/system/vibeos-bt-addr.service', 0o644)):
+        for sub, name, dst, mode in (
+                ('bt-addr', 'vibeos-bt-addr', 'usr/libexec/vibeos-bt-addr', 0o755),
+                ('bt-addr', 'vibeos-bt-addr.service', 'usr/lib/systemd/system/vibeos-bt-addr.service', 0o644),
+                ('wlan-addr', 'vibeos-wlan-addr', 'usr/libexec/vibeos-wlan-addr', 0o755),
+                ('wlan-addr', '90-vibeos-wlan-addr.rules', 'usr/lib/udev/rules.d/90-vibeos-wlan-addr.rules', 0o644)):
             os.makedirs(os.path.dirname(os.path.join(P, dst)), exist_ok=True)
-            shutil.copy(os.path.join(HERE, 'data', 'bt-addr', name), os.path.join(P, dst))
+            shutil.copy(os.path.join(HERE, 'data', sub, name), os.path.join(P, dst))
             os.chmod(os.path.join(P, dst), mode)
-            pl.carried.append((dst, 'bootmac (replaced by vibeos-bt-addr)'))
+            pl.carried.append((dst, 'bootmac (replaced by vibeos-%s)' % sub))
         enable.append('vibeos-bt-addr.service')
     # q6voiced is not in Debian: without what it does, a call connects and stays silent both ways
     if 'q6voiced' in nura.pkgs:
