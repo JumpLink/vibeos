@@ -88,6 +88,16 @@ vibeos (1:0.1.5) unstable; urgency=medium
     0.1.6), and it is the picture of a user who has not chosen one, in
     place of the Debian swirl. Settings › Users shows each account's
     picture.
+  * A tap on a button counts while the finger stays on it or within 8 dp
+    of it, as on Android, so a Back tapped with a thumb that rolls as it
+    lifts goes back; Back's circle has the 48 dp touch target every other
+    button has.
+  * Every app's top bar buttons have one size and place, the
+    Calculator's, and every ⋮ menu opens and closes with the motion of
+    About's dialog, growing out of its button.
+  * Settings has Home screen as an entry of its own, after Display: the
+    grid, icon size, icon pack and app names. Wallpaper and style keeps
+    the wallpapers, the parallax and the colours.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
