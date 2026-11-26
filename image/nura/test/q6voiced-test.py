@@ -96,4 +96,40 @@ card['dev'] = 'hw:0,6'
 check('late card: opens at the next call', a.open(), True)
 check('late card: both directions on the PCM found', a.lib.opened, [b'hw:0,6', b'hw:0,6'])
 
+# both ways started: the codec turns the earpiece's SLIMbus channel on only when playback starts, and playback,
+# with no data, starts only with its stop threshold at the boundary
+BOUNDARY = 0x4000000000000000
+
+
+class RecordingLib:
+    def __init__(self):
+        self.calls, self.next = [], 1
+
+    def snd_pcm_open(self, h, dev, stream, mode):
+        h._obj.value = self.next
+        self.next += 1
+        return 0
+
+    def snd_pcm_sw_params_get_boundary(self, sw, b):
+        b._obj.value = BOUNDARY
+        return 0
+
+    def snd_pcm_sw_params_set_stop_threshold(self, h, sw, v):
+        self.calls.append(('stop_threshold', h.value, v.value))
+        return 0
+
+    def __getattr__(self, name):
+        def call(*a):
+            if name in ('snd_pcm_prepare', 'snd_pcm_start'):
+                self.calls.append((name[8:], a[0].value))
+            return 0
+        return call
+
+
+a = q.Alsa.__new__(q.Alsa)
+a.lib, a.dev, a.find, a.handles = RecordingLib(), 'hw:0,6', None, []
+check('started: opens', a.open(), True)
+check('started: capture (1) and playback (2) both started, playback never stopping',
+      a.lib.calls, [('prepare', 1), ('start', 1), ('stop_threshold', 2, BOUNDARY), ('prepare', 2), ('start', 2)])
+
 sys.exit(1 if fails else 0)

@@ -31,9 +31,11 @@ def find_device(proc='/proc/asound/pcm'):
 
 
 class Alsa:
-    """the voice PCM, opened as q6voiced does: capture started, playback prepared (the DSP feeds both). Without a
-    device given, it is looked up at each open: the sound card comes with the audio DSP and can register after
-    ModemManager has started"""
+    """the voice PCM, opened and started both ways (the DSP feeds both). Opening both starts the DSP's voice
+    session (q6voice), but the codec turns its SLIMbus channels on only when its stream starts (wcd934x's trigger):
+    a playback side left prepared keeps the earpiece silent. Playback has no data to start on, so it never stops for
+    the lack of it (stop threshold at the boundary). Without a device given, the PCM is looked up at each open: the
+    sound card comes with the audio DSP and can register after ModemManager has started"""
     CAPTURE, PLAYBACK = 1, 0
 
     def __init__(self, dev=None, find=find_device):
@@ -55,11 +57,25 @@ class Alsa:
                 continue
             # S16_LE, interleaved, mono, 8 kHz, 40 ms: the DSP ignores them, ALSA needs some
             a.snd_pcm_set_params(h, 2, 3, 1, 8000, 0, 40000)
+            if stream == self.PLAYBACK:
+                self.never_stop(h)
             a.snd_pcm_prepare(h)
-            if stream == self.CAPTURE:
-                a.snd_pcm_start(h)
+            r = a.snd_pcm_start(h)
+            if r < 0:
+                log('start %s: error %d' % ('capture' if stream else 'playback', r))
             self.handles.append(h)
         return bool(self.handles)
+
+    def never_stop(self, h):
+        a = self.lib
+        sw = ctypes.c_void_p()
+        if a.snd_pcm_sw_params_malloc(ctypes.byref(sw)) < 0:
+            return
+        boundary = ctypes.c_ulong()
+        if a.snd_pcm_sw_params_current(h, sw) < 0 or a.snd_pcm_sw_params_get_boundary(sw, ctypes.byref(boundary)) < 0 \
+                or a.snd_pcm_sw_params_set_stop_threshold(h, sw, boundary) < 0 or a.snd_pcm_sw_params(h, sw) < 0:
+            log('playback: no stop threshold, its start may fail')
+        a.snd_pcm_sw_params_free(sw)
 
     def close(self):
         for h in self.handles:
