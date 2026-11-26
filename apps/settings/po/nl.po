@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 04:50+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Dutch\n"
@@ -134,23 +134,32 @@ msgstr ""
 "amber draaien schaal altijd aan aod weergavegrootte tekst vet zoom "
 "vergrendelscherm"
 
+# android: Settings preview_pager_home_title
+#. the launcher's own settings, an entry of their own (owner, 11-26), where they were a row in Wallpaper and style
+#: src/main.c src/ns-pages.c
+msgid "Home screen"
+msgstr "Startscherm"
+
+#: src/main.c
+msgid "Grid, icon size, icon pack"
+msgstr "Raster, pictogramgrootte, pictogrampakket"
+
+#: src/main.c
+msgid "launcher grid columns rows icons drawer app names"
+msgstr "launcher raster kolommen rijen pictogrammen app-lade app-namen"
+
 # android: Settings style_and_wallpaper_settings_title (adapted)
 #: src/main.c src/ns-pages.c
 msgid "Wallpaper and style"
 msgstr "Achtergrond en stijl"
 
 #: src/main.c
-msgid "Wallpapers, colors, home screen"
-msgstr "Achtergronden, kleuren, startscherm"
+msgid "Wallpapers, colors"
+msgstr "Achtergronden, kleuren"
 
 #: src/main.c
-msgid ""
-"background accent dark theme colour color parallax launcher grid columns "
-"rows layout icon size pack shape app names labels drawer"
-msgstr ""
-"achtergrond accent donker thema kleur parallax launcher raster kolommen "
-"rijen indeling pictogramgrootte pictogrampakket vorm app-namen labels app-"
-"lade"
+msgid "background accent dark theme colour color parallax"
+msgstr "achtergrond accent donker thema kleur parallax"
 
 # android: Settings device_details_battery
 #: src/main.c src/ns-pages.c
@@ -418,15 +427,6 @@ msgstr "Achtergronden"
 #: src/main.c
 msgid "background picture photo parallax"
 msgstr "achtergrond afbeelding foto parallax"
-
-# android: Settings preview_pager_home_title
-#: src/main.c src/ns-pages.c
-msgid "Home screen"
-msgstr "Startscherm"
-
-#: src/main.c
-msgid "launcher grid columns rows icons drawer app names"
-msgstr "launcher raster kolommen rijen pictogrammen app-lade app-namen"
 
 # android: Settings advanced_battery_title
 #: src/main.c src/ns-pages.c
@@ -884,6 +884,7 @@ msgid "Mail from any provider, by IMAP and SMTP"
 msgstr "Mail van elke provider, via IMAP en SMTP"
 
 # android: Settings security_settings_fingerprint_enroll_dialog_name_label
+#. the picture on the name's row; the generic one until AccountsService answers
 #: src/ns-accounts.c src/ns-system.c
 msgid "Name"
 msgstr "Naam"
@@ -3010,10 +3011,6 @@ msgstr "Afbeelding"
 #: src/ns-pages.c
 msgid "Style"
 msgstr "Stijl"
-
-#: src/ns-pages.c
-msgid "Grid, icon size, icon pack"
-msgstr "Raster, pictogramgrootte, pictogrampakket"
 
 #: src/ns-pages.c
 msgid "Pack / system"

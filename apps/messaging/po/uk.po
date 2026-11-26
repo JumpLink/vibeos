@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-messaging\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Ukrainian\n"
@@ -128,8 +128,12 @@ msgid "Block %s?"
 msgstr "Заблокувати %s?"
 
 #: src/conversation-list.c src/conversation-view.c src/people-options.c
-msgid "You'll continue to receive messages from this number but won't be notified anymore. This conversation will be archived."
-msgstr "Ви надалі отримуватимете повідомлення з цього номера, але без сповіщень. Цей чат буде архівовано."
+msgid ""
+"You'll continue to receive messages from this number but won't be notified "
+"anymore. This conversation will be archived."
+msgstr ""
+"Ви надалі отримуватимете повідомлення з цього номера, але без сповіщень. Цей "
+"чат буде архівовано."
 
 # android: Framework httpErrorOk (several translations, short)
 #: src/conversation-list.c src/conversation-view.c src/people-options.c

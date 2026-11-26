@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-compass\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Hebrew\n"
@@ -75,8 +75,11 @@ msgid "The compass cannot be read right now."
 msgstr "אי אפשר לקרוא את המצפן כרגע."
 
 #: main.c
-msgid "Hold the device flat, away from metal. Move it in a figure 8 to calibrate."
-msgstr "יש להחזיק את המכשיר במצב שטוח, רחוק ממתכת, ולהזיז אותו בתנועה של הספרה 8 כדי לכייל."
+msgid ""
+"Hold the device flat, away from metal. Move it in a figure 8 to calibrate."
+msgstr ""
+"יש להחזיק את המכשיר במצב שטוח, רחוק ממתכת, ולהזיז אותו בתנועה של הספרה 8 כדי "
+"לכייל."
 
 #: main.c
 msgid "This device has no compass."

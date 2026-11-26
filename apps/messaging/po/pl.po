@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-messaging\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -132,8 +132,12 @@ msgstr "Zablokować numer %s?"
 
 # android: Messaging block_confirmation_message
 #: src/conversation-list.c src/conversation-view.c src/people-options.c
-msgid "You'll continue to receive messages from this number but won't be notified anymore. This conversation will be archived."
-msgstr "Będziesz nadal otrzymywać wiadomości z tego numeru, ale nie będzie już powiadomień o nich. Ten wątek zostanie zarchiwizowany."
+msgid ""
+"You'll continue to receive messages from this number but won't be notified "
+"anymore. This conversation will be archived."
+msgstr ""
+"Będziesz nadal otrzymywać wiadomości z tego numeru, ale nie będzie już "
+"powiadomień o nich. Ten wątek zostanie zarchiwizowany."
 
 # android: Messaging notification_reply_choices[2]
 #: src/conversation-list.c src/conversation-view.c src/people-options.c
@@ -318,7 +322,8 @@ msgstr "Wyślij SMS-a"
 
 #: src/conversation-view.c
 msgid "Sender can't accept replies. Contact them directly."
-msgstr "Nadawca nie może odbierać odpowiedzi. Skontaktuj się z nim bezpośrednio."
+msgstr ""
+"Nadawca nie może odbierać odpowiedzi. Skontaktuj się z nim bezpośrednio."
 
 #: src/conversation-view.c
 msgid "Can't make a voice call to emergency services here."

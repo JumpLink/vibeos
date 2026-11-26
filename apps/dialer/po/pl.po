@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-dialer\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -28,12 +28,15 @@ msgstr "Nawiązuj i odbieraj połączenia"
 
 #: data/vibeos.Dialer.desktop.in
 msgid "Phone;Call;Dial;Dialer;Telephone;"
-msgstr "Telefon;Połączenie;Zadzwoń;Dzwonienie;Wybierz numer;Wybieranie;Phone;Call;Dial;Dialer;"
+msgstr ""
+"Telefon;Połączenie;Zadzwoń;Dzwonienie;Wybierz "
+"numer;Wybieranie;Phone;Call;Dial;Dialer;"
 
 # android: Dialer call_incoming_swipe_to_answer_and_release
 #: src/answer-view.c
 msgid "Swipe from icon to answer and end ongoing call"
-msgstr "Przesuń palcem od ikony, aby odebrać połączenie i zakończyć trwającą rozmowę"
+msgstr ""
+"Przesuń palcem od ikony, aby odebrać połączenie i zakończyć trwającą rozmowę"
 
 # android: Dialer call_incoming_default_label_answer_and_release_third
 #: src/answer-view.c
@@ -685,7 +688,8 @@ msgstr "To urządzenie nie może nagrywać rozmów"
 
 #: src/dialer-settings.c
 msgid "To record calls on this device, turn off Announce recording"
-msgstr "Aby nagrywać rozmowy na tym urządzeniu, wyłącz opcję „Informuj o nagrywaniu”"
+msgstr ""
+"Aby nagrywać rozmowy na tym urządzeniu, wyłącz opcję „Informuj o nagrywaniu”"
 
 #: src/dialer-settings.c
 msgid "This device can't play it to the other person"
@@ -693,7 +697,8 @@ msgstr "To urządzenie nie może odtworzyć go rozmówcy"
 
 #: src/dialer-settings.c
 msgid "Both sides hear “This call is now being recorded” when recording starts"
-msgstr "Po rozpoczęciu nagrywania obie strony słyszą „Ta rozmowa jest nagrywana”"
+msgstr ""
+"Po rozpoczęciu nagrywania obie strony słyszą „Ta rozmowa jest nagrywana”"
 
 #: src/dialer-settings.c
 msgid "Call recordings can't be saved in this folder"
@@ -933,8 +938,14 @@ msgid "Enable call recording?"
 msgstr "Włączyć nagrywanie rozmów?"
 
 #: src/incall-view.c
-msgid "Notice: You are responsible for compliance with any laws, regulations and rules that apply to the use of call recording functionality and the use or distribution of those recordings."
-msgstr "Uwaga: odpowiadasz za przestrzeganie wszelkich przepisów prawa, regulacji i zasad dotyczących korzystania z funkcji nagrywania rozmów oraz wykorzystywania i rozpowszechniania tych nagrań."
+msgid ""
+"Notice: You are responsible for compliance with any laws, regulations and "
+"rules that apply to the use of call recording functionality and the use or "
+"distribution of those recordings."
+msgstr ""
+"Uwaga: odpowiadasz za przestrzeganie wszelkich przepisów prawa, regulacji i "
+"zasad dotyczących korzystania z funkcji nagrywania rozmów oraz "
+"wykorzystywania i rozpowszechniania tych nagrań."
 
 #: src/incall-view.c
 msgid "This phone can't send keypad tones"
@@ -982,10 +993,8 @@ msgstr "Dzwoni połączenie"
 
 # android: Dialer wait_prompt_str
 #: src/incall-window.c
-msgid ""
-"Send the following tones?\n"
-msgstr ""
-"Wysłać następujące dzwonki?\n"
+msgid "Send the following tones?\n"
+msgstr "Wysłać następujące dzwonki?\n"
 
 # android: Dialer pause_prompt_no
 #: src/incall-window.c

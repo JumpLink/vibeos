@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-calendar\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -54,8 +54,12 @@ msgstr "Dodaj kalendarz offline"
 
 # android: Etar preferences_list_add_offline_message
 #: src/cal-accounts.c
-msgid "Offline calendars are NOT synchronized to a cloud service and only available on your phone."
-msgstr "Kalendarze offline NIE SĄ synchronizowane z usługą w chmurze i są dostępne tylko w Twoim telefonie."
+msgid ""
+"Offline calendars are NOT synchronized to a cloud service and only available "
+"on your phone."
+msgstr ""
+"Kalendarze offline NIE SĄ synchronizowane z usługą w chmurze i są dostępne "
+"tylko w Twoim telefonie."
 
 # android: Etar preferences_list_add_offline_name (several translations, short)
 #. the field in a padded frame
@@ -128,8 +132,11 @@ msgid "Account added. Its calendars appear once they are synchronized."
 msgstr "Dodano konto. Jego kalendarze pojawią się po synchronizacji."
 
 #: src/cal-accounts.c
-msgid "The password could not be kept (no keyring), so the account was not added."
-msgstr "Nie udało się zachować hasła (brak pęku kluczy), więc konto nie zostało dodane."
+msgid ""
+"The password could not be kept (no keyring), so the account was not added."
+msgstr ""
+"Nie udało się zachować hasła (brak pęku kluczy), więc konto nie zostało "
+"dodane."
 
 #: src/cal-accounts.c
 msgid "Enter an account name"
@@ -189,8 +196,11 @@ msgid "Warning"
 msgstr "Ostrzeżenie"
 
 #: src/cal-accounts.c
-msgid "Changing the color may be reverted when the calendar is synchronized again."
-msgstr "Zmieniony kolor może zostać przywrócony przy następnej synchronizacji kalendarza."
+msgid ""
+"Changing the color may be reverted when the calendar is synchronized again."
+msgstr ""
+"Zmieniony kolor może zostać przywrócony przy następnej synchronizacji "
+"kalendarza."
 
 # android: Etar preferences_calendar_color_warning_button
 #: src/cal-accounts.c
@@ -1128,7 +1138,8 @@ msgstr "Używaj domowej strefy czasowej"
 
 # android: Etar preferences_use_home_tz_descrip
 #: src/cal-settings.c
-msgid "Displays calendars and event times in your home time zone when traveling"
+msgid ""
+"Displays calendars and event times in your home time zone when traveling"
 msgstr "Godziny będą podawane w domowej strefie czasowej (nawet w podróży)"
 
 # android: Etar preferences_home_tz_title

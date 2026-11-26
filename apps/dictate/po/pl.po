@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-dictate\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -548,8 +548,12 @@ msgstr "Język %s jest niedostępny"
 #. * third its Debian package (vibeos-dictate-vosk)
 #: src/dictate-download-dialog.c
 #, c-format
-msgid "%s is heard by %s, which is not installed on this phone. Install the %s package, then choose %s again."
-msgstr "Język %s rozpoznaje %s, którego nie ma na tym telefonie. Zainstaluj pakiet %s, a potem ponownie wybierz %s."
+msgid ""
+"%s is heard by %s, which is not installed on this phone. Install the %s "
+"package, then choose %s again."
+msgstr ""
+"Język %s rozpoznaje %s, którego nie ma na tym telefonie. Zainstaluj pakiet "
+"%s, a potem ponownie wybierz %s."
 
 # android: Framework httpErrorOk (short)
 #: src/dictate-download-dialog.c
@@ -623,8 +627,12 @@ msgid "There is no speech model for %s. Install the %s package."
 msgstr "Brak modelu mowy dla języka %s. Zainstaluj pakiet %s."
 
 #: src/dictate-engine.c
-msgid "There is no speech model. Install a vibeos-dictate language package, such as vibeos-dictate-en."
-msgstr "Brak modelu mowy. Zainstaluj pakiet językowy vibeos-dictate, np. vibeos-dictate-en."
+msgid ""
+"There is no speech model. Install a vibeos-dictate language package, such as "
+"vibeos-dictate-en."
+msgstr ""
+"Brak modelu mowy. Zainstaluj pakiet językowy vibeos-dictate, np. vibeos-"
+"dictate-en."
 
 #. TRANSLATORS: %s is the package's name (vibeos-dictate-moonshine)
 #: src/dictate-engine.c
@@ -651,16 +659,27 @@ msgid "No microphone"
 msgstr "Brak mikrofonu"
 
 #: src/dictate-enroll.c
-msgid "Vibe, what time is it now? I'm teaching you how my voice sounds, so that you only listen to me."
-msgstr "Vibe, która jest teraz godzina? Uczę cię brzmienia mojego głosu, więc słuchaj tylko mnie."
+msgid ""
+"Vibe, what time is it now? I'm teaching you how my voice sounds, so that you "
+"only listen to me."
+msgstr ""
+"Vibe, która jest teraz godzina? Uczę cię brzmienia mojego głosu, więc "
+"słuchaj tylko mnie."
 
 #: src/dictate-enroll.c
-msgid "Read my new messages out loud, then tell me what is on my calendar for tomorrow morning."
-msgstr "Przeczytaj na głos moje nowe wiadomości, a potem powiedz, co mam w kalendarzu na jutro rano."
+msgid ""
+"Read my new messages out loud, then tell me what is on my calendar for "
+"tomorrow morning."
+msgstr ""
+"Przeczytaj na głos moje nowe wiadomości, a potem powiedz, co mam w "
+"kalendarzu na jutro rano."
 
 #: src/dictate-enroll.c
-msgid "Call my sister on her mobile, and set an alarm for seven thirty tomorrow."
-msgstr "Zadzwoń do mojej siostry na komórkę i ustaw alarm na jutro na siódmą trzydzieści."
+msgid ""
+"Call my sister on her mobile, and set an alarm for seven thirty tomorrow."
+msgstr ""
+"Zadzwoń do mojej siostry na komórkę i ustaw alarm na jutro na siódmą "
+"trzydzieści."
 
 #: src/dictate-enroll.c
 msgid "What's the time? Call Anna. Set a timer."
@@ -732,7 +751,8 @@ msgstr "Voice Match nie jest jeszcze gotowy."
 
 #: src/dictate-enroll.c
 msgid "Your recordings were not kept, and nothing changed on the phone."
-msgstr "Twoje nagrania nie zostały zachowane i nic się nie zmieniło na telefonie."
+msgstr ""
+"Twoje nagrania nie zostały zachowane i nic się nie zmieniło na telefonie."
 
 #: src/dictate-enroll.c
 msgid "I couldn't keep your voice sample."
@@ -749,7 +769,9 @@ msgstr "To wszystko, czego potrzebuję."
 
 #: src/dictate-enroll.c
 msgid "Voice match is on. Say any command to test it. Nothing is carried out."
-msgstr "Voice Match jest włączony. Powiedz dowolne polecenie, aby to sprawdzić. Nic nie zostanie wykonane."
+msgstr ""
+"Voice Match jest włączony. Powiedz dowolne polecenie, aby to sprawdzić. Nic "
+"nie zostanie wykonane."
 
 #: src/dictate-enroll.c
 msgid "Tap anywhere, then speak"
@@ -828,19 +850,31 @@ msgstr "Nie udało mi się zacząć słuchać."
 #. TRANSLATORS: Voice match's first words, said aloud; %u: how many phrases it asks (4)
 #: src/dictate-enroll.c
 #, c-format
-msgid "I'll learn your voice from %u short phrase, so I only take commands from you. The sample stays on this phone."
-msgid_plural "I'll learn your voice from %u short phrases, so I only take commands from you. The sample stays on this phone."
-msgstr[0] "Poznam Twój głos z %u krótkiego zdania, aby przyjmować polecenia tylko od Ciebie. Próbka zostanie na tym telefonie."
-msgstr[1] "Poznam Twój głos z %u krótkich zdań, aby przyjmować polecenia tylko od Ciebie. Próbka zostanie na tym telefonie."
-msgstr[2] "Poznam Twój głos z %u krótkich zdań, aby przyjmować polecenia tylko od Ciebie. Próbka zostanie na tym telefonie."
+msgid ""
+"I'll learn your voice from %u short phrase, so I only take commands from "
+"you. The sample stays on this phone."
+msgid_plural ""
+"I'll learn your voice from %u short phrases, so I only take commands from "
+"you. The sample stays on this phone."
+msgstr[0] ""
+"Poznam Twój głos z %u krótkiego zdania, aby przyjmować polecenia tylko od "
+"Ciebie. Próbka zostanie na tym telefonie."
+msgstr[1] ""
+"Poznam Twój głos z %u krótkich zdań, aby przyjmować polecenia tylko od "
+"Ciebie. Próbka zostanie na tym telefonie."
+msgstr[2] ""
+"Poznam Twój głos z %u krótkich zdań, aby przyjmować polecenia tylko od "
+"Ciebie. Próbka zostanie na tym telefonie."
 
 #: src/dictate-enroll.c src/dictate-voicematch-page.c
 msgid "Test voice match"
 msgstr "Przetestuj Voice Match"
 
 #: src/dictate-enroll.c
-msgid "For example “Vibe, what's the weather?” Nothing is carried out during a test."
-msgstr "Na przykład „Vibe, jaka jest pogoda?”. Podczas testu nic nie jest wykonywane."
+msgid ""
+"For example “Vibe, what's the weather?” Nothing is carried out during a test."
+msgstr ""
+"Na przykład „Vibe, jaka jest pogoda?”. Podczas testu nic nie jest wykonywane."
 
 # android: Framework lockscreen_transport_stop_description (short)
 #: src/dictate-mic.c
@@ -954,12 +988,21 @@ msgid "Try saying"
 msgstr "Spróbuj powiedzieć"
 
 #: src/dictate-onboarding.c
-msgid "Before I call or send anything, I read it back, and it goes after three seconds unless you cancel it. Nothing is deleted until you tap to confirm."
-msgstr "Zanim zadzwonię lub coś wyślę, odczytam to na głos i wykonam po trzech sekundach, chyba że anulujesz. Nic nie zostanie usunięte, dopóki nie potwierdzisz kliknięciem."
+msgid ""
+"Before I call or send anything, I read it back, and it goes after three "
+"seconds unless you cancel it. Nothing is deleted until you tap to confirm."
+msgstr ""
+"Zanim zadzwonię lub coś wyślę, odczytam to na głos i wykonam po trzech "
+"sekundach, chyba że anulujesz. Nic nie zostanie usunięte, dopóki nie "
+"potwierdzisz kliknięciem."
 
 #: src/dictate-onboarding.c
-msgid "Before I call, send or delete anything, I show you exactly what will happen, and nothing happens until you confirm it."
-msgstr "Zanim zadzwonię, coś wyślę lub usunę, pokażę Ci dokładnie, co się stanie, i nic się nie wydarzy, dopóki tego nie potwierdzisz."
+msgid ""
+"Before I call, send or delete anything, I show you exactly what will happen, "
+"and nothing happens until you confirm it."
+msgstr ""
+"Zanim zadzwonię, coś wyślę lub usunę, pokażę Ci dokładnie, co się stanie, i "
+"nic się nie wydarzy, dopóki tego nie potwierdzisz."
 
 # android: Framework skip_button_label (short)
 #: src/dictate-onboarding.c
@@ -976,8 +1019,12 @@ msgid "Hello. I'm Vibe."
 msgstr "Cześć. Jestem Vibe."
 
 #: src/dictate-onboarding.c
-msgid "I run this phone by voice. Everything I say is also written here, and everything can be tapped."
-msgstr "Obsługuję ten telefon głosem. Wszystko, co mówię, jest też tu napisane, a wszystko można kliknąć."
+msgid ""
+"I run this phone by voice. Everything I say is also written here, and "
+"everything can be tapped."
+msgstr ""
+"Obsługuję ten telefon głosem. Wszystko, co mówię, jest też tu napisane, a "
+"wszystko można kliknąć."
 
 #: src/dictate-onboarding.c
 msgid "Tap anywhere, or say “continue”"
@@ -1055,8 +1102,13 @@ msgid "What may I use on this phone?"
 msgstr "Z czego mogę korzystać na tym telefonie?"
 
 #: src/dictate-onboarding.c
-msgid "What I read goes only to VibeOS's own model server, never to anyone else. For the weather, the town's rough position goes to Open-Meteo."
-msgstr "To, co czytam, trafia tylko do własnego serwera modeli VibeOS, nigdy do nikogo innego. Na potrzeby pogody przybliżone położenie miejscowości trafia do Open-Meteo."
+msgid ""
+"What I read goes only to VibeOS's own model server, never to anyone else. "
+"For the weather, the town's rough position goes to Open-Meteo."
+msgstr ""
+"To, co czytam, trafia tylko do własnego serwera modeli VibeOS, nigdy do "
+"nikogo innego. Na potrzeby pogody przybliżone położenie miejscowości trafia "
+"do Open-Meteo."
 
 #: src/dictate-onboarding.c
 msgid "Say “turn off files”, or “continue”"
@@ -1064,7 +1116,9 @@ msgstr "Powiedz „wyłącz pliki” albo „dalej”"
 
 #: src/dictate-onboarding.c
 msgid "Tap one to turn it off or on, or anywhere else to go on"
-msgstr "Kliknij pozycję, aby ją wyłączyć lub włączyć, albo w innym miejscu, aby kontynuować"
+msgstr ""
+"Kliknij pozycję, aby ją wyłączyć lub włączyć, albo w innym miejscu, aby "
+"kontynuować"
 
 #: src/dictate-onboarding.c
 msgid "I'm ready. One rule:"
@@ -1255,8 +1309,12 @@ msgstr "Usunąć język %s?"
 #. TRANSLATORS: %s is a size: 90.4 MB
 #: src/dictate-settings.c
 #, c-format
-msgid "Its speech recognition and voice are removed from the phone, which frees %s. You can download them again."
-msgstr "Rozpoznawanie mowy i głos dla tego języka zostaną usunięte z telefonu, co zwolni %s. Możesz je pobrać ponownie."
+msgid ""
+"Its speech recognition and voice are removed from the phone, which frees %s. "
+"You can download them again."
+msgstr ""
+"Rozpoznawanie mowy i głos dla tego języka zostaną usunięte z telefonu, co "
+"zwolni %s. Możesz je pobrać ponownie."
 
 # android: Framework kg_reordering_delete_drop_target_text (short)
 #: src/dictate-settings.c
@@ -1332,12 +1390,20 @@ msgid "Announce calls"
 msgstr "Zapowiadaj połączenia"
 
 #: src/dictate-settings.c
-msgid "Vibe says who is calling and listens for answer or decline, also when it is closed"
-msgstr "Vibe mówi, kto dzwoni, i czeka na „odbierz” lub „odrzuć”, także przy zamkniętej aplikacji"
+msgid ""
+"Vibe says who is calling and listens for answer or decline, also when it is "
+"closed"
+msgstr ""
+"Vibe mówi, kto dzwoni, i czeka na „odbierz” lub „odrzuć”, także przy "
+"zamkniętej aplikacji"
 
 #: src/dictate-settings.c
-msgid "Replies only in headphones; on the speaker short, with no names or messages read out"
-msgstr "Odpowiedzi tylko w słuchawkach; przez głośnik krótko, bez odczytywania imion i wiadomości"
+msgid ""
+"Replies only in headphones; on the speaker short, with no names or messages "
+"read out"
+msgstr ""
+"Odpowiedzi tylko w słuchawkach; przez głośnik krótko, bez odczytywania imion "
+"i wiadomości"
 
 #: src/dictate-settings.c
 msgid "Vibe says nothing and plays no sound on its own"
@@ -1362,8 +1428,14 @@ msgid "Only to VibeOS"
 msgstr "Tylko do VibeOS"
 
 #: src/dictate-settings.c
-msgid "What Vibe reads on the phone goes only to VibeOS's own model server, never to anyone else. For the weather, the town's rough position goes to Open-Meteo, as from the Weather app"
-msgstr "To, co Vibe czyta na telefonie, trafia tylko do własnego serwera modeli VibeOS, nigdy do nikogo innego. Na potrzeby pogody przybliżone położenie miejscowości trafia do Open-Meteo, tak jak z aplikacji Pogoda"
+msgid ""
+"What Vibe reads on the phone goes only to VibeOS's own model server, never "
+"to anyone else. For the weather, the town's rough position goes to Open-"
+"Meteo, as from the Weather app"
+msgstr ""
+"To, co Vibe czyta na telefonie, trafia tylko do własnego serwera modeli "
+"VibeOS, nigdy do nikogo innego. Na potrzeby pogody przybliżone położenie "
+"miejscowości trafia do Open-Meteo, tak jak z aplikacji Pogoda"
 
 # android: Framework conversation_title_fallback_one_to_one (short)
 #. the conversation kept on the screen, which is what Vibe remembers
@@ -1396,8 +1468,11 @@ msgid "Help"
 msgstr "Pomoc"
 
 #: src/dictate-settings.c
-msgid "Each turn is recorded on the phone, and only there, to find what went wrong"
-msgstr "Każda tura jest zapisywana na telefonie i tylko tam, aby można było znaleźć przyczynę błędu"
+msgid ""
+"Each turn is recorded on the phone, and only there, to find what went wrong"
+msgstr ""
+"Każda tura jest zapisywana na telefonie i tylko tam, aby można było znaleźć "
+"przyczynę błędu"
 
 #: src/dictate-settings.c
 msgid "View debug log"
@@ -2212,8 +2287,12 @@ msgid "Delete voice sample?"
 msgstr "Usunąć próbkę głosu?"
 
 #: src/dictate-voicematch-page.c
-msgid "Voice match turns off and Vibe takes commands from any voice until you record a new sample."
-msgstr "Voice Match zostanie wyłączony i Vibe będzie przyjmować polecenia od każdego głosu, dopóki nie nagrasz nowej próbki."
+msgid ""
+"Voice match turns off and Vibe takes commands from any voice until you "
+"record a new sample."
+msgstr ""
+"Voice Match zostanie wyłączony i Vibe będzie przyjmować polecenia od każdego "
+"głosu, dopóki nie nagrasz nowej próbki."
 
 # android: Framework delete (several translations, short)
 #: src/dictate-voicematch-page.c
@@ -2228,7 +2307,9 @@ msgstr "Wymagana zgodność: %.0f%%"
 
 #: src/dictate-voicematch-page.c
 msgid "Works with a cold or in noise, but a similar voice may get through."
-msgstr "Działa przy przeziębieniu i w hałasie, ale podobny głos może przejść weryfikację."
+msgstr ""
+"Działa przy przeziębieniu i w hałasie, ale podobny głos może przejść "
+"weryfikację."
 
 #: src/dictate-voicematch-page.c
 msgid "Right for most people and rooms."
@@ -2245,8 +2326,12 @@ msgstr "Wyłączony, Vibe odpowiada każdemu"
 #. on, and nothing to check a voice with: what asks for it is refused, as for
 #. * too little speech (dictate-talk.c)
 #: src/dictate-voicematch-page.c
-msgid "Voices can't be checked now: personal and action commands that ask for my voice are not carried out"
-msgstr "Teraz nie można sprawdzać głosów: polecenia osobiste i działania wymagające mojego głosu nie są wykonywane"
+msgid ""
+"Voices can't be checked now: personal and action commands that ask for my "
+"voice are not carried out"
+msgstr ""
+"Teraz nie można sprawdzać głosów: polecenia osobiste i działania wymagające "
+"mojego głosu nie są wykonywane"
 
 #: src/dictate-voicematch-page.c
 msgid "Other voices can't give Vibe commands"
@@ -2293,28 +2378,43 @@ msgstr[1] "%u zdania · nagrano %s"
 msgstr[2] "%u zdań · nagrano %s"
 
 #: src/dictate-voicematch-page.c
-msgid "Vibe can't tell voices apart on this phone yet, so it answers anyone who speaks to it."
-msgstr "Vibe nie rozróżnia jeszcze głosów na tym telefonie, więc odpowiada każdemu, kto się do niego zwraca."
+msgid ""
+"Vibe can't tell voices apart on this phone yet, so it answers anyone who "
+"speaks to it."
+msgstr ""
+"Vibe nie rozróżnia jeszcze głosów na tym telefonie, więc odpowiada każdemu, "
+"kto się do niego zwraca."
 
 #: src/dictate-voicematch-page.c
-msgid "Vibe learns your voice and won't carry out commands from anyone who doesn't sound like you. The sample never leaves this phone."
-msgstr "Vibe uczy się Twojego głosu i nie wykonuje poleceń osób, których głos nie brzmi jak Twój. Próbka nigdy nie opuszcza tego telefonu."
+msgid ""
+"Vibe learns your voice and won't carry out commands from anyone who doesn't "
+"sound like you. The sample never leaves this phone."
+msgstr ""
+"Vibe uczy się Twojego głosu i nie wykonuje poleceń osób, których głos nie "
+"brzmi jak Twój. Próbka nigdy nie opuszcza tego telefonu."
 
 #: src/dictate-voicematch-page.c
 msgid "Voice match is coming"
 msgstr "Voice Match już wkrótce"
 
 #: src/dictate-voicematch-page.c
-msgid "Then Vibe learns your voice and won't carry out commands from anyone who doesn't sound like you. Recording your voice will be offered here."
-msgstr "Wtedy Vibe nauczy się Twojego głosu i nie będzie wykonywać poleceń osób, których głos nie brzmi jak Twój. Nagranie głosu będzie dostępne tutaj."
+msgid ""
+"Then Vibe learns your voice and won't carry out commands from anyone who "
+"doesn't sound like you. Recording your voice will be offered here."
+msgstr ""
+"Wtedy Vibe nauczy się Twojego głosu i nie będzie wykonywać poleceń osób, "
+"których głos nie brzmi jak Twój. Nagranie głosu będzie dostępne tutaj."
 
 #: src/dictate-voicematch-page.c
 #, c-format
 msgid "Read %u short phrase aloud. About a minute, somewhere quiet."
 msgid_plural "Read %u short phrases aloud. About a minute, somewhere quiet."
-msgstr[0] "Przeczytaj na głos %u krótkie zdanie. Około minuty, w cichym miejscu."
-msgstr[1] "Przeczytaj na głos %u krótkie zdania. Około minuty, w cichym miejscu."
-msgstr[2] "Przeczytaj na głos %u krótkich zdań. Około minuty, w cichym miejscu."
+msgstr[0] ""
+"Przeczytaj na głos %u krótkie zdanie. Około minuty, w cichym miejscu."
+msgstr[1] ""
+"Przeczytaj na głos %u krótkie zdania. Około minuty, w cichym miejscu."
+msgstr[2] ""
+"Przeczytaj na głos %u krótkich zdań. Około minuty, w cichym miejscu."
 
 #: src/dictate-voicematch-page.c
 msgid "No voice sample yet"
@@ -2329,12 +2429,20 @@ msgid "The voice model is not installed"
 msgstr "Model głosu nie jest zainstalowany"
 
 #: src/dictate-voicematch-page.c
-msgid "Your voice sample is kept, but Vibe can't check voices until the model is installed again."
-msgstr "Próbka Twojego głosu jest zachowana, ale Vibe nie może sprawdzać głosów, dopóki model nie zostanie ponownie zainstalowany."
+msgid ""
+"Your voice sample is kept, but Vibe can't check voices until the model is "
+"installed again."
+msgstr ""
+"Próbka Twojego głosu jest zachowana, ale Vibe nie może sprawdzać głosów, "
+"dopóki model nie zostanie ponownie zainstalowany."
 
 #: src/dictate-voicematch-page.c
-msgid "Voice match was updated, and your sample was made for the earlier version. Vibe can't check voices with it."
-msgstr "Voice Match został zaktualizowany, a Twoja próbka powstała dla wcześniejszej wersji. Vibe nie może z jej pomocą sprawdzać głosów."
+msgid ""
+"Voice match was updated, and your sample was made for the earlier version. "
+"Vibe can't check voices with it."
+msgstr ""
+"Voice Match został zaktualizowany, a Twoja próbka powstała dla wcześniejszej "
+"wersji. Vibe nie może z jej pomocą sprawdzać głosów."
 
 #: src/dictate-voicematch-page.c src/dictate-window.c
 msgid "Record again"
@@ -2413,8 +2521,10 @@ msgid "Too little speech to tell whose voice it is"
 msgstr "Za mało mowy, by rozpoznać, czyj to głos"
 
 #: src/dictate-voicematch.c
-msgid "The voice sample was made for another Voice Match model: record it again"
-msgstr "Próbka głosu powstała dla innego modelu Voice Match: nagraj ją ponownie"
+msgid ""
+"The voice sample was made for another Voice Match model: record it again"
+msgstr ""
+"Próbka głosu powstała dla innego modelu Voice Match: nagraj ją ponownie"
 
 #: src/dictate-voicematch.c
 #, c-format
@@ -2639,7 +2749,9 @@ msgstr "Co mogę zrobić?"
 #. * punctuation; only the whole sentence counts
 #: src/dictate-window.c
 msgid "what can i say|what can you do|what can i ask|help"
-msgstr "co mogę powiedzieć|co mogę zrobić|co potrafisz|co umiesz|co możesz|o co mogę zapytać|pomoc|pomocy|pomóż mi"
+msgstr ""
+"co mogę powiedzieć|co mogę zrobić|co potrafisz|co umiesz|co możesz|o co mogę "
+"zapytać|pomoc|pomocy|pomóż mi"
 
 # android: Dialer private_num_non_verizon (short)
 #: src/dictate-window.c
@@ -2697,7 +2809,9 @@ msgstr "Rozłącz"
 
 #: src/dictate-window.c
 msgid "Tap anywhere and say “mute”, “hold”, “speaker” or “hang up”"
-msgstr "Kliknij w dowolnym miejscu i powiedz „wycisz”, „wstrzymaj”, „głośnik” lub „rozłącz”"
+msgstr ""
+"Kliknij w dowolnym miejscu i powiedz „wycisz”, „wstrzymaj”, „głośnik” lub "
+"„rozłącz”"
 
 #: src/dictate-window.c
 msgid "Tap anywhere and say “mute”, “speaker” or “hang up”"
@@ -2725,12 +2839,19 @@ msgid "I'm keeping quiet."
 msgstr "Zachowuję ciszę."
 
 #: src/dictate-window.c
-msgid "I won't speak or play sounds on my own. Calls are still announced. Ask me anything and I'll answer."
-msgstr "Nie będę mówić ani odtwarzać dźwięków z własnej inicjatywy. Połączenia nadal są zapowiadane. Zapytaj o cokolwiek, a odpowiem."
+msgid ""
+"I won't speak or play sounds on my own. Calls are still announced. Ask me "
+"anything and I'll answer."
+msgstr ""
+"Nie będę mówić ani odtwarzać dźwięków z własnej inicjatywy. Połączenia nadal "
+"są zapowiadane. Zapytaj o cokolwiek, a odpowiem."
 
 #: src/dictate-window.c
-msgid "I won't speak or play sounds on my own. Ask me anything and I'll answer."
-msgstr "Nie będę mówić ani odtwarzać dźwięków z własnej inicjatywy. Zapytaj o cokolwiek, a odpowiem."
+msgid ""
+"I won't speak or play sounds on my own. Ask me anything and I'll answer."
+msgstr ""
+"Nie będę mówić ani odtwarzać dźwięków z własnej inicjatywy. Zapytaj o "
+"cokolwiek, a odpowiem."
 
 #: src/dictate-window.c
 msgid "Good evening."
@@ -2769,17 +2890,29 @@ msgid "I can't check your voice right now."
 msgstr "Nie mogę teraz sprawdzić Twojego głosu."
 
 #: src/dictate-window.c
-msgid "Voice match was updated since your voice was recorded. Record it again and I can check it."
-msgstr "Voice Match został zaktualizowany od czasu nagrania Twojego głosu. Nagraj go ponownie, żeby sprawdzanie znów działało."
+msgid ""
+"Voice match was updated since your voice was recorded. Record it again and I "
+"can check it."
+msgstr ""
+"Voice Match został zaktualizowany od czasu nagrania Twojego głosu. Nagraj go "
+"ponownie, żeby sprawdzanie znów działało."
 
 #: src/dictate-window.c
-msgid "The voice model is not installed any more, so I can't tell your voice from anyone else's."
-msgstr "Model głosu nie jest już zainstalowany, więc nie odróżnię Twojego głosu od innych."
+msgid ""
+"The voice model is not installed any more, so I can't tell your voice from "
+"anyone else's."
+msgstr ""
+"Model głosu nie jest już zainstalowany, więc nie odróżnię Twojego głosu od "
+"innych."
 
 #. the model is there and the sample made for it, and the check failed to run
 #: src/dictate-window.c
-msgid "Voice match couldn't run just now, so I can't tell your voice from anyone else's."
-msgstr "Voice Match nie zadziałał przed chwilą, więc nie odróżnię Twojego głosu od innych."
+msgid ""
+"Voice match couldn't run just now, so I can't tell your voice from anyone "
+"else's."
+msgstr ""
+"Voice Match nie zadziałał przed chwilą, więc nie odróżnię Twojego głosu od "
+"innych."
 
 #: src/dictate-window.c
 msgid "Use PIN instead"
@@ -2806,12 +2939,20 @@ msgid "Has your voice changed?"
 msgstr "Czy Twój głos się zmienił?"
 
 #: src/dictate-window.c
-msgid "A cold or a new microphone can do that. Enter your PIN and I'll learn it again."
-msgstr "Może to być przez przeziębienie lub nowy mikrofon. Wpisz kod PIN, a ponownie nauczę się Twojego głosu."
+msgid ""
+"A cold or a new microphone can do that. Enter your PIN and I'll learn it "
+"again."
+msgstr ""
+"Może to być przez przeziębienie lub nowy mikrofon. Wpisz kod PIN, a ponownie "
+"nauczę się Twojego głosu."
 
 #: src/dictate-window.c
-msgid "A cold or a new microphone can do that. Record your voice again and I'll learn it."
-msgstr "Może to być przez przeziębienie lub nowy mikrofon. Nagraj głos ponownie, a nauczę się go."
+msgid ""
+"A cold or a new microphone can do that. Record your voice again and I'll "
+"learn it."
+msgstr ""
+"Może to być przez przeziębienie lub nowy mikrofon. Nagraj głos ponownie, a "
+"nauczę się go."
 
 # android: Framework autofill_save_notnow (short)
 #: src/dictate-window.c
@@ -2831,8 +2972,12 @@ msgid "That didn't sound like my owner."
 msgstr "Nie rozpoznaję tego głosu."
 
 #: src/dictate-window.c
-msgid "I only take commands from the voice I was taught. Try again, closer to the phone."
-msgstr "Przyjmuję polecenia tylko od głosu, którego mnie nauczono. Spróbuj ponownie, bliżej telefonu."
+msgid ""
+"I only take commands from the voice I was taught. Try again, closer to the "
+"phone."
+msgstr ""
+"Przyjmuję polecenia tylko od głosu, którego mnie nauczono. Spróbuj ponownie, "
+"bliżej telefonu."
 
 #: src/dictate-window.c
 msgid "Leave it off"

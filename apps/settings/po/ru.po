@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 04:50+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Russian\n"
@@ -135,22 +135,32 @@ msgstr ""
 "теплый янтарный поворот масштаб всегда включен aod размер текст жирный шрифт "
 "увеличение блокировка"
 
+# android: Settings preview_pager_home_title
+#. the launcher's own settings, an entry of their own (owner, 11-26), where they were a row in Wallpaper and style
+#: src/main.c src/ns-pages.c
+msgid "Home screen"
+msgstr "Главный экран"
+
+#: src/main.c
+msgid "Grid, icon size, icon pack"
+msgstr "Сетка, размер значков, набор значков"
+
+#: src/main.c
+msgid "launcher grid columns rows icons drawer app names"
+msgstr "лаунчер сетка столбцы строки значки меню приложений названия"
+
 # android: Settings style_and_wallpaper_settings_title (adapted)
 #: src/main.c src/ns-pages.c
 msgid "Wallpaper and style"
 msgstr "Обои и стиль"
 
 #: src/main.c
-msgid "Wallpapers, colors, home screen"
-msgstr "Обои, цвета, главный экран"
+msgid "Wallpapers, colors"
+msgstr "Обои, цвета"
 
 #: src/main.c
-msgid ""
-"background accent dark theme colour color parallax launcher grid columns "
-"rows layout icon size pack shape app names labels drawer"
-msgstr ""
-"фон акцент темная тема цвет параллакс лаунчер сетка столбцы строки макет "
-"значок размер набор форма названия приложений подписи меню"
+msgid "background accent dark theme colour color parallax"
+msgstr "фон акцент темная тема цвет параллакс"
 
 # android: Settings device_details_battery
 #: src/main.c src/ns-pages.c
@@ -421,15 +431,6 @@ msgstr "Обои"
 #: src/main.c
 msgid "background picture photo parallax"
 msgstr "фон картинка фото параллакс"
-
-# android: Settings preview_pager_home_title
-#: src/main.c src/ns-pages.c
-msgid "Home screen"
-msgstr "Главный экран"
-
-#: src/main.c
-msgid "launcher grid columns rows icons drawer app names"
-msgstr "лаунчер сетка столбцы строки значки меню приложений названия"
 
 # android: Settings advanced_battery_title (several translations, short)
 #: src/main.c src/ns-pages.c
@@ -885,6 +886,7 @@ msgstr "Исходящая почта (SMTP)"
 msgid "Mail from any provider, by IMAP and SMTP"
 msgstr "Почта любого провайдера по IMAP и SMTP"
 
+#. the picture on the name's row; the generic one until AccountsService answers
 #: src/ns-accounts.c src/ns-system.c
 msgid "Name"
 msgstr "Имя"
@@ -3008,10 +3010,6 @@ msgstr "Изображение"
 #: src/ns-pages.c
 msgid "Style"
 msgstr "Стиль"
-
-#: src/ns-pages.c
-msgid "Grid, icon size, icon pack"
-msgstr "Сетка, размер значков, набор значков"
 
 #: src/ns-pages.c
 msgid "Pack / system"

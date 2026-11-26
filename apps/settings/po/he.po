@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 23:05+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Hebrew\n"
@@ -128,22 +128,32 @@ msgstr ""
 "זמן קצוב לכיבוי המסך בהירות אוטומטית תאורת לילה עוצמה חם ענבר סיבוב קנה מידה "
 "תמיד מופעל aod גודל התצוגה טקסט מודגש הגדלה מסך נעילה"
 
+# android: Settings preview_pager_home_title
+#. the launcher's own settings, an entry of their own (owner, 11-26), where they were a row in Wallpaper and style
+#: src/main.c src/ns-pages.c
+msgid "Home screen"
+msgstr "מסך הבית"
+
+#: src/main.c
+msgid "Grid, icon size, icon pack"
+msgstr "רשת, גודל הסמלים, חבילת סמלים"
+
+#: src/main.c
+msgid "launcher grid columns rows icons drawer app names"
+msgstr "מסך הבית רשת עמודות שורות סמלים רשימת האפליקציות שמות אפליקציות"
+
 # android: Settings style_and_wallpaper_settings_title (adapted)
 #: src/main.c src/ns-pages.c
 msgid "Wallpaper and style"
 msgstr "טפט וסגנון"
 
 #: src/main.c
-msgid "Wallpapers, colors, home screen"
-msgstr "טפטים, צבעים, מסך הבית"
+msgid "Wallpapers, colors"
+msgstr "טפטים, צבעים"
 
 #: src/main.c
-msgid ""
-"background accent dark theme colour color parallax launcher grid columns "
-"rows layout icon size pack shape app names labels drawer"
-msgstr ""
-"רקע צבע הדגשה עיצוב כהה צבע פרלקסה מסך הבית רשת עמודות שורות פריסה גודל "
-"סמלים חבילת סמלים צורה שמות אפליקציות תוויות רשימת האפליקציות"
+msgid "background accent dark theme colour color parallax"
+msgstr "רקע צבע הדגשה עיצוב כהה צבע פרלקסה"
 
 # android: Settings device_details_battery
 #: src/main.c src/ns-pages.c
@@ -410,15 +420,6 @@ msgstr "טפטים"
 #: src/main.c
 msgid "background picture photo parallax"
 msgstr "רקע תמונה צילום פרלקסה"
-
-# android: Settings preview_pager_home_title
-#: src/main.c src/ns-pages.c
-msgid "Home screen"
-msgstr "מסך הבית"
-
-#: src/main.c
-msgid "launcher grid columns rows icons drawer app names"
-msgstr "מסך הבית רשת עמודות שורות סמלים רשימת האפליקציות שמות אפליקציות"
 
 # android: Settings advanced_battery_title
 #: src/main.c src/ns-pages.c
@@ -867,6 +868,7 @@ msgid "Mail from any provider, by IMAP and SMTP"
 msgstr "דואר מכל ספק, באמצעות IMAP ו-SMTP"
 
 # android: Settings security_settings_fingerprint_enroll_dialog_name_label
+#. the picture on the name's row; the generic one until AccountsService answers
 #: src/ns-accounts.c src/ns-system.c
 msgid "Name"
 msgstr "שם"
@@ -2959,10 +2961,6 @@ msgstr "תמונה"
 #: src/ns-pages.c
 msgid "Style"
 msgstr "סגנון"
-
-#: src/ns-pages.c
-msgid "Grid, icon size, icon pack"
-msgstr "רשת, גודל הסמלים, חבילת סמלים"
 
 #: src/ns-pages.c
 msgid "Pack / system"

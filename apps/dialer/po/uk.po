@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-dialer\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Ukrainian\n"
@@ -28,12 +28,15 @@ msgstr "Здійснюйте й приймайте виклики"
 
 #: data/vibeos.Dialer.desktop.in
 msgid "Phone;Call;Dial;Dialer;Telephone;"
-msgstr "телефон;виклик;дзвінок;зателефонувати;набрати;набір номера;Phone;Call;Dial;Dialer;Telephone;"
+msgstr ""
+"телефон;виклик;дзвінок;зателефонувати;набрати;набір "
+"номера;Phone;Call;Dial;Dialer;Telephone;"
 
 # android: Dialer call_incoming_swipe_to_answer_and_release
 #: src/answer-view.c
 msgid "Swipe from icon to answer and end ongoing call"
-msgstr "Проведіть пальцем від значка, щоб відповісти на виклик, завершивши поточний"
+msgstr ""
+"Проведіть пальцем від значка, щоб відповісти на виклик, завершивши поточний"
 
 # android: Dialer call_incoming_default_label_answer_and_release_third
 #: src/answer-view.c
@@ -676,7 +679,9 @@ msgstr "Цей пристрій не може записувати виклик�
 
 #: src/dialer-settings.c
 msgid "To record calls on this device, turn off Announce recording"
-msgstr "Щоб записувати виклики на цьому пристрої, вимкніть параметр «Повідомляти про запис»"
+msgstr ""
+"Щоб записувати виклики на цьому пристрої, вимкніть параметр «Повідомляти про "
+"запис»"
 
 #: src/dialer-settings.c
 msgid "This device can't play it to the other person"
@@ -922,8 +927,14 @@ msgid "Enable call recording?"
 msgstr "Увімкнути запис викликів?"
 
 #: src/incall-view.c
-msgid "Notice: You are responsible for compliance with any laws, regulations and rules that apply to the use of call recording functionality and the use or distribution of those recordings."
-msgstr "Примітка. Ви несете відповідальність за дотримання всіх законів, норм і правил, що стосуються використання функції запису викликів, а також використання чи поширення таких записів."
+msgid ""
+"Notice: You are responsible for compliance with any laws, regulations and "
+"rules that apply to the use of call recording functionality and the use or "
+"distribution of those recordings."
+msgstr ""
+"Примітка. Ви несете відповідальність за дотримання всіх законів, норм і "
+"правил, що стосуються використання функції запису викликів, а також "
+"використання чи поширення таких записів."
 
 #: src/incall-view.c
 msgid "This phone can't send keypad tones"
@@ -969,10 +980,8 @@ msgid "A call is ringing"
 msgstr "Надходить виклик"
 
 #: src/incall-window.c
-msgid ""
-"Send the following tones?\n"
-msgstr ""
-"Надіслати такі сигнали?\n"
+msgid "Send the following tones?\n"
+msgstr "Надіслати такі сигнали?\n"
 
 # android: Dialer pause_prompt_no
 #: src/incall-window.c

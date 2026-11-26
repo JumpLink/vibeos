@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-browser\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:53+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -56,8 +56,12 @@ msgstr "Pobieranie zakończone"
 
 #. TRANSLATORS: keep the link's markup as it is
 #: src/nb-menu.c
-msgid "Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, under the GNU LGPL 2.1 and BSD licences."
-msgstr "Strony internetowe wyświetla <a href=\"https://webkitgtk.org/\">WebKitGTK</a> na licencjach GNU LGPL 2.1 i BSD."
+msgid ""
+"Web pages are shown by <a href=\"https://webkitgtk.org/\">WebKitGTK</a>, "
+"under the GNU LGPL 2.1 and BSD licences."
+msgstr ""
+"Strony internetowe wyświetla <a href=\"https://webkitgtk.org/\">WebKitGTK</"
+"a> na licencjach GNU LGPL 2.1 i BSD."
 
 # android: Jelly menu_desktop_mode
 #: src/nb-menu.c
@@ -209,8 +213,12 @@ msgstr "Czyszczenie historii…"
 
 # android: Jelly history_delete_message
 #: src/nb-pages.c
-msgid "You're going to delete all the history, this action cannot be undone. Do you want to proceed?"
-msgstr "Zamierzasz usunąć całą historię przeglądania, tej czynności nie można odwrócić. Czy chcesz kontynuować?"
+msgid ""
+"You're going to delete all the history, this action cannot be undone. Do you "
+"want to proceed?"
+msgstr ""
+"Zamierzasz usunąć całą historię przeglądania, tej czynności nie można "
+"odwrócić. Czy chcesz kontynuować?"
 
 # android: Jelly history_delete_positive (several translations, short)
 #: src/nb-pages.c
@@ -220,7 +228,9 @@ msgstr "Wyczyść"
 # android: Jelly history_empty
 #: src/nb-pages.c
 msgid "There's nothing here, browse on the internet to see your history here"
-msgstr "Nic tu nie ma. Przeglądaj internet, aby zobaczyć tutaj swoją historię przeglądania"
+msgstr ""
+"Nic tu nie ma. Przeglądaj internet, aby zobaczyć tutaj swoją historię "
+"przeglądania"
 
 # android: Jelly favorite_edit_error
 #: src/nb-pages.c
@@ -346,7 +356,8 @@ msgstr "Tryb zasięgu"
 # android: Jelly pref_reach_mode_summary
 #: src/nb-settings.c
 msgid "Relocate interface elements for easier one-hand usage"
-msgstr "Zmień położenie elementów interfejsu dla łatwiejszej obsługi jedną ręką"
+msgstr ""
+"Zmień położenie elementów interfejsu dla łatwiejszej obsługi jedną ręką"
 
 # android: Jelly pref_fullscreen_shortcuts_title
 #: src/nb-settings.c
@@ -371,7 +382,9 @@ msgstr "Dynamicznie wyskakujące okienka"
 # android: Jelly pref_dynamic_popup_summary
 #: src/nb-settings.c
 msgid "Allow JavaScript to open popups without user interaction"
-msgstr "Zezwalaj JavaScript na otwieranie wyskakujących okienek bez interakcji użytkownika"
+msgstr ""
+"Zezwalaj JavaScript na otwieranie wyskakujących okienek bez interakcji "
+"użytkownika"
 
 # android: Jelly pref_js_summary
 #: src/nb-settings.c
@@ -386,7 +399,8 @@ msgstr "Lokalizacja"
 # android: Jelly pref_location_summary
 #: src/nb-settings.c
 msgid "Allow websites to request access to your location"
-msgstr "Zezwalaj witrynom sieci Web na uzyskiwanie dostępu do Twojej lokalizacji"
+msgstr ""
+"Zezwalaj witrynom sieci Web na uzyskiwanie dostępu do Twojej lokalizacji"
 
 # android: Jelly pref_do_not_track_title
 #: src/nb-settings.c

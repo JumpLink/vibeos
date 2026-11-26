@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-dialer\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Hebrew\n"
@@ -913,8 +913,13 @@ msgid "Enable call recording?"
 msgstr "להפעיל הקלטת שיחות?"
 
 #: src/incall-view.c
-msgid "Notice: You are responsible for compliance with any laws, regulations and rules that apply to the use of call recording functionality and the use or distribution of those recordings."
-msgstr "הודעה: האחריות לציות לכל החוקים, התקנות והכללים שחלים על השימוש בפונקציה של הקלטת שיחות ועל השימוש בהקלטות האלה או הפצתן מוטלת עליך."
+msgid ""
+"Notice: You are responsible for compliance with any laws, regulations and "
+"rules that apply to the use of call recording functionality and the use or "
+"distribution of those recordings."
+msgstr ""
+"הודעה: האחריות לציות לכל החוקים, התקנות והכללים שחלים על השימוש בפונקציה של "
+"הקלטת שיחות ועל השימוש בהקלטות האלה או הפצתן מוטלת עליך."
 
 #: src/incall-view.c
 msgid "This phone can't send keypad tones"
@@ -958,10 +963,8 @@ msgid "A call is ringing"
 msgstr "יש שיחה נכנסת"
 
 #: src/incall-window.c
-msgid ""
-"Send the following tones?\n"
-msgstr ""
-"לשלוח את הצלילים הבאים?\n"
+msgid "Send the following tones?\n"
+msgstr "לשלוח את הצלילים הבאים?\n"
 
 # android: Dialer pause_prompt_no
 #: src/incall-window.c

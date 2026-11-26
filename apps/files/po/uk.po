@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-files\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Ukrainian\n"
@@ -27,8 +27,13 @@ msgid "Browse the phone's files and the servers on your network"
 msgstr "Переглядайте файли телефона й сервери у вашій мережі"
 
 #: data/vibeos.Files.desktop.in
-msgid "Files;Folders;File Manager;Browse;SMB;Samba;SFTP;FTP;WebDAV;Network;Recycle Bin;Trash;"
-msgstr "файли;папки;файловий менеджер;провідник;мережа;кошик;SMB;Samba;SFTP;FTP;WebDAV;Files;Folders;File Manager;Browse;Network;Recycle Bin;Trash;"
+msgid ""
+"Files;Folders;File Manager;Browse;SMB;Samba;SFTP;FTP;WebDAV;Network;Recycle "
+"Bin;Trash;"
+msgstr ""
+"файли;папки;файловий "
+"менеджер;провідник;мережа;кошик;SMB;Samba;SFTP;FTP;WebDAV;Files;Folders;File "
+"Manager;Browse;Network;Recycle Bin;Trash;"
 
 #: src/fm-browser.c src/fm-drawer.c
 msgid "Home"
@@ -313,6 +318,7 @@ msgstr "Кошик"
 
 # android: Settings external_display_more_options_title (other app, several translations, short)
 #. a smaller ⋮ than the toolbar's
+#. ⋮ where every top bar has it (vibeos-top-bar.h)
 #: src/fm-drawer.c src/fm-window.c
 msgid "More options"
 msgstr "Інші опції"

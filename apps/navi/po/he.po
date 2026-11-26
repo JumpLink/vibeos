@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Hebrew\n"
@@ -25,7 +25,8 @@ msgstr "הוראות נסיעה מפורטות לנהיגה"
 
 #: data/vibeos.Navi.desktop.in
 msgid "map;navigation;route;directions;drive;"
-msgstr "מפה;ניווט;מסלול;הוראות נסיעה;נהיגה;map;navigation;route;directions;drive;"
+msgstr ""
+"מפה;ניווט;מסלול;הוראות נסיעה;נהיגה;map;navigation;route;directions;drive;"
 
 #: src/navi-alerts.c
 msgid "Red light camera"
@@ -285,8 +286,12 @@ msgid "Drive to this place?"
 msgstr "לנסוע למקום הזה?"
 
 #: src/navi-panels.c
-msgid "Add it as a stop on the way, or make it the new destination and cancel the current route."
-msgstr "אפשר להוסיף אותו כעצירה בדרך, או להגדיר אותו כיעד החדש ולבטל את המסלול הנוכחי."
+msgid ""
+"Add it as a stop on the way, or make it the new destination and cancel the "
+"current route."
+msgstr ""
+"אפשר להוסיף אותו כעצירה בדרך, או להגדיר אותו כיעד החדש ולבטל את המסלול "
+"הנוכחי."
 
 #: src/navi-panels.c
 msgid "Add a stop"
@@ -509,8 +514,12 @@ msgid "Speed camera alerts"
 msgstr "התראות על מצלמות מהירות"
 
 #: src/navi-panels.c
-msgid "Where the law allows them: never in Switzerland, only danger zones in France, and in Germany not for the driver while driving"
-msgstr "היכן שהחוק מתיר אותן: אף פעם לא בשווייץ, רק אזורים מסוכנים בצרפת, ובגרמניה לא לנהג בזמן הנהיגה"
+msgid ""
+"Where the law allows them: never in Switzerland, only danger zones in "
+"France, and in Germany not for the driver while driving"
+msgstr ""
+"היכן שהחוק מתיר אותן: אף פעם לא בשווייץ, רק אזורים מסוכנים בצרפת, ובגרמניה "
+"לא לנהג בזמן הנהיגה"
 
 #: src/navi-panels.c
 msgid "The speedometer turns red above the limit"
@@ -705,11 +714,15 @@ msgstr "אין הגבלת מהירות"
 
 #: src/navi-panels.c
 msgid ""
-"Not allowed everywhere. In Germany the driver may not use them while driving (§23 (1c) StVO); a passenger may. In Switzerland Navi never shows them, and in France only danger zones.\n"
+"Not allowed everywhere. In Germany the driver may not use them while driving "
+"(§23 (1c) StVO); a passenger may. In Switzerland Navi never shows them, and "
+"in France only danger zones.\n"
 "\n"
 "You can turn them off in Settings at any time."
 msgstr ""
-"לא מותר בכל מקום. בגרמניה הנהג לא רשאי להשתמש בהן בזמן הנהיגה (§23 (1c) StVO), אבל נוסע רשאי. בשווייץ Navi אף פעם לא מציגה אותן, ובצרפת רק אזורים מסוכנים.\n"
+"לא מותר בכל מקום. בגרמניה הנהג לא רשאי להשתמש בהן בזמן הנהיגה (§23 (1c) "
+"StVO), אבל נוסע רשאי. בשווייץ Navi אף פעם לא מציגה אותן, ובצרפת רק אזורים "
+"מסוכנים.\n"
 "\n"
 "אפשר להשבית אותן בהגדרות בכל שלב."
 
@@ -982,8 +995,12 @@ msgstr "%s לא זמינה"
 #. * third its Debian package (vibeos-dictate-vosk)
 #: ../dictate/src/dictate-download-dialog.c
 #, c-format
-msgid "%s is heard by %s, which is not installed on this phone. Install the %s package, then choose %s again."
-msgstr "את השפה %s מזהה %s, שלא מותקן בטלפון הזה. יש להתקין את החבילה %s ואז לבחור שוב את %s."
+msgid ""
+"%s is heard by %s, which is not installed on this phone. Install the %s "
+"package, then choose %s again."
+msgstr ""
+"את השפה %s מזהה %s, שלא מותקן בטלפון הזה. יש להתקין את החבילה %s ואז לבחור "
+"שוב את %s."
 
 #: ../dictate/src/dictate-download-dialog.c
 msgid "There is nothing to download for it."

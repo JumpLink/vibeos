@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-video\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -45,13 +45,21 @@ msgstr "Pełny ekran"
 
 #. TRANSLATORS: keep the links' markup as it is
 #: main.c
-msgid "Videos are played by <a href=\"https://mpv.io/\">mpv</a> (libmpv), under the GNU GPL 2.0 or later."
-msgstr "Filmy odtwarza <a href=\"https://mpv.io/\">mpv</a> (libmpv) na licencji GNU GPL 2.0 lub nowszej."
+msgid ""
+"Videos are played by <a href=\"https://mpv.io/\">mpv</a> (libmpv), under the "
+"GNU GPL 2.0 or later."
+msgstr ""
+"Filmy odtwarza <a href=\"https://mpv.io/\">mpv</a> (libmpv) na licencji GNU "
+"GPL 2.0 lub nowszej."
 
 #. TRANSLATORS: keep the links' markup as it is
 #: main.c
-msgid "<a href=\"https://ffmpeg.org/\">FFmpeg</a> reads and decodes them, under the GNU LGPL 2.1 or later (the GPL 2.0 or later as Debian builds it)."
-msgstr "<a href=\"https://ffmpeg.org/\">FFmpeg</a> je odczytuje i dekoduje na licencji GNU LGPL 2.1 lub nowszej (GPL 2.0 lub nowszej w kompilacji Debiana)."
+msgid ""
+"<a href=\"https://ffmpeg.org/\">FFmpeg</a> reads and decodes them, under the "
+"GNU LGPL 2.1 or later (the GPL 2.0 or later as Debian builds it)."
+msgstr ""
+"<a href=\"https://ffmpeg.org/\">FFmpeg</a> je odczytuje i dekoduje na "
+"licencji GNU LGPL 2.1 lub nowszej (GPL 2.0 lub nowszej w kompilacji Debiana)."
 
 #: main.c
 msgid "Timed text"

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-camera\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Ukrainian\n"
@@ -134,8 +134,12 @@ msgid "Copy to clipboard"
 msgstr "Копіювати в буфер обміну"
 
 #: src/cam-settings.c
-msgid "The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, under the GNU LGPL 2.1 or later."
-msgstr "Камерами керує <a href=\"https://libcamera.org/\">libcamera</a> за ліцензією GNU LGPL 2.1 або пізнішої версії."
+msgid ""
+"The cameras are driven by <a href=\"https://libcamera.org/\">libcamera</a>, "
+"under the GNU LGPL 2.1 or later."
+msgstr ""
+"Камерами керує <a href=\"https://libcamera.org/\">libcamera</a> за ліцензією "
+"GNU LGPL 2.1 або пізнішої версії."
 
 # android: Aperture title_activity_settings
 #: src/cam-settings.c
@@ -258,7 +262,9 @@ msgstr "Віддзеркалювати фронтальну камеру"
 # android: Aperture photo_ffc_mirror_summary
 #: src/cam-settings.c
 msgid "Save front camera photos as they appear in the preview"
-msgstr "Зберігати фотографії фронтальної камери, як вони виглядають у попередньому перегляді"
+msgstr ""
+"Зберігати фотографії фронтальної камери, як вони виглядають у попередньому "
+"перегляді"
 
 # android: Aperture video_header
 #: src/cam-settings.c
@@ -315,11 +321,14 @@ msgstr "Галерея"
 
 #: src/cam-window.c
 msgid "Camera access is off. Turn it on in Settings, Security and privacy."
-msgstr "Доступ до камери вимкнено. Увімкніть його в розділі «Налаштування» > «Безпека й конфіденційність»."
+msgstr ""
+"Доступ до камери вимкнено. Увімкніть його в розділі «Налаштування» > "
+"«Безпека й конфіденційність»."
 
 # android: Aperture force_torch_help
 #: src/cam-window.c
-msgid "On photo mode, you can long press the flash button to switch into torch mode."
+msgid ""
+"On photo mode, you can long press the flash button to switch into torch mode."
 msgstr "У фоторежимі затискайте кнопку спалаху, щоб увімкнути режим ліхтарика."
 
 # android: Framework httpErrorOk (several translations, short)
@@ -382,12 +391,17 @@ msgstr "НАЛАШТУВАННЯ"
 
 # android: Aperture error_stream_config
 #: src/cam-window.c
-msgid "There was an error while preparing the stream. Please report this to the developers."
-msgstr "При підготовці потоку сталася помилка. Будь ласка, повідомте про це розробникам."
+msgid ""
+"There was an error while preparing the stream. Please report this to the "
+"developers."
+msgstr ""
+"При підготовці потоку сталася помилка. Будь ласка, повідомте про це "
+"розробникам."
 
 #: src/cam-window.c
 msgid "This camera is already in use, try closing the app using it."
-msgstr "Камера вже використовується. Спробуйте закрити додаток, який її використовує."
+msgstr ""
+"Камера вже використовується. Спробуйте закрити додаток, який її використовує."
 
 #: src/cam-window.c
 msgid "Error while setting up the session. The app will try to recover."
@@ -405,12 +419,17 @@ msgstr "Підготовка відео…"
 
 # android: Aperture thermal_status_moderate
 #: src/cam-window.c
-msgid "Moderate thermal throttling, make sure the device isn't under direct sunlight."
-msgstr "Помірне сповільнення через нагрів. Переконайтесь, що пристрій не під сонцем."
+msgid ""
+"Moderate thermal throttling, make sure the device isn't under direct "
+"sunlight."
+msgstr ""
+"Помірне сповільнення через нагрів. Переконайтесь, що пристрій не під сонцем."
 
 # android: Aperture thermal_status_severe
 #: src/cam-window.c
-msgid "Severe thermal throttling, it is recommended to let the device cool down a bit."
+msgid ""
+"Severe thermal throttling, it is recommended to let the device cool down a "
+"bit."
 msgstr "Сильне сповільнення через нагрів. Варто дати пристрою охолонути."
 
 #: src/cam-window.c

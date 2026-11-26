@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 00:45+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-24 03:41+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Italian\n"
@@ -973,7 +973,8 @@ msgstr "Per parlare questa lingua, %s ha bisogno di questo sul telefono:"
 #. TRANSLATORS: under the title "Download Deutsch?"
 #: ../dictate/src/dictate-download-dialog.c
 msgid "To hear and speak this language, Vibe needs these on the phone:"
-msgstr "Per capire e parlare questa lingua, Vibe ha bisogno di questi sul telefono:"
+msgstr ""
+"Per capire e parlare questa lingua, Vibe ha bisogno di questi sul telefono:"
 
 #. TRANSLATORS: under the title "Download Deutsch?"
 #: ../dictate/src/dictate-download-dialog.c

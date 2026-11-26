@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-installer\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Ukrainian\n"
@@ -40,7 +40,8 @@ msgid ""
 "\n"
 "Nothing is installed or removed while the demo runs."
 msgstr ""
-"Це не справжній пакет: демонстрація Установника додатків показує його, щоб випробувати екрани.\n"
+"Це не справжній пакет: демонстрація Установника додатків показує його, щоб "
+"випробувати екрани.\n"
 "\n"
 "Поки триває демонстрація, нічого не встановлюється й не видаляється."
 
@@ -113,19 +114,32 @@ msgid "The password was not given, so nothing was installed."
 msgstr "Пароль не введено, тому нічого не встановлено."
 
 #: src/inst-job.c
-msgid "Another app is installing or updating software right now. Try again once it has finished."
-msgstr "Зараз інший додаток установлює або оновлює програмне забезпечення. Повторіть спробу, коли він завершить."
+msgid ""
+"Another app is installing or updating software right now. Try again once it "
+"has finished."
+msgstr ""
+"Зараз інший додаток установлює або оновлює програмне забезпечення. Повторіть "
+"спробу, коли він завершить."
 
 #: src/inst-job.c
-msgid "Something it needs cannot be installed: it is not in the software sources, or not in a version that fits."
-msgstr "Не вдається встановити потрібний компонент: його немає в джерелах програмного забезпечення або немає відповідної версії."
+msgid ""
+"Something it needs cannot be installed: it is not in the software sources, "
+"or not in a version that fits."
+msgstr ""
+"Не вдається встановити потрібний компонент: його немає в джерелах "
+"програмного забезпечення або немає відповідної версії."
 
 #: src/inst-job.c
-msgid "Packages it needs could not be downloaded. Check the internet connection and try again."
-msgstr "Не вдалося завантажити потрібні пакети. Перевірте з’єднання з Інтернетом і повторіть спробу."
+msgid ""
+"Packages it needs could not be downloaded. Check the internet connection and "
+"try again."
+msgstr ""
+"Не вдалося завантажити потрібні пакети. Перевірте з’єднання з Інтернетом і "
+"повторіть спробу."
 
 #: src/inst-job.c
-msgid "The package is broken: the file is damaged, or it is not a proper package."
+msgid ""
+"The package is broken: the file is damaged, or it is not a proper package."
 msgstr "Пакет пошкоджено: файл зіпсований або це не справжній пакет."
 
 #: src/inst-job.c
@@ -133,24 +147,35 @@ msgid "There is not enough free storage for it."
 msgstr "Для нього недостатньо вільного місця."
 
 #: src/inst-job.c
-msgid "It clashes with software that is already installed: both have the same files."
-msgstr "Він конфліктує з уже встановленим програмним забезпеченням: обидва містять ті самі файли."
+msgid ""
+"It clashes with software that is already installed: both have the same files."
+msgstr ""
+"Він конфліктує з уже встановленим програмним забезпеченням: обидва містять "
+"ті самі файли."
 
 #: src/inst-job.c
 msgid "The package's own setup failed. It may be only partly installed."
-msgstr "Помилка налаштування самого пакета. Можливо, його встановлено лише частково."
+msgstr ""
+"Помилка налаштування самого пакета. Можливо, його встановлено лише частково."
 
 #: src/inst-job.c
-msgid "The package's own removal script failed. It may be only partly uninstalled."
-msgstr "Помилка сценарію видалення самого пакета. Можливо, його видалено лише частково."
+msgid ""
+"The package's own removal script failed. It may be only partly uninstalled."
+msgstr ""
+"Помилка сценарію видалення самого пакета. Можливо, його видалено лише "
+"частково."
 
 #: src/inst-job.c
 msgid "It is made for another kind of device."
 msgstr "Його створено для пристроїв іншого типу."
 
 #: src/inst-job.c
-msgid "The software sources could not be verified, so nothing was downloaded from them."
-msgstr "Не вдалося перевірити джерела програмного забезпечення, тому з них нічого не завантажено."
+msgid ""
+"The software sources could not be verified, so nothing was downloaded from "
+"them."
+msgstr ""
+"Не вдалося перевірити джерела програмного забезпечення, тому з них нічого не "
+"завантажено."
 
 #: src/inst-job.c
 msgid "The software sources do not have it (any more)."
@@ -158,15 +183,21 @@ msgstr "У джерелах програмного забезпечення йо
 
 #: src/inst-job.c
 msgid "Software was installed or removed meanwhile. Try again."
-msgstr "Тим часом програмне забезпечення було встановлено або видалено. Повторіть спробу."
+msgstr ""
+"Тим часом програмне забезпечення було встановлено або видалено. Повторіть "
+"спробу."
 
 #: src/inst-job.c
 msgid "Cannot install software"
 msgstr "Неможливо встановити програмне забезпечення"
 
 #: src/inst-job.c
-msgid "PackageKit, the system service that installs software, is missing or not running."
-msgstr "PackageKit – системна служба, що встановлює програмне забезпечення, – відсутня або не працює."
+msgid ""
+"PackageKit, the system service that installs software, is missing or not "
+"running."
+msgstr ""
+"PackageKit – системна служба, що встановлює програмне забезпечення, – "
+"відсутня або не працює."
 
 #: src/inst-job.c
 msgid "Something went wrong while uninstalling."
@@ -236,7 +267,9 @@ msgstr "Не знайдено"
 
 #: src/inst-job.c
 msgid "Removing it would leave other software with something it needs missing."
-msgstr "Якщо його видалити, іншому програмному забезпеченню бракуватиме потрібного компонента."
+msgstr ""
+"Якщо його видалити, іншому програмному забезпеченню бракуватиме потрібного "
+"компонента."
 
 #: src/inst-job.c
 #, c-format
@@ -274,7 +307,9 @@ msgid "Not a package"
 msgstr "Це не пакет"
 
 #: src/inst-job.c
-msgid "This file is not a software package that can be installed here, or it is damaged."
+msgid ""
+"This file is not a software package that can be installed here, or it is "
+"damaged."
 msgstr "Цей файл не є пакетом, який можна тут установити, або його пошкоджено."
 
 #: src/inst-job.c
@@ -403,13 +438,21 @@ msgstr "Доступна версія СТАРІША"
 
 #: src/inst-view.c
 #, c-format
-msgid "%s %s is installed. This file has %s, which is older. Replace the installed version with the older one?"
-msgstr "Установлено %s %s. У цьому файлі версія %s, вона старіша. Замінити встановлену версію старішою?"
+msgid ""
+"%s %s is installed. This file has %s, which is older. Replace the installed "
+"version with the older one?"
+msgstr ""
+"Установлено %s %s. У цьому файлі версія %s, вона старіша. Замінити "
+"встановлену версію старішою?"
 
 #: src/inst-view.c
 #, c-format
-msgid "%s %s is installed. The software sources have %s, which is older. Replace the installed version with the older one?"
-msgstr "Установлено %s %s. У джерелах програмного забезпечення версія %s, вона старіша. Замінити встановлену версію старішою?"
+msgid ""
+"%s %s is installed. The software sources have %s, which is older. Replace "
+"the installed version with the older one?"
+msgstr ""
+"Установлено %s %s. У джерелах програмного забезпечення версія %s, вона "
+"старіша. Замінити встановлену версію старішою?"
 
 #: src/inst-view.c
 msgid "Already installed"
@@ -417,13 +460,18 @@ msgstr "Уже встановлено"
 
 #: src/inst-view.c
 #, c-format
-msgid "%s %s is installed already. Reinstalling puts its files back as they came."
-msgstr "%s %s уже встановлено. Повторне встановлення відновить його файли в початковому вигляді."
+msgid ""
+"%s %s is installed already. Reinstalling puts its files back as they came."
+msgstr ""
+"%s %s уже встановлено. Повторне встановлення відновить його файли в "
+"початковому вигляді."
 
 #: src/inst-view.c
 #, c-format
-msgid "%s %s is installed already. The same version cannot be installed over itself."
-msgstr "%s %s уже встановлено. Ту саму версію не можна встановити поверх неї самої."
+msgid ""
+"%s %s is installed already. The same version cannot be installed over itself."
+msgstr ""
+"%s %s уже встановлено. Ту саму версію не можна встановити поверх неї самої."
 
 #: src/inst-view.c
 #, c-format
@@ -504,8 +552,12 @@ msgid "Website"
 msgstr "Вебсайт"
 
 #: src/inst-view.c
-msgid "A package can change anything on this device: it installs with full rights. Install only what you trust."
-msgstr "Пакет може змінити на цьому пристрої що завгодно: він установлюється з повними правами. Установлюйте лише те, чому довіряєте."
+msgid ""
+"A package can change anything on this device: it installs with full rights. "
+"Install only what you trust."
+msgstr ""
+"Пакет може змінити на цьому пристрої що завгодно: він установлюється з "
+"повними правами. Установлюйте лише те, чому довіряєте."
 
 # android: PackageInstaller cancel
 #: src/inst-view.c
@@ -569,9 +621,18 @@ msgid "Install apps from packages"
 msgstr "Установлюйте додатки з пакетів"
 
 #: src/inst-window.c
-msgid "App Installer installs .deb package files. Tap one in Files, or choose one here: it shows what the package is and asks before anything changes."
-msgstr "Установник додатків установлює файли пакетів .deb. Натисніть такий файл у Файлах або виберіть його тут: Установник покаже, що це за пакет, і запитає, перш ніж щось змінити."
+msgid ""
+"App Installer installs .deb package files. Tap one in Files, or choose one "
+"here: it shows what the package is and asks before anything changes."
+msgstr ""
+"Установник додатків установлює файли пакетів .deb. Натисніть такий файл у "
+"Файлах або виберіть його тут: Установник покаже, що це за пакет, і запитає, "
+"перш ніж щось змінити."
 
 #: src/inst-window.c
-msgid "Software uses it too, to install and uninstall apps from the software sources."
-msgstr "Центр додатків теж використовує його, щоб установлювати й видаляти додатки з джерел програмного забезпечення."
+msgid ""
+"Software uses it too, to install and uninstall apps from the software "
+"sources."
+msgstr ""
+"Центр додатків теж використовує його, щоб установлювати й видаляти додатки з "
+"джерел програмного забезпечення."

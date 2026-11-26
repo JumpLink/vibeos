@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 23:05+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -137,23 +137,34 @@ msgstr ""
 "ciepły pomarańczowy obracanie skala zawsze włączony aod rozmiar wyświetlania "
 "tekst pogrubienie powiększenie ekran blokady"
 
+# android: Settings preview_pager_home_title
+#. the launcher's own settings, an entry of their own (owner, 11-26), where they were a row in Wallpaper and style
+#: src/main.c src/ns-pages.c
+msgid "Home screen"
+msgstr "Ekran główny"
+
+#: src/main.c
+msgid "Grid, icon size, icon pack"
+msgstr "Siatka, rozmiar ikon, pakiet ikon"
+
+#: src/main.c
+msgid "launcher grid columns rows icons drawer app names"
+msgstr ""
+"launcher ekran główny siatka kolumny wiersze ikony lista aplikacji nazwy "
+"aplikacji"
+
 # android: Settings style_and_wallpaper_settings_title (adapted)
 #: src/main.c src/ns-pages.c
 msgid "Wallpaper and style"
 msgstr "Tapeta i styl"
 
 #: src/main.c
-msgid "Wallpapers, colors, home screen"
-msgstr "Tapety, kolory, ekran główny"
+msgid "Wallpapers, colors"
+msgstr "Tapety, kolory"
 
 #: src/main.c
-msgid ""
-"background accent dark theme colour color parallax launcher grid columns "
-"rows layout icon size pack shape app names labels drawer"
-msgstr ""
-"tło akcent ciemny motyw kolor paralaksa launcher ekran główny siatka kolumny "
-"wiersze układ rozmiar ikon pakiet kształt nazwy aplikacji etykiety lista "
-"aplikacji"
+msgid "background accent dark theme colour color parallax"
+msgstr "tło akcent ciemny motyw kolor paralaksa"
 
 # android: Settings device_details_battery
 #: src/main.c src/ns-pages.c
@@ -425,17 +436,6 @@ msgstr "Tapety"
 #: src/main.c
 msgid "background picture photo parallax"
 msgstr "tło obraz zdjęcie paralaksa"
-
-# android: Settings preview_pager_home_title
-#: src/main.c src/ns-pages.c
-msgid "Home screen"
-msgstr "Ekran główny"
-
-#: src/main.c
-msgid "launcher grid columns rows icons drawer app names"
-msgstr ""
-"launcher ekran główny siatka kolumny wiersze ikony lista aplikacji nazwy "
-"aplikacji"
 
 # android: Settings advanced_battery_title
 #: src/main.c src/ns-pages.c
@@ -891,6 +891,7 @@ msgstr "Poczta wychodząca (SMTP)"
 msgid "Mail from any provider, by IMAP and SMTP"
 msgstr "Poczta od dowolnego dostawcy przez IMAP i SMTP"
 
+#. the picture on the name's row; the generic one until AccountsService answers
 #: src/ns-accounts.c src/ns-system.c
 msgid "Name"
 msgstr "Imię i nazwisko"
@@ -3025,10 +3026,6 @@ msgstr "Obraz"
 #: src/ns-pages.c
 msgid "Style"
 msgstr "Styl"
-
-#: src/ns-pages.c
-msgid "Grid, icon size, icon pack"
-msgstr "Siatka, rozmiar ikon, pakiet ikon"
 
 #: src/ns-pages.c
 msgid "Pack / system"

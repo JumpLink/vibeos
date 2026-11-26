@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-software\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Ukrainian\n"
@@ -47,8 +47,11 @@ msgid "Sign in"
 msgstr "Увійти"
 
 #: src/sw-account-pages.c
-msgid "Sign in to rate and review apps, and to see your apps on all your devices."
-msgstr "Увійдіть, щоб оцінювати додатки й писати відгуки, а також бачити свої додатки на всіх пристроях."
+msgid ""
+"Sign in to rate and review apps, and to see your apps on all your devices."
+msgstr ""
+"Увійдіть, щоб оцінювати додатки й писати відгуки, а також бачити свої "
+"додатки на всіх пристроях."
 
 # android: Settings preview_pager_email_title (several translations, short)
 #: src/sw-account-pages.c
@@ -78,8 +81,13 @@ msgid "Enter a name. It shows on your reviews."
 msgstr "Введіть ім’я. Воно показуватиметься у ваших відгуках."
 
 #: src/sw-account-pages.c
-msgid "With an account you can rate and review apps, and see your apps on all your devices. The store emails you a code to confirm the address."
-msgstr "З обліковим записом ви можете оцінювати додатки, писати відгуки й бачити свої додатки на всіх пристроях. Магазин надішле вам електронною поштою код для підтвердження адреси."
+msgid ""
+"With an account you can rate and review apps, and see your apps on all your "
+"devices. The store emails you a code to confirm the address."
+msgstr ""
+"З обліковим записом ви можете оцінювати додатки, писати відгуки й бачити "
+"свої додатки на всіх пристроях. Магазин надішле вам електронною поштою код "
+"для підтвердження адреси."
 
 #: src/sw-account-pages.c
 msgid "Name"
@@ -119,14 +127,22 @@ msgstr[2] "%s Залишилося %d спроб."
 #. TRANSLATORS: %d is the code's length in digits, %s the email address
 #: src/sw-account-pages.c
 #, c-format
-msgid "The store sent a %d-digit code to %s. Enter it here to confirm the address. It works for 15 minutes."
-msgstr "Магазин надіслав код (цифр: %d) на адресу %s. Введіть його тут, щоб підтвердити адресу. Код дійсний 15 хвилин."
+msgid ""
+"The store sent a %d-digit code to %s. Enter it here to confirm the address. "
+"It works for 15 minutes."
+msgstr ""
+"Магазин надіслав код (цифр: %d) на адресу %s. Введіть його тут, щоб "
+"підтвердити адресу. Код дійсний 15 хвилин."
 
 #. TRANSLATORS: %d is the code's length in digits, %s the email address
 #: src/sw-account-pages.c
 #, c-format
-msgid "Confirm your address to rate and review apps: enter the %d-digit code the store emailed to %s, or ask for a new one."
-msgstr "Щоб оцінювати додатки й писати відгуки, підтвердьте адресу: введіть код (цифр: %d), який магазин надіслав на %s, або запитайте новий."
+msgid ""
+"Confirm your address to rate and review apps: enter the %d-digit code the "
+"store emailed to %s, or ask for a new one."
+msgstr ""
+"Щоб оцінювати додатки й писати відгуки, підтвердьте адресу: введіть код "
+"(цифр: %d), який магазин надіслав на %s, або запитайте новий."
 
 #: src/sw-account-pages.c
 msgid "A new code is on its way"
@@ -155,8 +171,12 @@ msgid "Your password is changed, and you are signed in"
 msgstr "Пароль змінено, і ви ввійшли"
 
 #: src/sw-account-pages.c
-msgid "Enter the address you signed up with. If it has an account, the store emails a code to it to set a new password."
-msgstr "Введіть адресу, з якою ви реєструвалися. Якщо для неї є обліковий запис, магазин надішле на неї код для встановлення нового пароля."
+msgid ""
+"Enter the address you signed up with. If it has an account, the store emails "
+"a code to it to set a new password."
+msgstr ""
+"Введіть адресу, з якою ви реєструвалися. Якщо для неї є обліковий запис, "
+"магазин надішле на неї код для встановлення нового пароля."
 
 #: src/sw-account-pages.c
 msgid "Send the code"
@@ -165,8 +185,11 @@ msgstr "Надіслати код"
 #. TRANSLATORS: %s is the email address (partly hidden), %d the code's length in digits
 #: src/sw-account-pages.c
 #, c-format
-msgid "If %s has an account, a %d-digit code is on its way to it. Enter it here."
-msgstr "Якщо для %s є обліковий запис, на цю адресу надіслано код (цифр: %d). Введіть його тут."
+msgid ""
+"If %s has an account, a %d-digit code is on its way to it. Enter it here."
+msgstr ""
+"Якщо для %s є обліковий запис, на цю адресу надіслано код (цифр: %d). "
+"Введіть його тут."
 
 # android: Settings next_label (short)
 #: src/sw-account-pages.c
@@ -174,8 +197,12 @@ msgid "Next"
 msgstr "Далі"
 
 #: src/sw-account-pages.c
-msgid "Choose a new password. Every device signed in to the account is signed out, and this one signed in."
-msgstr "Виберіть новий пароль. На всіх пристроях буде виконано вихід з облікового запису, а на цьому – вхід."
+msgid ""
+"Choose a new password. Every device signed in to the account is signed out, "
+"and this one signed in."
+msgstr ""
+"Виберіть новий пароль. На всіх пристроях буде виконано вихід з облікового "
+"запису, а на цьому – вхід."
 
 #: src/sw-account-pages.c
 msgid "New password"
@@ -230,8 +257,12 @@ msgid "Look for updates"
 msgstr "Шукати оновлення"
 
 #: src/sw-account-pages.c
-msgid "Software looks for updates when it starts and when apps change. It does not install them by itself: update from Mine."
-msgstr "Центр додатків шукає оновлення під час запуску й коли змінюються додатки. Сам він їх не встановлює: оновлюйте на вкладці «Мої»."
+msgid ""
+"Software looks for updates when it starts and when apps change. It does not "
+"install them by itself: update from Mine."
+msgstr ""
+"Центр додатків шукає оновлення під час запуску й коли змінюються додатки. "
+"Сам він їх не встановлює: оновлюйте на вкладці «Мої»."
 
 # android: Etar preferences_theme (other app, short)
 #: src/sw-account-pages.c
@@ -260,13 +291,27 @@ msgid "The catalog"
 msgstr "Каталог"
 
 #: src/sw-account-pages.c
-msgid "The apps, their descriptions and pictures come from the store at vibeos.top, which takes them from Debian's and VibeOS's software sources and the apps' own AppStream data."
-msgstr "Додатки, їхні описи й зображення надходять із магазину на vibeos.top, який бере їх із джерел програмного забезпечення Debian і VibeOS та з даних AppStream самих додатків."
+msgid ""
+"The apps, their descriptions and pictures come from the store at vibeos.top, "
+"which takes them from Debian's and VibeOS's software sources and the apps' "
+"own AppStream data."
+msgstr ""
+"Додатки, їхні описи й зображення надходять із магазину на vibeos.top, який "
+"бере їх із джерел програмного забезпечення Debian і VibeOS та з даних "
+"AppStream самих додатків."
 
 #. TRANSLATORS: keep the links' markup as it is
 #: src/sw-account-pages.c
-msgid "The category icons are Font Awesome Free 7.0.0 by Fonticons, Inc. (solid style, unchanged), under the <a href=\"https://creativecommons.org/licenses/by/4.0/\">Creative Commons Attribution 4.0</a> licence. <a href=\"https://fontawesome.com\">fontawesome.com</a>"
-msgstr "Значки категорій – Font Awesome Free 7.0.0 від Fonticons, Inc. (стиль solid, без змін) за ліцензією <a href=\"https://creativecommons.org/licenses/by/4.0/\">Creative Commons Attribution 4.0</a>. <a href=\"https://fontawesome.com\">fontawesome.com</a>"
+msgid ""
+"The category icons are Font Awesome Free 7.0.0 by Fonticons, Inc. (solid "
+"style, unchanged), under the <a href=\"https://creativecommons.org/licenses/"
+"by/4.0/\">Creative Commons Attribution 4.0</a> licence. <a href=\"https://"
+"fontawesome.com\">fontawesome.com</a>"
+msgstr ""
+"Значки категорій – Font Awesome Free 7.0.0 від Fonticons, Inc. (стиль solid, "
+"без змін) за ліцензією <a href=\"https://creativecommons.org/licenses/by/"
+"4.0/\">Creative Commons Attribution 4.0</a>. <a href=\"https://"
+"fontawesome.com\">fontawesome.com</a>"
 
 #: src/sw-account-pages.c
 msgid "You are signed out"
@@ -323,16 +368,24 @@ msgid "Enter your password to delete the account."
 msgstr "Щоб видалити обліковий запис, введіть пароль."
 
 #: src/sw-account-pages.c
-msgid "The store deletes the account, its devices, the list of apps it had and its helpful votes. It cannot be undone. Your apps stay installed."
-msgstr "Магазин видалить обліковий запис, його пристрої, список його додатків і позначки «Корисно». Цю дію не можна скасувати. Ваші додатки залишаться встановленими."
+msgid ""
+"The store deletes the account, its devices, the list of apps it had and its "
+"helpful votes. It cannot be undone. Your apps stay installed."
+msgstr ""
+"Магазин видалить обліковий запис, його пристрої, список його додатків і "
+"позначки «Корисно». Цю дію не можна скасувати. Ваші додатки залишаться "
+"встановленими."
 
 #: src/sw-account-pages.c
 msgid "Delete my reviews too"
 msgstr "Також видалити мої відгуки"
 
 #: src/sw-account-pages.c
-msgid "Otherwise they stay, under \"Deleted account\", and nobody can change them"
-msgstr "Інакше вони залишаться з підписом «Видалений обліковий запис», і ніхто не зможе їх змінити"
+msgid ""
+"Otherwise they stay, under \"Deleted account\", and nobody can change them"
+msgstr ""
+"Інакше вони залишаться з підписом «Видалений обліковий запис», і ніхто не "
+"зможе їх змінити"
 
 #: src/sw-account-pages.c
 msgid "A moderator hid this review: only you see it."
@@ -340,7 +393,9 @@ msgstr "Модератор приховав цей відгук: його бач
 
 #: src/sw-account-pages.c
 msgid "You have not reviewed any apps yet. An app's page has its stars to tap."
-msgstr "Ви ще не залишили жодного відгуку. Оцінити додаток можна зірками на його сторінці."
+msgstr ""
+"Ви ще не залишили жодного відгуку. Оцінити додаток можна зірками на його "
+"сторінці."
 
 # android: Settings request_manage_credentials_more (short)
 #: src/sw-account-pages.c
@@ -348,8 +403,12 @@ msgid "Show more"
 msgstr "Показати більше"
 
 #: src/sw-account.c
-msgid "Software could not keep your sign-in in the keyring. You will need to sign in again next time."
-msgstr "Центру додатків не вдалося зберегти дані для входу у зв’язці ключів. Наступного разу доведеться ввійти знову."
+msgid ""
+"Software could not keep your sign-in in the keyring. You will need to sign "
+"in again next time."
+msgstr ""
+"Центру додатків не вдалося зберегти дані для входу у зв’язці ключів. "
+"Наступного разу доведеться ввійти знову."
 
 #. TRANSLATORS: the keyring entry's name, as a password manager shows it; %s is the store's address
 #: src/sw-account.c
@@ -399,8 +458,11 @@ msgid "Something went wrong."
 msgstr "Сталася помилка."
 
 #: src/sw-api.c
-msgid "Software cannot reach the store. Check the internet connection and try again."
-msgstr "Центр додатків не може зв’язатися з магазином. Перевірте з’єднання з Інтернетом і повторіть спробу."
+msgid ""
+"Software cannot reach the store. Check the internet connection and try again."
+msgstr ""
+"Центр додатків не може зв’язатися з магазином. Перевірте з’єднання з "
+"Інтернетом і повторіть спробу."
 
 #: src/sw-api.c
 msgid "The store's address is not valid."
@@ -418,7 +480,9 @@ msgstr "Видалити %s?"
 
 #: src/sw-app-page.c
 msgid "The app goes. What it keeps in your home folder stays."
-msgstr "Додаток буде видалено. Те, що він зберігає у вашій домашній папці, залишиться."
+msgstr ""
+"Додаток буде видалено. Те, що він зберігає у вашій домашній папці, "
+"залишиться."
 
 # android: Settings uninstall_text (several translations, short)
 #: src/sw-app-page.c
@@ -511,20 +575,36 @@ msgid "Permissions"
 msgstr "Дозволи"
 
 #: src/sw-app-page.c
-msgid "What the app says it uses. VibeOS's own apps are part of the system: they do not run in a sandbox."
-msgstr "Що, за словами додатка, він використовує. Власні додатки VibeOS – частина системи: вони не працюють в ізольованому середовищі."
+msgid ""
+"What the app says it uses. VibeOS's own apps are part of the system: they do "
+"not run in a sandbox."
+msgstr ""
+"Що, за словами додатка, він використовує. Власні додатки VibeOS – частина "
+"системи: вони не працюють в ізольованому середовищі."
 
 #: src/sw-app-page.c
-msgid "What the app asks for. VibeOS enforces these permissions: the app runs in a sandbox, and you allow or deny each one in Settings. Taking one away stops the app."
-msgstr "Що запитує додаток. VibeOS забезпечує дотримання цих дозволів: додаток працює в ізольованому середовищі, а ви дозволяєте або забороняєте кожен дозвіл у Налаштуваннях. Якщо відкликати дозвіл, додаток буде зупинено."
+msgid ""
+"What the app asks for. VibeOS enforces these permissions: the app runs in a "
+"sandbox, and you allow or deny each one in Settings. Taking one away stops "
+"the app."
+msgstr ""
+"Що запитує додаток. VibeOS забезпечує дотримання цих дозволів: додаток "
+"працює в ізольованому середовищі, а ви дозволяєте або забороняєте кожен "
+"дозвіл у Налаштуваннях. Якщо відкликати дозвіл, додаток буде зупинено."
 
 #: src/sw-app-page.c
 msgid "The app declares no permissions."
 msgstr "Додаток не оголошує дозволів."
 
 #: src/sw-app-page.c
-msgid "The app declares no permissions. Until you change them in Settings, it may use the network, and you are asked before it gets your location or the camera, or runs in the background."
-msgstr "Додаток не оголошує дозволів. Доки ви не зміните їх у Налаштуваннях, він може користуватися мережею, а перед доступом до місцезнаходження чи камери або роботою у фоновому режимі вам надійде запит."
+msgid ""
+"The app declares no permissions. Until you change them in Settings, it may "
+"use the network, and you are asked before it gets your location or the "
+"camera, or runs in the background."
+msgstr ""
+"Додаток не оголошує дозволів. Доки ви не зміните їх у Налаштуваннях, він "
+"може користуватися мережею, а перед доступом до місцезнаходження чи камери "
+"або роботою у фоновому режимі вам надійде запит."
 
 #: src/sw-app-page.c
 msgid "Permissions in Settings"
@@ -539,12 +619,17 @@ msgid "Confirm your email address to rate and review apps."
 msgstr "Щоб оцінювати додатки й писати відгуки, підтвердьте електронну адресу."
 
 #: src/sw-app-page.c
-msgid "Install the app to rate it: the store takes reviews from people who have had it on one of their devices."
-msgstr "Щоб оцінити додаток, установіть його: магазин приймає відгуки від тих, у кого він був на якомусь із пристроїв."
+msgid ""
+"Install the app to rate it: the store takes reviews from people who have had "
+"it on one of their devices."
+msgstr ""
+"Щоб оцінити додаток, установіть його: магазин приймає відгуки від тих, у "
+"кого він був на якомусь із пристроїв."
 
 #: src/sw-app-page.c
 msgid "The store does not take a review of this app from your account."
-msgstr "Магазин не приймає відгуки на цей додаток від вашого облікового запису."
+msgstr ""
+"Магазин не приймає відгуки на цей додаток від вашого облікового запису."
 
 #: src/sw-app-page.c
 msgid "Sign in to rate and review apps."
@@ -817,8 +902,12 @@ msgid "Finishing…"
 msgstr "Завершення…"
 
 #: src/sw-installer.c
-msgid "App Installer is not installed. Software installs and uninstalls apps through it."
-msgstr "Установник додатків не встановлено. Центр додатків установлює й видаляє додатки через нього."
+msgid ""
+"App Installer is not installed. Software installs and uninstalls apps "
+"through it."
+msgstr ""
+"Установник додатків не встановлено. Центр додатків установлює й видаляє "
+"додатки через нього."
 
 #. TRANSLATORS: %s is the error's own message
 #: src/sw-installer.c
@@ -828,7 +917,9 @@ msgstr "Не вдалося запустити Установник додатк
 
 #: src/sw-installer.c
 msgid "Software cannot reach the session bus to ask App Installer."
-msgstr "Центр додатків не може зв’язатися із сеансовою шиною, щоб звернутися до Установника додатків."
+msgstr ""
+"Центр додатків не може зв’язатися із сеансовою шиною, щоб звернутися до "
+"Установника додатків."
 
 #: src/sw-installer.c
 msgid "App Installer stopped before it was done. Try again."
@@ -959,8 +1050,11 @@ msgid "Every app your account had is on this device."
 msgstr "Усі додатки вашого облікового запису є на цьому пристрої."
 
 #: src/sw-mine.c
-msgid "Sign in to see the apps your account had on your other devices, or before."
-msgstr "Увійдіть, щоб побачити додатки свого облікового запису на інших пристроях або встановлені раніше."
+msgid ""
+"Sign in to see the apps your account had on your other devices, or before."
+msgstr ""
+"Увійдіть, щоб побачити додатки свого облікового запису на інших пристроях "
+"або встановлені раніше."
 
 #: src/sw-mine.c
 msgid "On this device"
@@ -1045,7 +1139,9 @@ msgstr "Видалити ваш відгук?"
 
 #: src/sw-reviews.c
 msgid "Your stars and text go, and the app's rating no longer counts them."
-msgstr "Ваші зірки й текст буде видалено, і рейтинг додатка більше не враховуватиме їх."
+msgstr ""
+"Ваші зірки й текст буде видалено, і рейтинг додатка більше не враховуватиме "
+"їх."
 
 # android: Settings security_settings_fingerprint_enroll_dialog_delete (several translations, short)
 #: src/sw-reviews.c
@@ -1066,8 +1162,12 @@ msgid "Your review (if you want to say more)"
 msgstr "Ваш відгук (якщо хочете сказати більше)"
 
 #: src/sw-reviews.c
-msgid "Your review shows with your account's name. Be kind, and say what you think of the app."
-msgstr "Ваш відгук показуватиметься з іменем вашого облікового запису. Будьте ввічливі й розкажіть, що ви думаєте про додаток."
+msgid ""
+"Your review shows with your account's name. Be kind, and say what you think "
+"of the app."
+msgstr ""
+"Ваш відгук показуватиметься з іменем вашого облікового запису. Будьте "
+"ввічливі й розкажіть, що ви думаєте про додаток."
 
 # android: Settings save (short)
 #: src/sw-reviews.c
@@ -1142,7 +1242,8 @@ msgstr "Пошук"
 #: src/sw-search.c
 #, c-format
 msgid "Nothing in the store matches “%s”. Try other words."
-msgstr "У магазині немає нічого, що відповідає запиту «%s». Спробуйте інші слова."
+msgstr ""
+"У магазині немає нічого, що відповідає запиту «%s». Спробуйте інші слова."
 
 #: src/sw-search.c
 msgid "Put it in the search field"

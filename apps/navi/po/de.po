@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 00:45+0100\n"
+"POT-Creation-Date: 2026-11-26 01:54+0100\n"
 "PO-Revision-Date: 2026-11-23 04:00+0100\n"
 "Last-Translator: pulpoff\n"
 "Language-Team: German\n"
@@ -937,12 +937,15 @@ msgstr "Um diese Sprache zu sprechen, braucht %s Folgendes auf dem Telefon:"
 #. TRANSLATORS: under the title "Download Deutsch?"
 #: ../dictate/src/dictate-download-dialog.c
 msgid "To hear and speak this language, Vibe needs these on the phone:"
-msgstr "Um diese Sprache zu hören und zu sprechen, braucht Vibe Folgendes auf dem Telefon:"
+msgstr ""
+"Um diese Sprache zu hören und zu sprechen, braucht Vibe Folgendes auf dem "
+"Telefon:"
 
 #. TRANSLATORS: under the title "Download Deutsch?"
 #: ../dictate/src/dictate-download-dialog.c
 msgid "To hear this language, Dictate needs these on the phone:"
-msgstr "Um diese Sprache zu hören, braucht Diktieren Folgendes auf dem Telefon:"
+msgstr ""
+"Um diese Sprache zu hören, braucht Diktieren Folgendes auf dem Telefon:"
 
 #. TRANSLATORS: under it; %s is its Debian package (vibeos-dictate-vosk)
 #: ../dictate/src/dictate-download-dialog.c

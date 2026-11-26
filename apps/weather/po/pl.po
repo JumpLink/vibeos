@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-weather\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-25 22:34+0100\n"
+"POT-Creation-Date: 2026-11-26 01:55+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -204,11 +204,9 @@ msgstr "Ciśnienie"
 
 #: src/main.c
 msgid "No forecast: Open-Meteo did not answer. Tap reload to try again."
-msgstr "Brak prognozy: Open-Meteo nie odpowiada. Kliknij „Odśwież”, aby spróbować ponownie."
-
-#: src/main.c
-msgid "No location. Turn on Location in Settings, then tap reload, or set a city in the ⋮ menu."
-msgstr "Brak lokalizacji. Włącz lokalizację w Ustawieniach i kliknij „Odśwież” albo wybierz miasto w menu ⋮."
+msgstr ""
+"Brak prognozy: Open-Meteo nie odpowiada. Kliknij „Odśwież”, aby spróbować "
+"ponownie."
 
 #: src/main.c
 #, c-format
@@ -248,17 +246,34 @@ msgstr "Wyczyść"
 
 #: src/main.c
 msgid ""
-"Weather forecasts by <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, under <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n"
+"Weather forecasts by <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, "
+"under <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</"
+"a>.\n"
 "\n"
-"Set City finds cities with Open-Meteo's geocoding, on data from <a href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0."
+"Set City finds cities with Open-Meteo's geocoding, on data from <a "
+"href=\"https://www.geonames.org/\">GeoNames</a>, under CC BY 4.0."
 msgstr ""
-"Prognozy pogody: <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, na licencji <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>.\n"
+"Prognozy pogody: <a href=\"https://open-meteo.com/\">Open-Meteo.com</a>, na "
+"licencji <a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</"
+"a>.\n"
 "\n"
-"Funkcja „Wybierz miasto” wyszukuje miasta za pomocą geokodowania Open-Meteo na danych z <a href=\"https://www.geonames.org/\">GeoNames</a>, na licencji CC BY 4.0."
+"Funkcja „Wybierz miasto” wyszukuje miasta za pomocą geokodowania Open-Meteo "
+"na danych z <a href=\"https://www.geonames.org/\">GeoNames</a>, na licencji "
+"CC BY 4.0."
 
 #: src/main.c
-msgid "The place's name, where the phone is, from OpenStreetMap's <a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a>. Data © <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the <a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)."
-msgstr "Nazwa miejsca, w którym jest telefon, pochodzi z usługi <a href=\"https://nominatim.openstreetmap.org/\">Nominatim</a> OpenStreetMap. Dane © <a href=\"https://www.openstreetmap.org/copyright\">współtwórcy OpenStreetMap</a>, na licencji <a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database License</a> (ODbL)."
+msgid ""
+"The place's name, where the phone is, from OpenStreetMap's <a href=\"https://"
+"nominatim.openstreetmap.org/\">Nominatim</a>. Data © <a href=\"https://"
+"www.openstreetmap.org/copyright\">OpenStreetMap contributors</a>, under the "
+"<a href=\"https://opendatacommons.org/licenses/odbl/\">Open Database "
+"License</a> (ODbL)."
+msgstr ""
+"Nazwa miejsca, w którym jest telefon, pochodzi z usługi <a href=\"https://"
+"nominatim.openstreetmap.org/\">Nominatim</a> OpenStreetMap. Dane © <a "
+"href=\"https://www.openstreetmap.org/copyright\">współtwórcy OpenStreetMap</"
+"a>, na licencji <a href=\"https://opendatacommons.org/licenses/odbl/\">Open "
+"Database License</a> (ODbL)."
 
 #: src/main.c
 msgid "About"
@@ -276,3 +291,18 @@ msgstr "Więcej opcji"
 #: src/main.c
 msgid "Finding where you are…"
 msgstr "Ustalam Twoją lokalizację…"
+
+#: src/wx-place.c
+msgid ""
+"No location yet. Set a city in the ⋮ menu, or tap reload under open sky."
+msgstr ""
+"Lokalizacja nie jest jeszcze znana. Wybierz miasto w menu ⋮ albo kliknij "
+"„Odśwież” pod gołym niebem."
+
+#: src/wx-place.c
+msgid ""
+"No location. Turn on Location in Settings, then tap reload, or set a city in "
+"the ⋮ menu."
+msgstr ""
+"Brak lokalizacji. Włącz lokalizację w Ustawieniach i kliknij „Odśwież” albo "
+"wybierz miasto w menu ⋮."
