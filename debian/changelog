@@ -83,6 +83,11 @@ vibeos (1:0.1.5) unstable; urgency=medium
   * On a tablet, the app drawer's sheet is the notification shade's
     frosted glass, the screen behind it blurred under a tint, or the
     shade's solid colour where the graphics cannot keep up with the blur.
+  * The Trapu logo: every device shows it while it boots (the POCO X3 NFC
+    and the Galaxy Tab S5e still show the old picture first, until
+    0.1.6), and it is the picture of a user who has not chosen one, in
+    place of the Debian swirl. Settings › Users shows each account's
+    picture.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
