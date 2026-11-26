@@ -105,6 +105,10 @@ vibeos (1:0.1.5) unstable; urgency=medium
     their English names in every language: a language change no longer
     asks "Update standard folders to current language?", and the folders
     a user has are never renamed or moved.
+  * The shade's blur, and a tablet's app drawer's, give way to the opaque
+    look only once two starts of the shell have each measured them too
+    slow. A single slow measurement, such as one taken just after a fast
+    charger was plugged in, made them opaque until the next update.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 

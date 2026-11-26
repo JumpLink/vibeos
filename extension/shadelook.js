@@ -5,9 +5,12 @@
 // with the blur and times the shade's own animations: every stage paint while the shade opens or closes with the blur
 // showing, as the interval since the paint before. After SETTLED_OPENINGS openings (each followed by its closing) with
 // at least MIN_INTERVALS intervals in all, the 95th percentile of the intervals is compared with the refresh period:
-// within 1.2 periods the blur stays, over it the opaque look takes its place. The verdict and what it was measured on
-// are kept in shade-look.json in the user's state directory (deleting the file measures again), and `blur` changes
-// only when a measurement ends: the shade takes it up when it is next closed, never mid-animation.
+// within 1.2 periods the blur stays, over it the opaque look takes its place. The opaque look takes over only once two
+// shell sessions (two starts of the shell) have each measured over the limit: one slow measurement (a charger plugged
+// in, the device busy) keeps the blur and measures again at the next start, and a measurement within the limit
+// forgets an earlier slow one. The verdict and what it was measured on are kept in shade-look.json in the user's state
+// directory (deleting the file measures again), and `blur` changes only when a measurement ends: the shade takes it up
+// when it is next closed, never mid-animation.
 //
 // The environment variable VIBEOS_SHADE_SLOW_MS (the shell's, a number) holds every paint for that many milliseconds
 // while the shade animates with the blur, so that a fast device measures slow.
@@ -24,6 +27,7 @@ const MIN_INTERVALS = 30;
 const MIN_SESSION_FRAMES = 6;           // fewer paints in one animation: a flick that never went anywhere
 const BUDGET_MARGIN = 1.2;              // the 95th percentile may be 20 % over the refresh period
 const STATE_VERSION = 1;
+const OPAQUE_SESSIONS = 2;              // shell sessions that measure over the limit before the opaque look is kept
 
 const readText = path => {
     try {
@@ -112,6 +116,11 @@ function extensionName() {
     return `${version}@${stamp}`;
 }
 
+// this shell session: the boot and the shell's process, the same while the extension is turned off and on again
+function shellSession() {
+    return `${readText('/proc/sys/kernel/random/boot_id')}:${new Gio.Credentials().get_unix_pid()}`;
+}
+
 const percentile95 = values => {
     const sorted = [...values].sort((a, b) => a - b);
     return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))];
@@ -129,6 +138,8 @@ export class ShadeLook {
         this._intervals = [];
         this._openings = 0;
         this._decided = false;
+        this._sessionId = shellSession();
+        this._failures = [];                // the slow measurements of earlier sessions, while one has not settled it
         this.blur = true;
 
         this.key = {
@@ -143,7 +154,14 @@ export class ShadeLook {
         const saved = this._load();
         const stale = saved ? Object.keys(this.key).filter(k => saved.key?.[k] !== this.key[k]) : null;
         const keyText = Object.entries(this.key).map(([k, v]) => `${k}=${v}`).join(' ');
-        if (saved && !stale.length) {
+        if (saved && !stale.length && Array.isArray(saved.failures) && saved.blur) {
+            this._failures = saved.failures.filter(f => f && typeof f.session === 'string');
+            const here = this._failures.some(f => f.session === this._sessionId);
+            this._decided = here;
+            console.log(`shade blur: ${this._failures.length} of ${OPAQUE_SESSIONS} sessions measured slow ` +
+                `(last p95 ${this._failures.at(-1)?.p95} ms); ${here ? 'this one already did, keeping the blur'
+                    : 'measuring again, starting with the blur'}; ${keyText}`);
+        } else if (saved && !stale.length) {
             this._decided = true;
             this.blur = saved.blur;
             console.log(`shade blur: ${saved.blur ? 'blur' : 'opaque'} kept from an earlier measurement (p95 ` +
@@ -245,16 +263,24 @@ export class ShadeLook {
         const p95 = percentile95(this._intervals);
         const frames = this._intervals.length;
         const mean = this._intervals.reduce((s, v) => s + v, 0) / frames;
-        const blur = p95 <= limit;
+        const fast = p95 <= limit;
+        const measured = {p95: Number(p95.toFixed(1)), mean: Number(mean.toFixed(1)), frames,
+            openings: this._openings, limit: Number(limit.toFixed(1)), at: new Date().toISOString()};
+        // a slow measurement counts once per shell session; the opaque look waits for OPAQUE_SESSIONS of them
+        const failures = fast ? [] : [...this._failures.filter(f => f.session !== this._sessionId),
+            {session: this._sessionId, ...measured}];
+        const blur = fast || failures.length < OPAQUE_SESSIONS;
         console.log(`shade blur: measured gpu=${this.key.gpu} mesa=${this.key.mesa} refresh=${refresh} Hz ` +
             `(${period.toFixed(1)} ms) intervals=${frames} openings=${this._openings} mean=${mean.toFixed(1)} ms ` +
-            `p95=${p95.toFixed(1)} ms limit=${limit.toFixed(1)} ms -> ${blur ? 'blur' : 'opaque'}` +
+            `p95=${p95.toFixed(1)} ms limit=${limit.toFixed(1)} ms -> ${fast ? 'blur'
+                : blur ? `slow in ${failures.length} of ${OPAQUE_SESSIONS} sessions, keeping the blur until the next start`
+                    : 'opaque'}` +
             `${this._slowMs ? ` (slow mode ${this._slowMs} ms)` : ''}`);
         this._decided = true;
         this.blur = blur;
+        this._failures = failures;
         this.key.refresh = refresh;
-        this._save({blur, p95: Number(p95.toFixed(1)), mean: Number(mean.toFixed(1)), frames,
-            openings: this._openings, limit: Number(limit.toFixed(1)), at: new Date().toISOString()});
+        this._save({blur, ...measured, ...(failures.length ? {failures} : {})});
         this._intervals = [];
         this._connect();
     }
