@@ -1,3 +1,4 @@
 # the files with translatable strings
 data/vibeos.Weather.desktop.in
 src/main.c
+src/wx-place.c

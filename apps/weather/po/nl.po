@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-weather\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-24 03:42+0100\n"
+"POT-Creation-Date: 2026-11-26 00:29+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Dutch\n"
@@ -186,18 +186,6 @@ msgstr "Vandaag"
 msgid "Sunset %s"
 msgstr "Zonsondergang %s"
 
-#. TRANSLATORS: the wind's speed in kilometres an hour
-#: src/main.c
-#, c-format
-msgid "%.0f km/h"
-msgstr "%.0f km/u"
-
-#. TRANSLATORS: the air pressure in hectopascals
-#: src/main.c
-#, c-format
-msgid "%.0f hPa"
-msgstr "%.0f hPa"
-
 #: src/main.c
 msgid "UV index"
 msgstr "Uv-index"
@@ -219,14 +207,6 @@ msgid "No forecast: Open-Meteo did not answer. Tap reload to try again."
 msgstr ""
 "Geen verwachting: Open-Meteo gaf geen antwoord. Tik op vernieuwen om het "
 "opnieuw te proberen."
-
-#: src/main.c
-msgid ""
-"No location. Turn on Location in Settings, then tap reload, or set a city in "
-"the ⋮ menu."
-msgstr ""
-"Geen locatie. Zet Locatie aan in Instellingen en tik dan op vernieuwen, of "
-"stel een stad in via het ⋮-menu."
 
 #: src/main.c
 #, c-format
@@ -310,3 +290,16 @@ msgstr "Meer opties"
 #: src/main.c
 msgid "Finding where you are…"
 msgstr "Locatie bepalen…"
+
+#: src/wx-place.c
+msgid ""
+"No location yet. Set a city in the ⋮ menu, or tap reload under open sky."
+msgstr "Nog geen locatie. Stel een stad in via het ⋮-menu, of tik in de open lucht op vernieuwen."
+
+#: src/wx-place.c
+msgid ""
+"No location. Turn on Location in Settings, then tap reload, or set a city in "
+"the ⋮ menu."
+msgstr ""
+"Geen locatie. Zet Locatie aan in Instellingen en tik dan op vernieuwen, of "
+"stel een stad in via het ⋮-menu."
