@@ -1,4 +1,4 @@
-/* ModemManager's network modes: SupportedModes/CurrentModes as a(uu)/(uu), and the argument of SetCurrentModes.
+/* ModemManager's network modes: SupportedModes/CurrentModes as a(uu)/(uu), and the parameters of SetCurrentModes.
  * The list keeps the modem's order with Automatic first, drops invalid or duplicate pairs and gives each a label for
  * Settings. GLib only, so the tests use the same interface as the page. */
 #pragma once

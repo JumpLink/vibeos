@@ -44,7 +44,9 @@ test_modes (void)
   g_assert_cmpuint (mode->preferred, ==, 0);
   g_autoptr (GVariant) value = ns_mobile_mode_value (mode);
   g_autofree char *text = g_variant_print (value, FALSE);
-  g_assert_cmpstr (text, ==, "(2, 0)");
+  g_assert_true (g_variant_is_of_type (value, G_VARIANT_TYPE ("((uu))")));
+  g_assert_false (g_variant_is_floating (value));
+  g_assert_cmpstr (text, ==, "((2, 0),)");
   ns_mobile_modes_free (m);
 }
 

@@ -193,5 +193,7 @@ ns_mobile_modes_current (NsMobileModes *m, GVariant *current)
 GVariant *
 ns_mobile_mode_value (const NsMobileMode *mode)
 {
-  return g_variant_new ("(uu)", mode->allowed, mode->preferred);
+  /* SetCurrentModes takes ONE argument of type (uu), so the message body is ((uu)); a bare (uu) reads as two
+   * arguments and ModemManager rejects it. Sunk, so the caller owns a plain reference it can free after the call. */
+  return g_variant_ref_sink (g_variant_new ("((uu))", mode->allowed, mode->preferred));
 }
