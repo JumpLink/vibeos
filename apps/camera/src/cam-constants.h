@@ -79,6 +79,7 @@
 #define CAM_MS_PINCH_GUARD         500      /* no mode fling after a pinch                         */
 #define CAM_MS_COUNTDOWN_FADE      800      /* scale 1 → 2.5, alpha 1 → 0, accelerate-decelerate   */
 #define CAM_MS_COUNTDOWN_TICK      1000
+#define CAM_MS_CLOSE_WAIT          5000     /* the process waits at most this for the camera to close */
 #define CAM_MS_START_SOUND_GAP     500      /* before a recording starts                           */
 #define CAM_MS_BLINK               300      /* black 0 → 255 → 0, accelerate-decelerate            */
 #define CAM_MS_ISLAND_FADE         200

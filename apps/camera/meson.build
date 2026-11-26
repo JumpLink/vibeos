@@ -24,7 +24,7 @@ executable('vibeos-camera',
            'src/cam-main.c', 'src/cam-window.c', 'src/cam-startup.c', 'src/cam-devices.c', 'src/cam-encoder.c', 'src/cam-pipeline.c',
            'src/cam-sensors.c', 'src/cam-recorder.c', 'src/cam-photo.c', 'src/cam-storage.c', 'src/cam-sounds.c',
            'src/cam-widgets.c', 'src/cam-mode-selector.c', 'src/cam-viewfinder.c', 'src/cam-qr-sheet.c',
-           'src/cam-settings.c', 'src/cam-dialogs.c', resources,
+           'src/cam-settings.c', 'src/cam-dialogs.c', 'src/cam-shutdown.c', resources,
            dependencies: deps, install: true)
 
 configure_file(input: 'data/vibeos.Camera.service.in', output: 'vibeos.Camera.service',
@@ -45,6 +45,11 @@ subdir('po')
 # the QR classifier, without GTK's display
 test('qr-classify', executable('test-qr', 'tests/test-qr.c', 'src/cam-qr-sheet.c',
                                include_directories: 'src', dependencies: deps))
+
+# the process waits for what is still closing (the camera, in the pipeline's worker) before it ends, and no longer
+# than it is told
+test('shutdown-wait', executable('test-shutdown', 'tests/test-shutdown.c', 'src/cam-shutdown.c',
+                                 include_directories: 'src', dependencies: deps))
 
 # the encoder is read from the cache and never probed at start
 test('encoder-no-probe', executable('test-encoder', 'tests/test-encoder.c', 'src/cam-encoder.c',
