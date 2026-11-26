@@ -11,6 +11,10 @@ import System from 'system';
 
 import {FIRST_PICTURE_MS, lockWallpaper, MAKE_TIMEOUT_MS, restPicture} from './restpicture.js';
 
+// under emulation (VIBEOS_TEST_EMULATED: the arm64 package build under qemu-user) a process takes far longer to
+// start, so the short timeouts below are stretched: the stand-in launcher is running before it is ended
+const SLOW = GLib.getenv('VIBEOS_TEST_EMULATED') ? 4 : 1;
+
 const T = System.programArgs[0];
 const LAUNCHER = `${T}/launcher`;
 const RUNS = `${T}/runs`;
@@ -46,6 +50,30 @@ function read(path) {
 }
 
 const runs = () => (read(RUNS) ?? '').split('\n').filter(l => l);
+
+// until @path is there (a hanging stand-in has written its pid), at most @limit ms
+async function until(path, limit) {
+    const end = GLib.get_monotonic_time() + limit * 1000;
+    while (!GLib.file_test(path, GLib.FileTest.EXISTS) && GLib.get_monotonic_time() < end)
+        await sleep(20);
+}
+
+// the stand-in launchers still running: the one that wrote its pid, and any not that far yet (its command line
+// names it)
+function leftover() {
+    const left = [];
+    const pid = read(`${T}/pid`)?.trim();
+    if (pid && GLib.file_test(`/proc/${pid}`, GLib.FileTest.EXISTS))
+        left.push(pid);
+    const proc = Gio.File.new_for_path('/proc').enumerate_children('standard::name', Gio.FileQueryInfoFlags.NONE,
+        null);
+    for (let info; (info = proc.next_file(null));) {
+        const name = info.get_name();
+        if (/^\d+$/.test(name) && name !== pid && (read(`/proc/${name}/cmdline`) ?? '').includes(LAUNCHER))
+            left.push(name);
+    }
+    return left;
+}
 
 // a file's time moved on by @s seconds, as a package upgrade or a new picture moves it
 function touch(path, s) {
@@ -121,28 +149,31 @@ printf 'the rest picture of %s at %sx%s, %s\\n' "$2" "$3" "$4" "$5" > "$6"
     write(MODE, 'hang');
     touch(PICTURE, 10);
     const cancellable = new Gio.Cancellable();
-    const t0 = GLib.get_monotonic_time();
+    GLib.unlink(`${T}/pid`);
     const pending = made(1600, 2560, 3, cancellable);
-    await sleep(300);
+    await until(`${T}/pid`, 10000 * SLOW);
+    const t0 = GLib.get_monotonic_time();
     cancellable.cancel();
     r = await pending;
     check(!r.ok && GLib.get_monotonic_time() - t0 < 5e6, 'stopped: the launcher is ended at once, not made');
     check(read(`${out}.key`) === null, 'stopped: no key either');
     const pid = read(`${T}/pid`)?.trim();
-    check(pid && !GLib.file_test(`/proc/${pid}`, GLib.FileTest.EXISTS), 'stopped: no launcher left running');
+    check(pid && leftover().length === 0, 'stopped: no launcher left running');
 
     check(MAKE_TIMEOUT_MS === 15000 && FIRST_PICTURE_MS === 2000,
         'a launcher is ended after 15 s, and the first picture counts as loaded after 2 s at the latest');
     // (the timeouts short here, as everywhere below)
     touch(PICTURE, 10);
     let since = GLib.get_monotonic_time();
-    r = await made(1600, 2560, 3, null, 800);
+    GLib.unlink(`${T}/pid`);
+    r = await made(1600, 2560, 3, null, 800 * SLOW);
     const late = ms(since);
-    check(!r.ok && r.ran === 1 && late >= 790 && late < 5000, `a launcher that never ends is ended after the timeout ` +
-        `(${Math.round(late)} ms of 800), not made`);
+    check(!r.ok && r.ran === 1 && late >= 790 * SLOW && late < Math.min(5000 * SLOW, MAKE_TIMEOUT_MS - 1000),
+        `a launcher that never ends is ended after the timeout ` +
+        `(${Math.round(late)} ms of ${800 * SLOW}), not made`);
     check(read(`${out}.key`) === null, 'ended: no key');
     const pid2 = read(`${T}/pid`)?.trim();
-    check(pid2 && pid2 !== pid && !GLib.file_test(`/proc/${pid2}`, GLib.FileTest.EXISTS), 'ended: no launcher left');
+    check(pid2 && pid2 !== pid && leftover().length === 0, 'ended: no launcher left');
 
     // the keyguard's side
     write(MODE, 'make');
@@ -164,28 +195,32 @@ printf 'the rest picture of %s at %sx%s, %s\\n' "$2" "$3" "$4" "$5" > "$6"
 
     write(MODE, 'hang');
     touch(PICTURE, 10);
-    k = keyguard({timeoutMs: 1000});
+    GLib.unlink(`${T}/pid`);
+    k = keyguard({timeoutMs: 1000 * SLOW});
     await k.first;
-    check(k.shown.length === 1 && !k.shown[0].rest && k.firstMs < 1000,
+    check(k.shown.length === 1 && !k.shown[0].rest && k.firstMs < 1000 * SLOW,
         `the launcher never ends: the first picture does not wait for it (${Math.round(k.firstMs)} ms)`);
     await k.done;
     const pid3 = read(`${T}/pid`)?.trim();
     check(k.shown.length === 1 && k.failed.length === 0 && read(`${out}.key`) === null && pid3 &&
-        !GLib.file_test(`/proc/${pid3}`, GLib.FileTest.EXISTS) && ms(k.t0) >= 990 && ms(k.t0) < 6000,
-    `and it is ended after the timeout (${Math.round(ms(k.t0))} ms of 1000), nothing more shown, no key`);
+        leftover().length === 0 && ms(k.t0) >= 990 * SLOW && ms(k.t0) < Math.min(6000 * SLOW, MAKE_TIMEOUT_MS - 1000),
+    `and it is ended after the timeout (${Math.round(ms(k.t0))} ms of ${1000 * SLOW}), nothing more shown, no key`);
 
     touch(PICTURE, 10);
-    k = keyguard({timeoutMs: 5000, firstMs: 500, stuck: true});
+    GLib.unlink(`${T}/pid`);
+    // the cap stays under FIRST_PICTURE_MS even stretched, so that it is told from the default
+    const cap = Math.min(500 * SLOW, FIRST_PICTURE_MS - 500);
+    k = keyguard({timeoutMs: 5000 * SLOW, firstMs: cap, stuck: true});
     await k.first;
-    check(k.shown.length === 0 && k.firstMs >= 490 && k.firstMs < 2000,
+    check(k.shown.length === 0 && k.firstMs >= cap - 10 && k.firstMs < FIRST_PICTURE_MS,
         `the launcher never ends and the picture never decodes: loaded after the cap all the same, so the boot ` +
-        `splash goes (${Math.round(k.firstMs)} ms of 500)`);
+        `splash goes (${Math.round(k.firstMs)} ms of ${cap})`);
     k.cancellable.cancel();
     since = GLib.get_monotonic_time();
     await k.done;
     const pid4 = read(`${T}/pid`)?.trim();
-    check(ms(since) < 1000 && k.shown.length === 0 && k.failed.length === 0 && pid4 && pid4 !== pid3 &&
-        !GLib.file_test(`/proc/${pid4}`, GLib.FileTest.EXISTS),
+    check(ms(since) < 1000 * SLOW && k.shown.length === 0 && k.failed.length === 0 && pid4 && pid4 !== pid3 &&
+        leftover().length === 0,
     'then stopped: over at once, nothing shown, no launcher left');
 }
 

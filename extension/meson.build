@@ -73,9 +73,10 @@ endif
 
 # the lock screen's picture of the wallpaper at rest: made by the launcher once and taken from the cache, a launcher
 # that never ends ended after a timeout, and the first picture never held up by it (the boot splash's wait), against a
-# stand-in launcher (tests/rest-picture.sh); needs gjs
+# stand-in launcher (tests/rest-picture.sh); needs gjs. About 5 s, and nearer 50 s under emulation, where its
+# timeouts are stretched four times (VIBEOS_TEST_EMULATED)
 if gjs.found()
-  test('rest-picture', find_program('tests/rest-picture.sh'), args: [meson.current_source_dir()], timeout: 60)
+  test('rest-picture', find_program('tests/rest-picture.sh'), args: [meson.current_source_dir()], timeout: 180)
 endif
 
 # every name a module uses is declared or imported (tests/undefined-names.sh); needs TypeScript's checker
