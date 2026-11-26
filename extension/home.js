@@ -10,7 +10,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {SingleStack} from './stack.js';
 
-const LAUNCHER = ['/usr/local/bin/vibeos-launcher'];
+export const LAUNCHER = ['/usr/local/bin/vibeos-launcher'];
 const RESPAWN_MS = 1000;
 
 // mutter's suspend state of a window seen (META_WINDOW_SUSPEND_STATE_ACTIVE; the enum is private to mutter, not in its

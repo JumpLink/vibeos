@@ -24,6 +24,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Signals from 'resource:///org/gnome/shell/misc/signals.js';
 
 import {PatternView, PinView, Strings, touchSlot, tryAgainIn} from './bouncer.js';
+import {LAUNCHER} from './home.js';
 import {Canvas, paintIcon} from './icons.js';
 import {_, DATE_SHORT, formatDate} from './l10n.js';
 import {animate, clamp, EMPHASIZED_ACCELERATE, FAST_OUT_SLOW_IN, lerp, LINEAR, MIN_FLING_VELOCITY,
@@ -33,7 +34,9 @@ import {chargingText} from './state.js';
 import {notificationIcon, SystemIcons, systemEnd} from './statusbar.js';
 import {AndroidText} from './text.js';
 import {wholeFrames} from './redraws.js';
-import {geometry, HEIGHT, landscape, px, screenPixels, SCALE, SCREEN_SCALE, SCREEN_W, TABLET, WIDTH} from './units.js';
+import {lockWallpaper} from './restpicture.js';
+import {DENSITY, geometry, HEIGHT, landscape, px, screenPixels, SCALE, SCREEN_SCALE, SCREEN_W, TABLET, WIDTH} from
+    './units.js';
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
@@ -302,7 +305,7 @@ export class Keyguard extends Signals.EventEmitter {
         this._wallpaperStyle = null;
         this._wallpaperLoad = null;
         this._wallpaperShape = '';
-        this._covers = new Map();       // the decoded wallpaper by the screen's shape it covers ("WxH")
+        this._covers = new Map();       // the launcher's picture at rest, decoded, by the screen's shape ("WxH")
         this.wallpaperLoaded = Promise.resolve();
         this._loadThrottle();
 
@@ -433,10 +436,12 @@ export class Keyguard extends Signals.EventEmitter {
         this.actor.connect('event', (a, event) => this._onEvent(event));
     }
 
-    // The wallpaper loads off the main loop (loadCover()); the one before stays until it is in. wallpaperLoaded
-    // resolves once it is on, or once it failed and the CSS background took its place. Each shape of the screen gets
-    // its own cover, kept while the picture stays: a turned tablet has its other one at once. @changed: another
-    // picture, every cover made again.
+    // The wallpaper loads off the main loop (loadCover()); the one before stays until it is in. It is the home's at
+    // rest, as the launcher makes it for this shape of the screen, and until that is made the picture itself
+    // (restpicture.js lockWallpaper()). wallpaperLoaded resolves once the first of them is on, or once it failed and
+    // the CSS background took its place, and after 2 s at the latest (FIRST_PICTURE_MS): never later for the
+    // launcher. Each shape of the screen keeps the launcher's while the picture stays: a turned tablet has its other
+    // one at once. @changed: another picture, every one made again.
     _syncWallpaper(changed = false) {
         const [w, h] = panelPixels();
         const shape = `${w}x${h}`;
@@ -445,10 +450,10 @@ export class Keyguard extends Signals.EventEmitter {
         else if (shape === this._wallpaperShape)
             return;
         this._wallpaperShape = shape;
+        this._wallpaperLoad?.cancel();
+        this._wallpaperLoad = null;
         const cover = this._covers.get(shape);
         if (cover) {
-            this._wallpaperLoad?.cancel();
-            this._wallpaperLoad = null;
             this._setWallpaper(cover, null);
             this.wallpaperLoaded = Promise.resolve();
             return;
@@ -456,8 +461,6 @@ export class Keyguard extends Signals.EventEmitter {
         const dark = this._interface.get_string('color-scheme') === 'prefer-dark';
         const uri = pictureUri((dark && this._background.get_string('picture-uri-dark')) ||
             this._background.get_string('picture-uri'));
-        this._wallpaperLoad?.cancel();
-        this._wallpaperLoad = null;
         if (!uri) {
             this._setWallpaper(null, 'background-color: black;');
             this.wallpaperLoaded = Promise.resolve();
@@ -465,17 +468,22 @@ export class Keyguard extends Signals.EventEmitter {
         }
         const cancellable = new Gio.Cancellable();
         this._wallpaperLoad = cancellable;
-        this.wallpaperLoaded = loadCover(uri, w, h, cancellable).then(content => {
-            if (cancellable.is_cancelled())
-                return;
-            this._covers.set(shape, content);
-            this._setWallpaper(content, null);
-        }, e => {
-            if (cancellable.is_cancelled())
-                return;
-            logError(e, `vibeos: the lock screen's wallpaper ${uri}`);
-            this._setWallpaper(null, `background-image: url("${uri}"); background-size: cover;`);
-        }).finally(() => {
+        const {first, done} = lockWallpaper({
+            launcher: LAUNCHER[0], path: Gio.File.new_for_uri(uri).get_path(), uri, w, h, density: DENSITY,
+            turned: TABLET, cancellable,
+            load: picture => loadCover(picture, w, h, cancellable),
+            show: (content, rest) => {
+                if (rest)
+                    this._covers.set(shape, content);
+                this._setWallpaper(content, null);
+            },
+            fail: e => {
+                logError(e, `vibeos: the lock screen's wallpaper ${uri}`);
+                this._setWallpaper(null, `background-image: url("${uri}"); background-size: cover;`);
+            },
+        });
+        this.wallpaperLoaded = first;
+        done.finally(() => {
             if (this._wallpaperLoad === cancellable)
                 this._wallpaperLoad = null;
         });
