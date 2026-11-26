@@ -86,10 +86,24 @@ const agent = Gio.DBusExportedObject.wrapJSObject(AGENT_IFACE, {
     },
 });
 
-const wait = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
+// under emulation every time is stretched four times: these waits, and the handlers' own (power-keys.sh)
+const SLOW = GLib.getenv('VIBEOS_TEST_EMULATED') ? 4 : 1;
+const wait = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms * SLOW, () => {
     resolve();
     return GLib.SOURCE_REMOVE;
 }));
+// and under emulation each check waits until what the handlers sent so far has arrived: a round trip to the bus daemon
+// comes back after every message sent before it, on the session's connection (Agent, the feedback) and the system's
+// (UPower). Only before a check, never between a press and its release, where it would lengthen the press
+const busRoundTrip = bus => new Promise(resolve => bus.call('org.freedesktop.DBus', '/org/freedesktop/DBus',
+    'org.freedesktop.DBus', 'GetId', null, null, Gio.DBusCallFlags.NONE, -1, null, () => resolve()));
+async function delivered() {
+    if (SLOW === 1)
+        return;
+    await busRoundTrip(Gio.DBus.session);
+    await busRoundTrip(Gio.DBus.system);
+    await busRoundTrip(Gio.DBus.session);
+}
 
 let failed = 0;
 function check(what, got, want) {
@@ -175,16 +189,21 @@ async function main() {
     await wait(100);
     release(t.power);
     await wait(100);
+    await delivered();
     check('short press: the screen goes off', t.power.slept, 1);
+    await delivered();
     check('short press: no power menu, Agent not told', [t.menu.opened, holds], [0, []]);
 
     t = phone();
     press(t.power);
     await wait(700);
+    await delivered();
     check('held, unlocked: Agent opened and listening', [t.service.launched, holds], [[AGENT], ['hold [true,false]']]);
+    await delivered();
     check('held: no power menu, one tick', [t.menu.opened, ticks], [0, 1]);
     release(t.power);
     await wait(150);
+    await delivered();
     check('let go: Agent told, the screen stays on', [holds, t.power.slept], [['hold [true,false]', 'hold [false,false]'], 0]);
 
     t = phone({locked: true});
@@ -192,6 +211,7 @@ async function main() {
     await wait(700);
     release(t.power);
     await wait(150);
+    await delivered();
     check('held, locked: no window, Agent told the phone is locked', [t.service.launched, holds],
         [[], ['hold [true,true]', 'hold [false,true]']]);
 
@@ -200,6 +220,7 @@ async function main() {
     await wait(700);
     release(t.power);
     await wait(150);
+    await delivered();
     check('held from a dark screen: woken, Agent on the locked phone', [t.power.woke, t.power.slept, holds],
         [1, 0, ['hold [true,true]', 'hold [false,true]']]);
 
@@ -208,6 +229,7 @@ async function main() {
     await wait(700);
     release(t.power);
     await wait(150);
+    await delivered();
     check('switch off: held opens the power menu', [t.menu.opened, holds, t.power.slept], [1, [], 0]);
 
     t = phone({agentInstalled: false});
@@ -215,6 +237,7 @@ async function main() {
     await wait(700);
     release(t.power);
     await wait(150);
+    await delivered();
     check('Agent not installed: held opens the power menu', [t.menu.opened, holds], [1, []]);
 
     t = phone();
@@ -225,6 +248,7 @@ async function main() {
     release(t.power);
     t.chord.volumeRelease();
     await wait(150);
+    await delivered();
     check('power, then volume up: the power menu only', [t.menu.opened, t.menu.shown, key.acted, holds, t.power.slept],
         [1, true, 0, [], 0]);
 
@@ -236,6 +260,7 @@ async function main() {
     release(t.power);
     t.chord.volumeRelease();
     await wait(150);
+    await delivered();
     check('volume up, then power: the power menu only, and it stays open',
         [t.menu.opened, t.menu.shown, key.acted, holds, t.power.slept], [1, true, 0, [], 0]);
 
@@ -248,6 +273,7 @@ async function main() {
     release(t.power);
     t.chord.volumeRelease();
     await wait(150);
+    await delivered();
     check('power held, volume up 250 ms later: the power menu, the volume as it was, no Agent',
         [t.menu.shown, key.acted, holds, t.power.slept], [true, 0, [], 0]);
 
@@ -259,6 +285,7 @@ async function main() {
     release(t.power);
     t.chord.volumeRelease();
     await wait(150);
+    await delivered();
     check('power held, Agent listening, then volume up: the power menu, Agent stops without the key\'s up',
         [t.menu.shown, key.acted, holds, t.power.slept], [true, 0, ['hold [true,false]', 'hold-cancel'], 0]);
 
@@ -269,6 +296,7 @@ async function main() {
     await wait(150);
     release(t.power);
     await wait(150);
+    await delivered();
     check('an Agent without hold-cancel is let go instead, once',
         [t.menu.shown, holds], [true, ['hold [true,false]', 'hold [false,false]']]);
 
@@ -280,6 +308,7 @@ async function main() {
     release(t.power);
     t.chord.volumeRelease();
     await wait(150);
+    await delivered();
     check('volume up held, power 400 ms later: the power menu, the volume\'s step kept, no Agent, no sleep',
         [t.menu.shown, key.acted, holds, t.power.slept], [true, 1, [], 0]);
 
@@ -291,6 +320,7 @@ async function main() {
     release(t.power);
     t.chord.volumeRelease();
     await wait(150);
+    await delivered();
     check('power held, volume down 250 ms later: no screenshot, the volume and the sleep as without a chord',
         [t.chord.shots, key.acted, t.menu.opened, t.power.slept], [0, 1, 0, 1]);
 
@@ -302,6 +332,7 @@ async function main() {
     release(t.power);
     t.chord.volumeRelease();
     await wait(150);
+    await delivered();
     check('volume down held, power 300 ms later: no screenshot, the screen goes off',
         [t.chord.shots, key.acted, t.menu.opened, t.power.slept], [0, 1, 0, 1]);
 
@@ -309,6 +340,7 @@ async function main() {
     key = volume(t.chord, +1);
     await wait(250);
     t.chord.volumeRelease();
+    await delivered();
     check('volume up alone: the volume, after the chord\'s 150 ms', [key.acted, t.menu.opened], [1, 0]);
 
     t = phone();
@@ -319,6 +351,7 @@ async function main() {
     release(t.power);
     t.chord.volumeRelease();
     await wait(150);
+    await delivered();
     check('power and volume down: a screenshot', [t.chord.shots, t.menu.opened, key.acted, t.power.slept], [1, 0, 0, 0]);
 
     t = phone();
@@ -330,27 +363,34 @@ async function main() {
     await wait(700);
     release(t.power);
     await wait(150);
+    await delivered();
     check('double press: the app, and its held second press starts no Agent',
         [t.power.slept, t.power.woke, t.service.launched, holds, t.menu.opened], [1, 1, [AGENT], [], 0]);
 
     let c = await covered();
+    await delivered();
     check('cover open at the start: nothing', c.acted, []);
     setUPower('LidIsClosed', true);
     await wait(200);
+    await delivered();
     check('cover closed: the screen goes to sleep as by the power key', c.acted, ['sleep cover']);
     setUPower('OnBattery', false);
     await wait(200);
+    await delivered();
     check('another of UPower\'s properties: nothing', c.acted, ['sleep cover']);
     setUPower('LidIsClosed', false);
     await wait(200);
+    await delivered();
     check('cover opened: the screen wakes', c.acted, ['sleep cover', 'wake cover']);
     c.stop();
 
     setUPower('LidIsClosed', true);
     c = await covered();
+    await delivered();
     check('cover closed at the start: nothing', c.acted, []);
     setUPower('LidIsClosed', false);
     await wait(200);
+    await delivered();
     check('then opened: the screen wakes', c.acted, ['wake cover']);
     c.stop();
 
@@ -358,6 +398,7 @@ async function main() {
     c = await covered();
     setUPower('LidIsClosed', true);
     await wait(200);
+    await delivered();
     check('no cover (LidIsPresent false): LidIsClosed does nothing', c.acted, []);
     c.stop();
 }

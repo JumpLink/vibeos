@@ -19,11 +19,12 @@ configure_file(input: 'home.js', output: 'home.js', install_dir: extdir,
   command: ['sed', '-e', 's|/usr/local/bin/vibeos-launcher|' + bindir + '/vibeos-launcher|', '@INPUT@'], capture: true)
 
 # the power key's handlers driven directly, never with a real key (tests/power-keys.sh); needs gjs and a D-Bus daemon.
-# Alone: its chords are 250 ms apart, which tests running beside it on a loaded machine can stretch
+# Alone: its chords are 250 ms apart, which tests running beside it on a loaded machine can stretch. About 15 s of
+# waits, four times that under emulation (VIBEOS_TEST_EMULATED)
 gjs = find_program('gjs', required: false)
 dbus_run_session = find_program('dbus-run-session', required: false)
 if gjs.found() and dbus_run_session.found()
-  test('power-keys', find_program('tests/power-keys.sh'), args: [meson.current_source_dir()], timeout: 120,
+  test('power-keys', find_program('tests/power-keys.sh'), args: [meson.current_source_dir()], timeout: 300,
     is_parallel: false)
 endif
 

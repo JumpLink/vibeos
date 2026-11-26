@@ -28,6 +28,11 @@ import time
 
 from gi.repository import Gio, GLib
 
+# under emulation (VIBEOS_TEST_EMULATED: the arm64 package build under qemu-user) a program takes far longer to start
+# over, so the longest a wait allows for what must happen is stretched four times; a settle, for what must not have
+# happened yet, is not
+SLOW = 4 if os.environ.get('VIBEOS_TEST_EMULATED') else 1
+
 BUS_CONFIG = '''<busconfig><type>session</type><listen>unix:tmpdir=%s</listen><auth>EXTERNAL</auth>
 <policy context="default"><allow send_destination="*" eavesdrop="true"/><allow eavesdrop="true"/>
 <allow own="*"/></policy></busconfig>'''
@@ -161,7 +166,7 @@ class Test:
 
     def wait(self, what, predicate, timeout=5.0):
         ctx = GLib.MainContext.default()
-        end = time.time() + timeout
+        end = time.time() + timeout * SLOW
         while time.time() < end:
             while ctx.pending():
                 ctx.iteration(False)

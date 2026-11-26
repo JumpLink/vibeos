@@ -182,13 +182,13 @@ printf 'the rest picture of %s at %sx%s, %s\\n' "$2" "$3" "$4" "$5" > "$6"
     let k = keyguard();
     await k.done;
     check(k.ran() === 0 && k.shown.length === 1 && k.shown[0].rest && k.shown[0].uri === r.rest.uri &&
-        k.firstMs <= k.shown[0].ms + 50, 'made already: the lock screen shows the launcher\'s picture, at once');
+        k.firstMs <= k.shown[0].ms + 50 * SLOW, 'made already: the lock screen shows the launcher\'s picture, at once');
 
     touch(PICTURE, 10);
     k = keyguard({turned: true});
     await k.done;
     check(k.shown.length === 2 && !k.shown[0].rest && k.shown[0].text === 'a picture' && k.shown[1].rest &&
-        k.firstMs <= k.shown[0].ms + 50 && k.shown[0].ms <= k.shown[1].ms,
+        k.firstMs <= k.shown[0].ms + 50 * SLOW && k.shown[0].ms <= k.shown[1].ms,
     'not made yet: the picture itself first (the first picture), then the launcher\'s');
     check(k.ran() === 2 && runs().at(-1).startsWith(`--rest-picture ${PICTURE} 2560 1600 2 `),
         'a tablet: its turned shape made next');

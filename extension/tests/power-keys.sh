@@ -16,6 +16,14 @@ for f in power.js chord.js keylaunch.js; do
 	sed -E -e "s#'gi://(Clutter|Meta|Shell|St)'#'./gi-\1.js'#" \
 	    -e "s#'resource:///org/gnome/shell/(ui|misc)/([a-z]+\.js)'#'./\2'#" "$src/$f" > "$t/$f"
 done
+# under emulation (VIBEOS_TEST_EMULATED: the arm64 package build under qemu-user) a timer can run late by more than a
+# window's margin (a 450 ms press read as a 500 ms hold), so every time is stretched four times: the copies' own
+# (their *_MS constants) here, and the test's waits in power-keys.js. Each stays in the same order as the others
+if [ -n "${VIBEOS_TEST_EMULATED:-}" ]; then
+	sed -i -E 's/^(const [A-Z_]+_MS = )(.+);$/\1(\2) * 4;/' "$t/power.js" "$t/chord.js"
+	grep -q '^const LONG_PRESS_MS = (500) \* 4;$' "$t/power.js" && grep -q '^const COMBINE_MS = (150) \* 4;$' "$t/chord.js" ||
+		{ echo "power-keys.sh: the handlers' times were not stretched" >&2; exit 1; }
+fi
 cp "$src/../vibeos-launcher/data/vibeos.Shell.gschema.xml" "$t/schemas/"
 glib-compile-schemas "$t/schemas"
 # nothing of the session's: no GVFS daemon started on the test's bus, the runtime directory the test's own
