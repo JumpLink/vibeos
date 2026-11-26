@@ -114,6 +114,10 @@ msg_action_bar_add_overflow (GtkWidget *bar)
   GtkWidget *end = g_object_get_data (G_OBJECT (bar), "end");
   GtkWidget *button = icon_button ("msg-more-vert-symbolic", BUTTON, _("More options"));
 
+  /* where every top bar has its ⋮ (vibeos-top-bar.h), rather than EDGE in from the end */
+  gtk_widget_add_css_class (button, "vibeos-top-bar-end");
+  gtk_widget_set_size_request (button, -1, BUTTON);
+  gtk_widget_set_margin_end (end, 0);
   gtk_box_append (GTK_BOX (end), button);
   g_object_set_data (G_OBJECT (bar), "overflow", button);
   return button;

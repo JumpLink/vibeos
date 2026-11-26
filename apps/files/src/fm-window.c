@@ -1609,7 +1609,7 @@ toolbar_new (Shell *s)
   gtk_stack_set_vhomogeneous (GTK_STACK (stack), TRUE);
 
   /* normal: ☰, the title, the actions and the overflow */
-  shell->nav = fm_icon_button ("open-menu-symbolic", _("Navigation menu"), 56, 56);
+  shell->nav = fm_icon_button_sized ("vibeos-menu-symbolic", _("Navigation menu"), 56, 56, 24);
   g_signal_connect (shell->nav, "clicked", G_CALLBACK (on_nav), shell);
   gtk_box_append (GTK_BOX (normal), shell->nav);
   shell->title = title_label (_("Files"));
@@ -1626,8 +1626,10 @@ toolbar_new (Shell *s)
   /* the theme's list-add drawn larger than the other glyphs, as its + fills less of its box */
   s->add = fm_icon_button_sized ("list-add-symbolic", _("New location"), 48, 56, 20);
   g_signal_connect (s->add, "clicked", G_CALLBACK (on_add), shell);
-  s->overflow = fm_icon_button ("view-more-symbolic", _("More options"), 36, 56);
-  gtk_widget_set_margin_end (s->overflow, 4);
+  /* ⋮ where every top bar has it (vibeos-top-bar.h) */
+  s->overflow = fm_icon_button_sized ("vibeos-more-symbolic", _("More options"), 48, 56, 24);
+  gtk_widget_add_css_class (s->overflow, "vibeos-top-bar-end");
+  gtk_widget_set_size_request (s->overflow, -1, 56);
   g_signal_connect (s->overflow, "clicked", G_CALLBACK (on_overflow), shell);
   gtk_box_append (GTK_BOX (shell->actions), s->search);
   gtk_box_append (GTK_BOX (shell->actions), s->view);

@@ -2,10 +2,6 @@
  * sizes are sp and every other size dp (libvibeos converts them for Font size); Bold text draws each weight 300
  * heavier. */
 
-.dictate-bar-end {                       /* the last action, off the screen's edge as in the Calendar */
-  margin-right: 4dp;
-}
-
 /* the language button: its code in a key cap's outline, as the keyboard's language key */
 .dictate-language label {
   font-size: 12sp;

@@ -770,9 +770,10 @@ update_actions (Info *info)
     {
       GtkWidget *more = cal_page_action ("cal-more-symbolic", _("More options"));
 
-      /* the overflow button, narrower than an action, as the main toolbar's */
+      /* the overflow button, as the main toolbar's */
       gtk_widget_remove_css_class (more, "cal-action");
       gtk_widget_add_css_class (more, "cal-toolbar-more");
+      gtk_widget_add_css_class (more, "vibeos-top-bar-end");
 
       rest = g_memdup2 (all + shown, sizeof (Action) * (n - shown));
       g_object_set_data_full (G_OBJECT (more), "cal-actions", rest, g_free);

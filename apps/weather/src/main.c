@@ -1813,10 +1813,12 @@ activate (GtkApplication *app, gpointer data)
   gtk_widget_add_css_class (bar, "wx-bar");
   p->spinner = gtk_spinner_new ();
   gtk_widget_add_css_class (p->spinner, "wx-spinner");
-  GtkWidget *reload = vibeos_icon_button_new ("view-refresh-symbolic");
+  GtkWidget *reload = vibeos_icon_button_new ("vibeos-refresh-symbolic");
   gtk_accessible_update_property (GTK_ACCESSIBLE (reload), GTK_ACCESSIBLE_PROPERTY_LABEL, _("Reload"), -1);
   g_signal_connect (reload, "clicked", G_CALLBACK (refresh_clicked), p);
-  GtkWidget *more = vibeos_icon_button_new ("view-more-symbolic");
+  GtkWidget *more = vibeos_icon_button_new ("vibeos-more-symbolic");
+  /* where every top bar has its ⋮ (vibeos-top-bar.h) */
+  gtk_widget_add_css_class (more, "vibeos-top-bar-end");
   gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
   g_signal_connect (more, "clicked", G_CALLBACK (more_clicked), p);
   gtk_box_append (GTK_BOX (bar), p->spinner);

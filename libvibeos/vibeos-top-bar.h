@@ -17,6 +17,14 @@
 
 G_BEGIN_DECLS
 
+/* The buttons at the top of a screen are one size in every app, the Calculator's: a 48 dp touch target round a 24 dp
+ * glyph (vibeos_icon_button_new), the glyph from Material Symbols (libvibeos has the common ones: vibeos-more-symbolic,
+ * vibeos-refresh-symbolic, vibeos-menu-symbolic; Adwaita's view-more and view-refresh are a size larger), side by side, centred on the bar's height, the last one's glyph VIBEOS_TOP_BAR_END_CENTRE dp from the
+ * bar's end: where Android puts the overflow ⋮, its target running past the edge. The top bar puts its actions so; a
+ * bar an app lays out itself gives its last button the CSS class vibeos-top-bar-end, which does the same. */
+#define VIBEOS_TOP_BAR_HEIGHT     64
+#define VIBEOS_TOP_BAR_END_CENTRE (66.5 / 3)
+
 #define VIBEOS_TYPE_TOP_BAR (vibeos_top_bar_get_type ())
 G_DECLARE_FINAL_TYPE (VibeosTopBar, vibeos_top_bar, VIBEOS, TOP_BAR, GtkWidget)
 

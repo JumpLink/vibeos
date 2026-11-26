@@ -9,7 +9,7 @@
 
 #include <math.h>
 
-#define BAR_H          64
+#define BAR_H          VIBEOS_TOP_BAR_HEIGHT
 #define COMPACT_H      56
 #define BACK           40     /* the back button's circle */
 #define TABLET_BACK    44     /* and on a tablet: 56 filled the 64 bar and touched the card under it (owner, 11-21) */
@@ -17,7 +17,7 @@
 #define TITLE_GAP      20     /* from the circle to the title */
 #define TITLE_X        24     /* the title without a back button */
 #define BUTTON         48     /* an icon button's touch target */
-#define END_PAD        4
+#define END_PAD        (VIBEOS_TOP_BAR_END_CENTRE - BUTTON / 2.0)   /* -1.83: the last target runs off the end */
 
 struct _VibeosTopBar {
   GtkWidget      parent;

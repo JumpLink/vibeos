@@ -1118,7 +1118,10 @@ make_actions (Quick *quick)
 
   quick->star = ct_icon_button ("ct-star-border-symbolic", _("Add to favorites"), 48, CT_TOOLBAR_H_DP);
   quick->edit = ct_icon_button ("ct-create-symbolic", _("Edit"), 48, CT_TOOLBAR_H_DP);
-  quick->overflow = ct_icon_button ("ct-more-vert-symbolic", _("More options"), 40, CT_TOOLBAR_H_DP);
+  quick->overflow = ct_icon_button ("ct-more-vert-symbolic", _("More options"), 48, CT_TOOLBAR_H_DP);
+  /* where every top bar has its ⋮ (vibeos-top-bar.h) */
+  gtk_widget_add_css_class (quick->overflow, "vibeos-top-bar-end");
+  gtk_widget_set_size_request (quick->overflow, -1, CT_TOOLBAR_H_DP);
   g_signal_connect (quick->star, "clicked", G_CALLBACK (on_star), quick);
   g_signal_connect (quick->edit, "clicked", G_CALLBACK (on_edit), quick);
   g_signal_connect (quick->overflow, "clicked", G_CALLBACK (on_overflow), quick);

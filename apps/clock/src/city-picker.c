@@ -545,9 +545,10 @@ city_picker_init (CityPicker *self)
   g_signal_connect (clock_bar_get_up (self->bar), "clicked", G_CALLBACK (on_up), self);
   self->search_button = clock_bar_add_icon (self->bar, "clock-search-symbolic", 48, _("Search"));
   g_signal_connect (self->search_button, "clicked", G_CALLBACK (on_search), self);
-  /* the overflow button: narrower than the search, a little in from the edge */
-  more = clock_bar_add_icon (self->bar, "clock-more-symbolic", 36, _("More options"));
-  gtk_widget_set_margin_end (more, 4);
+  /* the overflow button where every top bar has its ⋮ (vibeos-top-bar.h) */
+  more = clock_bar_add_icon (self->bar, "clock-more-symbolic", 48, _("More options"));
+  gtk_widget_add_css_class (more, "vibeos-top-bar-end");
+  gtk_widget_set_size_request (more, -1, 48);
   g_signal_connect (more, "clicked", G_CALLBACK (on_overflow), self);
 
   /* the search field, open: the query (each word capitalised) and its close button */

@@ -47,15 +47,8 @@ window.vibeos.cal-window {
   color: @vibeos_on_surface;
 }
 
-.cal-toolbar-more {                      /* the overflow button, narrower than the others */
-  min-width: 40dp;
+.cal-toolbar-more {                      /* the overflow button: placed as every top bar's (.vibeos-top-bar-end) */
   color: @vibeos_on_surface_variant;
-}
-
-/* its icon nearer the start than the end, the ripple still on the whole button */
-.cal-toolbar-more > image {
-  margin-left: 6dp;
-  margin-right: 10dp;
 }
 
 /* a tablet: TODAY spelled out after the icon */

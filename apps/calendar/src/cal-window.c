@@ -1104,6 +1104,7 @@ make_toolbar (Shell *shell)
 
   more = vibeos_icon_button_new ("cal-more-symbolic");
   gtk_widget_add_css_class (more, "cal-toolbar-more");
+  gtk_widget_add_css_class (more, "vibeos-top-bar-end");
   gtk_accessible_update_property (GTK_ACCESSIBLE (more), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"), -1);
   g_signal_connect (more, "clicked", G_CALLBACK (on_more), shell);
   gtk_box_append (GTK_BOX (bar), more);

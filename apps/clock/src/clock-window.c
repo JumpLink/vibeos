@@ -465,6 +465,9 @@ clock_window_new (GtkApplication *app, GSettings *settings)
   gtk_widget_set_valign (more_button, GTK_ALIGN_CENTER);
   vibeos_pressable_set_ripple (VIBEOS_PRESSABLE (more_button), VIBEOS_RIPPLE_CIRCLE, 20);
   gtk_widget_add_css_class (more_button, "clock-settings-button");
+  /* where every top bar has its ⋮ (vibeos-top-bar.h), the class's width */
+  gtk_widget_add_css_class (more_button, "vibeos-top-bar-end");
+  gtk_widget_set_size_request (more_button, -1, 48);
   gtk_accessible_update_property (GTK_ACCESSIBLE (more_button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("More options"),
                                   -1);
   g_signal_connect (more_button, "clicked", G_CALLBACK (on_more_button), shell);
