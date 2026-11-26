@@ -14,6 +14,8 @@ usr/share/gnome-shell/modes/vibeos.json
 usr/share/gnome-session/sessions/vibeos.session
 usr/lib/systemd/user/gnome-session@vibeos.target.d
 usr/lib/systemd/user/vibeos-default-face.service
+usr/lib/systemd/user/xdg-user-dirs.service.d
+usr/lib/systemd/user/user-dirs-update-gtk.service.d
 usr/libexec/vibeos-default-face
 usr/share/pixmaps/faces/trapu.png
 usr/share/wayland-sessions/vibeos.desktop

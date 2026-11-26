@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <gio/gdesktopappinfo.h>
 #include <glib/gstdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <unistd.h>
@@ -212,11 +213,27 @@ start_over (void)
   g_warning ("Settings could not start over: %s", g_strerror (errno));
 }
 
+/* xdg-user-dirs-gtk offers to rename the standard folders when the language they were named in (user-dirs.locale) is
+ * not the session's. VibeOS keeps their English names in every language and turns it off in the session
+ * (vibeos-session's user-dirs-update-gtk.service.d); this also keeps it quiet where the user's service manager
+ * started before that was installed, as its own "Don't ask me this again" does: the locale as it compares it,
+ * setlocale's with the "." on cut off. Nothing is renamed. */
+static void
+user_dirs_locale (const char *loc)
+{
+  g_autofree char *l = g_strndup (loc, strcspn (loc, "."));
+  g_autofree char *file = g_build_filename (g_get_user_config_dir (), "user-dirs.locale", NULL);
+  g_autoptr (GError) error = NULL;
+  if (*l && !g_file_set_contents (file, l, -1, &error))
+    g_warning ("user-dirs.locale: %s", error->message);
+}
+
 /* The session in @loc at once (Android's way): the programs started from now on, the launcher (it follows the
  * change), and Settings, started over in it. Apps that are open keep theirs until they start again. */
 static void
 switch_language (const char *loc)
 {
+  user_dirs_locale (loc);
   g_autoptr (GSettings) s = ns_settings ("org.gnome.system.locale");
   g_autofree char *region = s ? g_settings_get_string (s, "region") : NULL;
   g_autoptr (GError) error = NULL;

@@ -101,6 +101,10 @@ vibeos (1:0.1.5) unstable; urgency=medium
   * Home screen: dragging an icon on a page of more than 25 cells, which
     is every page after the first on a tablet, could crash the launcher
     or drop the icon in the wrong cell. Every grid up to 8 × 8 works.
+  * The standard folders (Documents, Downloads, Music, Pictures …) keep
+    their English names in every language: a language change no longer
+    asks "Update standard folders to current language?", and the folders
+    a user has are never renamed or moved.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 

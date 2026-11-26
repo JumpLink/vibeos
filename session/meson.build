@@ -67,6 +67,11 @@ configure_file(input: 'vibeos-default-face.service', output: 'vibeos-default-fac
                capture: true, install_dir: systemd_user)
 install_data('gdm/vibeos-default-face.conf', install_dir: systemd_user / 'gnome-session@vibeos.target.d')
 test('default-face', find_program('tests/default-face.sh'), args: [meson.current_source_dir()])
+# the standard folders keep their English names in every language, and nothing asks to rename them after a language
+# change (see the files)
+install_data('systemd-user/xdg-user-dirs.service.d/50-vibeos.conf', install_dir: systemd_user / 'xdg-user-dirs.service.d')
+install_data('systemd-user/user-dirs-update-gtk.service.d/50-vibeos.conf',
+             install_dir: systemd_user / 'user-dirs-update-gtk.service.d')
 # GNOME's own screen lock off: the keyguard is the lock screen (see the file)
 install_data('90_vibeos.gschema.override', install_dir: datadir / 'glib-2.0' / 'schemas')
 # the session's default apps: App Installer for .deb files, Files for folders (see the file)
