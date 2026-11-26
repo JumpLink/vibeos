@@ -6,7 +6,7 @@ ringing out, active or held, and closes it when the last one ends. No audio data
 
   vibeos-q6voiced [hw:CARD,DEVICE]    default: the PCM /proc/asound/pcm names VoiceMMode1
 """
-import ctypes, re, sys
+import ctypes, re, sys, time
 
 PCM_NAME = 'VoiceMMode1'
 # MMCallState: DIALING, RINGING_OUT, ACTIVE, HELD
@@ -30,6 +30,37 @@ def find_device(proc='/proc/asound/pcm'):
     return None
 
 
+class Settle:
+    """waits until the sound card's mixer goes quiet. The session's audio manager (WirePlumber's voice-call profile)
+    routes the earpiece on the same ModemManager signal this service acts on, and a voice stream the DSP starts
+    before that route stands stays silent for the whole call: on the OnePlus 6T the far end was heard in one call of
+    two. So: wait up to FIRST seconds for a control to change, then until none has for QUIET, at most MOST in all"""
+    FIRST, QUIET, MOST = 2.0, 0.5, 5.0
+
+    def __init__(self, lib, clock=time.monotonic):
+        self.lib, self.clock = lib, clock
+
+    def wait(self, card):
+        a = self.lib
+        ctl, ev = ctypes.c_void_p(), ctypes.c_void_p()
+        if a.snd_ctl_open(ctypes.byref(ctl), ('hw:%s' % card).encode(), 0) < 0:
+            return 0
+        a.snd_ctl_subscribe_events(ctl, 1)
+        a.snd_ctl_event_malloc(ctypes.byref(ev))
+        start, changes = self.clock(), 0
+        while True:
+            left = self.MOST - (self.clock() - start)
+            if left <= 0:
+                break
+            if a.snd_ctl_wait(ctl, int(min(left, self.QUIET if changes else self.FIRST) * 1000)) <= 0:
+                break
+            a.snd_ctl_read(ctl, ev)
+            changes += 1
+        a.snd_ctl_event_free(ev)
+        a.snd_ctl_close(ctl)
+        return changes
+
+
 class Alsa:
     """the voice PCM, opened and started both ways (the DSP feeds both). Opening both starts the DSP's voice
     session (q6voice), but the codec turns its SLIMbus channels on only when its stream starts (wcd934x's trigger):
@@ -42,6 +73,7 @@ class Alsa:
         self.lib = ctypes.CDLL('libasound.so.2')
         self.dev, self.find = dev, find
         self.handles = []
+        self.settle = Settle(self.lib)
 
     def open(self):
         a = self.lib
@@ -49,6 +81,8 @@ class Alsa:
         if not dev:
             log('no %s PCM (yet): this call stays silent' % PCM_NAME)
             return False
+        t, n = time.monotonic(), self.settle.wait(dev[3:].split(',')[0])
+        log('mixer quiet after %d changes, %.1f s' % (n, time.monotonic() - t))
         for stream in (self.CAPTURE, self.PLAYBACK):
             h = ctypes.c_void_p()
             r = a.snd_pcm_open(ctypes.byref(h), dev.encode(), stream, 0)

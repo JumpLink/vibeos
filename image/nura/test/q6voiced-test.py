@@ -91,6 +91,7 @@ class FakeLib:
 card = {'dev': None}
 a = q.Alsa.__new__(q.Alsa)
 a.lib, a.dev, a.find, a.handles = FakeLib(), None, lambda: card['dev'], []
+a.settle = type('NoSettle', (), {'wait': lambda self, card: 0})()
 check('late card: no PCM at the first call', a.open(), False)
 card['dev'] = 'hw:0,6'
 check('late card: opens at the next call', a.open(), True)
@@ -128,8 +129,42 @@ class RecordingLib:
 
 a = q.Alsa.__new__(q.Alsa)
 a.lib, a.dev, a.find, a.handles = RecordingLib(), 'hw:0,6', None, []
+a.settle = type('Settled', (), {'wait': lambda self, card: a.lib.calls.append(('settle', card)) or 0})()
 check('started: opens', a.open(), True)
 check('started: capture (1) and playback (2) both started, playback never stopping',
-      a.lib.calls, [('prepare', 1), ('start', 1), ('stop_threshold', 2, BOUNDARY), ('prepare', 2), ('start', 2)])
+      a.lib.calls, [('settle', '0'), ('prepare', 1), ('start', 1), ('stop_threshold', 2, BOUNDARY), ('prepare', 2), ('start', 2)])
+
+# the earpiece route comes from the audio manager on the same call signal: the stream starts only after the mixer
+# went quiet. A fake control device: each wait either sees a change (and takes 0.1 s) or times out
+
+
+class CtlLib:
+    def __init__(self, changes):
+        self.changes, self.now, self.waits, self.closed = list(changes), 0.0, [], False
+
+    def snd_ctl_wait(self, ctl, ms):
+        self.waits.append(ms)
+        if self.changes and self.changes[0] <= self.now + ms / 1000:
+            self.now = max(self.now, self.changes.pop(0))
+            return 1
+        self.now += ms / 1000
+        return 0
+
+    def snd_ctl_close(self, ctl):
+        self.closed = True
+
+    def __getattr__(self, name):
+        return lambda *a: 0
+
+
+def settle(changes):
+    lib = CtlLib(changes)
+    n = q.Settle(lib, clock=lambda: lib.now).wait('0')
+    return n, round(lib.now, 2), lib.closed
+
+
+check('settle: a profile switch 0.8 s in, 3 controls', settle([0.8, 0.85, 0.9]), (3, 1.4, True))
+check('settle: nothing changes, waits FIRST only', settle([]), (0, 2.0, True))
+check('settle: a mixer that never quiets is left after MOST', settle([i / 10 for i in range(100)])[:2], (50, 5.0))
 
 sys.exit(1 if fails else 0)
