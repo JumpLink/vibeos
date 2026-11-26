@@ -37,6 +37,8 @@ resources = gnome.compile_resources('ns-resources', 'src/vibeos-settings.gresour
 gio = dependency('gio-2.0')
 monitors = static_library('monitors', 'src/ns-monitors.c', dependencies: [gio, cc.find_library('m', required: false)])
 mobile_modes = static_library('mobile-modes', 'src/ns-mobile-modes.c', dependencies: gio)
+# which IPv6 address a network's page shows: the app's and the tests'
+ip = static_library('ip', 'src/ns-ip.c', dependencies: gio)
 
 # whether there is a vibration motor (what the keyboard and volume sounds default to): the app's and the tests'
 motor = static_library('motor', 'src/ns-motor.c', dependencies: gio)
@@ -47,7 +49,7 @@ executable('vibeos-settings',
   'src/ns-displays.c', 'src/ns-caps.c', 'src/ns-charge.c', 'src/ns-accounts.c', 'src/ns-accounts-net.c',
   'src/ns-perms.c', 'src/ns-buttons.c',
   resources,
-  link_with: [monitors, motor, mobile_modes],
+  link_with: [monitors, motor, mobile_modes, ip],
   dependencies: deps,
   install: true)
 test('monitors', executable('test-monitors', 'tests/test-monitors.c', link_with: monitors, dependencies: gio,
@@ -55,6 +57,7 @@ test('monitors', executable('test-monitors', 'tests/test-monitors.c', link_with:
 test('motor', executable('test-motor', 'tests/test-motor.c', link_with: motor, dependencies: gio))
 test('mobile-modes', executable('test-mobile-modes', 'tests/test-mobile-modes.c', link_with: mobile_modes,
                                 dependencies: gio))
+test('ip', executable('test-ip', 'tests/test-ip.c', link_with: ip, dependencies: gio))
 i18n.merge_file(input: 'data/vibeos.Settings.desktop.in', output: 'vibeos.Settings.desktop', type: 'desktop',
                 po_dir: 'po', install: true, install_dir: get_option('datadir') / 'applications')
 install_data('data/vibeos.Settings.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')

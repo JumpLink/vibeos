@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-26 01:54+0100\n"
+"POT-Creation-Date: 2026-11-26 08:30+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: German\n"
@@ -1925,6 +1925,10 @@ msgstr "IP-Adresse"
 #: src/ns-net.c
 msgid "Router"
 msgstr "Router"
+
+#: src/ns-net.c
+msgid "IPv6 address"
+msgstr "IPv6-Adresse"
 
 # android: Settings ethernet_mac_address_title
 #: src/ns-net.c

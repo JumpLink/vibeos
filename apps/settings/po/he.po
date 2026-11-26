@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-26 01:54+0100\n"
+"POT-Creation-Date: 2026-11-26 08:30+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Hebrew\n"
@@ -1884,6 +1884,10 @@ msgstr "כתובת ה-IP"
 #: src/ns-net.c
 msgid "Router"
 msgstr "נתב"
+
+#: src/ns-net.c
+msgid "IPv6 address"
+msgstr "כתובת ה-IPv6"
 
 #: src/ns-net.c
 msgid "MAC address"
