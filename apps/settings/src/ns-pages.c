@@ -1676,12 +1676,7 @@ ns_page_wallpaper (GtkWidget *row, gpointer data)
   GSettings *theme = ns_page_settings (page, "vibeos.Theme");
   if (theme)
     ns_row_widget (g, _("Color"), accent_picker (theme));
-
-  /* the launcher's own options: its grid, its icons */
-  if (vibeos) {
-    g = ns_group (c, _("Home screen"));
-    page_row (g, "view-app-grid-symbolic", _("Home screen"), _("Grid, icon size, icon pack"), ns_page_home);
-  }
+  /* the launcher's own options (its grid, its icons) are the Home screen entry's, under the main menu */
   ns_push (page);
 }
 

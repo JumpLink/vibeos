@@ -51,10 +51,11 @@ static const Entry entries[] = {
   { "display-brightness-symbolic", TINT_LIME, N_("Display"), N_("Dark theme, font size, brightness"),
     N_("screen timeout adaptive brightness night light intensity warm amber rotate scale always on aod display size "
     "text bold zoom lock screen"), ns_page_display },
+  /* the launcher's own settings, an entry of their own (owner, 11-26), where they were a row in Wallpaper and style */
+  { "user-home-symbolic", TINT_ORANGE, N_("Home screen"), N_("Grid, icon size, icon pack"),
+    N_("launcher grid columns rows icons drawer app names"), ns_page_home, "vibeos.Shell" },
   { "preferences-desktop-wallpaper-symbolic", TINT_PINK, N_("Wallpaper and style"),
-    N_("Wallpapers, colors, home screen"),
-    N_("background accent dark theme colour color parallax launcher grid columns rows layout icon size pack shape "
-    "app names labels drawer"), ns_page_wallpaper },
+    N_("Wallpapers, colors"), N_("background accent dark theme colour color parallax"), ns_page_wallpaper },
   { NULL },
   { "battery-full-symbolic", TINT_GREEN, N_("Battery"), N_("Charge, power and screen blank"),
     N_("power dim health temperature voltage capacity"), ns_page_battery, NULL, NS_CAP_BATTERY },
@@ -205,7 +206,6 @@ static const Inner inner[] = {
   { N_("Display size and text"), N_("font size bold text zoom scale bigger smaller"), "display-size", ns_page_display },
   { N_("Night light"), N_("warm amber blue light filter evening"), "night-light", ns_page_display },
   { N_("Wallpapers"), N_("background picture photo parallax"), "wallpapers", ns_page_wallpaper },
-  { N_("Home screen"), N_("launcher grid columns rows icons drawer app names"), "home", ns_page_wallpaper },
   { N_("Battery usage"), N_("since last full charge history chart graph"), "battery-usage", ns_page_battery,
     NS_CAP_BATTERY },
   { N_("Battery information"), N_("health temperature capacity voltage"), "battery-info", ns_page_battery,
@@ -540,7 +540,7 @@ static const struct {
   NsActivate  entry;        /* the menu's entry the page is under, NULL for an entry's own page */
   gboolean    deep;         /* the entry's page opens first and this one over it */
 } direct[] = {
-  { "home", ns_page_home, ns_page_wallpaper }, { "multitasking", ns_page_home, ns_page_wallpaper },
+  { "home", ns_page_home }, { "multitasking", ns_page_home },
   { "wallpaper", ns_page_wallpaper }, { "background", ns_page_wallpaper }, { "appearance", ns_page_wallpaper },
   { "wifi", ns_page_wifi, ns_page_connections }, { "wlan", ns_page_wifi, ns_page_connections },
   { "hotspot", ns_page_hotspot, ns_page_connections }, { "wifi-hotspot", ns_page_hotspot, ns_page_connections },
