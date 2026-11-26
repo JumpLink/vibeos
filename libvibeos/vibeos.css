@@ -45,6 +45,12 @@ window.vibeos label {
   padding-left: 24dp;
 }
 
+/* the title's 24 dp from the start: on the right in a right-to-left language */
+.vibeos-app-bar:dir(rtl) {
+  padding-left: 0;
+  padding-right: 24dp;
+}
+
 .vibeos-app-bar-title {
   font-size: 22sp;
   font-weight: 500;
