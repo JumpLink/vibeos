@@ -98,6 +98,9 @@ vibeos (1:0.1.5) unstable; urgency=medium
   * Settings has Home screen as an entry of its own, after Display: the
     grid, icon size, icon pack and app names. Wallpaper and style keeps
     the wallpapers, the parallax and the colours.
+  * Home screen: dragging an icon on a page of more than 25 cells, which
+    is every page after the first on a tablet, could crash the launcher
+    or drop the icon in the wrong cell. Every grid up to 8 × 8 works.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 

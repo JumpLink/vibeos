@@ -393,9 +393,9 @@ grid_setting (const char *key, int tablet_default)
 static void
 layout_read (int *cols, int *rows)
 {
-  *cols = CLAMP (grid_setting ("desktop-grid-columns", TAB_COLS), 3, 8);
-  *rows = CLAMP (grid_setting ("desktop-grid-rows", TAB_ROWS), 3, 8);
-  N.drawer_cols = CLAMP (grid_setting ("drawer-grid-columns", TAB_DRAWER_COLS), 3, 8);
+  *cols = CLAMP (grid_setting ("desktop-grid-columns", TAB_COLS), 3, GRID_MAX);
+  *rows = CLAMP (grid_setting ("desktop-grid-rows", TAB_ROWS), 3, GRID_MAX);
+  N.drawer_cols = CLAMP (grid_setting ("drawer-grid-columns", TAB_DRAWER_COLS), 3, GRID_MAX);
   N.icon_dp = (N.tablet ? TAB_ICON_DP : ICON_DP) * icon_scale ("desktop-icon-scale");
   N.drawer_icon_dp = ICON_DP * icon_scale ("drawer-icon-scale");
   N.labels = !g_settings_get_boolean (N.settings, "desktop-hide-app-labels");

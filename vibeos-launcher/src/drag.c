@@ -70,7 +70,10 @@
 #define PAGE_SCROLL_MS    750.0
 #define NEIGHBOUR_DROP_MS 300.0
 
-#define MAX_CELLS         25
+/* a container's cells: a page of the largest grid (GRID_MAX × GRID_MAX, layout_read's clamp), or the dock. Every array
+ * indexed by a cell is this long, and cell_count () never counts past it */
+#define MAX_CELLS         (GRID_MAX * GRID_MAX)
+G_STATIC_ASSERT (MAX_CELLS >= GRID_MAX * GRID_MAX && DOCK_SLOTS <= MAX_CELLS && TAB_DOCK_SLOTS <= MAX_CELLS);
 #define MAX_ARR           8
 #define DOCK              (-1)
 #define NOWHERE           (-2)
@@ -272,10 +275,18 @@ occupied (int c, int i)
   return model_at (N.model, cell_pos (c, i)) != NULL;
 }
 
+/* home_cells (c), never past the arrays' MAX_CELLS */
+static int
+cell_count (int c)
+{
+  return MIN (home_cells (c), MAX_CELLS);
+}
+
 static int
 nearest (int c, float x, float y)
 {
-  return c == DOCK ? home_dock_nearest (x) : home_cell_nearest (c, x, y);
+  int t = c == DOCK ? home_dock_nearest (x) : home_cell_nearest (c, x, y);
+  return t < cell_count (c) ? t : -1;
 }
 
 /* the cell dx, dy away, or -1 off the grid (or in the clock's row) */
@@ -287,11 +298,11 @@ cell_step (int c, int i, int dx, int dy)
   col += dx;
   row += dy;
   if (c == DOCK)
-    return row == 0 && col >= 0 && col < home_cells (DOCK) ? col : -1;
+    return row == 0 && col >= 0 && col < cell_count (DOCK) ? col : -1;
   if (col < 0 || col >= N.model->cols || row < 0 || row >= N.model->rows)
     return -1;
   int k = row * N.model->cols + col - (c == 0 ? N.model->reserved : 0);
-  return k >= 0 && k < home_cells (c) ? k : -1;
+  return k >= 0 && k < cell_count (c) ? k : -1;
 }
 
 /* the largest circle round the icon's centre inside its cell (getReorderRadius for a folder-capable icon) */
@@ -509,7 +520,7 @@ push (int c, int t, int dx, int dy, int *sol)
 static bool
 solve (int c, int t, float x, float y, int *sol)
 {
-  int n = home_cells (c);
+  int n = cell_count (c);
   for (int k = 0; k < MAX_CELLS; k++)
     sol[k] = k < n && occupied (c, k) ? k : -1;
   if (sol[t] < 0)
@@ -578,7 +589,7 @@ apply (int c, const int *sol)
     return;
   int to[MAX_CELLS];
   destinations (sol, to);
-  for (int i = 0; i < home_cells (c); i++)
+  for (int i = 0; i < cell_count (c); i++)
     if (occupied (c, i)) {
       arr_move (a, i, to[i]);
       bounce_start (a, i, i, to[i], false);
@@ -1076,7 +1087,7 @@ drag_move (float x, float y)
 static void
 commit (int c, int t, const int *sol)
 {
-  int n = home_cells (c);
+  int n = cell_count (c);
   char *cells[MAX_CELLS] = { NULL };
   float sx[MAX_CELLS], sy[MAX_CELLS];
   bool have[MAX_CELLS] = { false };
@@ -1147,7 +1158,7 @@ drop (void)
       Arr *a = arr_find (c);
       for (int k = 0; k < MAX_CELLS; k++)
         sol[k] = -1;
-      for (int i = 0; i < home_cells (c); i++)
+      for (int i = 0; i < cell_count (c); i++)
         if (occupied (c, i))
           sol[a ? a->to[i] : i] = i;
     } else if (ok) {
