@@ -59,7 +59,7 @@ m.watchdog_dropins(P)
 a = open(os.path.join(P, 'etc/systemd/system.conf.d/90-fajita-watchdog.conf')).read().splitlines()
 b = open(os.path.join(P, 'etc/systemd/system/rmtfs.service.d/90-fajita-stop.conf')).read().splitlines()
 assert '[Manager]' in a and 'RuntimeWatchdogSec=30s' in a and 'RebootWatchdogSec=30s' in a, a
-assert '[Service]' in b and 'TimeoutStopSec=5s' in b, b
+assert '[Service]' in b and 'TimeoutStopSec=15s' in b, b
 print('watchdog column %s, both drop-ins written' % got)
 EOF
 [ $FAILS = 0 ] && echo "all ok" || { echo "$FAILS failed"; exit 1; }
