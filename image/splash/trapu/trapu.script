@@ -1,0 +1,21 @@
+# The Trapu logo on black, kept up until the shell draws; no animation (the splash shows for a few seconds only).
+# boot.png is the panel's picture: the logo where the device's bootloader drew its picture before Plymouth (on the
+# S10e and the S20 up_param's logo.jpg is this same picture), so the boot shows one still image. On a panel of
+# another size, or one Plymouth sees turned, the logo alone (logo.png) is centred instead: never stretched.
+# Pixel for pixel only with DeviceScale=1 in plymouthd.conf. make-boot.py makes the pictures from trapu-logo.svg.
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+
+screen = Image("boot.png");
+if (screen.GetWidth() == Window.GetWidth() && screen.GetHeight() == Window.GetHeight())
+  {
+    global.sprite = Sprite(screen);
+    sprite.SetPosition(Window.GetX(), Window.GetY(), 0);
+  }
+else
+  {
+    logo = Image("logo.png");
+    global.sprite = Sprite(logo);
+    sprite.SetPosition(Window.GetX() + Math.Int((Window.GetWidth() - logo.GetWidth()) / 2),
+                       Window.GetY() + Math.Int((Window.GetHeight() - logo.GetHeight()) / 2), 0);
+  }

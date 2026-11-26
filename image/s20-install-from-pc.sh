@@ -17,9 +17,9 @@
 #   4. BOOT is NOT written: it already holds ub13 (U-Boot + kernel #51, 4a82c5e3, since 11-20 19:52), which is
 #      checked by reading it back; BOOT is only ever written from VibeOS (G780F/kit/flash-boot-linux.sh)
 #   5. the power-on logo, as the S10e's device zip writes it: S20_DIR/boot/s10e-logo puts boot-logo/'s logo.jpg
-#      (Debian's swirl) and the two unlocked-bootloader warnings (black) into up_param, every other picture and the
+#      (the Trapu logo) and the two unlocked-bootloader warnings (black) into up_param, every other picture and the
 #      partition's last KiB kept. up_param is saved to this PC first (BACKUP_DIR, default the current directory),
-#      and the step never fails the install: "Debian's already" writes nothing
+#      and the step never fails the install: "in place already" writes nothing
 # Never touches efs, sec_efs, cpefs, radio or any other partition; sets the vibeos and up_param partitions
 # read-only again.
 set -eu
@@ -80,8 +80,8 @@ logo() {
 		/tmp/vibeos-logo apply /dev/$U /tmp/vibeos-boot-logo > /tmp/vibeos-logo.out 2> /tmp/vibeos-logo.err; r=\$?
 		sync; blockdev --setro /dev/$U; echo \$r \$(cat /tmp/vibeos-logo.out /tmp/vibeos-logo.err)")
 	case ${R%% *}:${R#* } in
-	0:same*) echo "the power-on logo is Debian's already (nothing written; up_param saved to $BK)" ;;
-	0:written*) echo "Debian's power-on logo (${R#* }; the old up_param saved to $BK)" ;;
+	0:same*) echo "the power-on logo is in place already (nothing written; up_param saved to $BK)" ;;
+	0:written*) echo "the power-on logo written (${R#* }; the old up_param saved to $BK)" ;;
 	1:*|9:*) echo "power-on logo left as it was: ${R#* }" ;;
 	*) echo "WARNING: the power-on logo did not write: ${R#* }. The old up_param is in $BK: dd it back from the rescue shell" ;;
 	esac

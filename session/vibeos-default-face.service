@@ -1,0 +1,8 @@
+[Unit]
+Description=The Trapu logo as the user's picture while they have chosen none
+# before the session's shell and apps read ~/.face (AccountsService's IconFile for a user with no picture)
+Before=gnome-session-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/vibeos-default-face

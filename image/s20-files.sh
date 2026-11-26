@@ -1,16 +1,14 @@
 #!/bin/sh
 # s20-files.sh PKG: the Galaxy S20 FE's settings into the package tree PKG: what G780F/kit/rootfs/build-rootfs.sh
 # step 3 writes into the S20's root (the r8s parts), and the S10e-layer files that root kept from its S10e base
-# (zram, hang panic, libcamera soft ISP, the splash, the flashlight rule). Same content, as files of a package;
-# the fstab swap line and the hostname come from the package's postinst.
+# (zram, hang panic, libcamera soft ISP, the flashlight rule). Same content, as files of a package; the fstab swap
+# line and the hostname come from the package's postinst. The boot splash is build-device.sh's, every device's.
 set -eu
 P=${1:?PKG}
 S10E=${S10E_STAGE:?set S10E_STAGE}/root
 G=${S20_DIR:?set S20_DIR}
-for f in etc/plymouth/plymouthd.conf etc/environment.d/60-libcamera-softisp.conf etc/sysctl.d/60-zram-ui.conf \
-	etc/sysctl.d/60-hang-panic.conf etc/systemd/zram-generator.conf etc/udev/rules.d/99-flashlight.rules \
-	usr/share/plymouth/themes/debian-swirl/debian-swirl.script usr/share/plymouth/themes/debian-swirl/debian-swirl.plymouth \
-	usr/share/plymouth/themes/debian-swirl/boot.png; do
+for f in etc/environment.d/60-libcamera-softisp.conf etc/sysctl.d/60-zram-ui.conf \
+	etc/sysctl.d/60-hang-panic.conf etc/systemd/zram-generator.conf etc/udev/rules.d/99-flashlight.rules; do
 	install -D -m 644 "$S10E/$f" "$P/$f"
 done
 install -D -m 644 "$S10E/usr/share/glib-2.0/schemas/90-s10e.gschema.override" "$P/usr/share/glib-2.0/schemas/90-r8s.gschema.override"
@@ -92,9 +90,10 @@ for x in r8s.conf HiFi.conf; do
 done
 mkdir -p "$P/usr/share/alsa/ucm2/conf.d/S20FE"
 ln -sfn ../../Samsung/r8s/r8s.conf "$P/usr/share/alsa/ucm2/conf.d/S20FE/S20FE.conf"
-# the quiet boot (G780F/quietboot/rootfs, on the phone since 11-19): the splash at the S20's 1080x2400, and
-# r8s-reached.service, which stands the initramfs's 10-minute dead man's switch down once GDM is up (without it
-# every VibeOS boot reboots itself after 10 minutes)
+# the quiet boot (G780F/quietboot/rootfs, on the phone since 11-19): r8s-reached.service, which stands the
+# initramfs's 10-minute dead man's switch down once GDM is up (without it every VibeOS boot reboots itself after 10
+# minutes). Its Plymouth splash (debian-swirl at 1080x2400, and the plymouthd.conf choosing it) gives way to
+# build-device.sh's trapu
 Q=$G/quietboot/rootfs
 (cd "$Q" && tar -cf - .) | tar -C "$P" -xpf - --no-same-owner
 [ -L "$P/etc/systemd/system/graphical.target.wants/r8s-reached.service" ] || { echo "r8s-reached not enabled" >&2; exit 1; }
