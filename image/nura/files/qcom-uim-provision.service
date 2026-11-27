@@ -1,0 +1,13 @@
+# The SIM's provisioning session, which a Qualcomm modem on mainline may leave closed (qcom-uim-provision)
+[Unit]
+Description=Open the modem's SIM provisioning session
+After=rmtfs.service
+Before=ModemManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/qcom-uim-provision
+TimeoutStartSec=90
+
+[Install]
+WantedBy=ModemManager.service
