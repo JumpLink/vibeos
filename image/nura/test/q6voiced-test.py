@@ -1,6 +1,7 @@
 #!/usr/bin/python3 -I
-"""q6voiced-test.py: data/q6voice/vibeos-q6voiced without a phone: the PCM it finds in /proc/asound/pcm lines, and
-when it opens and closes the voice PCM as calls change state (a fake PCM in place of ALSA)."""
+"""q6voiced-test.py: data/q6voice/vibeos-q6voiced without a phone: the PCM it finds in /proc/asound/pcm lines,
+when it opens and closes the voice PCM as calls change state (a fake PCM in place of ALSA), and which mixer changes
+reopen it during a call."""
 import importlib.machinery, importlib.util, os, sys, tempfile
 
 HERE = os.path.dirname(os.path.realpath(__file__))
@@ -40,8 +41,8 @@ class FakePcm:
     def __init__(self, ok=True):
         self.ok, self.log = ok, []
 
-    def open(self):
-        self.log.append('open')
+    def open(self, seen=0):
+        self.log.append('reopen' if seen else 'open')
         return self.ok
 
     def close(self):
@@ -91,7 +92,7 @@ class FakeLib:
 card = {'dev': None}
 a = q.Alsa.__new__(q.Alsa)
 a.lib, a.dev, a.find, a.handles = FakeLib(), None, lambda: card['dev'], []
-a.settle = type('NoSettle', (), {'wait': lambda self, card: 0})()
+a.settle = type('NoSettle', (), {'wait': lambda self, card, seen=0: 0})()
 check('late card: no PCM at the first call', a.open(), False)
 card['dev'] = 'hw:0,6'
 check('late card: opens at the next call', a.open(), True)
@@ -129,7 +130,7 @@ class RecordingLib:
 
 a = q.Alsa.__new__(q.Alsa)
 a.lib, a.dev, a.find, a.handles = RecordingLib(), 'hw:0,6', None, []
-a.settle = type('Settled', (), {'wait': lambda self, card: a.lib.calls.append(('settle', card)) or 0})()
+a.settle = type('Settled', (), {'wait': lambda self, card, seen=0: a.lib.calls.append(('settle', card)) or 0})()
 check('started: opens', a.open(), True)
 check('started: capture (1) and playback (2) both started, playback never stopping',
       a.lib.calls, [('settle', '0'), ('prepare', 1), ('start', 1), ('stop_threshold', 2, BOUNDARY), ('prepare', 2), ('start', 2)])
@@ -157,14 +158,70 @@ class CtlLib:
         return lambda *a: 0
 
 
-def settle(changes):
+def settle(changes, seen=0):
     lib = CtlLib(changes)
-    n = q.Settle(lib, clock=lambda: lib.now).wait('0')
+    n = q.Settle(lib, clock=lambda: lib.now).wait('0', seen)
     return n, round(lib.now, 2), lib.closed
 
 
 check('settle: a profile switch 0.8 s in, 3 controls', settle([0.8, 0.85, 0.9]), (3, 1.4, True))
 check('settle: nothing changes, waits FIRST only', settle([]), (0, 2.0, True))
 check('settle: a mixer that never quiets is left after MOST', settle([i / 10 for i in range(100)])[:2], (50, 5.0))
+check('settle: after a reroute seen, only QUIET', settle([], seen=1), (1, 0.5, True))
+
+# the speaker button: the audio manager switches the Voice Call profile, the earpiece's voice mixer goes off and the
+# speaker's on, and the DSP plays on the new port only in a new voice session
+
+
+class EventLib:
+    """a control device with events queued: (name, mask) each"""
+    def __init__(self, events):
+        self.events, self.cur = list(events), None
+
+    def snd_ctl_read(self, ctl, ev):
+        if not self.events:
+            return -11  # -EAGAIN: the control is non-blocking
+        self.cur = self.events.pop(0)
+        return 1
+
+    def snd_ctl_event_get_type(self, ev):
+        return 0
+
+    def snd_ctl_event_elem_get_name(self, ev):
+        return self.cur[0].encode()
+
+    def snd_ctl_event_elem_get_mask(self, ev):
+        return self.cur[1]
+
+    def __getattr__(self, name):
+        return lambda *a: 0
+
+
+def rerouted(*events):
+    m = q.Mixer(EventLib(events))
+    m.ctl = 1
+    return m.rerouted(), m.lib.events
+
+
+VALUE, REMOVE = 1, 0xffffffff
+check('mixer: the speaker taking the call', rerouted(("SLIMBUS_0_RX Voice Mixer VoiceMMode1", VALUE),
+                                                     ("QUAT_MI2S_RX Voice Mixer VoiceMMode1", VALUE)), (True, []))
+check('mixer: a headset mic recording the call', rerouted(("VoiceMMode1 Capture Mixer TERT_MI2S_TX", VALUE)), (True, []))
+check('mixer: a volume key is no reroute', rerouted(("RX0 Digital Volume", VALUE), ("SLIM RX0 MUX", VALUE)), (False, []))
+check('mixer: a music route is no reroute', rerouted(("QUAT_MI2S_RX Audio Mixer MultiMedia1", VALUE)), (False, []))
+check('mixer: a control removed is no reroute', rerouted(("QUAT_MI2S_RX Voice Mixer VoiceMMode1", REMOVE)), (False, []))
+check('mixer: not watching, nothing read', q.Mixer(EventLib([("x Voice Mixer y", VALUE)])).rerouted(), False)
+
+f = FakePcm(); v = q.Voice(f)
+v.state('/Call/1', ACTIVE); v.reroute(); v.state('/Call/1', TERMINATED)
+check('reroute: closed and opened again, without the first wait', f.log, ['open', 'close', 'reopen', 'close'])
+
+f = FakePcm(); v = q.Voice(f)
+v.reroute()
+check('reroute: no call, nothing opened', f.log, [])
+
+f = FakePcm(ok=False); v = q.Voice(f)
+v.state('/Call/1', ACTIVE); f.ok = True; v.reroute(); v.state('/Call/1', TERMINATED)
+check('reroute: the open that failed is tried again', f.log, ['open', 'reopen', 'close'])
 
 sys.exit(1 if fails else 0)

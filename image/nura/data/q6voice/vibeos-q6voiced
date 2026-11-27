@@ -4,6 +4,10 @@ does not package). The modem sends call audio straight to the DSP, but the DSP s
 the hostless voice PCM ("VoiceMMode1") is open. This opens it both ways while any ModemManager call is dialing,
 ringing out, active or held, and closes it when the last one ends. No audio data passes through it.
 
+The DSP reads the call's ports (earpiece, speaker, headset) only when its voice session starts. So when the audio
+manager moves a call to another port (the speaker button switching the card's Voice Call profile), the PCM is
+closed and opened again on the new route.
+
   vibeos-q6voiced [hw:CARD,DEVICE]    default: the PCM /proc/asound/pcm names VoiceMMode1
 """
 import ctypes, re, sys, time
@@ -40,14 +44,15 @@ class Settle:
     def __init__(self, lib, clock=time.monotonic):
         self.lib, self.clock = lib, clock
 
-    def wait(self, card):
+    def wait(self, card, seen=0):
+        """seen: changes already noticed, so only the QUIET wait is left"""
         a = self.lib
         ctl, ev = ctypes.c_void_p(), ctypes.c_void_p()
         if a.snd_ctl_open(ctypes.byref(ctl), ('hw:%s' % card).encode(), 0) < 0:
             return 0
         a.snd_ctl_subscribe_events(ctl, 1)
         a.snd_ctl_event_malloc(ctypes.byref(ev))
-        start, changes = self.clock(), 0
+        start, changes = self.clock(), seen
         while True:
             left = self.MOST - (self.clock() - start)
             if left <= 0:
@@ -71,17 +76,20 @@ class Alsa:
 
     def __init__(self, dev=None, find=find_device):
         self.lib = ctypes.CDLL('libasound.so.2')
+        self.lib.snd_ctl_event_elem_get_name.restype = ctypes.c_char_p
+        self.lib.snd_ctl_event_elem_get_mask.restype = ctypes.c_uint
         self.dev, self.find = dev, find
-        self.handles = []
+        self.handles, self.card = [], None
         self.settle = Settle(self.lib)
 
-    def open(self):
+    def open(self, seen=0):
         a = self.lib
         dev = self.dev or self.find()
         if not dev:
             log('no %s PCM (yet): this call stays silent' % PCM_NAME)
             return False
-        t, n = time.monotonic(), self.settle.wait(dev[3:].split(',')[0])
+        self.card = dev[3:].split(',')[0]
+        t, n = time.monotonic(), self.settle.wait(self.card, seen)
         log('mixer quiet after %d changes, %.1f s' % (n, time.monotonic() - t))
         for stream in (self.CAPTURE, self.PLAYBACK):
             h = ctypes.c_void_p()
@@ -117,6 +125,51 @@ class Alsa:
         self.handles.clear()
 
 
+class Mixer:
+    """the voice session's route controls while a call is live: '<PORT> Voice Mixer <session>' (where the call
+    plays) and '<session> Capture Mixer <PORT>' (where it is recorded). Other controls, volumes among them, do not
+    touch the session"""
+    ROUTE = re.compile(r' Voice Mixer |^\S*Voice\S* Capture Mixer ')
+    NONBLOCK, ELEM, MASK_VALUE, MASK_REMOVE = 1, 0, 1, 0xffffffff
+
+    def __init__(self, lib):
+        self.lib, self.ctl, self.ev = lib, None, None
+
+    def watch(self, card):
+        """the file descriptor to poll, None when the card cannot be watched"""
+        a = self.lib
+        self.ctl, self.ev = ctypes.c_void_p(), ctypes.c_void_p()
+        if a.snd_ctl_open(ctypes.byref(self.ctl), ('hw:%s' % card).encode(), self.NONBLOCK) < 0:
+            self.ctl = None
+            return None
+        a.snd_ctl_subscribe_events(self.ctl, 1)
+        a.snd_ctl_event_malloc(ctypes.byref(self.ev))
+        pfd = (ctypes.c_int * 2)()  # struct pollfd: int fd; short events, revents
+        if a.snd_ctl_poll_descriptors(self.ctl, pfd, 1) != 1:
+            self.stop()
+            return None
+        return pfd[0]
+
+    def rerouted(self):
+        """reads what is pending: did a route control change?"""
+        a, hit = self.lib, False
+        while self.ctl and a.snd_ctl_read(self.ctl, self.ev) > 0:
+            if a.snd_ctl_event_get_type(self.ev) != self.ELEM:
+                continue
+            mask = a.snd_ctl_event_elem_get_mask(self.ev)
+            name = (a.snd_ctl_event_elem_get_name(self.ev) or b'').decode(errors='replace')
+            if mask != self.MASK_REMOVE and mask & self.MASK_VALUE and self.ROUTE.search(name):
+                hit = True
+        return hit
+
+    def stop(self):
+        if self.ev:
+            self.lib.snd_ctl_event_free(self.ev)
+        if self.ctl:
+            self.lib.snd_ctl_close(self.ctl)
+        self.ctl, self.ev = None, None
+
+
 class Voice:
     """which calls are live, and the PCM open while one is"""
 
@@ -136,15 +189,48 @@ class Voice:
             self.opened = False
             log('voice PCM closed')
 
+    def reroute(self):
+        """the route changed during a call: the DSP takes the new ports only with a new session. Also the retry when
+        the last open failed, a route being half switched"""
+        if not self.live:
+            return
+        if self.opened:
+            self.pcm.close()
+        self.opened = self.pcm.open(seen=1)
+        log('voice PCM reopened on the new route' if self.opened else 'voice PCM: could not reopen')
+
 
 def main():
     from gi.repository import Gio, GLib
+    try:
+        from gi.repository import GLibUnix
+        fd_add = GLibUnix.fd_add_full
+    except ImportError:  # GLib before 2.80
+        fd_add = GLib.unix_fd_add_full
     dev = sys.argv[1] if len(sys.argv) > 1 else None
-    voice = Voice(Alsa(dev))
+    alsa = Alsa(dev)
+    voice, mixer, source = Voice(alsa), Mixer(alsa.lib), []
+
+    def on_mixer(fd, condition):
+        if mixer.rerouted():
+            voice.reroute()
+            mixer.rerouted()  # the changes the reopen settled on
+        return GLib.SOURCE_CONTINUE
+
+    def on_state(path, new):
+        voice.state(path, new)
+        if voice.live and not source and alsa.card is not None:
+            fd = mixer.watch(alsa.card)
+            if fd is not None:
+                source.append(fd_add(GLib.PRIORITY_DEFAULT, fd, GLib.IOCondition.IN, on_mixer))
+        elif not voice.live and source:
+            GLib.source_remove(source.pop())
+            mixer.stop()
+
     bus = Gio.bus_get_sync(Gio.BusType.SYSTEM)
     bus.signal_subscribe('org.freedesktop.ModemManager1', 'org.freedesktop.ModemManager1.Call', 'StateChanged',
                          None, None, Gio.DBusSignalFlags.NONE,
-                         lambda c, s, path, i, n, p: voice.state(path, p.unpack()[1]))
+                         lambda c, s, path, i, n, p: on_state(path, p.unpack()[1]))
     log('watching ModemManager calls; voice PCM %s' % (dev or '%s, looked up per call' % PCM_NAME))
     GLib.MainLoop().run()
 
