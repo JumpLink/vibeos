@@ -124,6 +124,10 @@ void navi_map_set_frame_pacing (NaviMap *map, int refreshes_per_frame);
 /* At most `fps` new frames a second (0: no limit, the default), by the pacing above: one every second refresh at 60
  * Hz for 30, every fourth at 120 Hz. Auto pacing (0) only; a set navi_map_set_frame_pacing () wins. */
 void navi_map_set_max_fps (NaviMap *map, double fps);
+/* Whether the map draws (TRUE, the default): FALSE while its window is not seen, so that MapLibre's wish for a
+ * frame (a tile come in, a camera moved) is only noted, and drawn once it draws again. No frame is drawn meanwhile,
+ * the fling stops; what the map knows (the camera, the sources, the style) keeps changing as before. */
+void navi_map_set_drawing (NaviMap *map, gboolean drawing);
 
 /* Coarser tiles toward the horizon of a tilted map, which is where most of a tilted map's tiles are:
  * beyond `min_radius` tiles from the center, tiles drop zoom levels as their distance x `scale` grows,

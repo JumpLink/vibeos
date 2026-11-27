@@ -47,6 +47,7 @@ static const char *const alt_edge[2] = { "#8E72C8", "#5F6B79" };
 static void update_route_layers (Navi *n);
 static void ensure_tick (Navi *n);
 static void overlays_moved (Navi *n);
+static void end_arrived_unseen (Navi *n);
 
 /* ---- small things ---- */
 
@@ -490,7 +491,7 @@ frame_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
 static void
 ensure_tick (Navi *n)
 {
-  if (!n->tick)
+  if (!n->tick && n->drawing)
     n->tick = gtk_widget_add_tick_callback (GTK_WIDGET (n->map), frame_tick, n, NULL);
 }
 
@@ -687,6 +688,8 @@ pin_rect (Navi *n, GdkRectangle *alloc)
 static void
 overlays_moved (Navi *n)
 {
+  if (!n->drawing)
+    return; /* placed again once seen (awake_drawing) */
   GdkRectangle car, pin;
   car_rect (n, &car);
   pin_rect (n, &pin);
@@ -1193,15 +1196,8 @@ navi_window_set_mode (Navi *n, NaviMode mode)
   }
   if (n->compass)
     compass_sync (n);
-  /* the screen stays on while a route is driven, as long as the window is shown */
-  gboolean awake = mode == NAVI_MODE_DRIVE || mode == NAVI_MODE_ARRIVED;
-  if (awake && !n->keep_awake)
-    n->keep_awake = gtk_application_inhibit (n->app, GTK_WINDOW (n->win), GTK_APPLICATION_INHIBIT_IDLE,
-                                             _("Navigating"));
-  else if (!awake && n->keep_awake) {
-    gtk_application_uninhibit (n->app, n->keep_awake);
-    n->keep_awake = 0;
-  }
+  /* the position, the sleep inhibitor and the screen's keep-awake while driving (navi-awake.h) */
+  navi_window_update_awake (n);
   gtk_widget_set_visible (n->pin, n->dest && (mode == NAVI_MODE_PLACE || mode == NAVI_MODE_ROUTES ||
                                               mode == NAVI_MODE_DRIVE || mode == NAVI_MODE_ARRIVED));
   navi_panels_set_mode (n->panels, mode);
@@ -1532,6 +1528,7 @@ navi_start_drive (Navi *n)
 void
 navi_stop_drive (Navi *n)
 {
+  g_clear_handle_id (&n->arrived_source, g_source_remove);
   print_drive_stats (n);
   g_clear_pointer (&n->guidance, navi_guidance_free);
   navi_alerts_set_route (n->alerts, NULL);
@@ -1545,6 +1542,7 @@ static gboolean
 arrived_done (gpointer data)
 {
   Navi *n = data;
+  n->arrived_source = 0;
   if (n->mode == NAVI_MODE_ARRIVED)
     navi_stop_drive (n);
   return G_SOURCE_REMOVE;
@@ -1557,7 +1555,9 @@ arrive (Navi *n)
   if (n->simulate)
     navi_position_simulate (n->position, NULL, 1, 0);
   navi_window_set_mode (n, NAVI_MODE_ARRIVED);
-  g_timeout_add_seconds (20, arrived_done, n);
+  g_clear_handle_id (&n->arrived_source, g_source_remove);
+  n->arrived_source = g_timeout_add_seconds (20, arrived_done, n);
+  end_arrived_unseen (n);
 }
 
 /* ---- the position ---- */
@@ -1937,7 +1937,8 @@ compass_sync (Navi *n)
   if (!n->compass)
     return;
   GtkWidget *win = GTK_WIDGET (n->win);
-  gboolean shown = gtk_widget_get_mapped (win) && !gtk_window_is_suspended (GTK_WINDOW (n->win));
+  gboolean shown = n->awake ? navi_awake_get (n->awake).compass
+                            : gtk_widget_get_mapped (win) && !gtk_window_is_suspended (GTK_WINDOW (n->win));
   const NaviProgress *p = n->guidance ? navi_guidance_get_progress (n->guidance) : NULL;
   gboolean on_route = n->mode == NAVI_MODE_DRIVE && p && p->on_route;
   double speed = n->have_fix ? MAX (n->fix.speed, 0.0) : 0;
@@ -2072,7 +2073,107 @@ navi_window_build_map (Navi *n)
   g_signal_connect (n->position, "fix", G_CALLBACK (on_fix), n);
   g_signal_connect (n->position, "denied", G_CALLBACK (on_denied), n);
   g_signal_connect (vibeos_theme_get_default (), "changed", G_CALLBACK (on_theme_changed), n);
-  g_timeout_add_seconds (60, night_check, n);
+}
+
+/* ---- seen or not (navi-awake.h) ---- */
+
+static void
+awake_drawing (gboolean on, gpointer data)
+{
+  Navi *n = data;
+  n->drawing = on;
+  navi_map_set_drawing (n->map, on);
+  if (!on) {
+    if (n->tick)
+      gtk_widget_remove_tick_callback (GTK_WIDGET (n->map), n->tick);
+    n->tick = 0;
+    n->last_frame_us = n->last_shown_us = 0;
+    return;
+  }
+  /* seen again: the map of this hour (the dark one, maybe), the car and the camera caught up */
+  navi_update_night (n);
+  gtk_widget_queue_allocate (n->map_overlay);
+  ensure_tick (n);
+}
+
+static void
+awake_compass (gboolean on, gpointer data)
+{
+  compass_sync (data);
+}
+
+/* the screen kept on while driving, or arrived, and seen: not for a Navi in the background */
+static void
+awake_screen_on (gboolean on, gpointer data)
+{
+  Navi *n = data;
+  if (on && !n->keep_awake && !n->closed)
+    n->keep_awake = gtk_application_inhibit (n->app, GTK_WINDOW (n->win), GTK_APPLICATION_INHIBIT_IDLE,
+                                             _("Navigating"));
+  else if (!on && n->keep_awake) {
+    gtk_application_uninhibit (n->app, n->keep_awake);
+    n->keep_awake = 0;
+  }
+}
+
+void
+navi_window_update_awake (Navi *n)
+{
+  if (!n->awake)
+    return;
+  GtkWindow *win = GTK_WINDOW (n->win);
+  gboolean active = gtk_window_is_active (win);
+  n->ever_active = n->ever_active || active;
+  NaviSeen seen = navi_seen_from (!n->closed, gtk_widget_get_mapped (n->win), gtk_window_is_suspended (win), active,
+                                  n->ever_active);
+  gboolean was_seen = navi_awake_get_seen (n->awake) == NAVI_SEEN;
+  navi_awake_update (n->awake, n->mode, seen);
+  if (!navi_awake_get (n->awake).position)
+    g_clear_handle_id (&n->fix_stale, g_source_remove);
+  /* gone from sight without a route: no countdown to a drive, no voice, no microphone */
+  if (was_seen && seen != NAVI_SEEN && n->mode != NAVI_MODE_DRIVE && n->panels)
+    navi_panels_quiet (n->panels);
+}
+
+/* "You have arrived" closes by itself a little later; out of sight it has no one to tell, and the drive is over at
+ * once (not from inside navi_window_set_mode: from where the arrival or the window's change is handled) */
+static void
+end_arrived_unseen (Navi *n)
+{
+  if (n->mode == NAVI_MODE_ARRIVED && !n->closed && n->awake && navi_awake_get_seen (n->awake) != NAVI_SEEN)
+    navi_stop_drive (n);
+}
+
+static void
+on_win_seen (Navi *n)
+{
+  navi_window_update_awake (n);
+  end_arrived_unseen (n);
+}
+
+void
+navi_window_start_awake (Navi *n, gboolean real_position)
+{
+  static const NaviAwakeHooks hooks = { awake_drawing, awake_compass, awake_screen_on };
+  n->awake = navi_awake_new (real_position ? n->position : NULL, &hooks, n);
+  /* the dark map's check, a minute apart, and --stats' second: only while the map is seen */
+  navi_awake_add_timer (n->awake, 60000, night_check, n);
   if (n->stats)
-    g_timeout_add_seconds (1, stats_second, n);
+    navi_awake_add_timer (n->awake, 1000, stats_second, n);
+  g_signal_connect_swapped (n->win, "map", G_CALLBACK (on_win_seen), n);
+  g_signal_connect_swapped (n->win, "unmap", G_CALLBACK (on_win_seen), n);
+  g_signal_connect_swapped (n->win, "notify::suspended", G_CALLBACK (on_win_seen), n);
+  g_signal_connect_swapped (n->win, "notify::is-active", G_CALLBACK (on_win_seen), n);
+  navi_window_update_awake (n);
+}
+
+void
+navi_window_stop_awake (Navi *n)
+{
+  if (!n->awake)
+    return;
+  n->closed = TRUE;
+  g_signal_handlers_disconnect_by_func (n->win, on_win_seen, n);
+  navi_awake_update (n->awake, n->mode, NAVI_CLOSED);
+  g_clear_pointer (&n->awake, navi_awake_free);
 }

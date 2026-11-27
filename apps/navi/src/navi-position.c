@@ -28,6 +28,7 @@ struct _NaviPosition {
   gboolean have_fix;
   /* the real source */
   gboolean running;
+  guint gen;             /* one more at each start: a reply to an earlier start's call is not this one's */
   GCancellable *cancel;
   GDBusConnection *bus;
   char *client;          /* GeoClue */
@@ -81,6 +82,34 @@ sandboxed (void)
   return known;
 }
 
+/* ---- the calls under way ---- */
+
+/* A call's reply knows which start it was made for: the window's being seen starts and stops the position (Recents,
+ * the shade), and a reply to a call made before the stop must not move the next start's steps on. */
+typedef struct {
+  NaviPosition *self;
+  guint gen;
+} Call;
+
+static Call *
+call_new (NaviPosition *self)
+{
+  Call *c = g_new (Call, 1);
+  c->self = g_object_ref (self);
+  c->gen = self->gen;
+  return c;
+}
+
+/* the position, if the call is the running start's; frees the call either way */
+static NaviPosition *
+call_end (Call *c, NaviPosition **self)
+{
+  *self = c->self;
+  gboolean current = c->self->running && c->gen == c->self->gen;
+  g_free (c);
+  return current ? *self : NULL;
+}
+
 /* ---- GeoClue ---- */
 
 static void gc_step (NaviPosition *self);
@@ -94,9 +123,10 @@ ignore_reply (GObject *src, GAsyncResult *res, gpointer data)
 static void
 gc_props (GObject *src, GAsyncResult *res, gpointer data)
 {
-  NaviPosition *self = data;
+  NaviPosition *self;
+  gboolean current = call_end (data, &self) != NULL;
   g_autoptr (GVariant) props = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, NULL);
-  if (props && self->running) {
+  if (props && current) {
     g_autoptr (GVariant) dict = g_variant_get_child_value (props, 0);
     double lat, lng, acc = 1e9, speed = -1, heading = -1;
     if (g_variant_lookup (dict, "Latitude", "d", &lat) && g_variant_lookup (dict, "Longitude", "d", &lng)) {
@@ -119,16 +149,25 @@ gc_updated (GDBusConnection *bus, const char *sender, const char *path, const ch
     return;
   g_variant_get (params, "(&o&o)", &old_path, &new_path);
   g_dbus_connection_call (bus, GC_BUS, new_path, PROPS, "GetAll", g_variant_new ("(s)", GC_ILOC), NULL,
-                          G_DBUS_CALL_FLAGS_NONE, 15000, self->cancel, gc_props, g_object_ref (self));
+                          G_DBUS_CALL_FLAGS_NONE, 15000, NULL, gc_props, call_new (self));
 }
 
 static void
 gc_reply (GObject *src, GAsyncResult *res, gpointer data)
 {
-  NaviPosition *self = data;
+  NaviPosition *self;
+  gboolean current = call_end (data, &self) != NULL;
   g_autoptr (GError) error = NULL;
   g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, &error);
-  if (!self->running) {
+  if (!current) {
+    /* a client made for a start that has been stopped since: GeoClue would keep it till Navi quits */
+    const char *made = NULL;
+    if (v && g_variant_is_of_type (v, G_VARIANT_TYPE ("(o)")))
+      g_variant_get (v, "(&o)", &made);
+    if (made && g_strcmp0 (made, self->client))
+      g_dbus_connection_call (G_DBUS_CONNECTION (src), GC_BUS, GC_MANAGER, GC_IMGR, "DeleteClient",
+                              g_variant_new ("(o)", made), NULL, G_DBUS_CALL_FLAGS_NONE, -1, NULL, ignore_reply,
+                              NULL);
     g_object_unref (self);
     return;
   }
@@ -162,7 +201,7 @@ gc_set (NaviPosition *self, const char *name, GVariant *value)
 {
   g_dbus_connection_call (self->bus, GC_BUS, self->client, PROPS, "Set",
                           g_variant_new ("(ssv)", GC_ICLIENT, name, value), NULL, G_DBUS_CALL_FLAGS_NONE, 15000,
-                          self->cancel, gc_reply, g_object_ref (self));
+                          NULL, gc_reply, call_new (self));
 }
 
 static void
@@ -170,12 +209,13 @@ gc_step (NaviPosition *self)
 {
   switch (self->step) {
   case 0:
+    /* not cancelled at a stop: its reply names the client made, to delete if a stop came first (gc_reply) */
     g_dbus_connection_call (self->bus, GC_BUS, GC_MANAGER, GC_IMGR, "CreateClient", NULL, G_VARIANT_TYPE ("(o)"),
-                            G_DBUS_CALL_FLAGS_NONE, 15000, self->cancel, gc_reply, g_object_ref (self));
+                            G_DBUS_CALL_FLAGS_NONE, 15000, NULL, gc_reply, call_new (self));
     break;
   case 1:
     g_dbus_connection_call (self->bus, GC_BUS, GC_MANAGER, GC_IMGR, "GetClient", NULL, G_VARIANT_TYPE ("(o)"),
-                            G_DBUS_CALL_FLAGS_NONE, 15000, self->cancel, gc_reply, g_object_ref (self));
+                            G_DBUS_CALL_FLAGS_NONE, 15000, NULL, gc_reply, call_new (self));
     break;
   case 2: gc_set (self, "DesktopId", g_variant_new_string (DESKTOP_ID)); break;
   case 3: gc_set (self, "RequestedAccuracyLevel", g_variant_new_uint32 (GC_EXACT)); break;
@@ -185,7 +225,7 @@ gc_step (NaviPosition *self)
     self->gc_sub = g_dbus_connection_signal_subscribe (self->bus, GC_BUS, GC_ICLIENT, "LocationUpdated", self->client,
                                                        NULL, G_DBUS_SIGNAL_FLAGS_NONE, gc_updated, self, NULL);
     g_dbus_connection_call (self->bus, GC_BUS, self->client, GC_ICLIENT, "Start", NULL, NULL,
-                            G_DBUS_CALL_FLAGS_NONE, 15000, self->cancel, gc_reply, g_object_ref (self));
+                            G_DBUS_CALL_FLAGS_NONE, 15000, NULL, gc_reply, call_new (self));
     break;
   default:
     break; /* started: LocationUpdated from here on */
@@ -232,19 +272,20 @@ portal_answer (GDBusConnection *bus, const char *sender, const char *path, const
 static void
 portal_reply (GObject *src, GAsyncResult *res, gpointer data)
 {
-  NaviPosition *self = data;
+  NaviPosition *self;
+  gboolean current = call_end (data, &self) != NULL;
   g_autoptr (GError) error = NULL;
   g_autoptr (GVariant) v = g_dbus_connection_call_finish (G_DBUS_CONNECTION (src), res, &error);
   if (!v && !g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
     g_message ("location portal: %s", error->message);
-  else if (v && self->running && self->step == 0) {
+  else if (v && current && self->step == 0) {
     self->step = 1;
     GVariantBuilder opts;
     g_variant_builder_init (&opts, G_VARIANT_TYPE_VARDICT);
     g_variant_builder_add (&opts, "{sv}", "handle_token", g_variant_new_string (self->token));
     g_dbus_connection_call (self->bus, PORTAL, PORTAL_PATH, PORTAL_ILOC, "Start",
                             g_variant_new ("(osa{sv})", self->session, "", &opts), NULL, G_DBUS_CALL_FLAGS_NONE, -1,
-                            self->cancel, portal_reply, g_object_ref (self));
+                            self->cancel, portal_reply, call_new (self));
   }
   g_object_unref (self);
 }
@@ -276,7 +317,7 @@ portal_open (NaviPosition *self)
   self->step = 0;
   g_dbus_connection_call (self->bus, PORTAL, PORTAL_PATH, PORTAL_ILOC, "CreateSession",
                           g_variant_new ("(a{sv})", &opts), NULL, G_DBUS_CALL_FLAGS_NONE, -1, self->cancel,
-                          portal_reply, g_object_ref (self));
+                          portal_reply, call_new (self));
 }
 
 /* ---- starting and stopping ---- */
@@ -284,13 +325,14 @@ portal_open (NaviPosition *self)
 static void
 got_bus (GObject *src, GAsyncResult *res, gpointer data)
 {
-  NaviPosition *self = data;
+  NaviPosition *self;
+  gboolean current = call_end (data, &self) != NULL;
   g_autoptr (GError) error = NULL;
   GDBusConnection *bus = g_bus_get_finish (res, &error);
   if (!bus) {
     if (!g_error_matches (error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
       g_message ("location: no bus: %s", error->message);
-  } else if (self->running && !self->bus) {
+  } else if (current && !self->bus) {
     self->bus = bus;
     self->step = 0;
     if (sandboxed ())
@@ -309,8 +351,10 @@ navi_position_start (NaviPosition *self)
   if (self->running)
     return;
   self->running = TRUE;
+  self->gen++;
+  self->step = 0;
   self->cancel = g_cancellable_new ();
-  g_bus_get (sandboxed () ? G_BUS_TYPE_SESSION : G_BUS_TYPE_SYSTEM, self->cancel, got_bus, g_object_ref (self));
+  g_bus_get (sandboxed () ? G_BUS_TYPE_SESSION : G_BUS_TYPE_SYSTEM, self->cancel, got_bus, call_new (self));
 }
 
 void

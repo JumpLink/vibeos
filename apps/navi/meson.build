@@ -61,7 +61,8 @@ install_data('demo/berlin-tiergarten.geojson', install_dir: get_option('datadir'
 # what Navi knows without GTK: paths, Valhalla's routes, the guidance along them, search, the position, the sun, and
 # what Back does.
 # A static library the app and the tests share.
-core_deps = [dependency('gio-2.0', version: '>= 2.76'), dependency('json-glib-1.0'), dependency('libsoup-3.0'),
+core_deps = [dependency('gio-2.0', version: '>= 2.76'), dependency('gio-unix-2.0'), dependency('json-glib-1.0'),
+             dependency('libsoup-3.0'),
              meson.get_compiler('c').find_library('m'), dependency('icu-i18n'), dependency('icu-uc')]
 # times in the user's language: libvibeos's vibeos-locale (GLib and ICU only), which the app has from libvibeos and
 # the tests, without GTK, build in
@@ -69,7 +70,7 @@ locale_inc = include_directories('../../libvibeos')
 core = static_library('navi-core',
   'src/navi-geo.c', 'src/navi-route.c', 'src/navi-guidance.c', 'src/navi-mvt.c', 'src/navi-search.c',
   'src/navi-search-photon.c', 'src/navi-poi.c', 'src/navi-roadinfo.c', 'src/navi-cameras.c', 'src/navi-position.c', 'src/navi-sun.c',
-  'src/navi-compass.c', 'src/navi-back.c',
+  'src/navi-compass.c', 'src/navi-back.c', 'src/navi-awake.c', 'src/navi-inhibit.c',
   c_args: get_option('debug_privacy') ? ['-DNAVI_DEBUG'] : [],
   include_directories: locale_inc,
   dependencies: core_deps)
@@ -79,6 +80,11 @@ core_dep = declare_dependency(link_with: core, include_directories: include_dire
 test('navi', executable('test-navi', 'tests/test-navi.c', '../../libvibeos/vibeos-locale.c', dependencies: core_dep),
      env: ['G_TEST_SRCDIR=' + meson.current_source_dir() / 'tests', 'G_TEST_BUILDDIR=' + meson.current_build_dir(),
            'LANG=C.UTF-8', 'LANGUAGE=', 'LC_ALL=', 'LC_TIME=', 'LC_MESSAGES='])
+
+# what runs with a route and without, the window seen, hidden or closed: the real position against a GeoClue and a
+# logind of the test's own, on a D-Bus of its own (GTestDBus: dbus-daemon)
+test('awake', executable('test-awake', 'tests/test-awake.c', '../../libvibeos/vibeos-locale.c', dependencies: core_dep),
+     timeout: 120)
 
 # the compass as Navi reads it, without Navi's window: claims iio-sensor-proxy's compass, prints the heading for a few
 # seconds and releases it (tests/navi-compass-probe.c)

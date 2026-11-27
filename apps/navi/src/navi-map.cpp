@@ -232,6 +232,8 @@ struct NaviMapImpl final : public mln::MapObserver {
     int pace_setting = 0, pace = 1;
     int pace_auto = 1;            // auto pacing's own choice, before the app's limit
     double max_fps = 0;           // navi_map_set_max_fps: 0 for none
+    bool drawing = true;          // navi_map_set_drawing
+    bool missed = false;          // a frame asked for while not drawing
     gint64 refresh_period = 16667; // the display's, once seen
     bool pace_known = false;      // auto: the display's rate seen
     bool paced_pending = false;   // MapLibre wants a frame
@@ -282,6 +284,10 @@ struct NaviMapImpl final : public mln::MapObserver {
     GtkWidget* widget() { return GTK_WIDGET(self); }
 
     void request_frame() {
+        if (!drawing) {
+            missed = true;
+            return;
+        }
         if (in_render)
             render_again = true;
         else if (pace > 1 && clock)
@@ -1748,6 +1754,24 @@ void navi_map_set_frame_pacing(NaviMap* self, int refreshes_per_frame) {
     impl->pace_frames = impl->pace_late = impl->pace_late_windows = 0;
     impl->pace_auto = 1;
     impl->set_pace(impl->pace_setting ? impl->pace_setting : impl->limited(1));
+}
+
+void navi_map_set_drawing(NaviMap* self, gboolean drawing) {
+    g_return_if_fail(NAVI_IS_MAP(self));
+    NaviMapImpl* impl = self->impl;
+    if (impl->drawing == bool(drawing)) return;
+    impl->drawing = drawing;
+    if (!drawing) {
+        impl->stop_fling();
+        if (impl->render_tick) gtk_widget_remove_tick_callback(GTK_WIDGET(self), impl->render_tick);
+        impl->render_tick = 0;
+        // a frame wanted, or drawn ahead and not shown: drawn anew when the map draws again
+        if (impl->render_again || impl->paced_pending || impl->ahead) impl->missed = true;
+        impl->render_again = impl->paced_pending = impl->ahead = false;
+    } else if (impl->missed) {
+        impl->missed = false;
+        impl->request_frame();
+    }
 }
 
 void navi_map_set_max_fps(NaviMap* self, double fps) {

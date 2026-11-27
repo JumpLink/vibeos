@@ -230,8 +230,12 @@ quit_after (gpointer data)
 static void
 on_destroy (GtkWidget *win, Navi *n)
 {
-  if (n->mode == NAVI_MODE_DRIVE)
+  /* closed (Recents, the menu's Exit): a drive ends, everything stops, nothing holds the application any more, and
+   * it quits */
+  n->closed = TRUE;
+  if (n->mode == NAVI_MODE_DRIVE || n->mode == NAVI_MODE_ARRIVED)
     navi_stop_drive (n);
+  g_clear_handle_id (&n->recenter_source, g_source_remove);
   if (n->keep_awake) {
     gtk_application_uninhibit (n->app, n->keep_awake);
     n->keep_awake = 0;
@@ -242,6 +246,7 @@ on_destroy (GtkWidget *win, Navi *n)
   g_clear_object (&n->place_cancel);
   g_clear_pointer (&n->alerts, navi_alerts_free);
   navi_settings_flush (n->settings);
+  navi_window_stop_awake (n);
   navi_position_stop (n->position);
   navi_window_stop_compass (n);
   if (the_navi == n)
@@ -321,6 +326,8 @@ activate (GtkApplication *app, gpointer data)
     vibeos_window_set_content (GTK_WINDOW (n->win), n->map_overlay);
   }
   g_signal_connect (n->win, "destroy", G_CALLBACK (on_destroy), n);
+  /* the real position, the timers, the frames: while the window is seen (navi-awake.h); --from follows none */
+  navi_window_start_awake (n, !opts.have_from);
 
   navi_window_set_mode (n, NAVI_MODE_BROWSE);
   navi_update_night (n);
@@ -331,8 +338,6 @@ activate (GtkApplication *app, gpointer data)
     navi_position_set_last_known (n->position, opts.from_lat, opts.from_lng);
   else if (n->settings->have_last)
     navi_position_set_last_known (n->position, n->settings->last_lat, n->settings->last_lng);
-  if (!opts.have_from)
-    navi_position_start (n->position);
   navi_window_start_compass (n);
   if (opts.have_to || opts.search)
     g_timeout_add (1500, start_test_drive, n);

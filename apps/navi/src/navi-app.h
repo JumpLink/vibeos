@@ -22,6 +22,7 @@
 #include <gtk/gtk.h>
 #include <vibeos.h>
 
+#include "navi-awake.h"
 #include "navi-back.h"
 #include "navi-compass.h"
 #include "navi-geo.h"
@@ -96,6 +97,12 @@ typedef struct {
   guint poi_seq;            /* the point of interest tapped last, for its address coming back */
   gint64 poi_tapped_at;     /* when a tap last opened a place's card (on_double_tap ()) */
   guint keep_awake;         /* the idle inhibitor while a route is driven (gtk_application_inhibit), 0 when none */
+  /* what runs while the window is seen or not (navi-awake.h): the position, the timers, the sleep inhibitor */
+  NaviAwake *awake;
+  gboolean drawing;         /* the frame loop and the map draw (the window is seen) */
+  gboolean ever_active;     /* the window has been in front once (navi_seen_from) */
+  gboolean closed;          /* the window is being destroyed */
+  guint arrived_source;     /* "You have arrived" closing by itself */
   double ahead_s;           /* where the route ahead was last drawn from (trim_ahead ()), -1 to draw it again */
   gint64 ahead_time;
   /* the route around the car while driving (navi-geo.h), in two sources, navi-near-0 and -1: the car's stretch,
@@ -150,6 +157,13 @@ typedef struct {
 void navi_window_build_map (Navi *navi);
 /* the compass for the arrow (navi-compass.h): claimed while the window is on screen, from start to stop */
 void navi_window_start_compass (Navi *navi);
+/* what runs while the window is seen, and what not (navi-awake.h): `real_position` FALSE for a test drive's --from,
+ * which follows no real position */
+void navi_window_start_awake (Navi *navi, gboolean real_position);
+/* the window shown, hidden, in front or not, or the mode changed: what runs follows */
+void navi_window_update_awake (Navi *navi);
+/* the window closes: everything stops, the sleep inhibitor is let go */
+void navi_window_stop_awake (Navi *navi);
 void navi_window_stop_compass (Navi *navi);
 void navi_window_set_mode (Navi *navi, NaviMode mode);
 /* the place's card, the camera on it */
