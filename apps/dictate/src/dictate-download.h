@@ -60,6 +60,13 @@ guint64            dictate_pack_size   (const DictatePack *pack);
 char              *dictate_pack_host   (const DictatePack *pack);
 /* every pack, for the tests: `n` of them */
 const DictatePack *dictate_packs       (guint *n);
+/* the pack whose voice `model` is (a voice dictate_voice_choose () gave): found by its place under vibeos-dictate and
+ * its file's name, in whichever data directory it is (downloaded, or packaged); NULL for a voice no pack has (a file
+ * talk-voice names) */
+const DictatePack *dictate_pack_for_voice (const char *model);
+/* the voice `model` as Agent names it, for an app that speaks with it (Navi): its pack's title ("Piper voice
+ * Lessac"), else its own file's name without ".onnx", or the name of the directory a model.onnx is in */
+char              *dictate_voice_title    (const char *model);
 
 typedef enum {
   DICTATE_DOWNLOAD_WAITING,     /* not started */

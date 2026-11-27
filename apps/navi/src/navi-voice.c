@@ -12,8 +12,10 @@
 #include <gst/app/gstappsrc.h>
 #include <gst/gst.h>
 
+#include "dictate-download.h"
 #include "dictate-voice.h"
 #endif
+#include "navi-route.h"
 
 #define KEEP_CLIPS    32 /* prompts kept made */
 #define PIPER_THREADS 2  /* ONNX Runtime's, as Agent's: the other cores stay the map's */
@@ -705,26 +707,49 @@ navi_voice_describe (NaviVoice *self, const char *language)
 {
   g_autofree char *lang = short_language (language);
   const Choice *voice = find_voice (self, lang);
-  const char *model = voice ? voice->model : NULL;
   g_clear_pointer (&self->description, g_free);
-  if (model && strstr (model, "/tiny-voca/")) {
-    /* TRANSLATORS: Navi's voice in Russian; tiny-voca is its name */
-    self->description = g_strdup (_("tiny-voca voice, on this device"));
+#ifdef HAVE_PIPER
+  if (voice) {
+    /* the voice as Agent names it (its pack's title) */
+    g_autofree char *title = dictate_voice_title (voice->model);
+    /* TRANSLATORS: what speaks the directions, in Settings; %s is Vibe's own name for it, "Piper voice Lessac" */
+    self->description = g_strdup_printf (_("%s, on this device"), title);
     return self->description;
   }
-  if (model) {
-    /* en_US-lessac-medium.onnx: Lessac */
-    g_autofree char *base = g_path_get_basename (model);
-    g_auto (GStrv) parts = g_strsplit (base, "-", 3);
-    if (parts[0] && parts[1]) {
-      parts[1][0] = g_ascii_toupper (parts[1][0]);
-      self->description = g_strdup_printf (_("Piper voice %s, on this device"), parts[1]);
-    } else {
-      self->description = g_strdup (_("Piper voice, on this device"));
-    }
-    return self->description;
-  }
+#endif
   return _("No voice on this phone");
+}
+
+char *
+navi_voice_credits (NaviVoice *self)
+{
+  GString *s = g_string_new ("The directions are spoken in Vibe's voices, each language in the one Vibe speaks it "
+                             "in.");
+#ifdef HAVE_PIPER
+  const char *code;
+  for (guint i = 0; (code = navi_spoken_language_code (i)); i++) {
+    const Choice *voice = find_voice (self, code);
+    /* not on the phone: the one Voice language downloads, Agent's */
+    const DictatePack *pack = voice ? dictate_pack_for_voice (voice->model)
+                                    : dictate_pack_find (code, DICTATE_PACK_VOICE);
+    g_autofree char *title = voice ? dictate_voice_title (voice->model) : g_strdup (pack ? pack->title : NULL);
+    if (!title)
+      continue;
+    g_autofree char *line = NULL;
+    if (pack) {
+      g_autofree char *host = dictate_pack_host (pack);
+      line = g_markup_printf_escaped (" %s: %s (%s), from <a href=\"%s\">%s</a>%s.", navi_spoken_language_name (code),
+                                      title, pack->licence, pack->source, host, voice ? "" : ", once downloaded");
+    } else {
+      line = g_markup_printf_escaped (" %s: %s, a voice file chosen in Vibe's settings.",
+                                      navi_spoken_language_name (code), title);
+    }
+    g_string_append (s, line);
+  }
+#else
+  g_string_append (s, " This Navi was built without them.");
+#endif
+  return g_string_free (s, FALSE);
 }
 
 void

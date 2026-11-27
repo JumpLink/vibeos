@@ -196,6 +196,47 @@ dictate_pack_find (const char *language, DictatePackKind kind)
   return NULL;
 }
 
+const DictatePack *
+dictate_pack_for_voice (const char *model)
+{
+  for (guint i = 0; model && i < G_N_ELEMENTS (PACKS); i++)
+    {
+      if (PACKS[i].kind != DICTATE_PACK_VOICE)
+        continue;
+      for (const DictateFile *f = PACKS[i].files; f->name; f++)
+        {
+          /* .../vibeos-dictate/voices/ru/tiny-voca/model.onnx, wherever vibeos-dictate is */
+          g_autofree char *tail = g_strconcat (G_DIR_SEPARATOR_S "vibeos-dictate" G_DIR_SEPARATOR_S, PACKS[i].place,
+                                               G_DIR_SEPARATOR_S, f->name, NULL);
+          if (g_str_has_suffix (f->name, ".onnx") && g_str_has_suffix (model, tail))
+            return &PACKS[i];
+        }
+    }
+  return NULL;
+}
+
+char *
+dictate_voice_title (const char *model)
+{
+  const DictatePack *pack = dictate_pack_for_voice (model);
+  g_autofree char *base = NULL;
+
+  if (pack)
+    return g_strdup (pack->title);
+  if (!model)
+    return NULL;
+  base = g_path_get_basename (model);
+  /* a model in a directory of its own (Kokoro's, tiny-voca's): that directory's name */
+  if (g_str_has_prefix (base, "model"))
+    {
+      g_autofree char *dir = g_path_get_dirname (model);
+      return g_path_get_basename (dir);
+    }
+  if (g_str_has_suffix (base, ".onnx"))
+    base[strlen (base) - strlen (".onnx")] = '\0';
+  return g_steal_pointer (&base);
+}
+
 guint64
 dictate_pack_size (const DictatePack *pack)
 {

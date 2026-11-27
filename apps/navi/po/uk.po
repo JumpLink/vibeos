@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-27 18:00+0100\n"
+"POT-Creation-Date: 2026-11-27 18:25+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Ukrainian\n"
@@ -769,19 +769,11 @@ msgstr[0] "Нагадування: %s, %s"
 msgstr[1] "Нагадування: %s, %s"
 msgstr[2] "Нагадування: %s, %s"
 
-#. TRANSLATORS: Navi's voice in Russian; tiny-voca is its name
-#: src/navi-voice.c
-msgid "tiny-voca voice, on this device"
-msgstr "Голос tiny-voca на цьому пристрої"
-
+#. TRANSLATORS: what speaks the directions, in Settings; %s is Vibe's own name for it, "Piper voice Lessac"
 #: src/navi-voice.c
 #, c-format
-msgid "Piper voice %s, on this device"
-msgstr "Голос Piper %s на цьому пристрої"
-
-#: src/navi-voice.c
-msgid "Piper voice, on this device"
-msgstr "Голос Piper на цьому пристрої"
+msgid "%s, on this device"
+msgstr "%s, на цьому пристрої"
 
 #: src/navi-voice.c
 msgid "No voice on this phone"

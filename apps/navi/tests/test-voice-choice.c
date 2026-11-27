@@ -1,13 +1,16 @@
 /* test-voice-choice: the voice Navi speaks a language in is the one Agent speaks it in (dictate_voice_choose, from
  * Agent's settings and its voices): Russian's tiny-voca and the man or the woman Agent's Voice setting has, a Piper
- * voice for the others, talk-voice's file for all where it is there, and none where Agent has none.
+ * voice for the others, talk-voice's file for all where it is there, and none where Agent has none. And Agent's name
+ * and credit for each voice (dictate_voice_title, dictate_pack_for_voice), which Navi's Settings and About show.
  *
  * The voices are stand-ins (empty files: the choice looks at names, never loads a model) in the test's own data
  * directories (G_TEST_OPTION_ISOLATE_DIRS); Agent's settings are its schema, compiled in the build directory
  * (GSETTINGS_SCHEMA_DIR), on a memory backend. */
+#include "dictate-download.h"
 #include "dictate-voice.h"
 
 #include <glib/gstdio.h>
+#include <string.h>
 
 static const char *const TINY_VOCA_FILES[] = { "model.onnx", "model.json", "stress.txt.gz", "accent.onnx",
                                                "omograph.onnx", "omograph_vocab.txt.gz", NULL };
@@ -149,6 +152,70 @@ test_keys (void)
   g_assert_false (dictate_voice_is_choice_key (NULL));
 }
 
+/* a voice's name and credit are Agent's: its pack's title, licence and source, wherever the voice is */
+static void
+test_titles (void)
+{
+  g_autofree char *tiny_voca = put_tiny_voca ();
+  g_autofree char *lessac = put ("en", "en_US-lessac-medium.onnx");
+  const DictatePack *pack = dictate_pack_for_voice (lessac);
+  g_autofree char *title = dictate_voice_title (lessac);
+
+  g_assert_nonnull (pack);
+  g_assert_cmpstr (pack->language, ==, "en");
+  g_assert_cmpstr (title, ==, "Piper voice Lessac");
+  g_clear_pointer (&title, g_free);
+  pack = dictate_pack_for_voice (tiny_voca);
+  g_assert_nonnull (pack);
+  g_assert_cmpstr (pack->language, ==, "ru");
+  title = dictate_voice_title (tiny_voca);
+  g_assert_cmpstr (title, ==, pack->title);
+  g_assert_nonnull (strstr (title, "tiny-voca"));
+  g_clear_pointer (&title, g_free);
+  /* packaged, in the system's data directory */
+  pack = dictate_pack_for_voice ("/usr/share/vibeos-dictate/voices/de/de_DE-thorsten-medium.onnx");
+  g_assert_nonnull (pack);
+  g_assert_cmpstr (pack->language, ==, "de");
+
+  /* no pack's: the name on disk */
+  struct { const char *model, *title; } other[] = {
+    { "/usr/share/vibeos-dictate/voices/ru/ru_RU-denis-medium.onnx", "ru_RU-denis-medium" }, /* Russian's before */
+    { "/home/someone/kokoro/model_quantized.onnx", "kokoro" },
+    { "/home/someone/en_US-amy-medium.onnx", "en_US-amy-medium" },
+    { "/home/someone/voices/en/en_US-lessac-medium.onnx", "en_US-lessac-medium" }, /* not under vibeos-dictate */
+  };
+  for (guint i = 0; i < G_N_ELEMENTS (other); i++) {
+    g_assert_null (dictate_pack_for_voice (other[i].model));
+    title = dictate_voice_title (other[i].model);
+    g_assert_cmpstr (title, ==, other[i].title);
+    g_clear_pointer (&title, g_free);
+  }
+  g_assert_null (dictate_pack_for_voice (NULL));
+  g_assert_null (dictate_voice_title (NULL));
+
+  /* every voice pack is found from its own model, and has what About credits */
+  guint n;
+  const DictatePack *packs = dictate_packs (&n);
+  guint voices = 0;
+  for (guint i = 0; i < n; i++) {
+    if (packs[i].kind != DICTATE_PACK_VOICE)
+      continue;
+    voices++;
+    g_assert_true (packs[i].title && *packs[i].title && packs[i].licence && *packs[i].licence);
+    g_assert_true (g_str_has_prefix (packs[i].source, "https://"));
+    guint models = 0;
+    for (const DictateFile *f = packs[i].files; f->name; f++) {
+      if (!g_str_has_suffix (f->name, ".onnx"))
+        continue;
+      g_autofree char *model = g_build_filename ("/usr/share/vibeos-dictate", packs[i].place, f->name, NULL);
+      g_assert_true (dictate_pack_for_voice (model) == &packs[i]);
+      models++;
+    }
+    g_assert_cmpuint (models, >, 0);
+  }
+  g_assert_cmpuint (voices, ==, 6);
+}
+
 int
 main (int argc, char **argv)
 {
@@ -163,6 +230,7 @@ main (int argc, char **argv)
   g_test_add_func ("/voice-choice/chosen-file", test_chosen_file);
   g_test_add_func ("/voice-choice/no-voice", test_no_voice);
   g_test_add_func ("/voice-choice/keys", test_keys);
+  g_test_add_func ("/voice-choice/titles", test_titles);
   int status = g_test_run ();
   g_object_unref (agent);
   return status;
