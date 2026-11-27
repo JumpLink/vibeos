@@ -115,6 +115,11 @@ vibeos (1:0.1.5) unstable; urgency=medium
   * After a language change, Settings says that Phone, Messages,
     reminders and alarms change language after a restart: their services
     keep running through the change.
+  * Settings > SIMs > Network mode changes the mode: it reaches
+    ModemManager as the one argument SetCurrentModes takes, which
+    ModemManager refused before.
+  * A keyring prompt that began just before the phone locked no longer
+    opens under the lock screen, where it held every touch.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 
