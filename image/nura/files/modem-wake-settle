@@ -1,0 +1,44 @@
+#!/bin/sh
+# systemd-sleep hook: let the modem wake the AP (incoming calls, SMS) without
+# the modem aborting every suspend attempt.
+#
+# Every glink message on a wakeup-enabled channel is a hard wakeup event. On
+# sdm845 the WLAN firmware is driven over QMI through the modem, so when
+# mac80211 stops the still-up wlan interface during dpm_suspend, the modem's
+# replies abort s2idle — on every retry. NetworkManager has already
+# disconnected WLAN at this point, so take the link down here, wait for the
+# modem channel to go quiet, and bring the link back after resume.
+STATE=/run/modem-wake-settle.links
+
+case "$1" in
+post)
+	[ -f $STATE ] && while read -r i; do ip link set "$i" up; done < $STATE
+	rm -f $STATE
+	exit 0
+	;;
+pre) ;;
+*) exit 0 ;;
+esac
+
+: > $STATE
+for n in /sys/class/net/*; do
+	[ -e "$n/phy80211" ] || continue
+	i=${n##*/}
+	ip -o link show "$i" | grep -q "[<,]UP[,>]" || continue
+	ip link set "$i" down && echo "$i" >> $STATE
+done
+
+for d in /sys/bus/rpmsg/devices/*.remoteproc:glink-edge.IPCRTR.-1.-1; do
+	case "$(readlink -f "$d")" in */4080000.remoteproc/*) ;; *) continue ;; esac
+	echo enabled > "$d/power/wakeup"
+	c="$d/wakeup/wakeup*/event_count"
+	last=$(cat $c 2>/dev/null) quiet=0 n=0
+	while [ $quiet -lt 4 ] && [ $n -lt 40 ]; do
+		sleep 0.25
+		now=$(cat $c 2>/dev/null)
+		if [ "$now" = "$last" ]; then quiet=$((quiet + 1)); else quiet=0; last=$now; fi
+		n=$((n + 1))
+	done
+	logger -t modem-wake-settle "links down: $(tr '\n' ' ' < $STATE)modem channel quiet after $((n * 250)) ms"
+done
+exit 0

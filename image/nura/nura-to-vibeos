@@ -299,7 +299,8 @@ def device_row(nura_dev):
                     'panels': [] if len(f) < 5 or f[4] == '-' else f[4].split(','),
                     'dtbo': 'clear' if len(f) > 5 and f[5] == 'clear' else None,
                     'mask': [] if len(f) < 7 or f[6] == '-' else f[6].split(','),
-                    'watchdog': len(f) > 7 and f[7] == 'reset'}
+                    'watchdog': len(f) > 7 and f[7] == 'reset',
+                    'modemwake': len(f) > 8 and f[8] == 'settle'}
     return None
 
 
@@ -329,6 +330,16 @@ def watchdog_dropins(P):
         os.makedirs(os.path.dirname(os.path.join(P, rel)), exist_ok=True)
         with open(os.path.join(P, rel), 'w') as f:
             f.write(body)
+
+
+def modem_wake_hook(P):
+    """the systemd-sleep hook of a phone the modem should wake (table column modemwake): it enables the modem's
+    IPCRTR wakeup, off by default, and keeps WLAN's QMI traffic through the modem from aborting the suspend"""
+    rel = 'usr/lib/systemd/system-sleep/50-modem-wake-settle'
+    os.makedirs(os.path.dirname(os.path.join(P, rel)), exist_ok=True)
+    shutil.copyfile(os.path.join(HERE, 'files', 'modem-wake-settle'),
+                    os.path.join(P, rel))
+    os.chmod(os.path.join(P, rel), 0o755)
 
 
 def kernel_from_vmlinuz(v):
@@ -842,6 +853,9 @@ def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset
     if row and row['watchdog']:
         watchdog_dropins(P)
         pl.carried.append(('systemd watchdog and rmtfs stop drop-ins (table: watchdog reset)', 'vibeos'))
+    if row and row['modemwake']:
+        modem_wake_hook(P)
+        pl.carried.append(('modem wakeup systemd-sleep hook (table: modemwake settle)', 'vibeos'))
     # the units pmOS's presets disable: masked. An empty unit file masks as a link to /dev/null does (systemd.unit(5)),
     # and unlike that link it can be unpacked over itself: toybox tar in recovery refuses to replace a symlink that
     # points out of the tree, so a second install would stop there

@@ -16,8 +16,10 @@
 #             silent both ways; without it the modem places calls over 2G/3G, where q6voice carries the audio
 #   watchdog  reset: the zip carries two systemd drop-ins (RuntimeWatchdogSec/RebootWatchdogSec=30s, rmtfs
 #             TimeoutStopSec=15s): a reboot that hangs in the modem shutdown path is reset by the hardware watchdog
-# nura               android                          dtb                                   layout                                       panels          dtbo    mask            watchdog
-oneplus-fajita       fajita,OnePlus6T,OnePlus6TSingle -                                     -                                            -               clear   81voltd.service reset
+#   modemwake settle: the zip carries a systemd-sleep hook that lets the modem's IPCRTR channel wake the phone
+#             (incoming calls in suspend) and takes WLAN down first, whose QMI traffic would abort every suspend
+# nura               android                          dtb                                   layout                                       panels          dtbo    mask            watchdog  modemwake
+oneplus-fajita       fajita,OnePlus6T,OnePlus6TSingle -                                     -                                            -               clear   81voltd.service reset     settle
 oneplus-enchilada    enchilada,OnePlus6               -                                     -                                            -
 google-sargo         sargo                            -                                     -                                            -
 google-bonito        bonito                           -                                     -                                            -
