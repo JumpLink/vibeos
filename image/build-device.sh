@@ -263,6 +263,15 @@ poco)
 	rm -rf "${P:?}/var/lib/hexagonrpc/surya/persist" && install -d -m 755 "$P/var/lib/hexagonrpc/surya/persist" || exit 1
 	[ "$(readlink "$P/$SR/persist")" = /var/lib/hexagonrpc/surya/persist ] || { echo "$SR/persist: not the link to the state" >&2; exit 1; }
 	[ "$(ls "$P/$SR/registry" | wc -l)" -gt 100 ] && [ "$(ls "$P/$SR/config" | wc -l)" -gt 10 ] || { echo "no sensor registry or config in $SR" >&2; exit 1; }
+	# both are postmarketOS's qcom-sm7150 set (Nura's), unchanged: their file trees hash (the sha256 of the sorted
+	# sha256sum list) as in postmarketOS's qcom-sm7150 image. 173 of the registry's 193 files are model defaults, the
+	# same on every unit; the other 20 are the calibration of the unit postmarketOS's set was made on, public in its
+	# image. None comes from our POCO (2026-11-27)
+	for d in registry:d18cfa1a869e9f9e config:8e413928e6bfefe9; do
+		h=$(cd "$P/$SR/${d%%:*}" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -c1-16)
+		[ "$h" = "${d#*:}" ] || { echo "$SR/${d%%:*}: not postmarketOS's qcom-sm7150 set ($h)" >&2; exit 1; }
+	done
+	echo "sensor registry: postmarketOS qcom-sm7150, unchanged ($SR/registry: 193 files, $SR/config: 46)" >> "$L/firmware.txt"
 	[ -z "$(find "$P/var" -mindepth 1 ! -type d | head -n 1)" ] || { echo "state left in the stage's /var: $(find "$P/var" -mindepth 1 ! -type d | head -n 3 | tr '\n' ' ')" >&2; exit 1; }
 	# the UCM file's header named the build machine's kernel tree; it names the kernel instead
 	sed -i 's|^# /home/[^ ]*/surya-kernel:$|# the POCO kernel (7.2.15-surya):|' "$P/usr/share/alsa/ucm2/Xiaomi/surya/HiFi.conf"
