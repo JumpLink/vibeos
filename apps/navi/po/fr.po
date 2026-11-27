@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-27 14:10+0100\n"
+"POT-Creation-Date: 2026-11-27 18:00+0100\n"
 "PO-Revision-Date: 2026-11-24 03:41+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: French\n"
@@ -783,10 +783,6 @@ msgstr "Voix Piper %s, sur cet appareil"
 #: src/navi-voice.c
 msgid "Piper voice, on this device"
 msgstr "Voix Piper, sur cet appareil"
-
-#: src/navi-voice.c
-msgid "eSpeak NG voices, on this device"
-msgstr "Voix eSpeak NG, sur cet appareil"
 
 #: src/navi-voice.c
 msgid "No voice on this phone"

@@ -1,9 +1,8 @@
 /* navi-voice: see navi-voice.h.
  *
- * One thread of its own does what is slow: loading a Piper voice, making a prompt's sound, talking to Speech
- * Dispatcher (opening it can start the daemon). The main thread keeps the prompts made, by language and words, and
- * the queue of those to say, and plays them one after the other, each through a GStreamer pipeline of its own to the
- * session's sound server, as Agent does. */
+ * One thread of its own does what is slow: loading Agent's voice and making a prompt's sound. The main thread keeps
+ * the prompts made, by voice and words, and the queue of those to say, and plays them one after the other, each
+ * through a GStreamer pipeline of its own to the session's sound server, as Agent does. */
 #include "navi-voice.h"
 
 #include <gio/gio.h>
@@ -15,9 +14,6 @@
 
 #include "dictate-voice.h"
 #endif
-#ifdef HAVE_SPEECHD
-#include <libspeechd.h>
-#endif
 
 #define KEEP_CLIPS    32 /* prompts kept made */
 #define PIPER_THREADS 2  /* ONNX Runtime's, as Agent's: the other cores stay the map's */
@@ -26,8 +22,6 @@ typedef enum {
   JOB_WARM,     /* load the voice, and make one word: a model's first run is its slowest */
   JOB_MAKE,     /* a prompt's sound */
   JOB_REST,     /* the voice let go of */
-  JOB_SPD_SAY,
-  JOB_SPD_STOP,
 } JobKind;
 
 typedef struct {
@@ -79,11 +73,6 @@ struct _NaviVoice {
   DictateVoice *voice;
   char *voice_model, *voice_name;
   char *failed_model, *failed_name;
-#endif
-#ifdef HAVE_SPEECHD
-  SPDConnection *conn;
-  char *spd_language;
-  gboolean spd_failed;
 #endif
   /* the main thread's */
 #ifdef HAVE_PIPER
@@ -235,33 +224,6 @@ work (gpointer data, gpointer user_data)
     g_idle_add_full (G_PRIORITY_DEFAULT, made, m, NULL);
     break;
   }
-#endif
-#ifdef HAVE_SPEECHD
-  case JOB_SPD_SAY:
-  case JOB_SPD_STOP:
-    if (!self->conn && !self->spd_failed && job->kind == JOB_SPD_SAY) {
-      char *error = NULL;
-      self->conn = spd_open2 ("vibeos-navi", "directions", NULL, SPD_MODE_SINGLE, NULL, TRUE, &error);
-      if (!self->conn) {
-        g_message ("voice: no Speech Dispatcher: %s", error ? error : "?");
-        free (error);
-        self->spd_failed = TRUE;
-      }
-    }
-    if (!self->conn)
-      break;
-    if (job->kind == JOB_SPD_STOP) {
-      spd_cancel (self->conn);
-      break;
-    }
-    if (g_strcmp0 (job->language, self->spd_language)) {
-      spd_set_language (self->conn, job->language);
-      g_free (self->spd_language);
-      self->spd_language = g_strdup (job->language);
-    }
-    spd_set_voice_rate (self->conn, -10);
-    spd_say (self->conn, SPD_MESSAGE, job->text);
-    break;
 #endif
   default:
     break;
@@ -654,11 +616,6 @@ navi_voice_free (NaviVoice *self)
   g_free (self->failed_model);
   g_free (self->failed_name);
 #endif
-#ifdef HAVE_SPEECHD
-  if (self->conn)
-    spd_close (self->conn);
-  g_free (self->spd_language);
-#endif
   voice_unref (self);
 }
 
@@ -719,20 +676,19 @@ navi_voice_say (NaviVoice *self, const char *text, const char *language)
 {
   if (!text || !*text)
     return;
+#ifdef HAVE_PIPER
   g_autofree char *lang = short_language (language);
   const Choice *voice = find_voice (self, lang);
-#ifdef HAVE_PIPER
-  if (voice) {
-    Turn *t = g_new0 (Turn, 1);
-    t->key = clip_key (lang, voice, text);
-    t->due = g_get_monotonic_time ();
-    ensure_clip (self, voice, lang, text, t->key, &t->made_ahead);
-    g_queue_push_tail (self->turns, t);
-    play_next (self);
+  /* no voice of Agent's for the language: not said, as Agent says nothing without one (Settings tells) */
+  if (!voice)
     return;
-  }
+  Turn *t = g_new0 (Turn, 1);
+  t->key = clip_key (lang, voice, text);
+  t->due = g_get_monotonic_time ();
+  ensure_clip (self, voice, lang, text, t->key, &t->made_ahead);
+  g_queue_push_tail (self->turns, t);
+  play_next (self);
 #endif
-  push (self, JOB_SPD_SAY, NULL, lang, text, NULL);
 }
 
 void
@@ -742,7 +698,6 @@ navi_voice_stop (NaviVoice *self)
   g_queue_clear_full (self->turns, (GDestroyNotify) turn_free);
   played (self); /* what it was saying stops at once; the spare stays */
 #endif
-  push (self, JOB_SPD_STOP, NULL, NULL, NULL, NULL);
 }
 
 const char *
@@ -769,10 +724,6 @@ navi_voice_describe (NaviVoice *self, const char *language)
     }
     return self->description;
   }
-#ifdef HAVE_SPEECHD
-  if (!self->spd_failed)
-    return _("eSpeak NG voices, on this device");
-#endif
   return _("No voice on this phone");
 }
 

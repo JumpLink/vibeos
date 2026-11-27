@@ -94,12 +94,8 @@ foreach mode : ['day', 'night']
 endforeach
 
 # the app: the window and its panels over the map widget and the core
-speechd = dependency('speech-dispatcher', required: false)
 app_args = ['-DGETTEXT_PACKAGE="vibeos-navi"', '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),
             '-DPKGDATADIR="@0@"'.format(datadir)]
-if speechd.found()
-  app_args += '-DHAVE_SPEECHD'
-endif
 if get_option('debug_privacy')
   app_args += '-DNAVI_DEBUG'
 endif
@@ -169,7 +165,7 @@ executable('vibeos-navi', 'src/navi-main.c', 'src/navi-window.c', 'src/navi-aler
            'src/navi-settings.c', 'src/navi-voice.c', 'src/navi-plan.c', voice_sources,
            c_args: app_args,
            dependencies: [core_dep, navi_map_dep, dependency('vibeos-1'), dependency('spongy-gtk-1'),
-                          dependency('librsvg-2.0'), speechd] +
+                          dependency('librsvg-2.0')] +
                          voice_deps,
            install_rpath: '$ORIGIN/../lib/vibeos-navi',
            install: true)

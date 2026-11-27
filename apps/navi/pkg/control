@@ -16,7 +16,6 @@ Recommends: geoclue-2.0,
             vibeos-dictate-moonshine,
             vibeos-dictate-voice-en,
             vibeos-dictate-en | vibeos-dictate-de | vibeos-dictate-es | vibeos-dictate-fr | vibeos-dictate-it | vibeos-dictate-ru,
-Suggests: speech-dispatcher,
 Description: car navigation for VibeOS
  Navi gives turn-by-turn directions for driving: a vector map from VibeOS's
  map server, routes with lanes, speed limits and speed cameras, spoken
@@ -29,5 +28,6 @@ Description: car navigation for VibeOS
  The prompts are spoken in Agent's voice, the one Agent's settings choose for
  the language (and its man or woman, where the voice has both), found in
  vibeos-dictate/voices/LANGUAGE under the user's or the system's data
- directories, and through Speech Dispatcher where there is none. The search's
- microphone uses vibeos-dictate's speech models.
+ directories. A language Agent has no voice for is not spoken, as Agent does
+ not speak it; Settings downloads its voice. The search's microphone uses
+ vibeos-dictate's speech models.
