@@ -3,7 +3,7 @@
 # whose table row says dtbo clear: a by-name directory of files stands in for /dev/block/by-name. dtbo_for must name
 # the boot slot's dtbo (boot_a: dtbo_a) and nothing for recovery, none, or a device without dtbo; zero must leave the
 # partition all zeros and its neighbour untouched. Also: nura-to-vibeos reads the column (fajita clear, others not),
-# and the watchdog column (fajita only) with the two drop-ins it writes.
+# and the watchdog and modemwake columns (fajita only) with the drop-ins and the sleep hook they write.
 set -u
 T=$(cd "$(dirname "$0")/.." && pwd)
 W=$(mktemp -d)
