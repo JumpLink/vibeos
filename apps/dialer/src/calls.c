@@ -5,6 +5,7 @@
 #include "call-notifications.h"
 #include "call-recorder.h"
 #include "call-recording.h"
+#include "call-speaker.h"
 #include "contacts.h"
 #include "modem.h"
 #include "phone.h"
@@ -86,6 +87,7 @@ struct _Calls {
 
   Modem *modem;
   Ringer *ringer;
+  CallSpeaker *call_speaker;    /* the speaker where it is a Voice Call profile of its own (call-speaker.h) */
   CallNotifications *notifications;
   Contacts *contacts;
   BlockedNumbers *blocked;      /* the numbers whose calls are declined unseen (blocked-numbers.h) */
@@ -297,6 +299,7 @@ sync_call_audio (Calls *self)
       /* the next call starts on the earpiece, unmuted (CallAudio puts both back as it leaves call mode) */
       self->muted = FALSE;
       self->speaker = FALSE;
+      call_speaker_reset (self->call_speaker);
     }
 }
 
@@ -1473,6 +1476,7 @@ calls_set_speaker (Calls *self, gboolean speaker)
     return;
   self->speaker = speaker;
   call_audio (self, "EnableSpeaker", g_variant_new ("(b)", speaker));
+  call_speaker_set (self->call_speaker, speaker);
   sync_notification (self);
   self->callbacks.changed (self->data);
 }
@@ -1759,6 +1763,7 @@ calls_new (GDBusConnection *session, GDBusConnection *system, GSettings *setting
   self->calls = g_ptr_array_new_with_free_func ((GDestroyNotify) call_free);
   self->deferred = g_ptr_array_new_with_free_func (g_free);
   self->ringer = ringer_new (settings);
+  self->call_speaker = call_speaker_new ();
   self->notifications = call_notifications_new (on_notification_action, self);
   self->contacts = contacts_new ();
   self->blocked = blocked_numbers_new (NULL);
@@ -1794,6 +1799,7 @@ calls_free (Calls *self)
   g_object_unref (self->blocked);
   call_notifications_free (self->notifications);
   ringer_free (self->ringer);
+  call_speaker_free (self->call_speaker);
   g_object_unref (self->settings);
   g_object_unref (self->system);
   g_object_unref (self->session);

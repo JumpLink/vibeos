@@ -19,13 +19,15 @@ common = static_library('common', 'src/phone-number.c', 'src/call-log.c', 'src/c
 # what the sound card's UCM says about recording a call: the app's Settings and the service
 alsa = dependency('alsa')
 call_audio_ucm = static_library('call-audio-ucm', 'src/call-audio-ucm.c', dependencies: [gio, alsa])
+# the speaker where the sound card has it in a Voice Call profile of its own
+pulse = dependency('libpulse-mainloop-glib')
+call_speaker = static_library('call-speaker', 'src/call-speaker.c', dependencies: [gio, pulse])
 
 # the service: the calls with the app closed, ringing, the call log, the notifications
 executable('vibeos-dialer-calls', 'src/calls-service.c', 'src/calls.c', 'src/modem.c', 'src/ringer.c',
            'src/call-notifications.c', 'src/notifier.c', 'src/phone.c', 'src/call-recorder.c', 'src/gst-start.c',
-           link_with: [common, call_audio_ucm], install: true,
-           dependencies: [gio, ebook, m, dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'),
-                          dependency('libpulse-mainloop-glib')])
+           link_with: [common, call_audio_ucm, call_speaker], install: true,
+           dependencies: [gio, ebook, m, dependency('gstreamer-1.0'), dependency('gstreamer-app-1.0'), pulse])
 
 # the app: its tabs and dialpad, and the in-call screen (vibeos-dialer --incall)
 gtk = dependency('gtk4', version: '>= 4.14')
@@ -85,6 +87,10 @@ test('call-recording', executable('test-call-recording', 'tests/test-call-record
 test('call-audio-ucm', executable('test-call-audio-ucm', 'tests/test-call-audio-ucm.c', link_with: call_audio_ucm,
                                   dependencies: [gio, alsa]),
      env: test_env + ['ALSA_CONFIG_UCM2=' + meson.current_source_dir() / 'tests/ucm2'])
+# which profile the speaker switches to, on cards as PipeWire describes them
+test('call-speaker', executable('test-call-speaker', 'tests/test-call-speaker.c', link_with: call_speaker,
+                                dependencies: [gio, pulse]),
+     env: test_env)
 
 # the call flows end to end, against a mock modem, shell and notification server on buses of their own; GStreamer's
 # registry made first takes up to a minute under arm64 emulation
