@@ -22,6 +22,7 @@
 #include <gtk/gtk.h>
 #include <vibeos.h>
 
+#include "navi-back.h"
 #include "navi-compass.h"
 #include "navi-geo.h"
 #include "navi-guidance.h"
@@ -32,14 +33,6 @@
 #include "navi-settings.h"
 
 G_BEGIN_DECLS
-
-typedef enum {
-  NAVI_MODE_BROWSE,
-  NAVI_MODE_PLACE,
-  NAVI_MODE_ROUTES,
-  NAVI_MODE_DRIVE,
-  NAVI_MODE_ARRIVED,
-} NaviMode;
 
 typedef enum {
   NAVI_CAM_FOLLOW,
@@ -107,7 +100,7 @@ typedef struct {
   /* the routes */
   NaviPlace *dest;
   NaviPlace *stop;          /* a stop on the way while driving, NULL when none (or once it is reached) */
-  GtkWidget *back;          /* the unseen "Back" the shell's back gesture presses while there is a route or a card */
+  GtkWidget *back;          /* the unseen "Back" the shell's back gesture presses (navi-back.h) */
   GPtrArray *routes;        /* NaviRoute, best first */
   guint selected;
   gboolean routes_approx;   /* asked from a guess (no fix yet): asked again at the first fix */
@@ -212,10 +205,16 @@ void navi_panels_open_search (NaviPanels *panels, const char *text);
 void navi_panels_sync_sound (NaviPanels *panels);
 /* a road alert (a speed camera ahead): spoken unless the sound is off, also in "Alerts only" */
 void navi_panels_say_alert (NaviPanels *panels, const char *text);
-/* a route is being previewed or driven: asks whether to cancel it. With `place` (a new destination chosen while
- * driving) the answers are Add a stop and New destination (a tap outside keeps the drive); without (Back), Keep
- * driving (Keep route) and Cancel route, which then opens the search for a new address */
+/* a new destination, `place`, chosen while a route is previewed or driven: Add a stop (driving) and New destination
+ * (a tap outside or Back keeps the route) */
 void navi_panels_ask_route_change (NaviPanels *panels, const NaviPlace *place);
+/* Back while driving: "End navigation?", Cancel (the drive goes on) or End navigation (it stops, Navi stays on the
+ * map) */
+void navi_panels_ask_end_drive (NaviPanels *panels);
+/* Back from the routes' preview, as its own Back: the countdown to Go stops, the destination's card again */
+void navi_panels_routes_back (NaviPanels *panels);
+/* whether the search shows over the map */
+gboolean navi_panels_search_shown (NaviPanels *panels);
 /* Back for what the panels show over the map (the search): TRUE when it closed something */
 gboolean navi_panels_back (NaviPanels *panels);
 

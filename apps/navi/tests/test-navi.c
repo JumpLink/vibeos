@@ -1,6 +1,7 @@
 /* Tests of Navi's logic: paths, Valhalla's answer, the guidance along a route and its prompts, the tile reader,
- * the search's folding and Photon's answer, the sun. No GTK, no network: the route is a saved answer (Bahnhof Zoo
- * to Potsdamer Platz in Berlin) and the drive is made-up fixes along it. */
+ * the search's folding and Photon's answer, the sun, what Back does. No GTK, no network: the route is a saved
+ * answer (Bahnhof Zoo to Potsdamer Platz in Berlin) and the drive is made-up fixes along it. */
+#include "navi-back.h"
 #include "navi-compass.h"
 #include "navi-geo.h"
 #include "navi-guidance.h"
@@ -885,6 +886,74 @@ test_compass_late_sensor (void)
   g_test_dbus_down (bus);   /* also unsets DBUS_SYSTEM_BUS_ADDRESS */
 }
 
+/* Back (navi-back.h). While driving it asks "End navigation?", and a second Back over the question keeps the drive.
+ * End navigation stops the drive, leaving Navi on the map: no answer quits. The other modes step back as they did,
+ * the routes without a question. The unseen Back the shell's swipe presses shows in every mode but browsing, so a
+ * swipe takes Navi home only while it browses. */
+static void
+test_back (void)
+{
+  static const NaviMode modes[] = { NAVI_MODE_BROWSE, NAVI_MODE_PLACE, NAVI_MODE_ROUTES, NAVI_MODE_DRIVE,
+                                    NAVI_MODE_ARRIVED };
+  NaviBackState s = { .mode = NAVI_MODE_DRIVE };
+
+  /* driving: asked, whether the camera follows the car or was moved off it */
+  g_assert_cmpstr (navi_back_name (navi_back_decide (&s)), ==, "ask-end");
+  s.off_car = TRUE;
+  g_assert_cmpint (navi_back_decide (&s), ==, NAVI_BACK_ASK_END);
+  /* the question showing: Back is its Cancel, never a second question */
+  s.dialog = TRUE;
+  g_assert_cmpint (navi_back_decide (&s), ==, NAVI_BACK_CANCEL_DIALOG);
+  s = (NaviBackState) { .mode = NAVI_MODE_DRIVE, .dialog = TRUE, .search = TRUE };
+  g_assert_cmpint (navi_back_decide (&s), ==, NAVI_BACK_CANCEL_DIALOG);
+  /* the search over the drive closes first; the drive is asked about on the next Back */
+  s = (NaviBackState) { .mode = NAVI_MODE_DRIVE, .search = TRUE };
+  g_assert_cmpint (navi_back_decide (&s), ==, NAVI_BACK_CLOSE_SEARCH);
+
+  /* the answer: Cancel, a tap outside or a second Back keep the drive; End navigation stops it (navi_stop_drive:
+   * browsing, Navi still open) */
+  g_assert_cmpint (navi_back_end_answered (NAVI_MODE_DRIVE, FALSE), ==, NAVI_BACK_NOTHING);
+  g_assert_cmpint (navi_back_end_answered (NAVI_MODE_DRIVE, TRUE), ==, NAVI_BACK_END_DRIVE);
+  /* arrived while the question showed: End still ends it; ended already (the arrival's own end): nothing more */
+  g_assert_cmpint (navi_back_end_answered (NAVI_MODE_ARRIVED, TRUE), ==, NAVI_BACK_END_DRIVE);
+  g_assert_cmpint (navi_back_end_answered (NAVI_MODE_ARRIVED, FALSE), ==, NAVI_BACK_NOTHING);
+  g_assert_cmpint (navi_back_end_answered (NAVI_MODE_BROWSE, TRUE), ==, NAVI_BACK_NOTHING);
+
+  /* not driving: a step back as before, nothing asked */
+  s = (NaviBackState) { .mode = NAVI_MODE_BROWSE };
+  g_assert_cmpint (navi_back_decide (&s), ==, NAVI_BACK_NOTHING);
+  s.off_car = TRUE;
+  g_assert_cmpint (navi_back_decide (&s), ==, NAVI_BACK_RECENTER);
+  s = (NaviBackState) { .mode = NAVI_MODE_PLACE };
+  g_assert_cmpint (navi_back_decide (&s), ==, NAVI_BACK_CLOSE_PLACE);
+  /* the routes: back to the destination's card, as the routes' own Back (no "Cancel the current route?") */
+  s = (NaviBackState) { .mode = NAVI_MODE_ROUTES };
+  g_assert_cmpint (navi_back_decide (&s), ==, NAVI_BACK_TO_PLACE);
+  s = (NaviBackState) { .mode = NAVI_MODE_ARRIVED };
+  g_assert_cmpint (navi_back_decide (&s), ==, NAVI_BACK_END_DRIVE);
+  /* a dialog over any of them is answered Cancel, the search closes */
+  for (guint i = 0; i < G_N_ELEMENTS (modes); i++) {
+    s = (NaviBackState) { .mode = modes[i], .dialog = TRUE };
+    g_assert_cmpint (navi_back_decide (&s), ==, NAVI_BACK_CANCEL_DIALOG);
+    s = (NaviBackState) { .mode = modes[i], .search = TRUE };
+    g_assert_cmpint (navi_back_decide (&s), ==, NAVI_BACK_CLOSE_SEARCH);
+  }
+
+  /* only driving asks, and every answer is a step inside Navi */
+  for (guint i = 0; i < G_N_ELEMENTS (modes); i++)
+    for (guint bits = 0; bits < 8; bits++) {
+      s = (NaviBackState) { .mode = modes[i], .dialog = bits & 1, .search = (bits & 2) != 0,
+                            .off_car = (bits & 4) != 0 };
+      NaviBack b = navi_back_decide (&s);
+      g_assert_cmpstr (navi_back_name (b), !=, "?");
+      g_assert_true ((b == NAVI_BACK_ASK_END) == (modes[i] == NAVI_MODE_DRIVE && !s.dialog && !s.search));
+    }
+
+  /* the unseen Back: in every mode but browsing, where the shell's swipe is to take Navi home */
+  for (guint i = 0; i < G_N_ELEMENTS (modes); i++)
+    g_assert_true (navi_back_button_shown (modes[i]) == (modes[i] != NAVI_MODE_BROWSE));
+}
+
 int
 main (int argc, char **argv)
 {
@@ -910,5 +979,6 @@ main (int argc, char **argv)
   g_test_add_func ("/navi/search/poi-groups", test_poi_groups);
   g_test_add_func ("/navi/sun", test_sun);
   g_test_add_func ("/navi/compass/late-sensor", test_compass_late_sensor);
+  g_test_add_func ("/navi/back", test_back);
   return g_test_run ();
 }

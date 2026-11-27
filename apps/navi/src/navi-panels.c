@@ -1195,13 +1195,13 @@ where_clicked (GtkWidget *w, NaviPanels *p)
   open_search (p, NULL);
 }
 
-/* ---- a route to change or cancel ---- */
+/* ---- a new destination on the way, and the drive's end ---- */
 
 enum { RESPONSE_ADD_STOP = 2 };
 
 typedef struct {
   NaviPanels *p;
-  NaviPlace *place; /* the new destination, or NULL for Back */
+  NaviPlace *place; /* the new destination */
 } RouteAsk;
 
 static void
@@ -1210,17 +1210,14 @@ route_ask_answered (VibeosDialog *d, int response, RouteAsk *a)
   NaviPanels *p = a->p;
   Navi *n = p->navi;
   gboolean active = n->mode == NAVI_MODE_DRIVE || n->mode == NAVI_MODE_ROUTES;
-  if (active && response == RESPONSE_ADD_STOP && a->place && n->mode == NAVI_MODE_DRIVE) {
+  if (active && response == RESPONSE_ADD_STOP && n->mode == NAVI_MODE_DRIVE) {
     navi_add_stop (n, a->place);
   } else if (active && response == VIBEOS_RESPONSE_OK) {
     if (n->mode == NAVI_MODE_DRIVE)
       navi_stop_drive (n);
     else
       navi_back_to_browse (n);
-    if (a->place)
-      navi_preview_routes (n, a->place);
-    else
-      open_search (p, NULL); /* a new address can be typed at once */
+    navi_preview_routes (n, a->place);
   }
   g_clear_pointer (&a->place, navi_place_free);
   g_free (a);
@@ -1238,27 +1235,50 @@ navi_panels_ask_route_change (NaviPanels *p, const NaviPlace *place)
   gboolean drive = p->navi->mode == NAVI_MODE_DRIVE;
   RouteAsk *a = g_new0 (RouteAsk, 1);
   a->p = p;
-  a->place = place ? navi_place_copy (place) : NULL;
-  VibeosDialog *d;
-  if (place) {
-    /* Waze's two choices; a tap outside or Back keeps the drive as it is (three buttons do not fit a phone) */
-    g_autofree char *title = place->name ? g_strdup_printf (_("Drive to %s?"), place->name)
-                                         : g_strdup (_("Drive to this place?"));
-    d = vibeos_dialog_new (title);
-    vibeos_dialog_set_message (d, _("Add it as a stop on the way, or make it the new destination and cancel the "
-                                    "current route."));
-    if (drive) {
-      GtkWidget *stop = vibeos_dialog_add_neutral_button (d, _("Add a stop"));
-      g_signal_connect (stop, "clicked", G_CALLBACK (add_stop_clicked), d);
-    }
-    vibeos_dialog_add_button (d, _("New destination"), VIBEOS_RESPONSE_OK);
-  } else {
-    d = vibeos_dialog_new (_("Cancel the current route?"));
-    vibeos_dialog_add_button (d, drive ? _("Keep driving") : _("Keep route"), VIBEOS_RESPONSE_CANCEL);
-    vibeos_dialog_add_button (d, _("Cancel route"), VIBEOS_RESPONSE_OK);
+  a->place = navi_place_copy (place);
+  /* Waze's two choices; a tap outside or Back keeps the drive as it is (three buttons do not fit a phone) */
+  g_autofree char *title = place->name ? g_strdup_printf (_("Drive to %s?"), place->name)
+                                       : g_strdup (_("Drive to this place?"));
+  VibeosDialog *d = vibeos_dialog_new (title);
+  vibeos_dialog_set_message (d, _("Add it as a stop on the way, or make it the new destination and cancel the "
+                                  "current route."));
+  if (drive) {
+    GtkWidget *stop = vibeos_dialog_add_neutral_button (d, _("Add a stop"));
+    g_signal_connect (stop, "clicked", G_CALLBACK (add_stop_clicked), d);
   }
+  vibeos_dialog_add_button (d, _("New destination"), VIBEOS_RESPONSE_OK);
   g_signal_connect (d, "response", G_CALLBACK (route_ask_answered), a);
   vibeos_dialog_present (d, p->navi->win);
+}
+
+/* The answer to "End navigation?": End navigation stops the drive, and Navi stays open on the map, browsing. Cancel,
+ * a tap outside and Back (Escape: the shell's back swipe over a dialog) leave the drive, its voice and its route as
+ * they were: the dialog only covered them. */
+static void
+end_drive_answered (VibeosDialog *d, int response, NaviPanels *p)
+{
+  Navi *n = p->navi;
+  if (navi_back_end_answered (n->mode, response == VIBEOS_RESPONSE_OK) == NAVI_BACK_END_DRIVE)
+    navi_stop_drive (n);
+}
+
+void
+navi_panels_ask_end_drive (NaviPanels *p)
+{
+  VibeosDialog *d = vibeos_dialog_new (_("End navigation?"));
+  vibeos_dialog_add_button (d, _("Cancel"), VIBEOS_RESPONSE_CANCEL);
+  /* TRANSLATORS: the button under "End navigation?" that stops the drive. It shares a row with "Cancel" on a
+   * 360 dp phone: where the whole phrase makes the row too long, the verb alone ("End") will do, as the title
+   * above names the navigation */
+  vibeos_dialog_add_button (d, _("End navigation"), VIBEOS_RESPONSE_OK);
+  g_signal_connect (d, "response", G_CALLBACK (end_drive_answered), p);
+  vibeos_dialog_present (d, p->navi->win);
+}
+
+gboolean
+navi_panels_search_shown (NaviPanels *p)
+{
+  return p->search_view != NULL;
 }
 
 gboolean
@@ -2046,14 +2066,20 @@ later_clicked (GtkWidget *w, NaviPanels *p)
                              p, NULL);
 }
 
-static void
-header_back_clicked (GtkWidget *w, NaviPanels *p)
+void
+navi_panels_routes_back (NaviPanels *p)
 {
   stop_countdown (p);
   if (p->navi->dest)
     navi_show_place (p->navi, p->navi->dest);
   else
     navi_back_to_browse (p->navi);
+}
+
+static void
+header_back_clicked (GtkWidget *w, NaviPanels *p)
+{
+  navi_panels_routes_back (p);
 }
 
 static GtkWidget *

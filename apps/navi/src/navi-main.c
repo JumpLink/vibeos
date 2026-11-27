@@ -79,30 +79,56 @@ make_search (Navi *n)
   return search;
 }
 
-/* ---- back: Escape, the Back key and VibeOS's back swipe (Alt+Left) ---- */
+/* ---- back: Escape, the Back key, Alt+Left and VibeOS's back swipe (navi-back.h) ---- */
+
+/* the dialog in front in the window (VibeosDialogs show in its root overlay, the last one on top), or NULL */
+static VibeosDialog *
+top_dialog (Navi *n)
+{
+  GtkOverlay *overlay = vibeos_window_get_overlay (n->win);
+  for (GtkWidget *w = overlay ? gtk_widget_get_last_child (GTK_WIDGET (overlay)) : NULL; w;
+       w = gtk_widget_get_prev_sibling (w))
+    if (VIBEOS_IS_DIALOG (w))
+      return VIBEOS_DIALOG (w);
+  return NULL;
+}
 
 static void
 go_back (Navi *n)
 {
-  /* the search over the map goes first (Settings, About and dialogs take their own keys) */
-  if (navi_panels_back (n->panels))
-    return;
-  switch (n->mode) {
-  case NAVI_MODE_PLACE:
+  /* (Settings, About and the menu are sheets that take their own keys; the search over the map takes only Escape) */
+  VibeosDialog *dialog = top_dialog (n);
+  NaviBackState state = {
+    .mode = n->mode,
+    .dialog = dialog != NULL,
+    .search = navi_panels_search_shown (n->panels),
+    .off_car = n->cam != NAVI_CAM_FOLLOW && n->car_known,
+  };
+  switch (navi_back_decide (&state)) {
+  case NAVI_BACK_CANCEL_DIALOG:
+    /* as Escape: a second Back over "End navigation?" keeps the drive */
+    vibeos_dialog_respond (dialog, VIBEOS_RESPONSE_CANCEL);
+    break;
+  case NAVI_BACK_CLOSE_SEARCH:
+    navi_panels_back (n->panels);
+    break;
+  case NAVI_BACK_CLOSE_PLACE:
     navi_back_to_browse (n);
     break;
-  case NAVI_MODE_ROUTES:
-  case NAVI_MODE_DRIVE:
-    /* a route: asked first, never dropped by a stray swipe */
-    navi_panels_ask_route_change (n->panels, NULL);
+  case NAVI_BACK_TO_PLACE:
+    navi_panels_routes_back (n->panels);
     break;
-  case NAVI_MODE_ARRIVED:
+  case NAVI_BACK_ASK_END:
+    navi_panels_ask_end_drive (n->panels);
+    break;
+  case NAVI_BACK_END_DRIVE:
     navi_stop_drive (n);
     break;
-  case NAVI_MODE_BROWSE:
-    /* never quits: the menu's Exit does */
-    if (n->cam != NAVI_CAM_FOLLOW && n->car_known)
-      navi_recenter (n);
+  case NAVI_BACK_RECENTER:
+    navi_recenter (n);
+    break;
+  case NAVI_BACK_NOTHING:
+    /* browsing never quits on a key: the menu's Exit does, and the shell's swipe takes Navi home */
     break;
   }
 }
@@ -115,8 +141,10 @@ on_back (GtkWidget *widget, GVariant *args, gpointer data)
 }
 
 /* The shell's back swipe asks the app what Back means (extension/a11y.js): it presses a "Back" button in the
- * window's top 40 px, and sends an app without one home. Navi has somewhere to go back to while a place, a route or
- * a drive shows: an unseen one-pixel "Back" at the top says so (navi_window_set_mode shows it), and runs go_back */
+ * window's top 40 px, sends Escape over a dialog, and sends an app with neither home (minimized). Navi has somewhere to
+ * go back to while a place, routes or a drive show: an unseen one-pixel "Back" at the top says so
+ * (navi_back_button_shown; navi_window_set_mode shows it), and runs go_back. While driving that asks first, so a swipe
+ * never drops the drive nor takes Navi off the screen. */
 static void
 back_clicked (GtkWidget *button, Navi *n)
 {

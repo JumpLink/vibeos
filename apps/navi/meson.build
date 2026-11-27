@@ -58,7 +58,8 @@ install_data('demo/berlin-tiergarten.geojson', install_dir: get_option('datadir'
 
 # ---- the app ----
 
-# what Navi knows without GTK: paths, Valhalla's routes, the guidance along them, search, the position, the sun.
+# what Navi knows without GTK: paths, Valhalla's routes, the guidance along them, search, the position, the sun, and
+# what Back does.
 # A static library the app and the tests share.
 core_deps = [dependency('gio-2.0', version: '>= 2.76'), dependency('json-glib-1.0'), dependency('libsoup-3.0'),
              meson.get_compiler('c').find_library('m'), dependency('icu-i18n'), dependency('icu-uc')]
@@ -68,7 +69,7 @@ locale_inc = include_directories('../../libvibeos')
 core = static_library('navi-core',
   'src/navi-geo.c', 'src/navi-route.c', 'src/navi-guidance.c', 'src/navi-mvt.c', 'src/navi-search.c',
   'src/navi-search-photon.c', 'src/navi-poi.c', 'src/navi-roadinfo.c', 'src/navi-cameras.c', 'src/navi-position.c', 'src/navi-sun.c',
-  'src/navi-compass.c',
+  'src/navi-compass.c', 'src/navi-back.c',
   c_args: get_option('debug_privacy') ? ['-DNAVI_DEBUG'] : [],
   include_directories: locale_inc,
   dependencies: core_deps)

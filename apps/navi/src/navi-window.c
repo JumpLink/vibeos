@@ -1012,7 +1012,7 @@ navi_window_set_mode (Navi *n, NaviMode mode)
   navi_panels_set_mode (n->panels, mode);
   navi_window_update_overlay (n);
   if (n->back)
-    gtk_widget_set_visible (n->back, mode != NAVI_MODE_BROWSE);
+    gtk_widget_set_visible (n->back, navi_back_button_shown (mode));
   update_route_layers (n);
   update_bubbles (n);
   ensure_tick (n);

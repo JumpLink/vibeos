@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-26 01:54+0100\n"
+"POT-Creation-Date: 2026-11-27 14:10+0100\n"
 "PO-Revision-Date: 2026-11-24 03:41+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Russian\n"
@@ -301,20 +301,15 @@ msgid "New destination"
 msgstr "Новый маршрут"
 
 #: src/navi-panels.c
-msgid "Cancel the current route?"
-msgstr "Отменить текущий маршрут?"
+msgid "End navigation?"
+msgstr "Завершить навигацию?"
 
+#. TRANSLATORS: the button under "End navigation?" that stops the drive. It shares a row with "Cancel" on a
+#. * 360 dp phone: where the whole phrase makes the row too long, the verb alone ("End") will do, as the title
+#. * above names the navigation
 #: src/navi-panels.c
-msgid "Keep driving"
-msgstr "Продолжить поездку"
-
-#: src/navi-panels.c
-msgid "Keep route"
-msgstr "Оставить маршрут"
-
-#: src/navi-panels.c
-msgid "Cancel route"
-msgstr "Отменить маршрут"
+msgid "End navigation"
+msgstr "Завершить"
 
 # android: Settings vpn_always_on_summary_active (short)
 #: src/navi-panels.c
