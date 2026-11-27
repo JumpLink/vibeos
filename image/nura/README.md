@@ -66,6 +66,7 @@ the boot partition.
 `data/devices.txt` holds what the converter cannot read from an image: the LineageOS device names, and for a
 generic SoC image (Nura's `qcom-sm7150`, which U-Boot and systemd-boot start, so it has no boot.img) the phone's DTB,
 the boot image header its bootloader expects, and the panels it was sold with.
+A `watchdog reset` row (the OnePlus 6T) also gets two systemd drop-ins: the hardware watchdog resets a reboot that hangs in the modem shutdown path, and rmtfs stops after 15 s.
 
 | Nura device | Phone | Checked |
 |---|---|---|
