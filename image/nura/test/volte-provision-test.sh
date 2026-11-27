@@ -4,7 +4,8 @@
 # change it is asked for: for a 1&1 SIM the Vodafone NL config is activated, its IMS profile set
 # to IPv6, its default profile to the APN of NetworkManager's mobile connection, and the modem goes online once
 # so the new config has taken effect before ModemManager sets up the data path; nothing is changed when all
-# is already so, for another network, or when the modem lacks the config; the config file wins over the table.
+# is already so, for another network, when the modem lacks the config, or while 81voltd is masked or missing; the
+# config file wins over the table.
 # Needs only sh and awk; touches only a temporary directory.
 set -u
 S=${1:-$(cd "$(dirname "$0")/.." && pwd)/files/qcom-volte-provision}
@@ -68,6 +69,15 @@ case "$3" in
 esac
 EOF
 chmod 755 "$W/bin/qmicli"
+# systemctl is-enabled 81voltd.service, as VOLTD says ("" = the unit is not there: systemd prints nothing on stdout)
+cat > "$W/bin/systemctl" <<'EOF'
+#!/bin/sh
+[ "$1 $2" = "is-enabled 81voltd.service" ] || exit 1
+[ -n "$VOLTD" ] || { echo "Failed to get unit file state for 81voltd.service: No such file or directory" >&2; exit 1; }
+echo "$VOLTD"; case $VOLTD in enabled | static) ;; *) exit 1 ;; esac
+EOF
+chmod 755 "$W/bin/systemctl"
+VOLTD=enabled; export VOLTD
 cat > "$W/mbns" <<'EOF'
 8D:E6:16:18:49:B8:CD:9C:FF:D0:96:E1:A0:31:E8:C2:7B:82:1D:41|Oversea-Commercial_DS
 D2:E6:E3:B3:A1:FB:14:8F:67:52:2D:0F:D9:F9:08:DB:A4:44:E7:41|UK-VoLTE-Vodafone
@@ -134,6 +144,16 @@ NO_ACTIVATE=1; export NO_ACTIVATE
 run "config never reported active: profiles left alone" 262231234567890 "" $OV "$FRESH" "" \
 	"MBN Netherlands-VoLTE-Vodafone not reported active, profiles left alone" "--pdc-activate-config=software,$NL"
 unset NO_ACTIVATE
+VOLTD=masked
+run "81voltd masked: nothing changed" 262231234567890 "" $OV "$FRESH" "" \
+	"81voltd masked or not installed, nothing changed" ""
+VOLTD=
+run "81voltd not installed: nothing changed" 262231234567890 "" $OV "$FRESH" "" \
+	"81voltd masked or not installed, nothing changed" ""
+VOLTD=disabled
+run "81voltd only disabled (another unit may start it): provisioned" 262231234567890 "" $OV "$FRESH" "" \
+	done "$WANT_ALL"
+VOLTD=enabled
 grep -v Netherlands "$W/mbns" > "$W/m2"; mv "$W/m2" "$W/mbns"
 run "modem without that config: nothing changed" 262231234567890 "" $OV "$FRESH" "" \
 	"MBN Netherlands-VoLTE-Vodafone not on this modem, nothing changed" ""
