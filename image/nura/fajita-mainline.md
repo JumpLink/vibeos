@@ -11,8 +11,9 @@ sdm845-mainline `v7.4-wip` branch (7.4.0-rc2), until it is good enough for its o
   keep MM1 voted in the sleep set` (the display-off reset, below), the 10nm DSI PLL digtop fix, and since
   2026-11-26 the fixes for calls: the tfa98xx speaker amplifier accepts a call's front end (speaker in calls)
   and the WCD934x RX0–RX2 digital gains stop at 0 dB (the earpiece clipped at PipeWire's 100 %, which was
-  +40 dB). Tree: [JumpLink/linux-fajita](https://github.com/JumpLink/linux-fajita) branch `op6t-fixes-1126`,
-  15 commits on a history-less import of `v7.4-wip`.
+  +40 dB). The panel's backlight callback now restores DSI low-power mode when a brightness write fails, as every
+  write with the display off does. Tree: [JumpLink/linux-fajita](https://github.com/JumpLink/linux-fajita) branch
+  `op6t-fixes-1126`, 16 commits on a history-less import of `v7.4-wip`.
 - Test variants ran with `fastboot boot` against the installed VibeOS 0.1.3 root. They differ only in the
   command line (`module_blacklist=…`), repacked with mkbootimg: header v0, base 0, kernel offset 0x8000,
   ramdisk offset 0x1000000, tags offset 0x100, page size 4096.
