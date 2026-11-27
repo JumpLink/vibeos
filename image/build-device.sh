@@ -677,19 +677,21 @@ nabu)
 	# 7.3.6-nabu's modules_install tree, the kernel of NABU_BOOT.
 	ST=${NABU_STAGE:?set NABU_STAGE}
 	(cd "$ST/root" && tar -cf - .) | tar -C "$P" -xpf - --no-same-owner
-	# The SLPI's sensor registry, as on the POCO: the shipped one is postmarketOS's (sensors/registry, with the
-	# sensors/config files). The tablet's own copy (its state, the magnetometer's calibration among it) is never
-	# shipped: the state directory goes in empty, and the postinst seeds it once and gives it to fastrpc, the user
-	# hexagonrpcd-sdsp-sensorspd runs as. hexagonrpcd serves sensors/persist, a link to it, read-write
+	# The SLPI's sensor registry: none ships. A tablet's own registry (its persist one, the factory and runtime
+	# calibration among it) is that unit's data, so sensors/registry goes in empty, next to sensors/config; on the
+	# first boot the SLPI builds the registry from sensors/config by itself (tested 2026-11-26: accelerometer, light
+	# and compass work). The state directory goes in empty too: the postinst makes its registry/ and gives it to
+	# fastrpc, the user hexagonrpcd-sdsp-sensorspd runs as. hexagonrpcd serves sensors/persist, a link to it, read-write
 	SR=usr/share/qcom/sm8150/Xiaomi/nabu/sensors
 	rm -rf "${P:?}/var/lib/hexagonrpc/nabu/persist" && install -d -m 755 "$P/var/lib/hexagonrpc/nabu/persist" || exit 1
 	[ "$(readlink "$P/$SR/persist")" = /var/lib/hexagonrpc/nabu/persist ] || { echo "$SR/persist: not the link to the state" >&2; exit 1; }
-	[ "$(ls "$P/$SR/registry" | wc -l)" -gt 100 ] && [ "$(ls "$P/$SR/config" | wc -l)" -gt 10 ] || { echo "no sensor registry or config in $SR" >&2; exit 1; }
+	[ -d "$P/$SR/registry" ] && [ -z "$(ls -A "$P/$SR/registry")" ] || { echo "$SR/registry: missing or not empty (no unit's registry ships)" >&2; exit 1; }
+	[ "$(ls "$P/$SR/config" | wc -l)" -gt 10 ] || { echo "no sensor config in $SR" >&2; exit 1; }
 	[ -z "$(find "$P/var" -mindepth 1 ! -type d | head -n 1)" ] || { echo "state left in the stage's /var: $(find "$P/var" -mindepth 1 ! -type d | head -n 3 | tr '\n' ' ')" >&2; exit 1; }
 	# nothing of the bring-up: no ssh keys or ssh settings, no USB network
 	[ ! -e "$P/root" ] && [ ! -e "$P/etc/ssh" ] && [ -z "$(find "$P" -name '*usb-net*' -o -name '*bringup*' | head -n 1)" ] ||
 		{ echo "bring-up files in the nabu stage" >&2; exit 1; }
-	POSTINST_SH='# the sensor registry: a copy the SLPI may write, seeded once from the shipped one, never replaced
+	POSTINST_SH='# the sensor registry: the SLPI writes it (from sensors/config on the first boot), never replaced
 	S=/var/lib/hexagonrpc/nabu/persist
 	if getent passwd fastrpc > /dev/null; then
 		[ -n "$(ls -A $S 2> /dev/null)" ] || { mkdir -p $S/registry && cp -a /usr/share/qcom/sm8150/Xiaomi/nabu/sensors/registry/. $S/registry/; }
