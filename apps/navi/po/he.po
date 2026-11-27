@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-27 18:25+0100\n"
+"POT-Creation-Date: 2026-11-27 19:03+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Hebrew\n"
@@ -393,6 +393,10 @@ msgid "5 km/h over"
 msgstr "5 קמ\"ש מעל"
 
 #: src/navi-panels.c
+msgid "Dark until navigation ends: Dark map while driving is on"
+msgstr "כהה עד סוף הניווט: האפשרות מפה כהה בזמן נהיגה מופעלת"
+
+#: src/navi-panels.c
 msgid "Tilted, always"
 msgstr "תמיד מוטה"
 
@@ -461,6 +465,14 @@ msgstr "הגדרות"
 #: src/navi-panels.c
 msgid "Map display"
 msgstr "תצוגת המפה"
+
+#: src/navi-panels.c
+msgid "Dark map while driving"
+msgstr "מפה כהה בזמן נהיגה"
+
+#: src/navi-panels.c
+msgid "By day too, from the start of navigation to its end"
+msgstr "גם ביום, מתחילת הניווט ועד סופו"
 
 #: src/navi-panels.c
 msgid "Auto: flat while browsing, 3D while driving"

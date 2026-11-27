@@ -294,6 +294,12 @@ test_night_pick (void)
         g_assert_cmpint (navi_night_pick (mode, sun, sys, FALSE, TRUE), ==, want);
         g_assert_cmpint (navi_night_pick (mode, sun, sys, TRUE, FALSE), ==, want); /* drive-dark off */
       }
+  /* Settings' note under the dark mode: only while the drive rule is what makes the map dark */
+  for (int mode = NAVI_DARK_AT_NIGHT; mode <= NAVI_DARK_SYSTEM; mode++) {
+    g_assert_cmpint (navi_drive_dark_overrides (mode, TRUE, TRUE), ==, mode != NAVI_DARK_ALWAYS);
+    g_assert_false (navi_drive_dark_overrides (mode, FALSE, TRUE)); /* not driving */
+    g_assert_false (navi_drive_dark_overrides (mode, TRUE, FALSE)); /* the row off */
+  }
 }
 
 static void

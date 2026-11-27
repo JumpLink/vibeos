@@ -29,6 +29,12 @@ navi_sun_is_night (double lat, double lng, gint64 unix_time)
 }
 
 gboolean
+navi_drive_dark_overrides (NaviDarkMode mode, gboolean driving, gboolean drive_dark)
+{
+  return driving && drive_dark && mode != NAVI_DARK_ALWAYS;
+}
+
+gboolean
 navi_night_pick (NaviDarkMode mode, gboolean sun_night, gboolean system_dark, gboolean driving, gboolean drive_dark)
 {
   if (driving && drive_dark)

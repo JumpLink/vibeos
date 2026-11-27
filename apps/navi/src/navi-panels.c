@@ -1348,7 +1348,8 @@ about_info (NaviPanels *p)
 typedef struct {
   NaviPanels *p;
   GtkWidget *sheet;
-  GtkWidget *dark_row, *view_row, *voice_row, *home_row, *work_row, *speeding_row, *vehicle_row, *units_row;
+  GtkWidget *dark_row, *drive_dark_row, *view_row, *voice_row, *home_row, *work_row, *speeding_row, *vehicle_row;
+  GtkWidget *units_row;
   GtkWidget *language_row;
 } SettingsPage;
 
@@ -1421,6 +1422,13 @@ settings_refresh (SettingsPage *s)
 {
   NaviSettings *st = s->p->navi->settings;
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->dark_row), dark_name (st->dark));
+  /* driving with "Dark map while driving" on, the map is dark whatever the dark mode says: its "Off" is not in force
+   * until the drive ends, and the row says so */
+  gboolean driving = s->p->navi->mode == NAVI_MODE_DRIVE;
+  vibeos_list_row_set_summary (VIBEOS_LIST_ROW (s->dark_row),
+                               navi_drive_dark_overrides (st->dark, driving, st->drive_dark)
+                                 ? _("Dark until navigation ends: Dark map while driving is on")
+                                 : NULL);
   vibeos_list_row_set_value (VIBEOS_LIST_ROW (s->view_row), view_name (st->view));
   vibeos_list_row_set_summary (VIBEOS_LIST_ROW (s->view_row),
                                st->view == NAVI_VIEW_3D   ? _("Tilted, always")
@@ -1592,6 +1600,25 @@ language_clicked (GtkWidget *row, SettingsPage *s)
   vibeos_sheet_push (VIBEOS_SHEET (s->sheet), _("Voice language"), list);
 }
 
+/* "Dark map while driving": at once, while a route is being driven */
+static void
+drive_dark_changed (GObject *sw, GParamSpec *pspec, SettingsPage *s)
+{
+  NaviSettings *st = s->p->navi->settings;
+  st->drive_dark = vibeos_switch_get_active (VIBEOS_SWITCH (sw));
+  navi_settings_save (st);
+  navi_update_night (s->p->navi);
+  settings_refresh (s);
+}
+
+void
+navi_panels_refresh_settings (NaviPanels *p)
+{
+  SettingsPage *s = settings_sheet ? g_object_get_data (G_OBJECT (settings_sheet), "navi-settings") : NULL;
+  if (s && s->p == p)
+    settings_refresh (s);
+}
+
 static void
 switch_changed (GObject *sw, GParamSpec *pspec, SettingsPage *s)
 {
@@ -1654,6 +1681,12 @@ open_settings (gpointer data)
   s->dark_row = vibeos_list_row_new (_("Dark mode"), NULL);
   g_signal_connect (s->dark_row, "clicked", G_CALLBACK (dark_clicked), s);
   vibeos_card_list_append (VIBEOS_CARD_LIST (list), s->dark_row);
+  s->drive_dark_row = vibeos_list_row_new (_("Dark map while driving"),
+                                           _("By day too, from the start of navigation to its end"));
+  GtkWidget *drive_dark_sw = vibeos_list_row_set_switch (VIBEOS_LIST_ROW (s->drive_dark_row), FALSE);
+  vibeos_switch_set_active (VIBEOS_SWITCH (drive_dark_sw), st->drive_dark);
+  g_signal_connect (drive_dark_sw, "notify::active", G_CALLBACK (drive_dark_changed), s);
+  vibeos_card_list_append (VIBEOS_CARD_LIST (list), s->drive_dark_row);
   s->view_row = vibeos_list_row_new (_("Map view"), _("Auto: flat while browsing, 3D while driving"));
   g_signal_connect (s->view_row, "clicked", G_CALLBACK (view_clicked), s);
   vibeos_card_list_append (VIBEOS_CARD_LIST (list), s->view_row);

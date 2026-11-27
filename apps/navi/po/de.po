@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-navi\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-27 18:25+0100\n"
+"POT-Creation-Date: 2026-11-27 19:03+0100\n"
 "PO-Revision-Date: 2026-11-23 04:00+0100\n"
 "Last-Translator: pulpoff\n"
 "Language-Team: German\n"
@@ -382,6 +382,10 @@ msgid "5 km/h over"
 msgstr "5 km/h darüber"
 
 #: src/navi-panels.c
+msgid "Dark until navigation ends: Dark map while driving is on"
+msgstr "Dunkel bis zum Ende der Navigation: Dunkle Karte beim Fahren ist an"
+
+#: src/navi-panels.c
 msgid "Tilted, always"
 msgstr "Immer geneigt"
 
@@ -448,6 +452,14 @@ msgstr "Einstellungen"
 #: src/navi-panels.c
 msgid "Map display"
 msgstr "Kartendarstellung"
+
+#: src/navi-panels.c
+msgid "Dark map while driving"
+msgstr "Dunkle Karte beim Fahren"
+
+#: src/navi-panels.c
+msgid "By day too, from the start of navigation to its end"
+msgstr "Auch tagsüber, vom Start der Navigation bis zu ihrem Ende"
 
 #: src/navi-panels.c
 msgid "Auto: flat while browsing, 3D while driving"

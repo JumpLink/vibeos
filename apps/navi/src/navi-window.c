@@ -1187,8 +1187,10 @@ navi_window_set_mode (Navi *n, NaviMode mode)
   n->mode = mode;
   apply_drive_fps (n);
   /* the dark map while driving, and back to the day or night of the settings after */
-  if (was_driving != (mode == NAVI_MODE_DRIVE))
+  if (was_driving != (mode == NAVI_MODE_DRIVE)) {
     navi_update_night (n);
+    navi_panels_refresh_settings (n->panels);
+  }
   if (n->compass)
     compass_sync (n);
   /* the screen stays on while a route is driven, as long as the window is shown */

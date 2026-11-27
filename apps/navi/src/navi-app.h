@@ -195,6 +195,8 @@ void navi_panels_set_speed (NaviPanels *panels, double speed);
 void navi_panels_set_limit (NaviPanels *panels, int kmh);
 /* the units of the road's country ("DE": km/h, "GB": mph) */
 void navi_panels_set_units (NaviPanels *panels, const char *country);
+/* Settings, if it is open, shown again: what it says depends on whether a route is being driven */
+void navi_panels_refresh_settings (NaviPanels *panels);
 /* the card over the speedometer for a camera ahead: "Speed camera", "300 m"; a NULL title hides it */
 void navi_panels_show_alert (NaviPanels *panels, const char *title, const char *detail);
 /* once ever: where speed camera alerts are not allowed (Settings' cameras_notice_seen) */

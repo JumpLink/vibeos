@@ -23,5 +23,8 @@ gboolean navi_sun_is_night (double lat, double lng, gint64 unix_time);
  * night, whatever the mode (the owner's choice, 2026-11-27: "dark map while driving"). */
 gboolean navi_night_pick (NaviDarkMode mode, gboolean sun_night, gboolean system_dark, gboolean driving,
                           gboolean drive_dark);
+/* Whether "Dark map while driving" overrules `mode` now: driving with it on, and `mode` not dark anyway (Always).
+ * Settings says so under the dark mode's row then, instead of letting its "Off" read as in force. */
+gboolean navi_drive_dark_overrides (NaviDarkMode mode, gboolean driving, gboolean drive_dark);
 
 G_END_DECLS
