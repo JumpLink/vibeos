@@ -40,7 +40,7 @@ HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(HERE, 'lib'))
 import apkdb, bootimg, cpio, debfetch, debver, extract  # noqa: E402
 
-VERSION = '0.1.3-nura3'
+VERSION = '0.1.5-nura4'
 EPOCH = 1795262400  # 2026-11-21 12:00 UTC, as the 0.1.3 zips: every timestamp in the zip
 UA = {'User-Agent': 'nura-to-vibeos/0.1'}
 
@@ -1173,8 +1173,9 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
     log('Debian packages for the first boot')
     ok, ddropped, gaps, missing = debian_debs(nura, args, debsdir, system)
     pkgname = 'vibeos-device-nura-%s' % dev
-    # the converter's revision too: a later converter's package for the same Nura build is a newer version
-    pver = '0.1.3+nura%s-%s' % (stamp.replace('-', '.'), VERSION.rsplit('nura', 1)[1])
+    # the release and the converter's revision too: a later release's or converter's package for the same Nura build
+    # is a newer version
+    pver = '%s+nura%s-%s' % (VERSION.rsplit('-nura', 1)[0], stamp.replace('-', '.'), VERSION.rsplit('nura', 1)[1])
     desc = '%s (%s): Nura\'s kernel %s modules, %d firmware files, the device\'s settings' % (
         nura.di.get('name', dev), dev, kver, nfw)
     deb = os.path.join(debsdir, '%s_%s_arm64.deb' % (pkgname, pver))
