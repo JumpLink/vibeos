@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-26 01:54+0100\n"
+"POT-Creation-Date: 2026-11-27 11:02+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: German\n"
@@ -1748,6 +1748,18 @@ msgstr "In den letzten 24 Std. nicht voll geladen"
 msgid "Charge history appears after some use"
 msgstr "Der Ladeverlauf erscheint nach einiger Zeit der Nutzung"
 
+#. Translators: a refresh rate in hertz, whole ("60 Hz") or with decimals ("59.94 Hz"); the space is a no-break
+#. space (U+00A0), keep it
+#: src/ns-displays.c
+#, c-format
+msgid "%.0f Hz"
+msgstr ""
+
+#: src/ns-displays.c
+#, c-format
+msgid "%.2f Hz"
+msgstr ""
+
 #. TRANSLATORS: %s is a refresh rate ("50 Hz")
 #: src/ns-displays.c
 #, c-format
@@ -2854,6 +2866,13 @@ msgstr "%d Std. %d Min."
 msgid "%d min"
 msgstr "%d Min."
 
+#. Translators: %d is a battery charge in milliampere-hours, as in "3000 mAh"
+#. Translators: a battery capacity in milliampere-hours ("%d mAh") or in watt-hours ("%.1f Wh")
+#: src/ns-pages.c
+#, c-format
+msgid "%d mAh"
+msgstr ""
+
 #. TRANSLATORS: %s is a time ("1 h 20 min")
 #: src/ns-pages.c
 #, c-format
@@ -2908,6 +2927,11 @@ msgstr "Nennkapazität"
 #: src/ns-pages.c
 msgid "Maximum capacity"
 msgstr "Maximale Kapazität"
+
+#: src/ns-pages.c
+#, c-format
+msgid "%.1f Wh"
+msgstr ""
 
 #: src/ns-pages.c
 msgid "This phone's battery reports none of these."

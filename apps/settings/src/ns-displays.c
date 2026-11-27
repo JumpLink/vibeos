@@ -137,8 +137,10 @@ static char *
 rate_label (NsMode *mode)
 {
   double r = round (mode->refresh);
-  g_autofree char *hz = fabs (mode->refresh - r) < 0.005 ? g_strdup_printf ("%.0f\u00a0Hz", r)
-                                                          : g_strdup_printf ("%.2f\u00a0Hz", mode->refresh);
+  /* Translators: a refresh rate in hertz, whole ("60 Hz") or with decimals ("59.94 Hz"); the space is a no-break
+     space (U+00A0), keep it */
+  g_autofree char *hz = fabs (mode->refresh - r) < 0.005 ? g_strdup_printf (_("%.0f\u00a0Hz"), r)
+                                                          : g_strdup_printf (_("%.2f\u00a0Hz"), mode->refresh);
   /* TRANSLATORS: %s is a refresh rate ("50 Hz") */
   return mode->interlaced ? g_strdup_printf (_("%s, interlaced"), hz) : g_steal_pointer (&hz);
 }

@@ -1194,7 +1194,8 @@ charge_mah_read (GTask *task, gpointer src, gpointer data, GCancellable *cancel)
   g_autofree char *dir = battery_dir ();
   gint64 uah = 0;
   if (dir && (supply_number (dir, "charge_counter", &uah) || supply_number (dir, "charge_now", &uah)) && uah > 0)
-    g_task_return_pointer (task, g_strdup_printf ("%d mAh", (int) (uah / 1000)), g_free);
+    /* Translators: %d is a battery charge in milliampere-hours, as in "3000 mAh" */
+    g_task_return_pointer (task, g_strdup_printf (_("%d mAh"), (int) (uah / 1000)), g_free);
   else
     g_task_return_pointer (task, NULL, NULL);
 }
@@ -1357,11 +1358,12 @@ battery_read (GTask *task, gpointer src, gpointer data, GCancellable *cancel)
   }
   gboolean mah = !g_strcmp0 (unit, "mAh");
   if (got_design && design > 0)
-    v[BAT_DESIGN] = mah ? g_strdup_printf ("%" G_GINT64_FORMAT " mAh", design / 1000)
-                        : g_strdup_printf ("%.1f Wh", design / 1e6);
+    /* Translators: a battery capacity in milliampere-hours ("%d mAh") or in watt-hours ("%.1f Wh") */
+    v[BAT_DESIGN] = mah ? g_strdup_printf (_("%d mAh"), (int) (design / 1000))
+                        : g_strdup_printf (_("%.1f Wh"), design / 1e6);
   if (got_full && full > 0) {
-    g_autofree char *amount = mah ? g_strdup_printf ("%" G_GINT64_FORMAT " mAh", full / 1000)
-                                  : g_strdup_printf ("%.1f Wh", full / 1e6);
+    g_autofree char *amount = mah ? g_strdup_printf (_("%d mAh"), (int) (full / 1000))
+                                  : g_strdup_printf (_("%.1f Wh"), full / 1e6);
     /* what it holds now, of what it held new */
     v[BAT_MAXIMUM] = got_design && design > 0
                      ? g_strdup_printf ("%s (%d%%)", amount, (int) lround (100.0 * full / design))
