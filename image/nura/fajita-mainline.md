@@ -8,8 +8,11 @@ sdm845-mainline `v7.4-wip` branch (7.4.0-rc2), until it is good enough for its o
 - Base: [sdm845-mainline](https://gitlab.com/sdm845-mainline/linux) `v7.4-wip`, Nura's config plus
   `INPUT_QCOM_PMI8998_HAPTICS=m` (vibration) and `VIDEO_LC89821X=m` (the focus actuators).
 - Extra commits on top: the focus actuators wired up with their `vio` supply, `interconnect: qcom: sdm845:
-  keep MM1 voted in the sleep set` (the display-off reset, below) and the 10nm DSI PLL digtop fix.
-  Tree: [JumpLink/linux-fajita](https://github.com/JumpLink/linux-fajita) branch `fajita`.
+  keep MM1 voted in the sleep set` (the display-off reset, below), the 10nm DSI PLL digtop fix, and since
+  2026-11-26 the fixes for calls: the tfa98xx speaker amplifier accepts a call's front end (speaker in calls)
+  and the WCD934x RX0–RX2 digital gains stop at 0 dB (the earpiece clipped at PipeWire's 100 %, which was
+  +40 dB). Tree: [JumpLink/linux-fajita](https://github.com/JumpLink/linux-fajita) branch `op6t-fixes-1126`,
+  15 commits on a history-less import of `v7.4-wip`.
 - Test variants ran with `fastboot boot` against the installed VibeOS 0.1.3 root. They differ only in the
   command line (`module_blacklist=…`), repacked with mkbootimg: header v0, base 0, kernel offset 0x8000,
   ramdisk offset 0x1000000, tags offset 0x100, page size 4096.
@@ -34,6 +37,7 @@ so the stream goes over the USB network (`vibeos-usb-net`, PR #7):
 | Bluetooth | works once the controller has an address: the 6T DT and bootloader give none, so the QCA chip stays "unconfigured" and BlueZ hides it. A boot service sets one derived from `androidboot.serialno` (`btmgmt public-addr`, retried until the firmware download finished) |
 | Battery (bq27411), WLAN, sound cards | detected; battery reads 100 %, 4.385 V, full charge 2.43 Ah of 3.64 Ah design (aged cell). `energy-full-design` missing in DT (warning) |
 | Modem | works with a SIM: LTE, registered, `connected`. The modem reads the card but opens no provisioning session by itself (ModemManager: `sim-missing`); `qcom-uim-provision` opens it before ModemManager starts ([#12](https://github.com/pulpoff/vibeos/pull/12)). The 6T-own firmware from `modem_a` behaves the same as the enchilada files. Do not stop/start the modem remoteproc: it sent the phone into Qualcomm CrashDump once |
+| Calls | work, judged by ear on landline calls. CS (CSFB): both directions with #24 and #25. VoLTE: registers at boot for a 1&1 SIM with `qcom-volte-provision` (#29, on #12) and 81voltd waiting for ModemManager's modem (#28); speech both ways, the radio stays on LTE. Speaker in calls: #26, #27 and the tfa98xx kernel fix. Earpiece volume: normal with the 0 dB gain limit |
 | Camera focus (lc89821x) | works: the actuators share the CCI bus whose pull-ups hang on `cam_vio_1p8`, which their node did not request (`-110` while the sensor slept). With `vio-supply` (linux-fajita `175fde03c`, `c7f666693`) focus moves on both cameras with runtime PM on |
 | DSI PLL warning at probe | fixed: the clock core enabled the 10nm PLL before the PHY's digital top was powered, so the lock failed and the count went unbalanced. linux-fajita `e9ac0107b` powers digtop with the PLL bias, as on 7nm; no WARN at boot, display and touch fine |
 | ramoops | the region at `0xac300000` survives CrashDump intact (read with a Sahara memory dump), but not a reboot: after a cold or warm reboot the zone headers come back with bit errors or uncorrectable, so pstore is empty. Practical path: after a panic, dump the region from CrashDump ([linux-fajita#4](https://github.com/JumpLink/linux-fajita/issues/4)) |
