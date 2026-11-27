@@ -14,7 +14,10 @@
 # third-party icon packs and parallax sets: ROM only, never in the repo or a release; optional); STAGE (the S10e
 # device stage, whose every file is the device layer to remove: the r7 base only); MOBILE (GNOME Shell mobile with
 # libshell patch 0005, as on the S10e and the Poco since 11-17: build-mobile.sh); KIT (the Poco kit: home layout,
-# drawer override, the shell drop-in, the list of GNOME apps to remove).
+# drawer override, the shell drop-in, the list of GNOME apps to remove). EXTRA_DEBS (optional): Debian's own .debs
+# that Debian no longer carries, each named in EXTRA_DEBS/SHA256SUMS (0.1.5: libggml0 0.29.0-1 and libllama0
+# 1:0.9.0+dfsg-1, which Debian unstable dropped in November 2026 when ggml 1.0 and llama.cpp 1.0 renamed them
+# libggml1 and libllama1; vibeos-dictate 0.1.5 is built against them).
 #
 #   1. grows the copy to 12 GiB (room for apt)
 #   2. (the r7 base) removes the S10e device layer: every file of the device stage, the kernel and modules, the boot
@@ -50,6 +53,7 @@ VDEBS=${VDEBS:?set VDEBS: the directory with the 1:$SV .debs}
 MUTTER=${MUTTER:?set MUTTER: the directory with mutter 51.0-3+gp1}
 SPEECH=${SPEECH:?set SPEECH: the directory with the vibeos-dictate-* .debs}
 ART=${ART:-}	# the third-party icon packs and parallax sets (not in this repository): left out when unset
+EXTRA_DEBS=${EXTRA_DEBS:-}	# Debian .debs Debian dropped (above): left out when unset
 STAGE=${STAGE:-}	# the S10e device stage: needed only for the r7 base
 MOBILE=${MOBILE:?set MOBILE: the GNOME Shell mobile tar (opt/gnome-mobile)}
 KIT=${KIT:-$T/kit}
@@ -97,9 +101,31 @@ done
 	[ $# = 1 ] || { echo "$ART: more than one $p .deb" >&2; exit 1; }
 	cp "$1" "$P/"
 done
-# no development builds (0.1.3~next*, relaxed pins) and nothing that is not ours
+# the extra Debian packages, when EXTRA_DEBS is set: every .deb there, each listed in its SHA256SUMS and matching it,
+# its file name its own package_version_arch; they pass the check below by that exact name and version (EXTRA_OK)
+EXTRA_OK=
+if [ -n "$EXTRA_DEBS" ]; then
+	(cd "$EXTRA_DEBS" && sha256sum -c --quiet SHA256SUMS) || { echo "$EXTRA_DEBS: SHA256SUMS fails" >&2; exit 1; }
+	for f in "$EXTRA_DEBS"/*.deb; do
+		[ -f "$f" ] || { echo "$EXTRA_DEBS: no .deb" >&2; exit 1; }
+		grep -q "  $(basename "$f")\$" "$EXTRA_DEBS/SHA256SUMS" || { echo "$f: not in $EXTRA_DEBS/SHA256SUMS" >&2; exit 1; }
+		p=$(dpkg-deb -f "$f" Package); v=$(dpkg-deb -f "$f" Version); a=$(dpkg-deb -f "$f" Architecture)
+		[ "$(basename "$f")" = "${p}_${v#*:}_$a.deb" ] || { echo "$f: not named ${p}_${v#*:}_$a.deb" >&2; exit 1; }
+		case $p in *vibeos*|*spongy*|*tonal*) echo "$f: $p is ours, not Debian's (EXTRA_DEBS)" >&2; exit 1 ;; esac
+		EXTRA_OK="$EXTRA_OK $p=$v"
+		cp "$f" "$P/"
+	done
+	log "extra Debian packages:$EXTRA_OK"
+fi
+# no development builds (0.1.3~next*, relaxed pins) and nothing that is not ours: the release's packages (1:SV), the
+# mutter build, the speech packages, the art packages and the extra Debian packages by name and version, nothing else
 for f in "$P"/*.deb; do
-	v=$(dpkg-deb -f "$f" Version)
+	p=$(dpkg-deb -f "$f" Package); v=$(dpkg-deb -f "$f" Version)
+	case $p=$v in
+	*=1:$SV|gir1.2-mutter-51=51.0-3+gp1|libmutter-51-0=51.0-3+gp1|mutter-common=51.0-3+gp1|mutter-common-bin=51.0-3+gp1) ;;
+	vibeos-dictate-*=*|vibeos-iconpack-h2o=*|vibeos-iconpack-oneui=*|vibeos-parallax-sets=*) ;;
+	*) case " $EXTRA_OK " in *" $p=$v "*) ;; *) echo "refusing $f: $p $v is not one of the build's packages" >&2; exit 1 ;; esac ;;
+	esac
 	case $v in *~next*|*~dev*|*+test*) echo "refusing $f: development version $v" >&2; exit 1 ;; esac
 	if dpkg-deb -f "$f" Depends | tr ',' '\n' | grep -E '(vibeos|spongy|tonal)' | grep -q '>= '; then
 		dpkg-deb -f "$f" Depends | tr ',' '\n' | grep -E '(libvibeos|libspongy|libtonal)-[0-9a-z-]* \(>=' &&
