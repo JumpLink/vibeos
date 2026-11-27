@@ -6,7 +6,7 @@ ringing out, active or held, and closes it when the last one ends. No audio data
 
   vibeos-q6voiced [hw:CARD,DEVICE]    default: the PCM /proc/asound/pcm names VoiceMMode1
 """
-import ctypes, re, sys
+import ctypes, re, sys, time
 
 PCM_NAME = 'VoiceMMode1'
 # MMCallState: DIALING, RINGING_OUT, ACTIVE, HELD
@@ -30,16 +30,50 @@ def find_device(proc='/proc/asound/pcm'):
     return None
 
 
+class Settle:
+    """waits until the sound card's mixer goes quiet. The session's audio manager (WirePlumber's voice-call profile)
+    routes the earpiece on the same ModemManager signal this service acts on, and a voice stream the DSP starts
+    before that route stands stays silent for the whole call: on the OnePlus 6T the far end was heard in one call of
+    two. So: wait up to FIRST seconds for a control to change, then until none has for QUIET, at most MOST in all"""
+    FIRST, QUIET, MOST = 2.0, 0.5, 5.0
+
+    def __init__(self, lib, clock=time.monotonic):
+        self.lib, self.clock = lib, clock
+
+    def wait(self, card):
+        a = self.lib
+        ctl, ev = ctypes.c_void_p(), ctypes.c_void_p()
+        if a.snd_ctl_open(ctypes.byref(ctl), ('hw:%s' % card).encode(), 0) < 0:
+            return 0
+        a.snd_ctl_subscribe_events(ctl, 1)
+        a.snd_ctl_event_malloc(ctypes.byref(ev))
+        start, changes = self.clock(), 0
+        while True:
+            left = self.MOST - (self.clock() - start)
+            if left <= 0:
+                break
+            if a.snd_ctl_wait(ctl, int(min(left, self.QUIET if changes else self.FIRST) * 1000)) <= 0:
+                break
+            a.snd_ctl_read(ctl, ev)
+            changes += 1
+        a.snd_ctl_event_free(ev)
+        a.snd_ctl_close(ctl)
+        return changes
+
+
 class Alsa:
-    """the voice PCM, opened as q6voiced does: capture started, playback prepared (the DSP feeds both). Without a
-    device given, it is looked up at each open: the sound card comes with the audio DSP and can register after
-    ModemManager has started"""
+    """the voice PCM, opened and started both ways (the DSP feeds both). Opening both starts the DSP's voice
+    session (q6voice), but the codec turns its SLIMbus channels on only when its stream starts (wcd934x's trigger):
+    a playback side left prepared keeps the earpiece silent. Playback has no data to start on, so it never stops for
+    the lack of it (stop threshold at the boundary). Without a device given, the PCM is looked up at each open: the
+    sound card comes with the audio DSP and can register after ModemManager has started"""
     CAPTURE, PLAYBACK = 1, 0
 
     def __init__(self, dev=None, find=find_device):
         self.lib = ctypes.CDLL('libasound.so.2')
         self.dev, self.find = dev, find
         self.handles = []
+        self.settle = Settle(self.lib)
 
     def open(self):
         a = self.lib
@@ -47,6 +81,8 @@ class Alsa:
         if not dev:
             log('no %s PCM (yet): this call stays silent' % PCM_NAME)
             return False
+        t, n = time.monotonic(), self.settle.wait(dev[3:].split(',')[0])
+        log('mixer quiet after %d changes, %.1f s' % (n, time.monotonic() - t))
         for stream in (self.CAPTURE, self.PLAYBACK):
             h = ctypes.c_void_p()
             r = a.snd_pcm_open(ctypes.byref(h), dev.encode(), stream, 0)
@@ -55,11 +91,25 @@ class Alsa:
                 continue
             # S16_LE, interleaved, mono, 8 kHz, 40 ms: the DSP ignores them, ALSA needs some
             a.snd_pcm_set_params(h, 2, 3, 1, 8000, 0, 40000)
+            if stream == self.PLAYBACK:
+                self.never_stop(h)
             a.snd_pcm_prepare(h)
-            if stream == self.CAPTURE:
-                a.snd_pcm_start(h)
+            r = a.snd_pcm_start(h)
+            if r < 0:
+                log('start %s: error %d' % ('capture' if stream else 'playback', r))
             self.handles.append(h)
         return bool(self.handles)
+
+    def never_stop(self, h):
+        a = self.lib
+        sw = ctypes.c_void_p()
+        if a.snd_pcm_sw_params_malloc(ctypes.byref(sw)) < 0:
+            return
+        boundary = ctypes.c_ulong()
+        if a.snd_pcm_sw_params_current(h, sw) < 0 or a.snd_pcm_sw_params_get_boundary(sw, ctypes.byref(boundary)) < 0 \
+                or a.snd_pcm_sw_params_set_stop_threshold(h, sw, boundary) < 0 or a.snd_pcm_sw_params(h, sw) < 0:
+            log('playback: no stop threshold, its start may fail')
+        a.snd_pcm_sw_params_free(sw)
 
     def close(self):
         for h in self.handles:
