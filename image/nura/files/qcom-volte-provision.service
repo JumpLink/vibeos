@@ -1,0 +1,14 @@
+# The modem configuration (MBN) and profiles VoLTE needs on the SIM's home network, set before ModemManager
+# (qcom-volte-provision)
+[Unit]
+Description=Prepare the modem for VoLTE on the SIM's home network
+After=rmtfs.service qcom-uim-provision.service
+Before=ModemManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/qcom-volte-provision
+TimeoutStartSec=150
+
+[Install]
+WantedBy=ModemManager.service

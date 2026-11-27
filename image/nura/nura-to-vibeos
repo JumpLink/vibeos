@@ -817,8 +817,8 @@ def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset
     # ModemManager reports sim-missing. Unlike Nura's, it leaves a session the modem opened itself alone
     if 'msm-modem-uim-selection' in nura.pkgs:
         if system is None or 'libqmi-utils' not in system.ver:
-            pl.not_carried.append(('qcom-uim-provision (runs qmicli: libqmi-utils not in the system image, or not '
-                                   'known here)', 'msm-modem-uim-selection'))
+            pl.not_carried.append(('qcom-uim-provision, qcom-volte-provision (run qmicli: libqmi-utils not in the '
+                                   'system image, or not known here)', 'msm-modem-uim-selection'))
         else:
             for name, mode in (('qcom-uim-provision', 0o755), ('qcom-uim-provision.service', 0o644)):
                 rel = ('usr/lib/systemd/system/' if name.endswith('.service') else 'usr/libexec/') + name
@@ -828,6 +828,16 @@ def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset
                 os.chmod(d, mode)
                 pl.carried.append((rel, 'msm-modem-uim-selection (replaced by qcom-uim-provision)'))
             enable.append('qcom-uim-provision.service')
+            # and the one that picks the modem configuration (MBN) and profiles VoLTE needs on the SIM's home network;
+            # a modem without that configuration, or a network it knows nothing for, is left as it is
+            for name, mode in (('qcom-volte-provision', 0o755), ('qcom-volte-provision.service', 0o644)):
+                rel = ('usr/lib/systemd/system/' if name.endswith('.service') else 'usr/libexec/') + name
+                d = os.path.join(P, rel)
+                os.makedirs(os.path.dirname(d), exist_ok=True)
+                shutil.copyfile(os.path.join(HERE, 'files', name), d)
+                os.chmod(d, mode)
+                pl.carried.append((rel, 'vibeos'))
+            enable.append('qcom-volte-provision.service')
     nura.enable_units = enable
     # no pmOS config naming the DSP files' directory (a generic image's hexagonrpcd finds it itself; Debian's
     # wrapper passes -R, by default a droid-juicer path): this phone's directory under /usr/share/qcom
