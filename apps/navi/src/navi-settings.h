@@ -6,15 +6,9 @@
 #pragma once
 
 #include "navi-search.h"
+#include "navi-sun.h"
 
 G_BEGIN_DECLS
-
-typedef enum {
-  NAVI_DARK_AT_NIGHT, /* Waze's default: dark from sunset to sunrise where the car is */
-  NAVI_DARK_ALWAYS,
-  NAVI_DARK_NEVER,
-  NAVI_DARK_SYSTEM,   /* as the phone's own light or dark mode */
-} NaviDarkMode;
 
 typedef enum {
   NAVI_VIEW_AUTO, /* flat while browsing, 3D while driving */
@@ -51,6 +45,7 @@ typedef enum {
 
 typedef struct {
   NaviDarkMode dark;
+  gboolean drive_dark;          /* the map dark while driving, whatever `dark` says (navi_night_pick); on by default */
   NaviMapView view;
   gboolean north_up;
   gboolean auto_zoom;

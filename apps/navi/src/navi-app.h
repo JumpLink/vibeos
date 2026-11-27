@@ -75,12 +75,14 @@ typedef struct {
   /* the arrow: the car's heading, but the compass's while it stands off a route (navi-compass.h) */
   NaviCompass *compass;
   gboolean have_compass, arrow_compass;
+  gboolean compass_held;    /* claimed now (navi_compass_wanted) */
   double compass_heading, arrow_heading, arrow_rate;
   double car_s;             /* along the route, while driving */
   double car_speed;         /* m/s */
   double fix_s;
   gint64 fix_time;
   gboolean car_known;
+  double car_gap;           /* metres from where the car is drawn to where it should be, after this frame */
 
   /* the camera */
   double zoom, zoom_rate, pitch;
@@ -94,8 +96,22 @@ typedef struct {
   guint poi_seq;            /* the point of interest tapped last, for its address coming back */
   gint64 poi_tapped_at;     /* when a tap last opened a place's card (on_double_tap ()) */
   guint keep_awake;         /* the idle inhibitor while a route is driven (gtk_application_inhibit), 0 when none */
-  double ahead_s;           /* where the route ahead was last drawn from (trim_ahead ()) */
+  double ahead_s;           /* where the route ahead was last drawn from (trim_ahead ()), -1 to draw it again */
   gint64 ahead_time;
+  /* the route around the car while driving (navi-geo.h), in two sources, navi-near-0 and -1: the car's stretch,
+   * and the one before it for two seconds more, while the map may still draw its tiles (the map takes a moment over
+   * new data, and an old stretch drawn with a new stretch's gradient would colour the road behind the car) */
+  struct _NaviNearRoute {
+    NaviPathSlice *slice[2]; /* NULL for none */
+    guint active;
+    gint64 retire_at;        /* when the other goes */
+    NaviRoute *route;        /* the route they are of (not a reference: compared only) */
+  } near;
+  /* what the overlays were last placed and drawn with: a frame that changes none of it leaves them alone */
+  GdkRectangle car_alloc, pin_alloc;
+  double car_drawn_rotation, car_drawn_squash;
+  gboolean car_drawn_night;
+  gint64 drive_frame_us;    /* drive mode's frame time (the map's 30 frames a second), 0 for every refresh */
 
   /* the routes */
   NaviPlace *dest;
@@ -115,6 +131,7 @@ typedef struct {
   gint64 last_reroute;
   gboolean night;
   gboolean style_night;     /* the style loaded */
+  gboolean night_updating;  /* navi_update_night () under way (the theme it sets says it changed) */
 
   NaviSearch *search;
 

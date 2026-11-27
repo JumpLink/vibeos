@@ -65,12 +65,22 @@ void navi_map_set_cache_path (NaviMap *map, const char *path);
  * put them all back first, so they always see the whole style. */
 void navi_map_set_style_url (NaviMap *map, const char *url);
 void navi_map_set_style_json (NaviMap *map, const char *json);
+/* The style at `url` (a file:// one), over the tiles already there when it differs from the style shown only in its
+ * layers' paint (Navi's day and night styles do): the style's layers take its colours, and nothing reloads or goes
+ * blank. The app's own sources and layers stay, with their paint (navi_map_set_paint_property changes it). Returns
+ * FALSE, and sets the style as navi_map_set_style_url () does, where that cannot be: no style shown yet, a style
+ * of another kind, or one that differs in more than paint. */
+gboolean navi_map_switch_style_url (NaviMap *map, const char *url);
 gboolean navi_map_is_style_loaded (NaviMap *map);
 
 /* A GeoJSON source the app owns, for things like the route line and the car. Calls made before the
  * style has loaded are kept and applied once it has. `geojson` may be NULL for an empty source. */
 gboolean navi_map_add_geojson_source (NaviMap *map, const char *source_id, const char *geojson,
                                       GError **error);
+/* The same, measuring its lines as it cuts them into tiles, which a line layer's "line-gradient" needs (its
+ * ["line-progress"]: 0 at a line's start to 1 at its end, along the Web Mercator projection) */
+gboolean navi_map_add_geojson_source_with_line_metrics (NaviMap *map, const char *source_id, const char *geojson,
+                                                        GError **error);
 /* Replaces a GeoJSON source's data (a Feature, FeatureCollection or bare geometry). */
 gboolean navi_map_set_geojson (NaviMap *map, const char *source_id, const char *geojson, GError **error);
 /* The same without JSON: one point, or a line through `n_points` (latitude, longitude) pairs. */
@@ -85,6 +95,11 @@ gboolean navi_map_remove_source (NaviMap *map, const char *source_id, GError **e
 gboolean navi_map_add_layer_json (NaviMap *map, const char *layer_json, const char *before_layer_id,
                                   GError **error);
 gboolean navi_map_remove_layer (NaviMap *map, const char *layer_id, GError **error);
+/* One paint property of a layer the app added, as JSON ("\"#2CDDFF\"", an expression): kept with the layer, so a
+ * new style or map has it too. Changing paint redraws the layer's tiles as they are, which is much cheaper than new
+ * data for its source (that is cut into tiles again). */
+gboolean navi_map_set_paint_property (NaviMap *map, const char *layer_id, const char *property, const char *json,
+                                      GError **error);
 /* An image for the style's symbols ("icon-image": `id`), kept across style loads: `width` x `height` pixels of
  * premultiplied RGBA, rows `stride` bytes apart, drawn at `pixel_ratio` pixels to a point. The same id again
  * replaces it. */
@@ -106,6 +121,9 @@ void navi_map_set_render_scale (NaviMap *map, double scale);
  * frame otherwise alternates between one and two, and that uneven rhythm looks rougher than a steady
  * half rate. Above 1 each frame is drawn a frame-clock cycle ahead and shown in the next one. */
 void navi_map_set_frame_pacing (NaviMap *map, int refreshes_per_frame);
+/* At most `fps` new frames a second (0: no limit, the default), by the pacing above: one every second refresh at 60
+ * Hz for 30, every fourth at 120 Hz. Auto pacing (0) only; a set navi_map_set_frame_pacing () wins. */
+void navi_map_set_max_fps (NaviMap *map, double fps);
 
 /* Coarser tiles toward the horizon of a tilted map, which is where most of a tilted map's tiles are:
  * beyond `min_radius` tiles from the center, tiles drop zoom levels as their distance x `scale` grows,

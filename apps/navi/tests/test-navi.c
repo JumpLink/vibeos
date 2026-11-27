@@ -104,6 +104,198 @@ test_route_errors (void)
   g_assert_error (error, NAVI_ROUTE_ERROR, NAVI_ROUTE_ERROR_NO_ROUTE);
 }
 
+/* Web Mercator as MapLibre's tiler has it (geojson-vt's convert.hpp), worked out here on its own */
+static void
+merc (double lat, double lng, double *x, double *y)
+{
+  double s = sin (lat * G_PI / 180);
+  *x = lng / 360 + 0.5;
+  *y = 0.5 - 0.25 * log ((1 + s) / (1 - s)) / G_PI;
+}
+
+/* the route around the car while driving: its stretch, and where along it the colour starts */
+static void
+test_near (void)
+{
+  g_autoptr (GPtrArray) routes = load_routes ();
+  NaviRoute *r = routes->pdata[0];
+  double s0, s1;
+
+  /* the span: 100 m behind the car to 1100 m ahead, inside the route */
+  navi_near_span (r->length, 2000, &s0, &s1);
+  g_assert_cmpfloat (s0, ==, 1900);
+  g_assert_cmpfloat (s1, ==, 3100);
+  navi_near_span (r->length, 40, &s0, &s1);
+  g_assert_cmpfloat (s0, ==, 0);
+  g_assert_cmpfloat (s1, ==, 1140);
+  navi_near_span (r->length, r->length - 300, &s0, &s1);
+  g_assert_cmpfloat (s1, ==, r->length);
+
+  /* made again once the car is 500 m into it, or before it; the last one, to the end, stays */
+  navi_near_span (r->length, 2000, &s0, &s1);
+  g_assert_false (navi_near_stale (r->length, s0, s1, 2000));
+  g_assert_false (navi_near_stale (r->length, s0, s1, 2499));
+  g_assert_true (navi_near_stale (r->length, s0, s1, 2501));
+  g_assert_true (navi_near_stale (r->length, s0, s1, 1899));
+  navi_near_span (r->length, 40, &s0, &s1);
+  g_assert_false (navi_near_stale (r->length, s0, s1, 539));
+  g_assert_true (navi_near_stale (r->length, s0, s1, 541));
+  navi_near_span (r->length, r->length - 300, &s0, &s1);
+  g_assert_false (navi_near_stale (r->length, s0, s1, r->length));
+  /* a stretch always has 500 m of route ahead of the car before it is made again (the camera sees less) */
+  for (double car = 0; car < r->length; car += 37) {
+    navi_near_span (r->length, car, &s0, &s1);
+    for (double c = car; c < r->length && !navi_near_stale (r->length, s0, s1, c); c += 5)
+      g_assert_cmpfloat (MIN (s1, r->length) - c, >=, MIN (590, r->length - c));
+  }
+
+  /* the stretch: its ends where the route is at s0 and s1, the points between them the route's */
+  navi_near_span (r->length, 2000, &s0, &s1);
+  NaviPathSlice *slice = navi_path_slice_new (r->points, r->n_points, s0, s1);
+  g_assert_nonnull (slice);
+  g_assert_cmpuint (slice->n, >=, 2);
+  g_assert_cmpfloat (slice->s[0], ==, s0);
+  g_assert_cmpfloat (slice->s[slice->n - 1], ==, s1);
+  double lat, lng;
+  navi_path_point_at (r->points, r->n_points, s0, &lat, &lng, NULL);
+  g_assert_cmpfloat_with_epsilon (slice->lat_lng[0], lat, 1e-9);
+  g_assert_cmpfloat_with_epsilon (slice->lat_lng[1], lng, 1e-9);
+  navi_path_point_at (r->points, r->n_points, s1, &lat, &lng, NULL);
+  g_assert_cmpfloat_with_epsilon (slice->lat_lng[2 * (slice->n - 1)], lat, 1e-9);
+  for (guint i = 1; i < slice->n; i++)
+    g_assert_cmpfloat (slice->s[i], >=, slice->s[i - 1]);
+
+  /* the colour's start: 0 at the stretch's start, 1 at its end, on the way as MapLibre measures the line (the
+   * projected distance along it), and within a ramp step (1/255) of where the car is in metres */
+  g_assert_cmpfloat (navi_path_slice_progress (slice, s0), ==, 0);
+  g_assert_cmpfloat (navi_path_slice_progress (slice, s0 - 50), ==, 0);
+  g_assert_cmpfloat (navi_path_slice_progress (slice, s1), ==, 1);
+  double total = 0, px = 0, py = 0;
+  for (guint i = 0; i < slice->n; i++) {
+    double x, y;
+    merc (slice->lat_lng[2 * i], slice->lat_lng[2 * i + 1], &x, &y);
+    if (i)
+      total += hypot (x - px, y - py);
+    px = x;
+    py = y;
+  }
+  double last = 0;
+  for (double s = s0; s <= s1; s += 10) {
+    double p = navi_path_slice_progress (slice, s);
+    g_assert_cmpfloat (p, >=, last);
+    last = p;
+    g_assert_cmpfloat (fabs (p - (s - s0) / (s1 - s0)), <, 1 / 255.0);
+    /* the same by the projection, from the stretch's start to the car's point */
+    double along = 0;
+    guint i = 0;
+    for (px = 0, py = 0; i + 1 < slice->n && slice->s[i + 1] <= s; i++) {
+      double ax, ay, bx, by;
+      merc (slice->lat_lng[2 * i], slice->lat_lng[2 * i + 1], &ax, &ay);
+      merc (slice->lat_lng[2 * i + 2], slice->lat_lng[2 * i + 3], &bx, &by);
+      along += hypot (bx - ax, by - ay);
+    }
+    navi_path_point_at (r->points, r->n_points, s, &lat, &lng, NULL);
+    double ax, ay, cx, cy;
+    merc (slice->lat_lng[2 * i], slice->lat_lng[2 * i + 1], &ax, &ay);
+    merc (lat, lng, &cx, &cy);
+    along += hypot (cx - ax, cy - ay);
+    g_assert_cmpfloat (fabs (p - along / total), <, 1e-4);
+  }
+  navi_path_slice_free (slice);
+
+  /* the end of the route: a stretch of two points where s0 meets s1 */
+  slice = navi_path_slice_new (r->points, r->n_points, r->length, r->length + 100);
+  g_assert_cmpuint (slice->n, ==, 2);
+  g_assert_cmpfloat (navi_path_slice_progress (slice, r->length), ==, 0);
+  navi_path_slice_free (slice);
+  g_assert_null (navi_path_slice_new (NULL, 0, 0, 10));
+}
+
+/* while driving, the frame clock rests once nothing moves: the springs come to rest, a standing car settles */
+static void
+test_motion (void)
+{
+  NaviMotion still = { 0 };
+  g_assert_true (navi_motion_settled (&still));
+  NaviMotion m = still;
+  m.speed = 0.3; /* creeping */
+  g_assert_false (navi_motion_settled (&m));
+  m = still;
+  m.car_gap_m = 0.4; /* the car still gliding to its fix */
+  g_assert_false (navi_motion_settled (&m));
+  m = still;
+  m.flight = TRUE;
+  g_assert_false (navi_motion_settled (&m));
+  m = still;
+  m.pending = TRUE;
+  g_assert_false (navi_motion_settled (&m));
+  m = still;
+  m.arrow_gap = -2; /* the arrow turning to the compass */
+  g_assert_false (navi_motion_settled (&m));
+
+  /* the camera's springs, as the drive's frames move them at 30 a second: zoom from 15 to 17, a turn by 90 degrees,
+   * the tilt: moving at first, then settled for good, within eight seconds (the zoom's spring is the slowest: two
+   * levels take 7.5 s to come under 0.002 a second) */
+  double zoom = 15, zoom_rate = 0, heading = 0, heading_rate = 0, pitch = 0;
+  int settled_at = -1;
+  for (int frame = 0; frame < 30 * 12; frame++) {
+    double dt = 1 / 30.0;
+    zoom = navi_smooth_value (zoom, 17, &zoom_rate, 1.6, dt);
+    heading = navi_smooth_angle (heading, 90, &heading_rate, 0.6, dt);
+    pitch += (50 - pitch) * (1 - exp (-dt / 0.25));
+    if (fabs (pitch - 50) < 0.05)
+      pitch = 50;
+    NaviMotion s = { .zoom_rate = zoom_rate, .heading_rate = heading_rate, .pitch_gap = pitch - 50 };
+    gboolean done = navi_motion_settled (&s);
+    if (frame < 15)
+      g_assert_false (done);
+    if (done && settled_at < 0)
+      settled_at = frame;
+    if (settled_at >= 0)
+      g_assert_true (done);
+  }
+  g_assert_cmpint (settled_at, >, 0);
+  g_assert_cmpint (settled_at, <, 30 * 8);
+}
+
+/* the compass is let go while driving along the route, with a margin */
+static void
+test_compass_wanted (void)
+{
+  g_assert_false (navi_compass_wanted (FALSE, FALSE, 0, TRUE));
+  g_assert_true (navi_compass_wanted (TRUE, FALSE, 30, TRUE));  /* off a route: the arrow may need it */
+  g_assert_true (navi_compass_wanted (TRUE, TRUE, 0, FALSE));   /* standing on the route */
+  g_assert_true (navi_compass_wanted (TRUE, TRUE, 2.5, TRUE));  /* held, under the release speed */
+  g_assert_false (navi_compass_wanted (TRUE, TRUE, 3.5, TRUE)); /* driving: let go */
+  g_assert_false (navi_compass_wanted (TRUE, TRUE, 2.5, FALSE)); /* let go, over the claim speed: stays so */
+  g_assert_true (navi_compass_wanted (TRUE, TRUE, 1.0, FALSE)); /* slowed to a crawl: again */
+  /* a queue that crawls between 1 and 3.5 m/s: one release, one claim, not one at every fix */
+  gboolean held = TRUE;
+  guint changes = 0;
+  double speeds[] = { 2, 3.5, 2.8, 2.2, 1.7, 2.9, 3.1, 1.6, 2.0, 1.2, 2.5, 2.9 };
+  for (guint i = 0; i < G_N_ELEMENTS (speeds); i++) {
+    gboolean now = navi_compass_wanted (TRUE, TRUE, speeds[i], held);
+    changes += now != held;
+    held = now;
+  }
+  g_assert_cmpuint (changes, ==, 2);
+}
+
+/* the map dark while driving, whatever the dark mode; the mode's own choice otherwise */
+static void
+test_night_pick (void)
+{
+  for (int mode = NAVI_DARK_AT_NIGHT; mode <= NAVI_DARK_SYSTEM; mode++)
+    for (int sun = 0; sun < 2; sun++)
+      for (int sys = 0; sys < 2; sys++) {
+        g_assert_true (navi_night_pick (mode, sun, sys, TRUE, TRUE));
+        gboolean want = mode == NAVI_DARK_ALWAYS ? TRUE : mode == NAVI_DARK_NEVER ? FALSE
+                        : mode == NAVI_DARK_SYSTEM ? sys : sun;
+        g_assert_cmpint (navi_night_pick (mode, sun, sys, FALSE, TRUE), ==, want);
+        g_assert_cmpint (navi_night_pick (mode, sun, sys, TRUE, FALSE), ==, want); /* drive-dark off */
+      }
+}
+
 static void
 test_route_parse (void)
 {
@@ -980,5 +1172,9 @@ main (int argc, char **argv)
   g_test_add_func ("/navi/sun", test_sun);
   g_test_add_func ("/navi/compass/late-sensor", test_compass_late_sensor);
   g_test_add_func ("/navi/back", test_back);
+  g_test_add_func ("/navi/near", test_near);
+  g_test_add_func ("/navi/motion", test_motion);
+  g_test_add_func ("/navi/compass/wanted", test_compass_wanted);
+  g_test_add_func ("/navi/night-pick", test_night_pick);
   return g_test_run ();
 }

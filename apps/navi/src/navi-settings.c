@@ -61,6 +61,7 @@ navi_settings_load (void)
     return the_settings;
   NaviSettings *s = the_settings = g_new0 (NaviSettings, 1);
   s->dark = NAVI_DARK_AT_NIGHT;
+  s->drive_dark = TRUE;
   s->view = NAVI_VIEW_AUTO;
   s->auto_zoom = TRUE;
   s->voice = NAVI_VOICE_ON;
@@ -76,6 +77,10 @@ navi_settings_load (void)
   int v = g_key_file_get_integer (kf, "map", "dark-mode", &e);
   if (!e)
     s->dark = CLAMP (v, 0, NAVI_DARK_SYSTEM);
+  g_clear_error (&e);
+  gboolean dd = g_key_file_get_boolean (kf, "map", "dark-while-driving", &e);
+  if (!e)
+    s->drive_dark = dd;
   g_clear_error (&e);
   v = g_key_file_get_integer (kf, "map", "view", &e);
   if (!e)
@@ -140,6 +145,7 @@ navi_settings_flush (NaviSettings *s)
   g_clear_handle_id (&save_source, g_source_remove);
   g_autoptr (GKeyFile) kf = g_key_file_new ();
   g_key_file_set_integer (kf, "map", "dark-mode", s->dark);
+  g_key_file_set_boolean (kf, "map", "dark-while-driving", s->drive_dark);
   g_key_file_set_integer (kf, "map", "view", s->view);
   g_key_file_set_boolean (kf, "map", "north-up", s->north_up);
   g_key_file_set_boolean (kf, "map", "auto-zoom", s->auto_zoom);

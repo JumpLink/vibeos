@@ -297,6 +297,117 @@ navi_format_duration (double seconds)
   return g_strdup_printf (_("%ld h %ld min"), min / 60, min % 60);
 }
 
+/* ---- the route near the car ---- */
+
+/* Web Mercator, as MapLibre's GeoJSON tiler projects a line before measuring it (0 to 1 across the world) */
+static void
+mercator (double lat, double lng, double *x, double *y)
+{
+  double sine = sin (lat * RAD);
+  *x = lng / 360 + 0.5;
+  *y = CLAMP (0.5 - 0.25 * log ((1 + sine) / (1 - sine)) / G_PI, 0.0, 1.0);
+}
+
+NaviPathSlice *
+navi_path_slice_new (const NaviPathPoint *points, guint n, double s0, double s1)
+{
+  if (n == 0)
+    return NULL;
+  double length = points[n - 1].s;
+  s0 = CLAMP (s0, 0, length);
+  s1 = CLAMP (s1, s0, length);
+  NaviPathSlice *slice = g_new0 (NaviPathSlice, 1);
+  slice->s0 = s0;
+  slice->s1 = s1;
+  /* the points strictly inside, and the two ends */
+  guint first = 0;
+  while (first < n && points[first].s <= s0)
+    first++;
+  guint last = first;
+  while (last < n && points[last].s < s1)
+    last++;
+  guint count = last - first + 2;
+  slice->lat_lng = g_new (double, 2 * count);
+  slice->s = g_new (double, count);
+  slice->m = g_new (double, count);
+  guint hint = 0, k = 0;
+  navi_path_point_at (points, n, s0, &slice->lat_lng[0], &slice->lat_lng[1], &hint);
+  slice->s[k++] = s0;
+  for (guint i = first; i < last; i++, k++) {
+    slice->lat_lng[2 * k] = points[i].lat;
+    slice->lat_lng[2 * k + 1] = points[i].lng;
+    slice->s[k] = points[i].s;
+  }
+  navi_path_point_at (points, n, s1, &slice->lat_lng[2 * k], &slice->lat_lng[2 * k + 1], &hint);
+  slice->s[k++] = s1;
+  slice->n = k;
+  double px = 0, py = 0;
+  for (guint i = 0; i < k; i++) {
+    double x, y;
+    mercator (slice->lat_lng[2 * i], slice->lat_lng[2 * i + 1], &x, &y);
+    slice->m[i] = i ? slice->m[i - 1] + hypot (x - px, y - py) : 0;
+    px = x;
+    py = y;
+  }
+  return slice;
+}
+
+void
+navi_path_slice_free (NaviPathSlice *slice)
+{
+  if (!slice)
+    return;
+  g_free (slice->lat_lng);
+  g_free (slice->s);
+  g_free (slice->m);
+  g_free (slice);
+}
+
+double
+navi_path_slice_progress (const NaviPathSlice *slice, double s)
+{
+  double total = slice->m[slice->n - 1];
+  if (total <= 0 || s <= slice->s0)
+    return 0;
+  if (s >= slice->s1)
+    return 1;
+  guint i = 0;
+  while (i + 2 < slice->n && slice->s[i + 1] <= s)
+    i++;
+  double ds = slice->s[i + 1] - slice->s[i];
+  double f = ds > 0 ? (s - slice->s[i]) / ds : 0;
+  return CLAMP ((slice->m[i] + (slice->m[i + 1] - slice->m[i]) * f) / total, 0.0, 1.0);
+}
+
+void
+navi_near_span (double length, double car_s, double *s0, double *s1)
+{
+  car_s = CLAMP (car_s, 0, MAX (length, 0));
+  *s0 = MAX (0.0, car_s - NAVI_NEAR_BEHIND_M);
+  *s1 = MIN (length, car_s + NAVI_NEAR_AHEAD_M);
+}
+
+gboolean
+navi_near_stale (double length, double s0, double s1, double car_s)
+{
+  if (car_s < s0)
+    return TRUE;
+  /* where the stretch was made from: its start, behind the car then, unless that was the route's start */
+  double made_at = s0 > 0 ? s0 + NAVI_NEAR_BEHIND_M : MAX (0.0, s1 - NAVI_NEAR_AHEAD_M);
+  /* the last stretch, to the route's end, stays to the end */
+  return s1 < length && car_s > made_at + NAVI_NEAR_MOVE_M;
+}
+
+/* ---- when the drive loop can rest ---- */
+
+gboolean
+navi_motion_settled (const NaviMotion *m)
+{
+  return !m->flight && !m->pending && m->speed <= 0.2 && m->car_gap_m <= 0.05 && fabs (m->zoom_rate) <= 0.002 &&
+         fabs (m->heading_rate) <= 0.05 && fabs (m->arrow_rate) <= 0.05 && fabs (m->arrow_gap) <= 0.5 &&
+         fabs (m->pitch_gap) <= 0.05;
+}
+
 static gboolean clock_24h = TRUE;
 
 void

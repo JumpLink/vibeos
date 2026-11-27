@@ -39,7 +39,7 @@ deps = [maplibre, gtk, dependency('egl'), dependency('glesv2'), dependency('libu
 privlibdir = get_option('prefix') / 'lib' / 'vibeos-navi'
 symbols = meson.current_source_dir() / 'src' / 'navi-map.sym'
 navi_map = shared_library('vibeos-navi-map',
-  'src/navi-map.cpp', 'src/navi-backend.cpp', 'src/navi-runloop.cpp',
+  'src/navi-map.cpp', 'src/navi-backend.cpp', 'src/navi-runloop.cpp', 'src/navi-style-paint.cpp',
   dependencies: deps,
   cpp_args: get_option('debug_privacy') ? ['-DNAVI_DEBUG'] : [],
   link_args: ['-Wl,--version-script=' + symbols, '-Wl,--exclude-libs,ALL', '-Wl,--gc-sections'],
@@ -87,11 +87,21 @@ executable('navi-compass-probe', 'tests/navi-compass-probe.c', dependencies: cor
 # the map's styles, day and night, made from the generator with the server's tile and glyph URLs
 python = find_program('python3')
 datadir = get_option('prefix') / get_option('datadir') / 'vibeos-navi'
+styles = {}
 foreach mode : ['day', 'night']
-  custom_target('style-' + mode, output: 'style-' + mode + '.json', input: 'style/navi-style.py',
-                command: [python, '@INPUT@', mode, '@OUTPUT@', get_option('server')],
-                install: true, install_dir: datadir)
+  styles += {mode: custom_target('style-' + mode, output: 'style-' + mode + '.json',
+                                 input: 'style/navi-style.py',
+                                 command: [python, '@INPUT@', mode, '@OUTPUT@', get_option('server')],
+                                 install: true, install_dir: datadir)}
 endforeach
+# The two differ only in their layers' paint, so the map switches between them over the tiles it has
+# (navi-style-paint.cpp): driving is on the night's map, by day too, and it stays readable there.
+test('style-paint', executable('test-style-paint', 'tests/test-style-paint.cpp', 'src/navi-style-paint.cpp',
+                               include_directories: include_directories('src'),
+                               cpp_args: ['-isystem', stage / 'include'], dependencies: dependency('glib-2.0')),
+     depends: [styles['day'], styles['night']], env: ['G_TEST_BUILDDIR=' + meson.current_build_dir()])
+test('night-contrast', python,
+     args: [files('tests/check-night-contrast.py'), styles['night'], meson.current_source_dir()])
 
 # the app: the window and its panels over the map widget and the core
 app_args = ['-DGETTEXT_PACKAGE="vibeos-navi"', '-DLOCALEDIR="@0@"'.format(get_option('prefix') / get_option('localedir')),

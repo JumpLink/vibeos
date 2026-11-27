@@ -55,4 +55,12 @@ typedef enum {
 NaviHeadingSource navi_heading_pick (double speed, double course, double moving, gboolean have_compass,
                                      double compass, double *heading);
 
+/* Whether Navi holds the compass (and the accelerometer): while its window is `shown`, except while the car drives
+ * along the route (`on_route`, in drive mode) faster than a walk. The route and GPS's course turn the arrow then,
+ * and the sensors only cost power. With a margin: let go above 3 m/s, taken again below 1.5 (or off the route), so
+ * a car crawling in a queue does not claim and release it at every fix. `held`: whether it is held now. */
+#define NAVI_COMPASS_RELEASE_SPEED 3.0
+#define NAVI_COMPASS_CLAIM_SPEED   1.5
+gboolean navi_compass_wanted (gboolean shown, gboolean on_route, double speed, gboolean held);
+
 G_END_DECLS

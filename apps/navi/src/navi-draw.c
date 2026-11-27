@@ -285,6 +285,18 @@ navi_draw_turn (cairo_t *cr, double size, NaviTurn type, int roundabout_exit, co
   cairo_restore (cr);
 }
 
+/* The car's colours (tests/check-night-contrast.py reads them here): a cyan arrow with a darker rim. At night the
+ * route is cyan too, and the arrow on it hardly showed (1.5:1); its rim is near black then, 10:1 on the route, while
+ * the arrow itself stands 5.6:1 on the night's ground. */
+static const char CAR_BODY[] = "#1CB5D0", CAR_LIT[] = "#5CDCF0", CAR_RIM[] = "#148FAA", CAR_RIM_NIGHT[] = "#04202A";
+
+static void
+set_hex (cairo_t *cr, const char *hex)
+{
+  guint v = (guint) g_ascii_strtoull (hex + 1, NULL, 16);
+  cairo_set_source_rgb (cr, (v >> 16) / 255.0, ((v >> 8) & 0xFF) / 255.0, (v & 0xFF) / 255.0);
+}
+
 void
 navi_draw_car (cairo_t *cr, double size, double rotation, double squash, gboolean night)
 {
@@ -307,17 +319,17 @@ navi_draw_car (cairo_t *cr, double size, double rotation, double squash, gboolea
   cairo_line_to (cr, 0, a * 0.42);
   cairo_line_to (cr, -a * 0.78, a * 0.78);
   cairo_close_path (cr);
-  cairo_set_source_rgb (cr, 0x14 / 255.0, 0x8f / 255.0, 0xaa / 255.0);
-  cairo_set_line_width (cr, MAX (1.5, size * 0.035));
+  set_hex (cr, night ? CAR_RIM_NIGHT : CAR_RIM);
+  cairo_set_line_width (cr, night ? MAX (2.0, size * 0.05) : MAX (1.5, size * 0.035));
   cairo_set_line_join (cr, CAIRO_LINE_JOIN_ROUND);
   cairo_stroke_preserve (cr);
-  cairo_set_source_rgb (cr, 0x1c / 255.0, 0xb5 / 255.0, 0xd0 / 255.0);
+  set_hex (cr, CAR_BODY);
   cairo_fill (cr);
   cairo_move_to (cr, 0, -a);
   cairo_line_to (cr, -a * 0.78, a * 0.78);
   cairo_line_to (cr, 0, a * 0.42);
   cairo_close_path (cr);
-  cairo_set_source_rgb (cr, 0x5c / 255.0, 0xdc / 255.0, 0xf0 / 255.0);
+  set_hex (cr, CAR_LIT);
   cairo_fill (cr);
   cairo_restore (cr);
 }

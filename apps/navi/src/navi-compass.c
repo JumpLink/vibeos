@@ -71,6 +71,16 @@ navi_heading_pick (double speed, double course, double moving, gboolean have_com
   return NAVI_HEADING_NONE;
 }
 
+gboolean
+navi_compass_wanted (gboolean shown, gboolean on_route, double speed, gboolean held)
+{
+  if (!shown)
+    return FALSE;
+  if (!on_route)
+    return TRUE;
+  return held ? speed <= NAVI_COMPASS_RELEASE_SPEED : speed < NAVI_COMPASS_CLAIM_SPEED;
+}
+
 /* ---- the heading ---- */
 
 static void

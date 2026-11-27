@@ -3244,7 +3244,9 @@ navi_panels_set_rerouting (NaviPanels *p, gboolean rerouting)
 void
 navi_panels_set_compass (NaviPanels *p, double bearing)
 {
-  if (fabs (remainder (bearing - p->bearing, 360)) < 0.2)
+  /* a degree at a time: the needle is small, and a turn of the camera in every frame (heading-up, driving) would
+   * redraw the window in every frame for it */
+  if (fabs (remainder (bearing - p->bearing, 360)) < 1)
     return;
   gboolean was = fabs (remainder (p->bearing, 360)) > 1;
   p->bearing = bearing;

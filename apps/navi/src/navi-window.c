@@ -46,6 +46,7 @@ static const char *const alt_edge[2] = { "#8E72C8", "#5F6B79" };
 
 static void update_route_layers (Navi *n);
 static void ensure_tick (Navi *n);
+static void overlays_moved (Navi *n);
 
 /* ---- small things ---- */
 
@@ -257,6 +258,7 @@ advance_car (Navi *n, gint64 now, double dt)
       double v = MAX (0.0, speed + gap * 1.2);
       n->car_s = MIN (n->car_s + v * dt, MAX (target, n->car_s));
     }
+    n->car_gap = MAX (0.0, target - n->car_s); /* never back: a car past its target stands */
     guint hint = 0;
     navi_path_point_at (route->points, route->n_points, n->car_s, &n->car_lat, &n->car_lng, &hint);
     double want = navi_path_heading_at (route->points, route->n_points, n->car_s, HEADING_AHEAD_M);
@@ -275,6 +277,7 @@ advance_car (Navi *n, gint64 now, double dt)
       n->car_lat += (tlat - n->car_lat) * k;
       n->car_lng += (tlng - n->car_lng) * k;
     }
+    n->car_gap = navi_geo_distance (n->car_lat, n->car_lng, tlat, tlng);
     if (speed > 1.5 && n->fix.heading >= 0)
       n->car_heading = fmod (navi_smooth_angle (n->car_heading, n->fix.heading, &n->heading_rate,
                                                 HEADING_SMOOTH_S, dt) + 360, 360);
@@ -300,30 +303,113 @@ advance_car (Navi *n, gint64 now, double dt)
   n->arrow_compass = compass;
 }
 
+/* a "line-gradient" in the route's colour from `progress` along the line on, see-through before it: one ramp step
+ * (1/255 of the line) from clear to the colour, so the start moves smoothly between the ramp's steps */
+static char *
+near_gradient (const char *colour, double progress)
+{
+  guint rgb = (guint) g_ascii_strtoull (colour + 1, NULL, 16);
+  char a[G_ASCII_DTOSTR_BUF_SIZE], b[G_ASCII_DTOSTR_BUF_SIZE];
+  g_ascii_formatd (a, sizeof a, "%.5f", progress - 1 / 255.0);
+  g_ascii_formatd (b, sizeof b, "%.5f", progress);
+  return g_strdup_printf ("[\"interpolate\",[\"linear\"],[\"line-progress\"],%s,\"rgba(%u,%u,%u,0)\",%s,\"%s\"]", a,
+                          rgb >> 16, (rgb >> 8) & 0xFF, rgb & 0xFF, b, colour);
+}
+
+static const char *const EMPTY_GEOJSON = "{\"type\":\"FeatureCollection\",\"features\":[]}";
+
+/* the colour from the car on, on stretch `slice` in source k */
+static void
+paint_near (Navi *n, guint k, const NaviPathSlice *slice)
+{
+  int night = n->style_night ? 1 : 0;
+  double progress = slice ? navi_path_slice_progress (slice, n->car_s) : 1;
+  g_autofree char *fill = near_gradient (route_fill[night], progress);
+  g_autofree char *edge = near_gradient (route_edge[night], progress);
+  char id[32];
+  g_snprintf (id, sizeof id, "navi-near-%u-fill", k);
+  navi_map_set_paint_property (n->map, id, "line-gradient", fill, NULL);
+  g_snprintf (id, sizeof id, "navi-near-%u-edge", k);
+  navi_map_set_paint_property (n->map, id, "line-gradient", edge, NULL);
+}
+
+static void
+set_near (Navi *n, guint k, NaviPathSlice *slice)
+{
+  char id[16];
+  g_snprintf (id, sizeof id, "navi-near-%u", k);
+  if (n->near.slice[k] != slice)
+    navi_path_slice_free (n->near.slice[k]);
+  n->near.slice[k] = slice;
+  if (slice)
+    navi_map_set_geojson_line (n->map, id, slice->lat_lng, slice->n, NULL);
+  else
+    navi_map_set_geojson (n->map, id, EMPTY_GEOJSON, NULL);
+}
+
+/* no stretch: the route is drawn again from the next frame on */
+static void
+clear_near (Navi *n)
+{
+  for (guint k = 0; k < 2; k++)
+    if (n->near.slice[k])
+      set_near (n, k, NULL);
+  n->near.route = NULL;
+  n->near.retire_at = 0;
+  n->ahead_s = -1;
+  n->ahead_time = 0;
+}
+
 /* The route ahead of the car is drawn in full colour from the car on; the whole route lies under it, a little
- * transparent: the road driven stays marked, subdued. Ten times a second, so the colours change under the car
- * (the S10e's drive: 58.5 frames a second with it, as with twice a second). */
+ * transparent: the road driven stays marked, subdued. The car's own stretch of it (navi-near, navi-geo.h) has its
+ * colour start at the car, moved ten times a second by its gradient alone; the rest ahead (navi-route) is made
+ * again only when the car nears the stretch's end, every 500 m. (Cut at the car ten times a second, the route
+ * was cut into tiles again ten times a second.) */
 static void
 trim_ahead (Navi *n, gint64 now)
 {
-  if (!n->guidance || now - n->ahead_time < 100000 || fabs (n->car_s - n->ahead_s) < 0.5)
+  if (!n->guidance || n->mode != NAVI_MODE_DRIVE || !navi_map_is_style_loaded (n->map))
     return;
   NaviRoute *r = navi_guidance_get_route (n->guidance);
+  if (!r || r->n_points < 2)
+    return;
+  NaviPathSlice *car = n->near.slice[n->near.active];
+  guint other = 1 - n->near.active;
+  if (n->near.slice[other] && now >= n->near.retire_at)
+    set_near (n, other, NULL);
+  if (!car || n->near.route != r || n->ahead_s < 0 || navi_near_stale (r->length, car->s0, car->s1, n->car_s)) {
+    /* the new stretch into the source the map draws nothing from now: its colour first, then the line, so no
+     * frame draws it with the old stretch's gradient; the old one stays two seconds, under the same colours */
+    if (n->near.route != r)
+      clear_near (n);
+    double s0, s1;
+    navi_near_span (r->length, n->car_s, &s0, &s1);
+    guint k = n->near.slice[n->near.active] ? other : n->near.active;
+    if (n->near.slice[k])
+      set_near (n, k, NULL); /* a stretch made again within two seconds of the last: its glitch, once */
+    NaviPathSlice *slice = navi_path_slice_new (r->points, r->n_points, s0, s1);
+    paint_near (n, k, slice);
+    set_near (n, k, slice);
+    if (k != n->near.active)
+      n->near.retire_at = now + 2 * G_USEC_PER_SEC;
+    n->near.active = k;
+    n->near.route = r;
+    if (s1 < r->length) {
+      NaviPathSlice *far = navi_path_slice_new (r->points, r->n_points, s1, r->length);
+      navi_map_set_geojson_line (n->map, "navi-route", far->lat_lng, far->n, NULL);
+      navi_path_slice_free (far);
+    } else {
+      navi_map_set_geojson (n->map, "navi-route", EMPTY_GEOJSON, NULL);
+    }
+  } else if (now - n->ahead_time < 100000 || fabs (n->car_s - n->ahead_s) < 0.5) {
+    return;
+  } else {
+    for (guint k = 0; k < 2; k++)
+      if (n->near.slice[k])
+        paint_near (n, k, n->near.slice[k]);
+  }
   n->ahead_time = now;
   n->ahead_s = n->car_s;
-  guint i = 0;
-  while (i + 1 < r->n_points && r->points[i + 1].s <= n->car_s)
-    i++;
-  guint count = r->n_points - i;
-  double *pairs = g_new (double, 2 * (count + 1));
-  pairs[0] = n->car_lat;
-  pairs[1] = n->car_lng;
-  for (guint k = 1; k < count; k++) {
-    pairs[2 * k] = r->points[i + k].lat;
-    pairs[2 * k + 1] = r->points[i + k].lng;
-  }
-  navi_map_set_geojson_line (n->map, "navi-route", pairs, MAX (count, 2u), NULL);
-  g_free (pairs);
 }
 
 /* ---- the camera ---- */
@@ -363,22 +449,37 @@ frame_tick (GtkWidget *widget, GdkFrameClock *clock, gpointer data)
 {
   Navi *n = data;
   gint64 now = gdk_frame_clock_get_frame_time (clock);
-  double dt = n->last_frame_us ? CLAMP ((now - n->last_frame_us) / 1e6, 0.0, 0.25) : 0;
-  n->last_frame_us = now;
   if (n->stats)
     count_shown (n, clock);
+  /* driving, the map draws 30 frames a second (navi_map_set_max_fps): the car and the camera move on those, and
+   * the refreshes between them draw nothing */
+  if (n->drive_frame_us && n->last_frame_us) {
+    gint64 refresh = 0, presented = 0;
+    gdk_frame_clock_get_refresh_info (clock, now, &refresh, &presented);
+    if (now - n->last_frame_us < n->drive_frame_us - (refresh > 0 ? refresh : 16667) / 2)
+      return G_SOURCE_CONTINUE;
+  }
+  double dt = n->last_frame_us ? CLAMP ((now - n->last_frame_us) / 1e6, 0.0, 0.25) : 0;
+  n->last_frame_us = now;
   advance_car (n, now, dt);
   trim_ahead (n, now);
   camera_frame (n, now, dt);
-  gtk_widget_queue_allocate (n->map_overlay);
-  gtk_widget_queue_draw (n->car);
+  overlays_moved (n);
 
-  /* the clock keeps running while anything moves; a car standing still in browse lets it rest */
-  gboolean moving = n->mode == NAVI_MODE_DRIVE || n->cam == NAVI_CAM_RECENTER || n->car_speed > 0.2 ||
-                    fabs (n->zoom_rate) > 0.002 || fabs (n->heading_rate) > 0.05 || fabs (n->arrow_rate) > 0.05 ||
-                    (n->arrow_compass && fabs (remainder (n->compass_heading - n->arrow_heading, 360)) > 0.5) ||
-                    fabs (n->pitch - target_pitch (n)) > 0.05;
-  if (moving)
+  /* The clock keeps running while anything moves; a car standing still lets it rest, while driving too: at a red
+   * light the map draws nothing until a fix (or the compass) moves something. */
+  NaviMotion motion = {
+    .speed = n->car_speed,
+    .car_gap_m = n->car_known ? n->car_gap : 0,
+    .zoom_rate = n->zoom_rate,
+    .heading_rate = n->heading_rate,
+    .arrow_rate = n->arrow_rate,
+    .arrow_gap = n->arrow_compass ? remainder (n->compass_heading - n->arrow_heading, 360) : 0,
+    .pitch_gap = n->pitch - target_pitch (n),
+    .flight = n->cam == NAVI_CAM_RECENTER,
+    .pending = n->mode == NAVI_MODE_DRIVE && n->guidance && n->ahead_s < 0,
+  };
+  if (!navi_motion_settled (&motion))
     return G_SOURCE_CONTINUE;
   n->tick = 0;
   n->last_frame_us = 0;
@@ -515,18 +616,31 @@ navi_overview (Navi *n)
 
 /* ---- the overlays: the car, the pin, the bubbles ---- */
 
+/* how the car is drawn now: turned on the screen (degrees), and squashed by the camera's tilt */
 static void
-draw_car (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
+car_pose (Navi *n, double *rotation, double *squash)
 {
-  Navi *n = data;
-  double rotation = 0, pitch = n->pitch;
+  double pitch = n->pitch;
   NaviCamera cam;
   navi_map_get_camera (n->map, &cam);
   if (!isnan (cam.pitch))
     pitch = cam.pitch;
+  *rotation = 0;
   if (n->arrow_compass || n->cam != NAVI_CAM_FOLLOW || !heading_up (n))
-    rotation = remainder (n->arrow_heading - (isnan (cam.bearing) ? 0 : cam.bearing), 360);
-  navi_draw_car (cr, MIN (w, h), rotation, 0.55 + 0.45 * cos (pitch * G_PI / 180), n->night);
+    *rotation = remainder (n->arrow_heading - (isnan (cam.bearing) ? 0 : cam.bearing), 360);
+  *squash = 0.55 + 0.45 * cos (pitch * G_PI / 180);
+}
+
+static void
+draw_car (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
+{
+  Navi *n = data;
+  double rotation, squash;
+  car_pose (n, &rotation, &squash);
+  n->car_drawn_rotation = rotation;
+  n->car_drawn_squash = squash;
+  n->car_drawn_night = n->night;
+  navi_draw_car (cr, MIN (w, h), rotation, squash, n->night);
 }
 
 static void
@@ -535,38 +649,70 @@ draw_pin (GtkDrawingArea *area, cairo_t *cr, int w, int h, gpointer data)
   navi_draw_pin (cr, w, h);
 }
 
+static void
+car_rect (Navi *n, GdkRectangle *alloc)
+{
+  double x, y;
+  if (!n->car_known) {
+    x = y = -1000;
+  } else if (n->cam == NAVI_CAM_FOLLOW) {
+    navi_map_get_focus_point (n->map, &x, &y);
+  } else {
+    navi_map_geo_to_screen (n->map, n->car_lat, n->car_lng, &x, &y);
+  }
+  if (isnan (x) || isnan (y))
+    x = y = -1000;
+  alloc->width = alloc->height = CAR_DP;
+  alloc->x = (int) lround (x) - CAR_DP / 2;
+  alloc->y = (int) lround (y) - CAR_DP / 2;
+}
+
+static void
+pin_rect (Navi *n, GdkRectangle *alloc)
+{
+  double x = -1000, y = -1000;
+  if (n->dest)
+    navi_map_geo_to_screen (n->map, n->dest->lat, n->dest->lng, &x, &y);
+  if (isnan (x) || isnan (y))
+    x = y = -1000;
+  alloc->width = PIN_W;
+  alloc->height = PIN_H;
+  alloc->x = (int) lround (x) - PIN_W / 2;
+  alloc->y = (int) lround (y) - PIN_H;
+}
+
+/* The car, the pin and the bubbles where the camera and the car are in this frame, and the car turned and tilted as
+ * they are: only what changes. Following the car heading-up while driving, nothing does (the car stays at the focus
+ * point, pointing up), and the frame is the map's alone. */
+static void
+overlays_moved (Navi *n)
+{
+  GdkRectangle car, pin;
+  car_rect (n, &car);
+  pin_rect (n, &pin);
+  if ((n->bubbles && n->bubbles->len) || !gdk_rectangle_equal (&car, &n->car_alloc) ||
+      (gtk_widget_get_visible (n->pin) && !gdk_rectangle_equal (&pin, &n->pin_alloc)))
+    gtk_widget_queue_allocate (n->map_overlay);
+  double rotation, squash;
+  car_pose (n, &rotation, &squash);
+  if (fabs (remainder (rotation - n->car_drawn_rotation, 360)) > 0.1 || fabs (squash - n->car_drawn_squash) > 0.002 ||
+      n->night != n->car_drawn_night)
+    gtk_widget_queue_draw (n->car);
+}
+
 static gboolean
 place_child (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *alloc, gpointer data)
 {
   Navi *n = data;
   double x, y;
   if (child == n->car) {
-    if (!n->car_known) {
-      x = y = -1000;
-    } else if (n->cam == NAVI_CAM_FOLLOW) {
-      navi_map_get_focus_point (n->map, &x, &y);
-    } else {
-      navi_map_geo_to_screen (n->map, n->car_lat, n->car_lng, &x, &y);
-    }
-    if (isnan (x) || isnan (y))
-      x = y = -1000;
-    alloc->width = alloc->height = CAR_DP;
-    alloc->x = (int) lround (x) - CAR_DP / 2;
-    alloc->y = (int) lround (y) - CAR_DP / 2;
+    car_rect (n, alloc);
+    n->car_alloc = *alloc;
     return TRUE;
   }
   if (child == n->pin) {
-    if (!n->dest) {
-      x = y = -1000;
-    } else {
-      navi_map_geo_to_screen (n->map, n->dest->lat, n->dest->lng, &x, &y);
-    }
-    if (isnan (x) || isnan (y))
-      x = y = -1000;
-    alloc->width = PIN_W;
-    alloc->height = PIN_H;
-    alloc->x = (int) lround (x) - PIN_W / 2;
-    alloc->y = (int) lround (y) - PIN_H;
+    pin_rect (n, alloc);
+    n->pin_alloc = *alloc;
     return TRUE;
   }
   for (guint i = 0; n->bubbles && i < n->bubbles->len; i++) {
@@ -604,9 +750,7 @@ place_child (GtkOverlay *overlay, GtkWidget *child, GdkRectangle *alloc, gpointe
 static void
 on_camera_changed (NaviMap *map, Navi *n)
 {
-  gtk_widget_queue_allocate (n->map_overlay);
-  if (n->arrow_compass || n->cam != NAVI_CAM_FOLLOW || !heading_up (n))
-    gtk_widget_queue_draw (n->car);
+  overlays_moved (n);
   NaviCamera cam;
   navi_map_get_camera (map, &cam);
   navi_panels_set_compass (n->panels, isnan (cam.bearing) ? 0 : cam.bearing);
@@ -742,6 +886,8 @@ on_style_loaded (NaviMap *map, Navi *n)
   navi_map_add_geojson_source (map, "navi-alts", NULL, NULL);
   navi_map_add_geojson_source (map, "navi-done", NULL, NULL);
   navi_map_add_geojson_source (map, "navi-route", NULL, NULL);
+  navi_map_add_geojson_source_with_line_metrics (map, "navi-near-0", NULL, NULL);
+  navi_map_add_geojson_source_with_line_metrics (map, "navi-near-1", NULL, NULL);
   navi_map_add_geojson_source (map, "navi-turn", NULL, NULL);
   navi_map_add_geojson_source (map, "navi-turn-head", NULL, NULL);
   navi_map_add_geojson_source (map, "navi-stop", NULL, NULL);
@@ -772,8 +918,28 @@ on_style_loaded (NaviMap *map, Navi *n)
   add_layer (n, alt_f, below);
   add_layer (n, done_e, below);
   add_layer (n, done_f, below);
+  /* the car's stretch of the route ahead (trim_ahead ()): in the route's colours from the car on, its edges under
+   * the route's fill and its fill over it, so the two join as one line */
+  char *near_e[2], *near_f[2];
+  for (guint k = 0; k < 2; k++) {
+    g_autofree char *ge = near_gradient (route_edge[night], 1), *gf = near_gradient (route_fill[night], 1);
+    near_e[k] = g_strdup_printf (
+      "{\"id\":\"navi-near-%u-edge\",\"type\":\"line\",\"source\":\"navi-near-%u\",\"layout\":{\"line-join\":"
+      "\"round\",\"line-cap\":\"round\"},\"paint\":{\"line-gradient\":%s,\"line-width\":%s}}", k, k, ge, edge_w);
+    near_f[k] = g_strdup_printf (
+      "{\"id\":\"navi-near-%u-fill\",\"type\":\"line\",\"source\":\"navi-near-%u\",\"layout\":{\"line-join\":"
+      "\"round\",\"line-cap\":\"round\"},\"paint\":{\"line-gradient\":%s,\"line-width\":%s}}", k, k, gf, fill_w);
+  }
   add_layer (n, route_e, below);
+  add_layer (n, near_e[0], below);
+  add_layer (n, near_e[1], below);
   add_layer (n, route_f, below);
+  add_layer (n, near_f[0], below);
+  add_layer (n, near_f[1], below);
+  for (guint k = 0; k < 2; k++) {
+    g_free (near_e[k]);
+    g_free (near_f[k]);
+  }
   /* the arrow at the next turn: a white shaft and head on the route, edged in the route's dark colour */
   g_autofree char *turn_e = g_strdup_printf (
     "{\"id\":\"navi-turn-edge\",\"type\":\"line\",\"source\":\"navi-turn\",\"minzoom\":15,\"layout\":"
@@ -795,6 +961,7 @@ on_style_loaded (NaviMap *map, Navi *n)
   add_layer (n, stop, NULL);
   add_poi_images (n);
   g_clear_pointer (&n->poi_layers, g_strfreev);
+  clear_near (n);
   update_route_layers (n);
   n->signals_shown = n->cams_shown = FALSE; /* a new style has none of them */
   navi_window_update_overlay (n);
@@ -871,13 +1038,16 @@ update_route_layers (Navi *n)
     append_line (s, r->points, r->n_points, 1);
     g_string_append (s, "}");
     navi_map_set_geojson (n->map, "navi-route", s->str, NULL);
-    /* driving: the whole route stays drawn under the route ahead, which trim_ahead () starts at the car */
+    /* driving: the whole route stays drawn under the route ahead, which trim_ahead () starts at the car in the
+     * next frame */
     navi_map_set_geojson (n->map, "navi-done", n->mode == NAVI_MODE_DRIVE ? s->str : empty, NULL);
-    n->ahead_s = -1;
-    n->ahead_time = 0;
+    clear_near (n);
+    if (n->mode == NAVI_MODE_DRIVE)
+      ensure_tick (n);
   } else {
     navi_map_set_geojson (n->map, "navi-route", empty, NULL);
     navi_map_set_geojson (n->map, "navi-done", empty, NULL);
+    clear_near (n);
   }
   if (n->stop && n->mode == NAVI_MODE_DRIVE) {
     g_autoptr (GString) pt = g_string_new ("{\"type\":\"Point\",\"coordinates\":");
@@ -994,10 +1164,33 @@ fit_routes (Navi *n, guint duration)
   fit_bounds (n, s, w, no, e, duration);
 }
 
+/* Driving, the map draws at most 30 frames a second: a car's map moves smoothly at that rate (Waze's and Google
+ * Maps' navigation draw at about that), and at 60 the phone warmed up on a long drive. NAVI_DRIVE_FPS sets another
+ * limit (0: none), for measuring; a set NAVI_PACE (frame pacing) leaves the map's rate alone. */
+static void
+apply_drive_fps (Navi *n)
+{
+  const char *v = g_getenv ("NAVI_DRIVE_FPS");
+  double fps = v ? g_ascii_strtod (v, NULL) : 30;
+  if (n->mode != NAVI_MODE_DRIVE || g_getenv ("NAVI_PACE") || fps <= 0)
+    fps = 0;
+  navi_map_set_max_fps (n->map, fps);
+  n->drive_frame_us = fps > 0 ? (gint64) (G_USEC_PER_SEC / fps) : 0;
+}
+
+static void compass_sync (Navi *n);
+
 void
 navi_window_set_mode (Navi *n, NaviMode mode)
 {
+  gboolean was_driving = n->mode == NAVI_MODE_DRIVE;
   n->mode = mode;
+  apply_drive_fps (n);
+  /* the dark map while driving, and back to the day or night of the settings after */
+  if (was_driving != (mode == NAVI_MODE_DRIVE))
+    navi_update_night (n);
+  if (n->compass)
+    compass_sync (n);
   /* the screen stays on while a route is driven, as long as the window is shown */
   gboolean awake = mode == NAVI_MODE_DRIVE || mode == NAVI_MODE_ARRIVED;
   if (awake && !n->keep_awake)
@@ -1449,6 +1642,7 @@ on_fix (NaviPosition *position, NaviFix *fix, Navi *n)
     if (n->mode == NAVI_MODE_BROWSE && n->cam != NAVI_CAM_FREE)
       navi_recenter (n);
   }
+  compass_sync (n);
   ensure_tick (n);
   n->fix_at = g_get_monotonic_time ();
   n->fix_cost = n->fix_at - t0;
@@ -1462,41 +1656,86 @@ on_denied (NaviPosition *position, Navi *n)
 
 /* ---- day and night ---- */
 
+/* the app's own layers in the day's or the night's colours, over a style switched in place (navi_map_switch_style_url:
+ * on_style_loaded () does not run again) */
+static void
+paint_route_layers (Navi *n)
+{
+  int night = n->style_night ? 1 : 0;
+  static const struct { const char *layer, *property; const char *const *colours; } PAINT[] = {
+    { "navi-alts-edge", "line-color", alt_edge }, { "navi-alts-fill", "line-color", alt_fill },
+    { "navi-done-edge", "line-color", route_edge }, { "navi-done-fill", "line-color", route_fill },
+    { "navi-route-edge", "line-color", route_edge }, { "navi-route-fill", "line-color", route_fill },
+    { "navi-turn-edge", "line-color", route_edge }, { "navi-stop", "circle-color", route_edge },
+  };
+  for (guint i = 0; i < G_N_ELEMENTS (PAINT); i++) {
+    g_autofree char *json = g_strdup_printf ("\"%s\"", PAINT[i].colours[night]);
+    g_autoptr (GError) error = NULL;
+    if (!navi_map_set_paint_property (n->map, PAINT[i].layer, PAINT[i].property, json, &error))
+      g_message ("map layer: %s", error->message);
+  }
+  for (guint k = 0; k < 2; k++) {
+    if (n->near.slice[k]) {
+      paint_near (n, k, n->near.slice[k]);
+    } else {
+      /* see-through until a stretch is there */
+      g_autofree char *fill = near_gradient (route_fill[night], 1), *edge = near_gradient (route_edge[night], 1);
+      char id[32];
+      g_snprintf (id, sizeof id, "navi-near-%u-fill", k);
+      navi_map_set_paint_property (n->map, id, "line-gradient", fill, NULL);
+      g_snprintf (id, sizeof id, "navi-near-%u-edge", k);
+      navi_map_set_paint_property (n->map, id, "line-gradient", edge, NULL);
+    }
+  }
+}
+
 void
 navi_update_night (Navi *n)
 {
-  gboolean night;
   VibeosTheme *theme = vibeos_theme_get_default ();
   const char *force = g_getenv ("NAVI_NIGHT");
-  if (force) {
-    night = !strcmp (force, "1");
-  } else if (n->settings->dark == NAVI_DARK_ALWAYS) {
-    night = TRUE;
-  } else if (n->settings->dark == NAVI_DARK_NEVER) {
-    night = FALSE;
-  } else if (n->settings->dark == NAVI_DARK_SYSTEM) {
+  NaviDarkMode mode = n->settings->dark;
+  /* driving with "dark while driving" on: dark, whatever the mode (navi_night_pick) */
+  gboolean driving = n->mode == NAVI_MODE_DRIVE, drive_dark = driving && n->settings->drive_dark;
+  gboolean sun_night = FALSE, system_dark = FALSE;
+  n->night_updating = TRUE;
+  if (!force && mode == NAVI_DARK_SYSTEM && !drive_dark) {
     vibeos_theme_set_scheme (theme, VIBEOS_SCHEME_SYSTEM);
-    night = vibeos_theme_get_dark (theme);
-  } else {
+    system_dark = vibeos_theme_get_dark (theme);
+  } else if (!force && mode == NAVI_DARK_AT_NIGHT && !drive_dark) {
     double lat, lng;
     gboolean approx;
     navi_where_am_i (n, &lat, &lng, &approx);
-    night = navi_sun_is_night (lat, lng, g_get_real_time () / G_USEC_PER_SEC);
+    sun_night = navi_sun_is_night (lat, lng, g_get_real_time () / G_USEC_PER_SEC);
   }
-  if (n->settings->dark != NAVI_DARK_SYSTEM || force)
+  gboolean night = force ? !strcmp (force, "1")
+                         : navi_night_pick (mode, sun_night, system_dark, driving, n->settings->drive_dark);
+  if (force || mode != NAVI_DARK_SYSTEM || drive_dark)
     vibeos_theme_set_scheme (theme, night ? VIBEOS_SCHEME_DARK : VIBEOS_SCHEME_LIGHT);
+  n->night_updating = FALSE;
   n->night = night;
   if (night)
     gtk_widget_add_css_class (n->win, "night");
   else
     gtk_widget_remove_css_class (n->win, "night");
   if (n->style_night != night || !g_object_get_data (G_OBJECT (n->map), "navi-style-set")) {
+    gboolean first = !g_object_get_data (G_OBJECT (n->map), "navi-style-set");
     n->style_night = night;
     g_object_set_data (G_OBJECT (n->map), "navi-style-set", GINT_TO_POINTER (1));
     const char *url = g_getenv ("NAVI_STYLE");
     g_autofree char *file = g_build_filename (n->data_dir, night ? "style-night.json" : "style-day.json", NULL);
     g_autofree char *uri = url ? NULL : g_filename_to_uri (file, NULL, NULL);
-    navi_map_set_style_url (n->map, url ? url : uri);
+    /* Navi's own styles differ only in their colours: the map takes the other's over the tiles it has, with no
+     * reload and no blank frame (driving starts and ends with a switch); another style (NAVI_STYLE) is loaded */
+    if (url || first) {
+      navi_map_set_style_url (n->map, url ? url : uri);
+    } else if (navi_map_switch_style_url (n->map, uri)) {
+      paint_route_layers (n);
+      if (n->stats)
+        g_message ("map: the %s style, in place", night ? "night" : "day");
+    } else {
+      g_message ("map: the %s style, loaded anew", night ? "night" : "day");
+    }
   }
   gtk_widget_queue_draw (n->car);
 }
@@ -1511,7 +1750,7 @@ night_check (gpointer data)
 static void
 on_theme_changed (VibeosTheme *theme, Navi *n)
 {
-  if (n->settings->dark == NAVI_DARK_SYSTEM && vibeos_theme_get_dark (theme) != n->night)
+  if (!n->night_updating && n->settings->dark == NAVI_DARK_SYSTEM && vibeos_theme_get_dark (theme) != n->night)
     navi_update_night (n);
 }
 
@@ -1688,13 +1927,24 @@ on_tap (GtkGestureClick *gesture, int n_press, double x, double y, Navi *n)
 
 /* ---- the compass ---- */
 
-/* claimed while the window is on screen (shown, not suspended), and told how the screen is turned */
+/* claimed while the window is on screen (shown, not suspended), but not while the car drives along the route (the
+ * route turns the arrow then: navi_compass_wanted), and told how the screen is turned */
 static void
 compass_sync (Navi *n)
 {
+  if (!n->compass)
+    return;
   GtkWidget *win = GTK_WIDGET (n->win);
+  gboolean shown = gtk_widget_get_mapped (win) && !gtk_window_is_suspended (GTK_WINDOW (n->win));
+  const NaviProgress *p = n->guidance ? navi_guidance_get_progress (n->guidance) : NULL;
+  gboolean on_route = n->mode == NAVI_MODE_DRIVE && p && p->on_route;
+  double speed = n->have_fix ? MAX (n->fix.speed, 0.0) : 0;
+  gboolean held = navi_compass_wanted (shown, on_route, speed, n->compass_held);
+  if (held != n->compass_held)
+    g_debug ("compass: %s", held ? "claimed" : "released while driving the route");
+  n->compass_held = held;
   navi_compass_set_landscape (n->compass, gtk_widget_get_width (win) > gtk_widget_get_height (win));
-  navi_compass_set_active (n->compass, gtk_widget_get_mapped (win) && !gtk_window_is_suspended (GTK_WINDOW (n->win)));
+  navi_compass_set_active (n->compass, held);
 }
 
 static void
@@ -1754,7 +2004,7 @@ navi_window_stop_compass (Navi *n)
   }
   navi_compass_set_active (n->compass, FALSE);
   g_clear_object (&n->compass);
-  n->have_compass = n->arrow_compass = FALSE;
+  n->have_compass = n->arrow_compass = n->compass_held = FALSE;
 }
 
 void

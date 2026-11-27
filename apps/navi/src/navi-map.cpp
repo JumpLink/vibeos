@@ -4,6 +4,7 @@
 #include "navi-map.h"
 #include "navi-backend.hpp"
 #include "navi-runloop.hpp"
+#include "navi-style-paint.hpp"
 
 #include <mln/map/bound_options.hpp>
 #include <mln/map/camera.hpp>
@@ -169,6 +170,8 @@ struct NaviMapImpl final : public mln::MapObserver {
     enum class StyleKind { None, Url, Json } style_kind = StyleKind::None;
     std::string style;
     bool style_loaded = false;
+    // the style JSON whose paint the style's layers have: the one loaded, or the last switched to in place
+    std::string painted;
 
     // Style layers taken out while their tile source's bounds are far outside the view. A style with one
     // source per region repeats every layer per region, and MapLibre spends time on every layer every
@@ -181,10 +184,12 @@ struct NaviMapImpl final : public mln::MapObserver {
     struct SourceRec {
         std::string id;
         std::optional<mln::GeoJSON> data;
+        bool line_metrics = false;
     };
     std::vector<SourceRec> sources;
     struct LayerRec {
         std::string id, json, before;
+        std::vector<std::pair<std::string, std::string>> paint; // navi_map_set_paint_property's, by property
     };
     std::vector<LayerRec> layers;
     struct ImageRec {
@@ -225,6 +230,9 @@ struct NaviMapImpl final : public mln::MapObserver {
     // compositor's frame instead: more frames come late.) Auto (0) starts at one frame per refresh up to 60 Hz and two on a 120 Hz display, and
     // goes one slower when over two seconds of drawing more than a quarter of the frames come late.
     int pace_setting = 0, pace = 1;
+    int pace_auto = 1;            // auto pacing's own choice, before the app's limit
+    double max_fps = 0;           // navi_map_set_max_fps: 0 for none
+    gint64 refresh_period = 16667; // the display's, once seen
     bool pace_known = false;      // auto: the display's rate seen
     bool paced_pending = false;   // MapLibre wants a frame
     bool ahead = false;           // a frame drawn ahead waits to be shown
@@ -375,7 +383,9 @@ struct NaviMapImpl final : public mln::MapObserver {
             if (!shown || r <= 0) continue;
             if (!pace_known) { // the display's rate: one frame a refresh up to about 60 Hz, two at 120
                 pace_known = true;
-                set_pace(std::max(1, static_cast<int>(1e6 / r / 60 + 0.25)));
+                refresh_period = r;
+                pace_auto = std::max(1, static_cast<int>(1e6 / r / 60 + 0.25));
+                set_pace(limited(pace_auto));
                 pace_measure_from = shown + 3 * G_USEC_PER_SEC; // not while the map starts up
             }
             double gap = double(shown - last_shown_us) / r;
@@ -392,9 +402,17 @@ struct NaviMapImpl final : public mln::MapObserver {
         if (pace_late_windows >= 2 && pace < 4) {
             g_message("NaviMap: frames keep missing every %s refresh; drawing one every %d",
                       pace == 1 ? "single" : pace == 2 ? "second" : "third", pace + 1);
-            set_pace(pace + 1);
+            pace_auto = pace + 1;
+            set_pace(limited(pace_auto));
             pace_late_windows = 0;
         }
+    }
+
+    // auto pacing's `p`, slowed to the app's limit: refreshes per frame at the display's rate (60 Hz until seen)
+    int limited(int p) const {
+        if (max_fps <= 0) return p;
+        double hz = 1e6 / double(refresh_period);
+        return std::clamp(static_cast<int>(std::ceil(hz / max_fps - 0.05)), p, 4);
     }
 
     void set_pace(int n) {
@@ -556,6 +574,7 @@ struct NaviMapImpl final : public mln::MapObserver {
     void load_style() {
         if (!map) return;
         style_loaded = false;
+        painted.clear();
         forget_culled();
         try {
             if (style_kind == StyleKind::Url)
@@ -582,7 +601,9 @@ struct NaviMapImpl final : public mln::MapObserver {
             if (auto* gj = existing->as<mln::style::GeoJSONSource>(); gj && rec.data) gj->setGeoJSON(*rec.data);
             return;
         }
-        auto source = std::make_unique<mln::style::GeoJSONSource>(rec.id);
+        auto options = mln::makeMutable<mln::style::GeoJSONOptions>();
+        options->lineMetrics = rec.line_metrics;
+        auto source = std::make_unique<mln::style::GeoJSONSource>(rec.id, std::move(options));
         source->setGeoJSON(rec.data ? *rec.data : mln::GeoJSON{mapbox::geojson::feature_collection{}});
         st.addSource(std::move(source));
     }
@@ -595,6 +616,8 @@ struct NaviMapImpl final : public mln::MapObserver {
             g_set_error(error, NAVI_MAP_ERROR, NAVI_MAP_ERROR_PARSE, "layer: %s", err.message.c_str());
             return false;
         }
+        for (const auto& [name, json] : rec.paint)
+            if (!set_property(**layer, name, json, error)) return false;
         try {
             map->getStyle().addLayer(std::move(*layer), rec.before.empty() ? std::nullopt
                                                                           : std::optional<std::string>(rec.before));
@@ -603,6 +626,61 @@ struct NaviMapImpl final : public mln::MapObserver {
             return false;
         }
         return true;
+    }
+
+    static bool set_property(mln::style::Layer& layer, const std::string& name, const std::string& json,
+                             GError** error) {
+        navi::StyleDocument doc;
+        doc.Parse<0>(json.c_str());
+        if (doc.HasParseError()) {
+            g_set_error(error, NAVI_MAP_ERROR, NAVI_MAP_ERROR_PARSE, "%s: not JSON", name.c_str());
+            return false;
+        }
+        const navi::StyleValue* value = &doc;
+        if (auto err = layer.setProperty(name, mln::style::conversion::Convertible(value))) {
+            g_set_error(error, NAVI_MAP_ERROR, NAVI_MAP_ERROR_PARSE, "%s: %s", name.c_str(), err->message.c_str());
+            return false;
+        }
+        return true;
+    }
+
+    // The style at `url` (file://) by changing the paint of the layers shown, where it is the style shown but for
+    // its paint (navi-style-paint.hpp). Parked layers take it too. FALSE where it cannot be, and after a property
+    // that failed (some layers may have it): either way the style is then loaded anew.
+    bool repaint_style(const std::string& url) {
+        if (!map || !style_loaded || style_kind != StyleKind::Url || painted.empty()) return false;
+        gchar* path = g_filename_from_uri(url.c_str(), nullptr, nullptr);
+        gchar* text = nullptr;
+        gsize length = 0;
+        bool read = path && g_file_get_contents(path, &text, &length, nullptr);
+        g_free(path);
+        if (!read) return false;
+        gint64 t0 = g_get_monotonic_time();
+        std::optional<navi::PaintSwitch> change =
+            navi::style_paint_switch(painted.data(), painted.size(), text, length);
+        bool done = change.has_value();
+        mln::style::Style& st = map->getStyle();
+        for (size_t i = 0; done && i < change->changes.size(); i++) {
+            const navi::PaintChange& c = change->changes[i];
+            mln::style::Layer* layer = st.getLayer(c.layer);
+            for (auto& p : parked)
+                if (!layer && p.second->getID() == c.layer) layer = p.second.get();
+            std::optional<mln::style::conversion::Error> err;
+            if (layer) err = layer->setProperty(c.property, mln::style::conversion::Convertible(c.value));
+            if (!layer || err) {
+                g_warning("NaviMap: %s %s: %s", c.layer.c_str(), c.property.c_str(),
+                          layer ? err->message.c_str() : "no such layer");
+                done = false;
+            }
+        }
+        if (done) {
+            painted.assign(text, length);
+            style = url;
+            g_debug("NaviMap: %zu paint properties in %.1f ms", change->changes.size(),
+                    (g_get_monotonic_time() - t0) / 1000.0);
+        }
+        g_free(text);
+        return done;
     }
 
     void push_image(const ImageRec& rec) {
@@ -1040,6 +1118,7 @@ struct NaviMapImpl final : public mln::MapObserver {
 
     void onDidFinishLoadingStyle() override {
         style_loaded = true;
+        painted = map->getStyle().getJSON();
         forget_culled();
         for (const mln::style::Layer* layer : std::as_const(map->getStyle()).getLayers())
             style_order.push_back(layer->getID());
@@ -1305,6 +1384,13 @@ void navi_map_set_style_json(NaviMap* self, const char* json) {
     impl->load_style();
 }
 
+gboolean navi_map_switch_style_url(NaviMap* self, const char* url) {
+    g_return_val_if_fail(NAVI_IS_MAP(self) && url, FALSE);
+    if (self->impl->repaint_style(url)) return TRUE;
+    navi_map_set_style_url(self, url);
+    return FALSE;
+}
+
 gboolean navi_map_is_style_loaded(NaviMap* self) {
     g_return_val_if_fail(NAVI_IS_MAP(self), FALSE);
     return self->impl->style_loaded;
@@ -1317,14 +1403,15 @@ static std::optional<mln::GeoJSON> parse_geojson(const char* text, GError** erro
     return gj;
 }
 
-gboolean navi_map_add_geojson_source(NaviMap* self, const char* id, const char* geojson, GError** error) {
+static gboolean add_geojson_source(NaviMap* self, const char* id, const char* geojson, bool line_metrics,
+                                   GError** error) {
     g_return_val_if_fail(NAVI_IS_MAP(self) && id, FALSE);
     NaviMapImpl* impl = self->impl;
     if (impl->find_source(id) || (impl->map && impl->style_loaded && impl->map->getStyle().getSource(id))) {
         g_set_error(error, NAVI_MAP_ERROR, NAVI_MAP_ERROR_EXISTS, "source \"%s\" exists", id);
         return FALSE;
     }
-    NaviMapImpl::SourceRec rec{id, std::nullopt};
+    NaviMapImpl::SourceRec rec{id, std::nullopt, line_metrics};
     if (geojson) {
         rec.data = parse_geojson(geojson, error);
         if (!rec.data) return FALSE;
@@ -1332,6 +1419,15 @@ gboolean navi_map_add_geojson_source(NaviMap* self, const char* id, const char* 
     impl->sources.push_back(std::move(rec));
     impl->push_source(impl->sources.back());
     return TRUE;
+}
+
+gboolean navi_map_add_geojson_source(NaviMap* self, const char* id, const char* geojson, GError** error) {
+    return add_geojson_source(self, id, geojson, false, error);
+}
+
+gboolean navi_map_add_geojson_source_with_line_metrics(NaviMap* self, const char* id, const char* geojson,
+                                                        GError** error) {
+    return add_geojson_source(self, id, geojson, true, error);
 }
 
 gboolean navi_map_set_geojson(NaviMap* self, const char* id, const char* geojson, GError** error) {
@@ -1428,6 +1524,26 @@ gboolean navi_map_remove_layer(NaviMap* self, const char* id, GError** error) {
         g_set_error(error, NAVI_MAP_ERROR, NAVI_MAP_ERROR_NOT_FOUND, "no layer \"%s\"", id);
         return FALSE;
     }
+    return TRUE;
+}
+
+gboolean navi_map_set_paint_property(NaviMap* self, const char* id, const char* property, const char* json,
+                                      GError** error) {
+    g_return_val_if_fail(NAVI_IS_MAP(self) && id && property && json, FALSE);
+    NaviMapImpl* impl = self->impl;
+    auto rec = std::find_if(impl->layers.begin(), impl->layers.end(), [&](const auto& l) { return l.id == id; });
+    if (rec == impl->layers.end()) {
+        g_set_error(error, NAVI_MAP_ERROR, NAVI_MAP_ERROR_NOT_FOUND, "no layer \"%s\" of the app's", id);
+        return FALSE;
+    }
+    mln::style::Layer* layer = impl->map && impl->style_loaded ? impl->map->getStyle().getLayer(id) : nullptr;
+    if (layer && !NaviMapImpl::set_property(*layer, property, json, error)) return FALSE;
+    auto old = std::find_if(rec->paint.begin(), rec->paint.end(),
+                            [&](const auto& p) { return p.first == property; });
+    if (old != rec->paint.end())
+        old->second = json;
+    else
+        rec->paint.emplace_back(property, json);
     return TRUE;
 }
 
@@ -1630,7 +1746,21 @@ void navi_map_set_frame_pacing(NaviMap* self, int refreshes_per_frame) {
     impl->pace_setting = std::clamp(refreshes_per_frame, 0, 4);
     impl->pace_known = false;
     impl->pace_frames = impl->pace_late = impl->pace_late_windows = 0;
-    impl->set_pace(std::max(impl->pace_setting, 1));
+    impl->pace_auto = 1;
+    impl->set_pace(impl->pace_setting ? impl->pace_setting : impl->limited(1));
+}
+
+void navi_map_set_max_fps(NaviMap* self, double fps) {
+    g_return_if_fail(NAVI_IS_MAP(self));
+    NaviMapImpl* impl = self->impl;
+    fps = std::max(fps, 0.0);
+    if (fps == impl->max_fps) return;
+    impl->max_fps = fps;
+    if (impl->pace_setting == 0) {
+        // a new rhythm: auto pacing's late-frame count starts again
+        impl->pace_frames = impl->pace_late = impl->pace_late_windows = 0;
+        impl->set_pace(impl->limited(impl->pace_auto));
+    }
 }
 
 void navi_map_set_render_scale(NaviMap* self, double scale) {

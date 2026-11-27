@@ -27,3 +27,21 @@ navi_sun_is_night (double lat, double lng, gint64 unix_time)
 {
   return navi_sun_elevation (lat, lng, unix_time) < -0.833;
 }
+
+gboolean
+navi_night_pick (NaviDarkMode mode, gboolean sun_night, gboolean system_dark, gboolean driving, gboolean drive_dark)
+{
+  if (driving && drive_dark)
+    return TRUE;
+  switch (mode) {
+  case NAVI_DARK_ALWAYS:
+    return TRUE;
+  case NAVI_DARK_NEVER:
+    return FALSE;
+  case NAVI_DARK_SYSTEM:
+    return system_dark;
+  case NAVI_DARK_AT_NIGHT:
+  default:
+    return sun_night;
+  }
+}
