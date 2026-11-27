@@ -1,0 +1,98 @@
+From: Pascal Garber <pascal@artandcode.studio>
+Date: Fri, 27 Nov 2026 15:22:00 +0100
+Subject: [PATCH] wwan: disconnect only the bearer we connected
+
+disconnect() asked ModemManager to disconnect with a NULL bearer path,
+which disconnects every bearer of the modem. On a phone with VoLTE a
+second bearer, for IMS, belongs to another client. NetworkManager
+disconnects the modem when the host goes to sleep, so the IMS bearer
+dropped on every suspend, its client connected it again, and that woke
+the host within milliseconds: the phone never stayed in deep sleep.
+
+Remember the path of the bearer we connected, also after
+deactivate_cleanup() dropped the bearer object, and disconnect only
+that one. While a connection attempt is still running its bearer is not
+known yet: then disconnect all as before, which also makes ModemManager
+abort the attempt. With neither a bearer of ours nor an attempt there
+is nothing to disconnect.
+
+Seen on a OnePlus 6T (sdm845). See also NetworkManager issue #2050.
+
+Assisted-by: AI coding agent
+---
+--- a/src/core/devices/wwan/nm-modem-broadband.c	2026-11-27 15:22:17.311254918 +0100
++++ b/src/core/devices/wwan/nm-modem-broadband.c	2026-11-27 15:22:17.320642117 +0100
+@@ -85,6 +85,10 @@
+     MMBearerIpConfig *ipv4_config;
+     MMBearerIpConfig *ipv6_config;
+ 
++    /* The path of the bearer we connected last, kept after deactivate_cleanup()
++     * dropped the bearer, so that disconnect() can name it. */
++    char *last_bearer_path;
++
+     guint32 pin_tries;
+ } NMModemBroadbandPrivate;
+ 
+@@ -383,6 +387,8 @@
+         return;
+ 
+     self->_priv.bearer = g_steal_pointer(&bearer);
++    if (self->_priv.bearer)
++        nm_clear_g_free(&self->_priv.last_bearer_path);
+ 
+     if (!self->_priv.bearer) {
+         if (g_error_matches(error, MM_MOBILE_EQUIPMENT_ERROR, MM_MOBILE_EQUIPMENT_ERROR_SIM_PIN)
+@@ -1357,6 +1363,11 @@
+ {
+     NMModemBroadband  *self = NM_MODEM_BROADBAND(modem);
+     DisconnectContext *ctx;
++    const char        *bearer_path;
++    gboolean           connecting = !!self->_priv.ctx;
++
++    bearer_path = self->_priv.bearer ? mm_bearer_get_path(self->_priv.bearer)
++                                     : self->_priv.last_bearer_path;
+ 
+     connect_context_clear(self);
+     _nm_modem_set_apn(NM_MODEM(self), NULL);
+@@ -1370,15 +1381,21 @@
+     /* Don't bother warning on FAILED since the modem is already gone */
+     ctx->warn = warn;
+ 
+-    /* Already cancelled or no simple-iface? We are done. */
+-    if (!ctx->self->_priv.simple_iface || g_cancellable_is_cancelled(cancellable)) {
++    /* Already cancelled or no simple-iface? We are done. Nor is there anything to
++     * disconnect when we neither connected a bearer nor are connecting one: the
++     * modem's other bearers (an IMS bearer for VoLTE, say) belong to other clients. */
++    if (!ctx->self->_priv.simple_iface || g_cancellable_is_cancelled(cancellable)
++        || (!connecting && !bearer_path)) {
+         nm_utils_invoke_on_idle(cancellable, disconnect_context_complete_on_idle, ctx);
+         return;
+     }
+ 
++    /* Disconnect only our own bearer. While a connection attempt is still
++     * ongoing we don't know it yet: then disconnect all, which also makes
++     * ModemManager abort the attempt. */
+     _LOGD("notifying ModemManager about the modem disconnection");
+     mm_modem_simple_disconnect(self->_priv.simple_iface,
+-                               NULL, /* bearer path; if NULL given ALL get disconnected */
++                               connecting ? NULL : bearer_path,
+                                cancellable,
+                                simple_disconnect_ready,
+                                ctx);
+@@ -1396,6 +1413,8 @@
+     /* Cleanup IPv4 addresses and routes */
+     g_clear_object(&self->_priv.ipv4_config);
+     g_clear_object(&self->_priv.ipv6_config);
++    if (self->_priv.bearer)
++        nm_strdup_reset(&self->_priv.last_bearer_path, mm_bearer_get_path(self->_priv.bearer));
+     g_clear_object(&self->_priv.bearer);
+ 
+     self->_priv.pin_tries = 0;
+@@ -1666,6 +1685,7 @@
+     g_clear_object(&priv->ipv4_config);
+     g_clear_object(&priv->ipv6_config);
+     g_clear_object(&priv->bearer);
++    nm_clear_g_free(&priv->last_bearer_path);
+ 
+     if (priv->modem_iface) {
+         g_signal_handlers_disconnect_by_data(priv->modem_iface, self);
