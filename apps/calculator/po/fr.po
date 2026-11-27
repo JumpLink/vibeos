@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-calculator\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-26 01:54+0100\n"
+"POT-Creation-Date: 2026-11-27 11:01+0100\n"
 "PO-Revision-Date: 2026-11-24 03:42+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: French\n"
@@ -104,6 +104,17 @@ msgstr "Copier"
 msgid "Paste"
 msgstr "Coller"
 
+#. Translators: short key and display labels (a few capital letters): degrees and radians, the angle unit
+#: src/calc-window.c
+msgctxt "calculator key"
+msgid "DEG"
+msgstr ""
+
+#: src/calc-window.c
+msgctxt "calculator key"
+msgid "RAD"
+msgstr ""
+
 # android: ExactCalculator cancelled
 #: src/calc-window.c
 msgid "Computation cancelled."
@@ -170,6 +181,11 @@ msgstr ""
 #: src/calc-window.c
 msgid "About"
 msgstr "À propos"
+
+#: src/calc-window.c
+msgctxt "calculator key"
+msgid "INV"
+msgstr ""
 
 # android: ExactCalculator desc_del
 #: src/calc-window.c

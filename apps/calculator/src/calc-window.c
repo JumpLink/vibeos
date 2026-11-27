@@ -571,8 +571,9 @@ on_inverse_toggled (CalcMain *self, gboolean show_inverse)
 static void
 on_mode_changed (CalcMain *self, gboolean degree_mode)
 {
-  calc_display_set_mode (CALC_DISPLAY (self->display), degree_mode ? "DEG" : "RAD");
-  calc_button_set_label (CALC_BUTTON (self->mode_toggle), degree_mode ? "RAD" : "DEG");
+  /* Translators: short key and display labels (a few capital letters): degrees and radians, the angle unit */
+  calc_display_set_mode (CALC_DISPLAY (self->display), degree_mode ? C_("calculator key", "DEG") : C_("calculator key", "RAD"));
+  calc_button_set_label (CALC_BUTTON (self->mode_toggle), degree_mode ? C_("calculator key", "RAD") : C_("calculator key", "DEG"));
 }
 
 /* from RESULT, an operator goes on after the result, anything else starts again */
@@ -1436,14 +1437,14 @@ static const Key advanced_keys[] = {
   { CALC_KEY_CONST_PI,   "π",                  CALC_BUTTON_ADVANCED, 1, 0, 2, 0, -1, -1 },
   { CALC_KEY_OP_POW,     "^",                  CALC_BUTTON_ADVANCED, 2, 0, 1, 1, -1, -1 },
   { CALC_KEY_OP_FACT,    "!",                  CALC_BUTTON_ADVANCED, 3, 0, 2, 1, -1, -1 },
-  { BTN_TOGGLE_MODE,     "DEG",                CALC_BUTTON_ADVANCED, 0, 1, 0, 0, -1, -1 },
+  { BTN_TOGGLE_MODE,     NC_("calculator key", "DEG"),                CALC_BUTTON_ADVANCED, 0, 1, 0, 0, -1, -1 },
   { CALC_KEY_FUN_SIN,    "sin",                CALC_BUTTON_ADVANCED, 1, 1, 0, 2, 0, -1 },
   { CALC_KEY_FUN_ARCSIN, "sin⁻¹",    CALC_BUTTON_ADVANCED, 1, 1, 0, 2, -1, 0 },
   { CALC_KEY_FUN_COS,    "cos",                CALC_BUTTON_ADVANCED, 2, 1, 1, 2, 1, -1 },
   { CALC_KEY_FUN_ARCCOS, "cos⁻¹",    CALC_BUTTON_ADVANCED, 2, 1, 1, 2, -1, 1 },
   { CALC_KEY_FUN_TAN,    "tan",                CALC_BUTTON_ADVANCED, 3, 1, 2, 2, 2, -1 },
   { CALC_KEY_FUN_ARCTAN, "tan⁻¹",    CALC_BUTTON_ADVANCED, 3, 1, 2, 2, -1, 2 },
-  { BTN_TOGGLE_INV,      "INV",                CALC_BUTTON_ADVANCED, 0, 2, 0, 1, -1, -1 },
+  { BTN_TOGGLE_INV,      NC_("calculator key", "INV"),                CALC_BUTTON_ADVANCED, 0, 2, 0, 1, -1, -1 },
   { CALC_KEY_CONST_E,    "e",                  CALC_BUTTON_ADVANCED, 1, 2, 0, 3, -1, -1 },
   { CALC_KEY_FUN_LN,     "ln",                 CALC_BUTTON_ADVANCED, 2, 2, 1, 3, 3, -1 },
   { CALC_KEY_FUN_EXP,    "eˣ",            CALC_BUTTON_ADVANCED, 2, 2, 1, 3, -1, 3 },
@@ -1536,7 +1537,9 @@ make_pad (CalcMain *self, const Key *keys, int n_keys, gboolean advanced)
       gtk_accessible_update_property (GTK_ACCESSIBLE (button), GTK_ACCESSIBLE_PROPERTY_LABEL, _("delete"), -1);
       g_signal_connect (button, "long-pressed", G_CALLBACK (on_delete_long_pressed), self);
     } else {
-      button = calc_button_new (key->label ? key->label : calc_decimal_point (), key->theme);
+      button = calc_button_new (key->label ? (key->id == BTN_TOGGLE_MODE || key->id == BTN_TOGGLE_INV
+                                       ? g_dpgettext2 (NULL, "calculator key", key->label) : key->label)
+                              : calc_decimal_point (), key->theme);
     }
     g_object_set_data (G_OBJECT (button), "calc-id", GINT_TO_POINTER (key->id));
     g_signal_connect (button, "clicked", G_CALLBACK (on_key_button_clicked), self);
