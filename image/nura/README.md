@@ -44,7 +44,7 @@ It writes, in `--out` (default: the current directory):
 Replaced: `q6voiced` (call audio on Qualcomm phones) by `vibeos-q6voiced`, which opens the voice PCM while a
 ModemManager call is live; without it a call connects and stays silent both ways.
 
-Not carried, because Debian has no package for them and Alpine binaries cannot run on Debian: `msm-modem-uim-selection` (SIM slot), `bootmac` (Wi-Fi and Bluetooth addresses; the payload's `vibeos-bt-addr` sets the Bluetooth one from the boot
+Not carried, because Debian has no package for them and Alpine binaries cannot run on Debian: `msm-modem-uim-selection` (SIM slot), `bootmac` (Wi-Fi and Bluetooth addresses; the payload's `vibeos-bt-addr` and `vibeos-wlan-addr` set both from the boot
 serial), `swclock-offset`. The report lists what was left out for the build you converted.
 
 ## In recovery

@@ -1,0 +1,2 @@
+# a stable Wi-Fi address from the device serial (see /usr/libexec/vibeos-wlan-addr)
+ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan[0-9]*", RUN+="/usr/libexec/vibeos-wlan-addr $name"
