@@ -226,17 +226,13 @@ find_brain (DictateTalk *self)
   return NULL;
 }
 
-/* the voice for `language`: the setting's file if it is there, else the one in vibeos-dictate/voices/LANGUAGE
- * (dictate_voice_find); *name is Kokoro's voice */
+/* the voice for `language` (dictate_voice_choose: Navi asks it too, so it speaks as Agent does); *name is Kokoro's
+ * voice. Who speaks, where the voice has a man and a woman, is taken from the setting as each sentence is spoken
+ * (on_gender_changed) */
 static char *
 find_voice (DictateTalk *self, const char *language, char **name)
 {
-  g_autofree char *chosen = g_settings_get_string (self->settings, "talk-voice");
-
-  *name = g_settings_get_string (self->settings, "talk-voice-name");
-  if (*chosen && g_file_test (chosen, G_FILE_TEST_IS_REGULAR))
-    return g_steal_pointer (&chosen);
-  return dictate_voice_find (language);
+  return dictate_voice_choose (self->settings, language, name, NULL);
 }
 
 gboolean

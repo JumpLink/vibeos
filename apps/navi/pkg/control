@@ -14,6 +14,7 @@ Depends: ${shlibs:Depends},
 Recommends: geoclue-2.0,
             gstreamer1.0-pulseaudio,
             vibeos-dictate-moonshine,
+            vibeos-dictate-voice-en,
             vibeos-dictate-en | vibeos-dictate-de | vibeos-dictate-es | vibeos-dictate-fr | vibeos-dictate-it | vibeos-dictate-ru,
 Suggests: speech-dispatcher,
 Description: car navigation for VibeOS
@@ -25,7 +26,8 @@ Description: car navigation for VibeOS
  /usr/lib/vibeos-navi, next to the libvibeos Navi was built with; no system
  library is replaced (libvibeos-1-0 still provides its settings schema).
  .
- The prompts are spoken with Agent's Piper voices, found in
+ The prompts are spoken in Agent's voice, the one Agent's settings choose for
+ the language (and its man or woman, where the voice has both), found in
  vibeos-dictate/voices/LANGUAGE under the user's or the system's data
  directories, and through Speech Dispatcher where there is none. The search's
  microphone uses vibeos-dictate's speech models.

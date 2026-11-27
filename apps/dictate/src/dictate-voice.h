@@ -14,7 +14,7 @@
  * Not thread-safe: one voice is used from one thread at a time (espeak-ng is shared, under a lock). */
 #pragma once
 
-#include <glib.h>
+#include <gio/gio.h>
 
 G_BEGIN_DECLS
 
@@ -41,5 +41,17 @@ gboolean      dictate_voice_set_gender (DictateVoice *self, const char *gender);
 char         *dictate_voice_find       (const char *language);
 /* `language`'s voice speaks as a man or a woman (dictate_voice_set_gender), downloaded yet or not */
 gboolean      dictate_voice_has_genders (const char *language);
+
+/* Agent's voice for `language`, as its settings (vibeos.Dictate) choose it: talk-voice's file where it is there, else
+ * dictate_voice_find (language). *name: Kokoro's speaker (talk-voice-name), *gender: who speaks where the voice has a
+ * man and a woman (talk-voice-gender, for dictate_voice_set_gender); NULL for the voice's own, and either pointer may
+ * be NULL. settings NULL: Agent's settings as they are by default. NULL when there is no voice: Agent does not speak
+ * then. Another app that speaks with Agent's voices (Navi) asks this too, with dictate_voice_settings (), so that it
+ * speaks as Agent does */
+char         *dictate_voice_choose     (GSettings *settings, const char *language, char **name, char **gender);
+/* Agent's settings, for dictate_voice_choose () in another app: NULL where vibeos-dictate is not installed */
+GSettings    *dictate_voice_settings   (void);
+/* `key` is one of Agent's settings dictate_voice_choose () reads (for a "changed" handler) */
+gboolean      dictate_voice_is_choice_key (const char *key);
 
 G_END_DECLS

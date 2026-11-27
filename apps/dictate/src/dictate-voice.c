@@ -956,3 +956,57 @@ dictate_voice_find (const char *language)
     }
   return NULL;
 }
+
+/* ---------------- Agent's choice ---------------- */
+
+#define SETTINGS_SCHEMA "vibeos.Dictate"
+
+/* the settings dictate_voice_choose () reads */
+static const char *const CHOICE_KEYS[] = { "talk-voice", "talk-voice-name", "talk-voice-gender", NULL };
+
+/* `key`'s value, NULL where it is empty or the settings have no such key (an older vibeos-dictate's) */
+static char *
+setting (GSettings *settings, const char *key)
+{
+  g_autoptr (GSettingsSchema) schema = NULL;
+  char *value;
+
+  if (!settings)
+    return NULL;
+  g_object_get (settings, "settings-schema", &schema, NULL);
+  if (!schema || !g_settings_schema_has_key (schema, key))
+    return NULL;
+  value = g_settings_get_string (settings, key);
+  if (!*value)
+    g_clear_pointer (&value, g_free);
+  return value;
+}
+
+char *
+dictate_voice_choose (GSettings *settings, const char *language, char **name, char **gender)
+{
+  g_autofree char *chosen = setting (settings, CHOICE_KEYS[0]);
+
+  if (name)
+    *name = setting (settings, CHOICE_KEYS[1]);
+  if (gender)
+    *gender = setting (settings, CHOICE_KEYS[2]);
+  if (chosen && g_file_test (chosen, G_FILE_TEST_IS_REGULAR))
+    return g_steal_pointer (&chosen);
+  return dictate_voice_find (language);
+}
+
+GSettings *
+dictate_voice_settings (void)
+{
+  GSettingsSchemaSource *source = g_settings_schema_source_get_default ();
+  g_autoptr (GSettingsSchema) schema = source ? g_settings_schema_source_lookup (source, SETTINGS_SCHEMA, TRUE) : NULL;
+
+  return schema ? g_settings_new_full (schema, NULL, NULL) : NULL;
+}
+
+gboolean
+dictate_voice_is_choice_key (const char *key)
+{
+  return key && g_strv_contains (CHOICE_KEYS, key);
+}

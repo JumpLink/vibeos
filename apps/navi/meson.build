@@ -104,7 +104,8 @@ if get_option('debug_privacy')
   app_args += '-DNAVI_DEBUG'
 endif
 # Agent's voices: Piper models run by ONNX Runtime, with espeak-ng's phonemes, and Russian's tiny-voca. Their code is Agent's, built from its
-# sources (not copied here), until it is a library both apps link.
+# sources (not copied here), until it is a library both apps link; so is the choice of a language's voice
+# (dictate_voice_choose: Agent's settings, then its voices), which Navi has none of its own of.
 voice_sources = []
 voice_deps = []
 voice_src = get_option('voice_src')
@@ -150,6 +151,19 @@ if voice_src != ''
              dependencies: [dependency('gio-2.0'), dependency('json-glib-1.0'), meson.get_compiler('c').find_library('m')] +
                            voice_deps,
              install: false)
+  # Navi's voice for a language is Agent's (dictate_voice_choose): stand-in voices, Agent's settings schema compiled
+  # here, on a memory backend
+  dictate_schemas = custom_target('dictate-schemas', input: voice_src / '..' / 'data' / 'vibeos.Dictate.gschema.xml',
+                                  output: 'gschemas.compiled',
+                                  command: [find_program('glib-compile-schemas'), '--strict', '--targetdir=@OUTDIR@',
+                                            voice_src / '..' / 'data'])
+  test('voice-choice', executable('test-voice-choice', 'tests/test-voice-choice.c', voice_sources,
+                                  c_args: ['-I' + voice_src],
+                                  dependencies: [dependency('gio-2.0'), dependency('json-glib-1.0'),
+                                                 meson.get_compiler('c').find_library('m')] + voice_deps),
+       depends: dictate_schemas,
+       env: ['G_TEST_SRCDIR=' + meson.current_source_dir() / 'tests', 'G_TEST_BUILDDIR=' + meson.current_build_dir(),
+             'GSETTINGS_SCHEMA_DIR=' + meson.current_build_dir()])
 endif
 executable('vibeos-navi', 'src/navi-main.c', 'src/navi-window.c', 'src/navi-alerts.c', 'src/navi-panels.c', 'src/navi-draw.c',
            'src/navi-settings.c', 'src/navi-voice.c', 'src/navi-plan.c', voice_sources,

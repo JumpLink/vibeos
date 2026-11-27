@@ -32,11 +32,19 @@ typedef enum {
 
 typedef struct {
   JobKind kind;
-  char *model; /* a Piper voice's .onnx */
+  char *model;  /* a Piper voice's .onnx (or a Kokoro or tiny-voca model) */
+  char *name;   /* Kokoro's speaker, or NULL */
+  char *gender; /* who speaks where the voice has a man and a woman, or NULL */
   char *language;
   char *text;
   char *key;
 } Job;
+
+/* Agent's voice for a language (dictate_voice_choose): no Navi setting of its own picks one */
+typedef struct {
+  char *model; /* NULL: none */
+  char *name, *gender;
+} Choice;
 
 #ifdef HAVE_PIPER
 /* a prompt, made or being made */
@@ -61,13 +69,16 @@ struct _NaviVoice {
   GThreadPool *pool;
   gboolean dead; /* freed: what the thread hands back after that is dropped */
   gboolean stats;
-  GHashTable *models; /* the main thread's: language ("de") -> its Piper voice's path, "" for none */
+  GHashTable *models; /* the main thread's: language ("de") -> Agent's voice for it, a Choice */
   char *description;
+#ifdef HAVE_PIPER
+  GSettings *agent; /* Agent's settings (dictate_voice_settings), or NULL: its voice choice follows them */
+#endif
   /* the thread's */
 #ifdef HAVE_PIPER
   DictateVoice *voice;
-  char *voice_model;
-  char *failed_model;
+  char *voice_model, *voice_name;
+  char *failed_model, *failed_name;
 #endif
 #ifdef HAVE_SPEECHD
   SPDConnection *conn;
@@ -93,6 +104,8 @@ static void
 job_free (Job *job)
 {
   g_free (job->model);
+  g_free (job->name);
+  g_free (job->gender);
   g_free (job->language);
   g_free (job->text);
   g_free (job->key);
@@ -145,27 +158,44 @@ typedef struct {
 
 static gboolean made (gpointer data);
 
+/* the job's voice loaded, unless it is already */
 static gboolean
-load (NaviVoice *self, const char *model)
+open_voice (NaviVoice *self, const Job *job)
 {
-  if (self->voice && !g_strcmp0 (self->voice_model, model))
+  if (self->voice && !g_strcmp0 (self->voice_model, job->model) && !g_strcmp0 (self->voice_name, job->name))
     return TRUE;
-  if (!g_strcmp0 (self->failed_model, model))
+  if (!g_strcmp0 (self->failed_model, job->model) && !g_strcmp0 (self->failed_name, job->name))
     return FALSE;
   g_clear_pointer (&self->voice, dictate_voice_free);
   g_clear_pointer (&self->voice_model, g_free);
+  g_clear_pointer (&self->voice_name, g_free);
   g_autoptr (GError) error = NULL;
   gint64 t0 = g_get_monotonic_time ();
-  self->voice = dictate_voice_load (model, NULL, PIPER_THREADS, &error);
+  self->voice = dictate_voice_load (job->model, job->name, PIPER_THREADS, &error);
   if (!self->voice) {
     g_message ("voice: %s", error->message);
     g_free (self->failed_model);
-    self->failed_model = g_strdup (model);
+    g_free (self->failed_name);
+    self->failed_model = g_strdup (job->model);
+    self->failed_name = g_strdup (job->name);
     return FALSE;
   }
-  self->voice_model = g_strdup (model);
+  self->voice_model = g_strdup (job->model);
+  self->voice_name = g_strdup (job->name);
   if (self->stats)
     g_print ("navi: voice: Piper voice loaded in %.0f ms\n", (g_get_monotonic_time () - t0) / 1000.0);
+  return TRUE;
+}
+
+/* the job's voice loaded, and who speaks in it set: Agent's man or woman (Russian's tiny-voca has both), as Agent
+ * sets it before each sentence */
+static gboolean
+load (NaviVoice *self, const Job *job)
+{
+  if (!open_voice (self, job))
+    return FALSE;
+  if (job->gender)
+    dictate_voice_set_gender (self->voice, job->gender);
   return TRUE;
 }
 #endif
@@ -179,7 +209,7 @@ work (gpointer data, gpointer user_data)
 #ifdef HAVE_PIPER
   case JOB_WARM:
     gst_init (NULL, NULL);
-    if (load (self, job->model)) {
+    if (load (self, job)) {
       gsize n = 0;
       g_free (dictate_voice_speak (self->voice, "OK.", 1.0, &n, NULL));
     }
@@ -187,13 +217,14 @@ work (gpointer data, gpointer user_data)
   case JOB_REST:
     g_clear_pointer (&self->voice, dictate_voice_free);
     g_clear_pointer (&self->voice_model, g_free);
+    g_clear_pointer (&self->voice_name, g_free);
     break;
   case JOB_MAKE: {
     Made *m = g_new0 (Made, 1);
     m->self = voice_ref (self);
     m->key = g_strdup (job->key);
     gint64 t0 = g_get_monotonic_time ();
-    if (load (self, job->model)) {
+    if (load (self, job)) {
       g_autoptr (GError) error = NULL;
       m->samples = dictate_voice_speak (self->voice, job->text, 1.0, &m->n, &error);
       m->rate = dictate_voice_get_rate (self->voice);
@@ -239,11 +270,15 @@ work (gpointer data, gpointer user_data)
 }
 
 static void
-push (NaviVoice *self, JobKind kind, const char *model, const char *language, const char *text, const char *key)
+push (NaviVoice *self, JobKind kind, const Choice *voice, const char *language, const char *text, const char *key)
 {
   Job *job = g_new0 (Job, 1);
   job->kind = kind;
-  job->model = g_strdup (model);
+  if (voice) {
+    job->model = g_strdup (voice->model);
+    job->name = g_strdup (voice->name);
+    job->gender = g_strdup (voice->gender);
+  }
   job->language = g_strdup (language);
   job->text = g_strdup (text);
   job->key = g_strdup (key);
@@ -252,20 +287,32 @@ push (NaviVoice *self, JobKind kind, const char *model, const char *language, co
 
 /* ---- the voices on the phone ---- */
 
-/* the voice for `language` (short) where Agent's voices are (dictate_voice_find): a voice downloaded in
- * either app; NULL for none. The answers are kept until navi_voice_rescan (). */
-static const char *
-find_model (NaviVoice *self, const char *language)
+static void
+choice_free (gpointer data)
+{
+  Choice *v = data;
+  g_free (v->model);
+  g_free (v->name);
+  g_free (v->gender);
+  g_free (v);
+}
+
+/* the voice Agent speaks `language` (short) with: Agent's own choice (dictate_voice_choose, from its settings), among
+ * its voices, downloaded in either app or packaged; NULL for none. Navi has no voice setting of its own. The answers
+ * are kept until navi_voice_rescan (), which a change to Agent's choice makes too. */
+static const Choice *
+find_voice (NaviVoice *self, const char *language)
 {
 #ifdef HAVE_PIPER
-  const char *known = g_hash_table_lookup (self->models, language);
+  Choice *known = g_hash_table_lookup (self->models, language);
   if (known)
-    return *known ? known : NULL;
-  char *found = dictate_voice_find (language);
-  g_autofree char *name = found ? g_path_get_basename (found) : NULL;
-  g_debug ("voice: %s: %s", language, name ? name : "no Piper voice");
-  g_hash_table_insert (self->models, g_strdup (language), found ? found : g_strdup (""));
-  return found;
+    return known->model ? known : NULL;
+  Choice *v = g_new0 (Choice, 1);
+  v->model = dictate_voice_choose (self->agent, language, &v->name, &v->gender);
+  g_autofree char *file = v->model ? g_path_get_basename (v->model) : NULL;
+  g_debug ("voice: %s: %s", language, file ? file : "no voice of Agent's");
+  g_hash_table_insert (self->models, g_strdup (language), v);
+  return v->model ? v : NULL;
 #else
   return NULL;
 #endif
@@ -276,6 +323,23 @@ navi_voice_rescan (NaviVoice *self)
 {
   g_hash_table_remove_all (self->models);
 }
+
+#ifdef HAVE_PIPER
+/* Agent's voice, or who speaks in it, changed in its settings: from the next prompt on, Navi's too */
+static void
+agent_changed (GSettings *settings, const char *key, NaviVoice *self)
+{
+  if (dictate_voice_is_choice_key (key))
+    navi_voice_rescan (self);
+}
+
+/* a prompt's clip, by what makes its sound: the voice and who speaks in it, and the words */
+static char *
+clip_key (const char *language, const Choice *v, const char *text)
+{
+  return g_strjoin ("\n", language, v->model, v->name ? v->name : "", v->gender ? v->gender : "", text, NULL);
+}
+#endif
 
 /* ---- Piper's prompts, played ---- */
 
@@ -310,7 +374,7 @@ key_waiting (NaviVoice *self, const char *key)
 
 /* the prompt's clip, asked to be made if it is not there yet; *had: it was */
 static Clip *
-ensure_clip (NaviVoice *self, const char *model, const char *language, const char *text, const char *key,
+ensure_clip (NaviVoice *self, const Choice *voice, const char *language, const char *text, const char *key,
              gboolean *had)
 {
   Clip *c = g_hash_table_lookup (self->clips, key);
@@ -320,7 +384,7 @@ ensure_clip (NaviVoice *self, const char *model, const char *language, const cha
   c = g_new0 (Clip, 1);
   g_hash_table_insert (self->clips, g_strdup (key), c);
   g_queue_push_tail (self->order, g_strdup (key));
-  push (self, JOB_MAKE, model, language, text, key);
+  push (self, JOB_MAKE, voice, language, text, key);
   /* the oldest made ones go, but none still to be said */
   for (GList *l = self->order->head; l && g_hash_table_size (self->clips) > KEEP_CLIPS;) {
     GList *next = l->next;
@@ -557,8 +621,11 @@ navi_voice_new (void)
 {
   NaviVoice *self = g_rc_box_new0 (NaviVoice);
   self->pool = g_thread_pool_new_full (work, self, (GDestroyNotify) job_free, 1, FALSE, NULL);
-  self->models = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
+  self->models = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, choice_free);
 #ifdef HAVE_PIPER
+  self->agent = dictate_voice_settings ();
+  if (self->agent)
+    g_signal_connect (self->agent, "changed", G_CALLBACK (agent_changed), self);
   self->clips = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, clip_free);
   self->order = g_queue_new ();
   self->turns = g_queue_new ();
@@ -575,12 +642,17 @@ navi_voice_free (NaviVoice *self)
   /* what is waiting goes; what the thread does now ends first */
   g_thread_pool_free (self->pool, TRUE, TRUE);
 #ifdef HAVE_PIPER
+  if (self->agent)
+    g_signal_handlers_disconnect_by_data (self->agent, self);
+  g_clear_object (&self->agent);
   close_output (self);
   g_clear_pointer (&self->playing, turn_free);
   g_queue_free_full (self->turns, (GDestroyNotify) turn_free);
   g_clear_pointer (&self->voice, dictate_voice_free);
   g_free (self->voice_model);
+  g_free (self->voice_name);
   g_free (self->failed_model);
+  g_free (self->failed_name);
 #endif
 #ifdef HAVE_SPEECHD
   if (self->conn)
@@ -595,10 +667,10 @@ void
 navi_voice_warm (NaviVoice *self, const char *language)
 {
   g_autofree char *lang = short_language (language);
-  const char *model = find_model (self, lang);
-  if (!model)
+  const Choice *voice = find_voice (self, lang);
+  if (!voice)
     return;
-  push (self, JOB_WARM, model, lang, NULL, NULL);
+  push (self, JOB_WARM, voice, lang, NULL, NULL);
 #ifdef HAVE_PIPER
   self->warm = TRUE;
   open_output (self);
@@ -633,12 +705,12 @@ navi_voice_prepare (NaviVoice *self, const char *text, const char *language)
     return;
 #ifdef HAVE_PIPER
   g_autofree char *lang = short_language (language);
-  const char *model = find_model (self, lang);
-  if (!model)
+  const Choice *voice = find_voice (self, lang);
+  if (!voice)
     return;
-  g_autofree char *key = g_strconcat (lang, "\n", text, NULL);
+  g_autofree char *key = clip_key (lang, voice, text);
   gboolean had;
-  ensure_clip (self, model, lang, text, key, &had);
+  ensure_clip (self, voice, lang, text, key, &had);
 #endif
 }
 
@@ -648,13 +720,13 @@ navi_voice_say (NaviVoice *self, const char *text, const char *language)
   if (!text || !*text)
     return;
   g_autofree char *lang = short_language (language);
-  const char *model = find_model (self, lang);
+  const Choice *voice = find_voice (self, lang);
 #ifdef HAVE_PIPER
-  if (model) {
+  if (voice) {
     Turn *t = g_new0 (Turn, 1);
-    t->key = g_strconcat (lang, "\n", text, NULL);
+    t->key = clip_key (lang, voice, text);
     t->due = g_get_monotonic_time ();
-    ensure_clip (self, model, lang, text, t->key, &t->made_ahead);
+    ensure_clip (self, voice, lang, text, t->key, &t->made_ahead);
     g_queue_push_tail (self->turns, t);
     play_next (self);
     return;
@@ -677,7 +749,8 @@ const char *
 navi_voice_describe (NaviVoice *self, const char *language)
 {
   g_autofree char *lang = short_language (language);
-  const char *model = find_model (self, lang);
+  const Choice *voice = find_voice (self, lang);
+  const char *model = voice ? voice->model : NULL;
   g_clear_pointer (&self->description, g_free);
   if (model && strstr (model, "/tiny-voca/")) {
     /* TRANSLATORS: Navi's voice in Russian; tiny-voca is its name */

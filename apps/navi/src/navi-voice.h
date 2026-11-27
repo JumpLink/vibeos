@@ -1,9 +1,12 @@
 /* navi-voice: the spoken directions.
  *
- * Spoken on the phone itself, never by a server. A Piper voice, Agent's (vibeos-dictate's dictate-voice.c: ONNX
- * Runtime, with espeak-ng's phonemes), from vibeos-dictate/voices/LANGUAGE in the user's data directory or the
- * system's: a voice downloaded for Agent speaks in Navi too. A language with no Piper voice is spoken through Speech
- * Dispatcher (eSpeak NG). Without either Navi is silent and Settings says so.
+ * Spoken on the phone itself, never by a server, in Agent's voice: Navi has no voice setting of its own. For each
+ * language it asks Agent's choice (vibeos-dictate's dictate_voice_choose: Agent's settings, then its voices in
+ * vibeos-dictate/voices/LANGUAGE in the user's data directory or the system's) and speaks with Agent's code
+ * (dictate-voice.c: Piper with espeak-ng's phonemes, Russian's tiny-voca, run by ONNX Runtime), as the man or the
+ * woman Agent's Voice setting has. A voice downloaded in either app speaks in both, and a change to Agent's choice is
+ * Navi's from the next prompt on. A language with no voice of Agent's is spoken through Speech Dispatcher (eSpeak
+ * NG). Without either Navi is silent and Settings says so.
  *
  * A Piper prompt is made into sound on a thread of its own. navi_voice_prepare () makes it as soon as the app knows
  * it will be said (the next turn's instruction, its alert), so that navi_voice_say () only has to play it. The
