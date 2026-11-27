@@ -839,7 +839,6 @@ def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset
             f.write('# from Nura\'s %s (pmOS hexagonrpcd config)\n[Service]\n' % nura.codename)
             for k, v in sorted(hexa.items()):
                 f.write('Environment=%s=%s\n' % (k, v))
-    row = device_row(nura.dev)
     if row and row['watchdog']:
         watchdog_dropins(P)
         pl.carried.append(('systemd watchdog and rmtfs stop drop-ins (table: watchdog reset)', 'vibeos'))
