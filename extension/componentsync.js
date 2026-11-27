@@ -18,6 +18,9 @@ import GLib from 'gi://GLib';
 // window waits behind the lock screen until the phone is unlocked, though unlocking has opened the keyring meanwhile.
 // So while the mode leaves the keyring off, it is loaded and turned on and off once: the name is the shell's, and its
 // prompter, off, cancels each prompt as GNOME's own lock does.
+// The keyring's disable() cancels the prompt in progress, but a Shell.KeyringPrompt that has not asked yet ignores a
+// cancel (shell-keyring-prompt.c, mode still none): its dialog, made while the keyring was on, opens moments later
+// under the lock screen and holds every touch. So the prompt that disable() let go is cancelled once it does ask.
 // gnome-keyring D-Bus-starts /usr/libexec/gcr-prompter about three seconds after the shell, before this extension is on.
 // It owns the name without allowing replacement, so the shell's request only queues behind it and its window keeps asking
 // after the unlock. Its owner is therefore asked to leave (SIGTERM, only for a process named gcr-prompter): the name then
@@ -66,6 +69,7 @@ export class ComponentSync {
         this._running = null;
         this._again = false;
         this._off = new Set();
+        this._held = null;
         this._update = manager._sessionModeUpdated;
         manager._sessionModeUpdated = () => this._sync();
 
@@ -84,6 +88,7 @@ export class ComponentSync {
                 this._enabled.filter(name => !value.includes(name)).forEach(name => this._off.add(name));
                 value.forEach(name => this._off.delete(name));
                 this._enabled = value;
+                this._holdPrompts();
                 if (!this._running)
                     this._sync().catch(logError);
                 else if (stale)
@@ -98,6 +103,32 @@ export class ComponentSync {
 
     _wanted() {
         return this._mode.components ?? [];
+    }
+
+    // the keyring's disable(), whoever calls it, followed by the dismissal of the prompt it let go (see above)
+    _holdPrompts() {
+        const keyring = this._manager._allComponents?.keyring;
+        if (!keyring || this._held === keyring)
+            return;
+        this._held = keyring;
+        const disable = keyring.disable;
+        keyring.disable = () => {
+            const prompt = keyring._currentPrompt;
+            disable.call(keyring);
+            if (prompt)
+                this._dismiss(keyring, prompt);
+        };
+    }
+
+    _dismiss(keyring, prompt) {
+        const cancel = () => {
+            if (!keyring._enabled)
+                prompt.cancel();
+        };
+        const ids = [];
+        const done = () => ids.splice(0).forEach(id => prompt.disconnect(id));
+        ids.push(prompt.connect('show-password', cancel), prompt.connect('show-confirm', cancel),
+            prompt.connect('prompt-close', done));
     }
 
     // every loaded component the mode does not list, off; the record, the mode's list
@@ -132,6 +163,7 @@ export class ComponentSync {
             const Component = await this._load('keyring');
             keyring = this._manager._allComponents.keyring ??= new Component();
         }
+        this._holdPrompts();
         if (keyring._registered === false && !this._wanted().includes('keyring')) {
             keyring.enable();
             keyring.disable();
@@ -169,6 +201,7 @@ export class ComponentSync {
                     this._again = false;
                     // eslint-disable-next-line no-await-in-loop
                     await this._update.call(this._manager);
+                    this._holdPrompts();
                     this._sweep();
                     // eslint-disable-next-line no-await-in-loop
                     await this._claimPrompter().catch(e => logError(e, "vibeos: the keyring's prompter"));
@@ -184,6 +217,9 @@ export class ComponentSync {
     destroy() {
         this._unwatch?.();
         this._unwatch = null;
+        if (this._held)
+            delete this._held.disable;
+        this._held = null;
         const enabled = this._enabled;
         delete this._manager._enabledComponents;
         this._manager._enabledComponents = enabled;

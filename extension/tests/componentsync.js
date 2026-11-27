@@ -47,12 +47,69 @@ class Component {
     }
 }
 
-// components/keyring.js: the prompter's bus name claimed on the first enable() only, kept after disable()
+// Shell.KeyringPrompt (shell-keyring-prompt.c): a cancel before it has asked does nothing; one while it asks answers
+// "cancelled", and gnome-keyring then closes it
+class Prompt {
+    constructor() {
+        this.mode = 'none';
+        this.shown = false;
+        this.cancelled = false;
+        this.closed = false;
+        this._handlers = new Map();
+        this._next = 1;
+    }
+
+    connect(signal, handler) {
+        this._handlers.set(this._next, [signal, handler]);
+        return this._next++;
+    }
+
+    disconnect(id) {
+        this._handlers.delete(id);
+    }
+
+    _emit(signal) {
+        [...this._handlers.values()].filter(([s]) => s === signal).forEach(([, h]) => h());
+    }
+
+    askPassword() {
+        this.mode = 'password';
+        this.shown = true;
+        this._emit('show-password');
+    }
+
+    cancel() {
+        if (this.mode === 'none') {
+            if (this.shown)
+                this.close();
+            return;
+        }
+        this.mode = 'none';
+        this.cancelled = true;
+        this.close();
+    }
+
+    close() {
+        if (this.closed)
+            return;
+        this.closed = true;
+        this._emit('prompt-close');
+    }
+}
+
+// components/keyring.js: the prompter's bus name claimed on the first enable() only, kept after disable(); a new
+// prompt gets the modal dialog while on, the dummy that cancels while off; disable() cancels the prompt in progress
 let prompterOwner = null;
 class Keyring extends Component {
     constructor() {
         super();
         this._registered = false;
+        this._currentPrompt = null;
+        this.prompting = false;
+    }
+
+    get _enabled() {
+        return this.enabled;
     }
 
     enable() {
@@ -61,6 +118,29 @@ class Keyring extends Component {
             this._registered = true;
         }
         super.enable();
+    }
+
+    disable() {
+        super.disable();
+        if (this.prompting)
+            this._currentPrompt.cancel();
+        this._currentPrompt = null;
+    }
+
+    // a program begins prompting: gcr's new-prompt
+    newPrompt() {
+        const prompt = new Prompt();
+        const dialog = {open: false};
+        this.prompting = true;
+        if (this._enabled) {
+            prompt.connect('show-password', () => (dialog.open = true));
+            prompt.connect('prompt-close', () => (dialog.open = false));
+        } else {
+            prompt.connect('show-password', () => prompt.cancel());
+        }
+        prompt.connect('prompt-close', () => (this.prompting = false));
+        this._currentPrompt = prompt;
+        return {prompt, dialog};
     }
 }
 
@@ -243,6 +323,43 @@ async function startLocked(withSync) {
     sync.destroy();
 }
 
+// a program begins prompting while unlocked, the phone locks, and only then the prompt asks for the password: the
+// dialog made while the keyring was on would open under the lock screen
+async function promptUnderLock(withSync) {
+    prompterOwner = null;
+    const mode = new Mode();
+    const manager = new Manager(mode);
+    const sync = withSync ? new ComponentSync(manager, mode, load, fakeBus()) : null;
+    manager.release();
+    await settle();
+    const keyring = manager._allComponents.keyring;
+    const early = keyring.newPrompt();
+    mode.set(LOCKED, true);
+    await settle();
+    early.prompt.askPassword();
+    await settle();
+    if (!withSync) {
+        check('prompt under the lock, unsynced: its dialog open under the lock (the bug reproduced)', early.dialog.open);
+        return;
+    }
+    check('prompt under the lock: its dialog closed again', !early.dialog.open);
+    check('prompt under the lock: the prompt cancelled', early.prompt.cancelled);
+    check('prompt under the lock: the keyring no longer prompting', !keyring.prompting);
+    mode.set(USER, false);
+    manager.release();
+    await settle();
+    const later = keyring.newPrompt();
+    later.prompt.askPassword();
+    check('unlocked: a new prompt opens its dialog', later.dialog.open && !later.prompt.cancelled);
+    // the prompt in progress when the phone locks, already asking: disable() itself cancels it
+    mode.set(LOCKED, true);
+    await settle();
+    check('locked while asking: its dialog closed', !later.dialog.open && later.prompt.cancelled);
+    check('prompt under the lock: no component turned off twice', errors.length === 0);
+    sync.destroy();
+    check("destroyed: the keyring's own disable() back", !Object.hasOwn(keyring, 'disable'));
+}
+
 // the standalone gcr-prompter (D-Bus-started before the extension) holds the name; the shell's request only queued
 async function standalonePrompter(what, owner, comms, later) {
     prompterOwner = null;
@@ -288,6 +405,8 @@ const loop = new GLib.MainLoop(null, false);
     await startLocked(false);
     await startLocked(true);
     await evict();
+    await promptUnderLock(false);
+    await promptUnderLock(true);
 })().catch(e => {
     logError(e);
     failed++;
