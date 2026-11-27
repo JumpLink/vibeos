@@ -1,14 +1,15 @@
 /* Navi: a car navigator for VibeOS. See navi-app.h for its parts.
  *
  *   vibeos-navi [--simulate [--sim-speed F] [--sim-detour]] [--from LAT,LNG] [--to LAT,LNG[,NAME]] [--go | --free]
- *               [--search TEXT] [--night | --day] [--seconds N] [--stats]
+ *               [--search TEXT] [--night | --day] [--seconds N] [--close-at MODE[:S]] [--stats]
  *   vibeos-navi --leave-reminder
  *
  * The options are for testing on a phone without a GPS: --from puts the car somewhere (as a last known position),
  * --to asks for routes there, --go drives the best one at once, --simulate drives it (F times as fast; --sim-detour
  * takes the second route, so the guidance has to find a new one), --free drives the best one's line simulated
- * without a route (Navi browsing while the car moves), --seconds quits after N seconds and --stats prints
- * the frame pacing every second and over the drive. NAVI_SERVER and NAVI_PHOTON_URL point at a test server.
+ * without a route (Navi browsing while the car moves), --seconds quits after N seconds, --close-at closes the
+ * window as Recents does, S seconds after Navi shows MODE (routes, drive, arrived), and --stats prints the frame
+ * pacing every second and over the drive. NAVI_SERVER and NAVI_PHOTON_URL point at a test server.
  *
  * --leave-reminder is the planned drive's timer's (navi-plan.h): it posts "Time to leave" and exits, no window. */
 #include "navi-app.h"
@@ -24,8 +25,8 @@ typedef struct {
   gboolean simulate, sim_detour, go, free, have_from, have_to;
   double sim_speed;
   double from_lat, from_lng, to_lat, to_lng;
-  char *to_name, *search;
-  int seconds;
+  char *to_name, *search, *close_at;
+  int seconds, close_after;
 } Options;
 
 static Options opts = { .sim_speed = 1 };
@@ -227,11 +228,43 @@ quit_after (gpointer data)
   return G_SOURCE_REMOVE;
 }
 
-static void
-on_destroy (GtkWidget *win, Navi *n)
+/* --close-at MODE[:S]: the window closed the way Recents closes it (a close request, which GTK answers with
+ * gtk_window_destroy), S seconds after Navi first shows MODE. tests/test-close.sh closes a drive, the arrived screen
+ * and the routes so, and checks that Navi ends cleanly with its settings saved. */
+static const char *const mode_names[] = { "browse", "place", "routes", "drive", "arrived" };
+
+static gboolean
+close_at_now (gpointer data)
 {
-  /* closed (Recents, the menu's Exit): a drive ends, everything stops, nothing holds the application any more, and
-   * it quits */
+  Navi *n = data;
+  g_message ("navi: --close-at: the window closes, in %s", mode_names[n->mode]);
+  gtk_window_close (GTK_WINDOW (n->win));
+  return G_SOURCE_REMOVE;
+}
+
+static gboolean
+close_at_watch (gpointer data)
+{
+  Navi *n = data;
+  if (strcmp (mode_names[n->mode], opts.close_at))
+    return G_SOURCE_CONTINUE;
+  g_message ("navi: --close-at: %s, the window closes in %d s", opts.close_at, opts.close_after);
+  g_timeout_add_seconds (opts.close_after, close_at_now, n);
+  return G_SOURCE_REMOVE;
+}
+
+/* The window closes (Recents, the menu's Exit, --seconds): a drive ends, everything stops, the settings are saved,
+ * and the application quits. This runs as the window leaves the application, which gtk_window_destroy does once the
+ * window is hidden and before it takes it apart. Its "destroy" comes too late: the window's content is gone by then,
+ * and a drive (or the arrived screen) ended from there went back to browsing on freed widgets and crashed, before
+ * the settings were saved. The quit is at once, as Exit's: an application merely left without a window runs what is
+ * still queued before it ends (the panels' idle update of the floating buttons, queued by that going back to
+ * browsing), and that would be on the freed widgets too. */
+static void
+close_navi (GtkApplication *app, GtkWindow *win, Navi *n)
+{
+  if (GTK_WIDGET (win) != n->win || n->closed)
+    return;
   n->closed = TRUE;
   if (n->mode == NAVI_MODE_DRIVE || n->mode == NAVI_MODE_ARRIVED)
     navi_stop_drive (n);
@@ -251,6 +284,7 @@ on_destroy (GtkWidget *win, Navi *n)
   navi_window_stop_compass (n);
   if (the_navi == n)
     the_navi = NULL;
+  g_application_quit (G_APPLICATION (app));
 }
 
 /* ---- the planned drive's reminder, tapped ---- */
@@ -325,7 +359,7 @@ activate (GtkApplication *app, gpointer data)
   } else {
     vibeos_window_set_content (GTK_WINDOW (n->win), n->map_overlay);
   }
-  g_signal_connect (n->win, "destroy", G_CALLBACK (on_destroy), n);
+  g_signal_connect (app, "window-removed", G_CALLBACK (close_navi), n);
   /* the real position, the timers, the frames: while the window is seen (navi-awake.h); --from follows none */
   navi_window_start_awake (n, !opts.have_from);
 
@@ -345,6 +379,8 @@ activate (GtkApplication *app, gpointer data)
   navi_plan_rearm ();
   if (opts.seconds > 0)
     g_timeout_add_seconds (opts.seconds, quit_after, n);
+  if (opts.close_at)
+    g_timeout_add (100, close_at_watch, n);
 }
 
 int
@@ -388,6 +424,12 @@ main (int argc, char **argv)
       g_setenv ("NAVI_NIGHT", "0", TRUE);
     else if (!strcmp (a, "--seconds") && v)
       opts.seconds = atoi (v), i++;
+    else if (!strcmp (a, "--close-at") && v) {
+      g_auto (GStrv) parts = g_strsplit (v, ":", 2);
+      opts.close_at = g_strdup (parts[0]);
+      opts.close_after = parts[1] ? atoi (parts[1]) : 0;
+      i++;
+    }
     else if (!strcmp (a, "--stats"))
       g_setenv ("NAVI_STATS", "1", TRUE);
     else

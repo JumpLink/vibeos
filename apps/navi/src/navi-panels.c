@@ -1762,7 +1762,7 @@ open_settings (gpointer data)
 }
 
 /* Exit: Navi goes, nothing of it stays behind. The window's end stops the drive, the voice, the position and the
- * keep-awake (navi-main.c's on_destroy), then the application quits */
+ * keep-awake (navi-main.c's close_navi), then the application quits */
 static void
 exit_navi (Navi *n)
 {

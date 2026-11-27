@@ -177,14 +177,14 @@ if voice_src != ''
        env: ['G_TEST_SRCDIR=' + meson.current_source_dir() / 'tests', 'G_TEST_BUILDDIR=' + meson.current_build_dir(),
              'GSETTINGS_SCHEMA_DIR=' + meson.current_build_dir()])
 endif
-executable('vibeos-navi', 'src/navi-main.c', 'src/navi-window.c', 'src/navi-alerts.c', 'src/navi-panels.c', 'src/navi-draw.c',
-           'src/navi-settings.c', 'src/navi-voice.c', 'src/navi-plan.c', voice_sources,
-           c_args: app_args,
-           dependencies: [core_dep, navi_map_dep, dependency('vibeos-1'), dependency('spongy-gtk-1'),
-                          dependency('librsvg-2.0')] +
-                         voice_deps,
-           install_rpath: '$ORIGIN/../lib/vibeos-navi',
-           install: true)
+navi = executable('vibeos-navi', 'src/navi-main.c', 'src/navi-window.c', 'src/navi-alerts.c', 'src/navi-panels.c',
+                  'src/navi-draw.c', 'src/navi-settings.c', 'src/navi-voice.c', 'src/navi-plan.c', voice_sources,
+                  c_args: app_args,
+                  dependencies: [core_dep, navi_map_dep, dependency('vibeos-1'), dependency('spongy-gtk-1'),
+                                 dependency('librsvg-2.0')] +
+                                voice_deps,
+                  install_rpath: '$ORIGIN/../lib/vibeos-navi',
+                  install: true)
 # the launcher's entry, its name and comment translated from po/
 i18n.merge_file(input: 'data/vibeos.Navi.desktop.in', output: 'vibeos.Navi.desktop', type: 'desktop', po_dir: 'po',
                 install: true, install_dir: get_option('datadir') / 'applications')
@@ -197,3 +197,8 @@ configure_file(input: 'data/vibeos.Navi.service.in', output: 'vibeos.Navi.servic
 install_data('data/vibeos.Navi.svg', install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps')
 # the points of interest's icons: Maki's (CC0), drawn on the markers by the app
 install_subdir('data/poi', install_dir: datadir)
+# the window closed as Recents closes it, in a drive, on the arrived screen and in the routes: Navi ends without a
+# crash and with its settings saved. On a headless display of the test's own (weston or mutter), skipped without one;
+# NAVI_TEST_WRAPPER runs a cross build (qemu-aarch64 -L ROOT)
+test('close', find_program('tests/test-close.sh'), args: [navi, meson.current_source_dir() / 'data' / 'poi'],
+     timeout: 900)
