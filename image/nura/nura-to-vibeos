@@ -58,7 +58,8 @@ DEBIAN_FOR = {
 NO_DEBIAN = {
     'q6voiced': 'call audio routing (q6voice): not in Debian (Mobian has q6voiced); the payload starts the call '
                 'audio itself (vibeos-q6voiced)',
-    'msm-modem-uim-selection': 'SIM slot selection for the msm modem: not in Debian',
+    'msm-modem-uim-selection': 'SIM slot selection for the msm modem: not in Debian; the payload opens the SIM\'s '
+                               'provisioning session itself (qcom-uim-provision)',
     'bootmac': 'Wi-Fi/Bluetooth MAC addresses from the boot serial: not in Debian (Mobian has bootmac); '
                'the payload sets both addresses itself (vibeos-bt-addr, vibeos-wlan-addr)',
     'swclock-offset': 'keeps the RTC offset across boots: not in Debian',
@@ -785,12 +786,13 @@ def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset
                 os.chmod(os.path.join(P, dst), mode)
                 pl.carried.append((dst, 'q6voiced (replaced by vibeos-q6voiced)'))
             enable.append('vibeos-q6voiced.service')
-    # a Qualcomm modem (rmtfs): our unit that opens the SIM's provisioning session, as Android's RIL does; without it
-    # the 6T's modem sees the card and ModemManager reports sim-missing
-    if 'rmtfs' in nura.pkgs:
+    # msm-modem-uim-selection is not in Debian: qcom-uim-provision does its job, on the phones whose image has it. It
+    # opens the SIM's provisioning session, as Android's RIL does; without it the 6T's modem sees the card and
+    # ModemManager reports sim-missing. Unlike Nura's, it leaves a session the modem opened itself alone
+    if 'msm-modem-uim-selection' in nura.pkgs:
         if system is None or 'libqmi-utils' not in system.ver:
             pl.not_carried.append(('qcom-uim-provision (runs qmicli: libqmi-utils not in the system image, or not '
-                                   'known here)', 'vibeos'))
+                                   'known here)', 'msm-modem-uim-selection'))
         else:
             for name, mode in (('qcom-uim-provision', 0o755), ('qcom-uim-provision.service', 0o644)):
                 rel = ('usr/lib/systemd/system/' if name.endswith('.service') else 'usr/libexec/') + name
@@ -798,7 +800,7 @@ def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset
                 os.makedirs(os.path.dirname(d), exist_ok=True)
                 shutil.copyfile(os.path.join(HERE, 'files', name), d)
                 os.chmod(d, mode)
-                pl.carried.append((rel, 'vibeos'))
+                pl.carried.append((rel, 'msm-modem-uim-selection (replaced by qcom-uim-provision)'))
             enable.append('qcom-uim-provision.service')
     nura.enable_units = enable
     # no pmOS config naming the DSP files' directory (a generic image's hexagonrpcd finds it itself; Debian's

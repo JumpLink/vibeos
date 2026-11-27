@@ -35,18 +35,19 @@ It writes, in `--out` (default: the current directory):
 - **Payload**: the kernel's modules (each one's vermagic checked), all the device's firmware, and the device's
   settings in the form a Debian/systemd system reads: ALSA UCM, udev rules and hwdb, modprobe and modules-load files,
   UPower, WirePlumber, feedbackd themes, the sensors' mount matrix, hexagonrpcd's firmware directory, and the units
-  postmarketOS enables or disables. With a Qualcomm modem (rmtfs) also our `qcom-uim-provision` unit: it opens the
-  SIM's provisioning session when the modem left it closed, which Android's RIL would do (the 6T's modem otherwise
-  sees the card and ModemManager reports `sim-missing`). As a package, `vibeos-device-nura-<device>`.
+  postmarketOS enables or disables. As a package, `vibeos-device-nura-<device>`.
 - **Debian's builds** of the Qualcomm services Nura runs (rmtfs, tqftpserv, qrtr, pd-mapper, hexagonrpcd, qbootctl,
   81voltd), downloaded from the Debian archive and checked against its signature (gpgv, debian-archive-keyring), for
   the first boot to install offline.
 - **Nothing in the images is run.** They are read as data (debugfs, mtools, Python), never mounted.
 
 Replaced: `q6voiced` (call audio on Qualcomm phones) by `vibeos-q6voiced`, which opens the voice PCM while a
-ModemManager call is live; without it a call connects and stays silent both ways.
+ModemManager call is live; without it a call connects and stays silent both ways. `msm-modem-uim-selection` (the
+SIM's provisioning session) by `qcom-uim-provision`, which opens that session when the modem left it closed, as
+Android's RIL would; without it the 6T's modem sees the card and ModemManager reports `sim-missing`. It needs
+`qmicli` (libqmi-utils) in the system image.
 
-Not carried, because Debian has no package for them and Alpine binaries cannot run on Debian: `msm-modem-uim-selection` (SIM slot), `bootmac` (Wi-Fi and Bluetooth addresses; the payload's `vibeos-bt-addr` and `vibeos-wlan-addr` set both from the boot
+Not carried, because Debian has no package for them and Alpine binaries cannot run on Debian: `bootmac` (Wi-Fi and Bluetooth addresses; the payload's `vibeos-bt-addr` and `vibeos-wlan-addr` set both from the boot
 serial), `swclock-offset`. The report lists what was left out for the build you converted.
 
 ## In recovery
@@ -89,9 +90,11 @@ Phones with a header v3 or v4 boot image (a `vendor_boot` partition) are not sup
   stand-in root, to check that the initramfs finds the root and switches to it.
 - `test/compare-boot.py` compares a converted boot image with Nura's, field by field.
 - `test/uim-provision-test.sh` runs `files/qcom-uim-provision` against a stand-in `qmicli` with the 6T's card
-  status: the session opened on the USIM's slot and AID, nothing done with a session open, no card or no USIM.
+  status: the session opened on the USIM's slot and AID, nothing done with a session open, no card or no USIM; it
+  stops at the modem's first answer when no slot has a card, and keeps asking while the modem gives none.
 
-Both shell tests need `NURA_WORK` (a work directory, about 20 GB), qemu-user-static with binfmt, and `sudo -n`.
+`zip-test.sh` and `qemu-boot.sh` need `NURA_WORK` (a work directory, about 20 GB), qemu-user-static with binfmt, and
+`sudo -n`; the other tests need only sh, awk or python3.
 
 Needs (Debian 12 or later): python3, xz-utils, zstd, e2fsprogs (debugfs), mtools, dpkg (dpkg-deb), zip, gpgv and
 debian-archive-keyring; about 12 GB free in `--out` while it runs. No root and no loop mounts, and it writes nothing
