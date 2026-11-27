@@ -496,6 +496,13 @@ ns_page_language (GtkWidget *row, gpointer data)
   l->restart = ns_row_button (g, _("Restart now"), FALSE, restart_device, NULL);
   /* shown once a language or a format has been picked: Settings started over after a language change says so */
   gtk_widget_set_visible (l->restart, g_getenv (RESTARTED) != NULL);
+  GtkWidget *services;
+  /* the services that keep running through a change (the call service, the SMS service, the reminders, the alarms)
+   * say what they say in the language they started in: told after a language change, with the restart */
+  gboolean changed = g_getenv (RESTARTED) != NULL;
+  /* Translators: "Phone" and "Messages" are the apps' names, as their own translations have them */
+  services = ns_note (c, _("Phone, Messages, reminders and alarms switch to the new language after a restart."));
+  gtk_widget_set_visible (services, changed);
   g_autoptr (GTask) t = g_task_new (NULL, NULL, locales_listed, g_object_ref (page));
   g_task_set_task_data (t, vibeos_locale_id (), g_free);
   g_task_run_in_thread (t, locales_thread);

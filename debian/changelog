@@ -109,6 +109,12 @@ vibeos (1:0.1.5) unstable; urgency=medium
     look only once two starts of the shell have each measured them too
     slow. A single slow measurement, such as one taken just after a fast
     charger was plugged in, made them opaque until the next update.
+  * Translated in every language: the Phone's credit for the voice that
+    announces a call recording, the Calculator's DEG, RAD and INV keys,
+    and the refresh rates and battery capacities in Settings.
+  * After a language change, Settings says that Phone, Messages,
+    reminders and alarms change language after a restart: their services
+    keep running through the change.
 
  -- pulpoff <pashkovsky@gmail.com>  Wed, 25 Nov 2026 13:38:52 +0100
 

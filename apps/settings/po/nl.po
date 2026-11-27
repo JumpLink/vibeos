@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-settings\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-27 11:02+0100\n"
+"POT-Creation-Date: 2026-11-27 11:17+0100\n"
 "PO-Revision-Date: 2026-11-24 03:44+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Dutch\n"
@@ -1748,12 +1748,12 @@ msgstr "De laadgeschiedenis verschijnt na een tijdje gebruik"
 #: src/ns-displays.c
 #, c-format
 msgid "%.0f Hz"
-msgstr ""
+msgstr "%.0f Hz"
 
 #: src/ns-displays.c
 #, c-format
 msgid "%.2f Hz"
-msgstr ""
+msgstr "%.2f Hz"
 
 #. TRANSLATORS: %s is a refresh rate ("50 Hz")
 #: src/ns-displays.c
@@ -2867,7 +2867,7 @@ msgstr "%d min"
 #: src/ns-pages.c
 #, c-format
 msgid "%d mAh"
-msgstr ""
+msgstr "%d mAh"
 
 #. TRANSLATORS: %s is a time ("1 h 20 min")
 #: src/ns-pages.c
@@ -2927,7 +2927,7 @@ msgstr "Maximale capaciteit"
 #: src/ns-pages.c
 #, c-format
 msgid "%.1f Wh"
-msgstr ""
+msgstr "%.1f Wh"
 
 #: src/ns-pages.c
 msgid "This phone's battery reports none of these."
@@ -3930,6 +3930,15 @@ msgstr "Apps die al open waren, wisselen van taal na een herstart."
 #: src/ns-system.c
 msgid "Restart now"
 msgstr "Nu opnieuw opstarten"
+
+#. Translators: "Phone" and "Messages" are the apps' names, as their own translations have them
+#: src/ns-system.c
+msgid ""
+"Phone, Messages, reminders and alarms switch to the new language after a "
+"restart."
+msgstr ""
+"Telefoon, Berichten, herinneringen en wekkers wisselen van taal na een "
+"herstart."
 
 # android: Settings date_time_set_timezone_title
 #: src/ns-system.c
