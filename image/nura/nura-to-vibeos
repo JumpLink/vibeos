@@ -803,6 +803,13 @@ def build_payload(nura, args, P, kver, moddir, system_files, soc, skip=frozenset
             f.write('# from Nura\'s %s (pmOS hexagonrpcd config)\n[Service]\n' % nura.codename)
             for k, v in sorted(hexa.items()):
                 f.write('Environment=%s=%s\n' % (k, v))
+    # 81voltd (VoLTE) looks for ModemManager's modem once and stays idle when ModemManager has not found it yet
+    if '81voltd' in nura.pkgs:
+        rel = 'etc/systemd/system/81voltd.service.d/50-vibeos-wait-modem.conf'
+        d = os.path.join(P, rel)
+        os.makedirs(os.path.dirname(d), exist_ok=True)
+        shutil.copyfile(os.path.join(HERE, 'files', '81voltd-wait-modem.conf'), d)
+        pl.carried.append((rel + ' -> 81voltd.service drop-in', 'vibeos'))
     # the units pmOS's presets disable: masked. An empty unit file masks as a link to /dev/null does (systemd.unit(5)),
     # and unlike that link it can be unpacked over itself: toybox tar in recovery refuses to replace a symlink that
     # points out of the tree, so a second install would stop there
