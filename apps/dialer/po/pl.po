@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-dialer\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-26 01:54+0100\n"
+"POT-Creation-Date: 2026-11-27 11:01+0100\n"
 "PO-Revision-Date: 2026-11-25 22:34+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: Polish\n"
@@ -769,6 +769,23 @@ msgstr "9+"
 #: src/dialer-window.c
 msgid "Voice search not available"
 msgstr "Wyszukiwanie głosowe jest niedostępne"
+
+#: src/dialer-window.c
+msgid "Call recording announcement"
+msgstr ""
+
+#: src/dialer-window.c
+msgid ""
+"That a call is being recorded is said by a <a href=\"https://github.com/"
+"rhasspy/piper\">Piper</a> voice (MIT License) from <a href=\"https://"
+"huggingface.co/rhasspy/piper-voices\">rhasspy/piper-voices</a>. The voices' "
+"recordings: Cori Samuel's for LibriVox (English), public domain; Thorsten-"
+"Voice (German), Davefx (Spanish), Paola (Italian), Pim (Dutch) and Denis "
+"(Russian), CC0; the SIWIS French Speech Synthesis Database (French), <a "
+"href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>. The "
+"French and Italian voices are trained from the Hi-Fi TTS voice of Cori "
+"Samuel (NVIDIA, CC BY 4.0)."
+msgstr ""
 
 # android: Dialer callHistoryIconLabel
 #: src/dialer-window.c

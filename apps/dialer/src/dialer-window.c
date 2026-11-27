@@ -449,16 +449,16 @@ on_settings (gpointer data)
 
 /* About: VibeOS's About sheet, as every VibeOS app has it; Legal credits the announcement's voices */
 static const VibeosAboutSection dialer_legal[] = {
-  { "Call recording announcement",
-    "That a call is being recorded is said by a <a href=\"https://github.com/rhasspy/piper\">Piper</a> voice (MIT "
+  { N_("Call recording announcement"),
+    N_("That a call is being recorded is said by a <a href=\"https://github.com/rhasspy/piper\">Piper</a> voice (MIT "
     "License) from <a href=\"https://huggingface.co/rhasspy/piper-voices\">rhasspy/piper-voices</a>. The voices' "
     "recordings: Cori Samuel's for LibriVox (English), public domain; Thorsten-Voice (German), Davefx (Spanish), "
     "Paola (Italian), Pim (Dutch) and Denis (Russian), CC0; the SIWIS French Speech Synthesis Database (French), "
     "<a href=\"https://creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>. The French and Italian voices are "
-    "trained from the Hi-Fi TTS voice of Cori Samuel (NVIDIA, CC BY 4.0)." },
+    "trained from the Hi-Fi TTS voice of Cori Samuel (NVIDIA, CC BY 4.0).") },
   { NULL }
 };
-static const VibeosAboutInfo dialer_about = { .name = "Phone", .icon_name = "vibeos.Dialer", .legal = dialer_legal };
+static const VibeosAboutInfo dialer_about = { .name = N_("Phone"), .icon_name = "vibeos.Dialer", .legal = dialer_legal };
 
 static void
 on_about (gpointer data)
