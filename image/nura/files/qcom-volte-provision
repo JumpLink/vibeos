@@ -16,6 +16,12 @@ q() { timeout "${QMI_TIMEOUT:-10}" qmicli -d "$DEV" "$@" 2>/dev/null; }
 conf() { [ -r "$CONF" ] && sed -n "s/^$1=//p" "$CONF" | tail -1; }
 now() { date +%s; }
 
+# VoLTE is 81voltd's: where the image masks it (the 6T's zip does) or lacks it, a new modem configuration would only
+# change how the modem registers, with nothing to place calls over IMS
+case $(systemctl is-enabled 81voltd.service 2>/dev/null) in
+masked | masked-runtime | not-found | "") echo "81voltd masked or not installed, nothing changed"; exit 0 ;;
+esac
+
 # the home network as MCC and MNC digits. Before ModemManager the modem is in low power and NAS does not know it
 # yet, but the SIM's session is open (qcom-uim-provision): the first six digits of EF_IMSI (MCC, MNC and, for a
 # two-digit MNC, one more), BCD with swapped nibbles after a length byte, the first byte's low nibble the parity.
