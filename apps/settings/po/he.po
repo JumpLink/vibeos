@@ -1898,6 +1898,10 @@ msgid "Router"
 msgstr "נתב"
 
 #: src/ns-net.c
+msgid "IPv6 address"
+msgstr "כתובת ה-IPv6"
+
+#: src/ns-net.c
 msgid "MAC address"
 msgstr "כתובת MAC"
 

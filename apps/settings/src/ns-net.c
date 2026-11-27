@@ -2,6 +2,7 @@
  * background (ns_net_init); a page opened before it is ready fills itself when it is. The lists are rebuilt a
  * moment after NetworkManager says something changed, so a burst of signals is one rebuild. */
 #include "ns-caps.h"
+#include "ns-ip.h"
 #include "ns-mobile-modes.h"
 #include "ns-net.h"
 #include "ns-pages.h"
@@ -435,6 +436,18 @@ net_page (const char *title, NMRemoteConnection *conn, NMDevice *dev, NMAccessPo
       ns_row_info (g, _("IP address"), nm_ip_address_get_address (addrs->pdata[0]));
     if (ip4 && nm_ip_config_get_gateway (ip4))
       ns_row_info (g, _("Router"), nm_ip_config_get_gateway (ip4));
+    /* a network may hand out IPv6 only, or its DHCP may fail while IPv6 works: without this row the page showed
+     * no address at all */
+    NMIPConfig *ip6 = dev ? nm_device_get_ip6_config (dev) : NULL;
+    GPtrArray *addrs6 = ip6 ? nm_ip_config_get_addresses (ip6) : NULL;
+    if (addrs6 && addrs6->len) {
+      g_autofree const char **text = g_new0 (const char *, addrs6->len + 1);
+      for (guint i = 0; i < addrs6->len; i++)
+        text[i] = nm_ip_address_get_address (addrs6->pdata[i]);
+      const char *v6 = ns_ip_pick_v6 (text);
+      if (v6)
+        ns_row_info (g, _("IPv6 address"), v6);
+    }
     if (dev && nm_device_get_hw_address (dev))
       ns_row_info (g, _("MAC address"), nm_device_get_hw_address (dev));
   }

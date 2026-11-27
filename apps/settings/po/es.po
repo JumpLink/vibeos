@@ -1946,6 +1946,10 @@ msgstr "Dirección IP"
 msgid "Router"
 msgstr "Router"
 
+#: src/ns-net.c
+msgid "IPv6 address"
+msgstr "Dirección IPv6"
+
 # android: Settings ethernet_mac_address_title
 #: src/ns-net.c
 msgid "MAC address"
