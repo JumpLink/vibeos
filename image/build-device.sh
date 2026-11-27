@@ -441,6 +441,10 @@ s5e)
 	for f in $(cd "$P" && find . -name gts4lv-powerkey -type f | sed 's|^\./||'); do install -m 755 "$TK/gts4lv-powerkey.20261124" "$P/$f"; log "/$f <- tabk/gts4lv-powerkey.20261124"; done
 	(cd "$P/usr/lib/firmware" && find . -type f | sed 's|^\./||') > "$L/stage-firmware.txt"
 	echo "stage firmware: $(wc -l < "$L/stage-firmware.txt") files from $ST/root (the tablet's vendor/modem partitions, 11-11)" >> "$L/firmware.txt"
+	# the SSC's sensor configs (sensors/config, 18 files): Samsung's per-model values, as the tablet's persist keeps
+	# them next to its registry; only the fallback when persist cannot be read (gts4lv-sensors-setup copies each
+	# tablet's own registry at the first start). Ruling 2026-11-27: shipped as they are
+	echo "sensor config: Samsung per-model (from the vendor persist layout); each tablet uses its own persist calibration at first boot" >> "$L/firmware.txt"
 	for u in $(sed -e 's/#.*//' "$ST/enable"); do
 		[ -e "$P/etc/systemd/system/$u" ] || [ -e "$P/usr/lib/systemd/system/$u" ] || [ -e "$P/lib/systemd/system/$u" ] ||
 			{ POSTINST_EXTRA="$POSTINST_EXTRA $u"; continue; }
