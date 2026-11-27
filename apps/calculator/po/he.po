@@ -109,12 +109,12 @@ msgstr "הדבקה"
 #: src/calc-window.c
 msgctxt "calculator key"
 msgid "DEG"
-msgstr ""
+msgstr "DEG"
 
 #: src/calc-window.c
 msgctxt "calculator key"
 msgid "RAD"
-msgstr ""
+msgstr "RAD"
 
 # android: ExactCalculator cancelled
 #: src/calc-window.c
@@ -185,7 +185,7 @@ msgstr "מידע על האפליקציה"
 #: src/calc-window.c
 msgctxt "calculator key"
 msgid "INV"
-msgstr ""
+msgstr "INV"
 
 #: src/calc-window.c
 msgid "delete"

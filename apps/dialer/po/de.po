@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: vibeos-dialer\n"
 "Report-Msgid-Bugs-To: https://github.com/pulpoff/vibeos/issues\n"
-"POT-Creation-Date: 2026-11-27 11:01+0100\n"
+"POT-Creation-Date: 2026-11-27 11:17+0100\n"
 "PO-Revision-Date: 2026-11-24 20:16+0100\n"
 "Last-Translator: VibeOS translators\n"
 "Language-Team: German\n"
@@ -765,7 +765,7 @@ msgstr "Sprachsuche nicht verfügbar"
 
 #: src/dialer-window.c
 msgid "Call recording announcement"
-msgstr ""
+msgstr "Aufzeichnungsansage"
 
 #: src/dialer-window.c
 msgid ""
@@ -779,6 +779,16 @@ msgid ""
 "French and Italian voices are trained from the Hi-Fi TTS voice of Cori "
 "Samuel (NVIDIA, CC BY 4.0)."
 msgstr ""
+"Dass ein Anruf aufgezeichnet wird, sagt eine <a href=\"https://github.com/"
+"rhasspy/piper\">Piper</a>-Stimme (MIT-Lizenz) aus <a href=\"https://"
+"huggingface.co/rhasspy/piper-voices\">rhasspy/piper-voices</a>. Die "
+"Aufnahmen der Stimmen: die von Cori Samuel für LibriVox (Englisch), "
+"gemeinfrei; Thorsten-Voice (Deutsch), Davefx (Spanisch), Paola "
+"(Italienisch), Pim (Niederländisch) und Denis (Russisch), CC0; die SIWIS "
+"French Speech Synthesis Database (Französisch), <a href=\"https://"
+"creativecommons.org/licenses/by/4.0/\">CC BY 4.0</a>. Die französische und "
+"die italienische Stimme sind mit der Stimme von Cori Samuel aus Hi-Fi TTS "
+"(NVIDIA, CC BY 4.0) trainiert."
 
 # android: Dialer callHistoryIconLabel
 #: src/dialer-window.c

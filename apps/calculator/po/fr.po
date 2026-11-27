@@ -108,12 +108,12 @@ msgstr "Coller"
 #: src/calc-window.c
 msgctxt "calculator key"
 msgid "DEG"
-msgstr ""
+msgstr "DEG"
 
 #: src/calc-window.c
 msgctxt "calculator key"
 msgid "RAD"
-msgstr ""
+msgstr "RAD"
 
 # android: ExactCalculator cancelled
 #: src/calc-window.c
@@ -185,7 +185,7 @@ msgstr "À propos"
 #: src/calc-window.c
 msgctxt "calculator key"
 msgid "INV"
-msgstr ""
+msgstr "INV"
 
 # android: ExactCalculator desc_del
 #: src/calc-window.c

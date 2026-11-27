@@ -111,12 +111,12 @@ msgstr "Вставити"
 #: src/calc-window.c
 msgctxt "calculator key"
 msgid "DEG"
-msgstr ""
+msgstr "ГРАД"
 
 #: src/calc-window.c
 msgctxt "calculator key"
 msgid "RAD"
-msgstr ""
+msgstr "РАД"
 
 # android: ExactCalculator cancelled
 #: src/calc-window.c
@@ -188,7 +188,7 @@ msgstr "Про додаток"
 #: src/calc-window.c
 msgctxt "calculator key"
 msgid "INV"
-msgstr ""
+msgstr "ІНВ"
 
 # android: ExactCalculator desc_del (several translations, short)
 #: src/calc-window.c
