@@ -12,8 +12,8 @@ was checked against the build that made the shipped binaries; each README says h
 | [gnome-shell](gnome-shell/) (gnome-shell-mobile) | 51.1.mobile.22 | gnome-shell-mobile tag 51.1.mobile.22 | system image, `/opt/gnome-mobile` | GPL-2.0-or-later |
 | [modemmanager](modemmanager/1.24.2-2+surya3/) | 1.24.2-2+surya3 | Debian modemmanager 1.24.2-2 | system image | GPL-2.0-or-later |
 | [modemmanager](modemmanager/1.24.2-2+surya6/) | 1.24.2-2+surya6 | Debian modemmanager 1.24.2-2 | POCO X3 NFC image | GPL-2.0-or-later |
-| [modemmanager](modemmanager/1.24.2-2+surya3+fajita6/) | 1.24.2-2+surya3+fajita6 | Debian modemmanager 1.24.2-2 | not in an image yet (OnePlus 6T kernel pre-release) | GPL-2.0-or-later |
-| [network-manager](network-manager/1.58.1-1+fajita1/) | 1.58.1-1+fajita1 | Debian network-manager 1.58.1-1 | not in an image yet (OnePlus 6T kernel pre-release) | GPL-2.0-or-later |
+| [modemmanager](modemmanager/1.24.2-2+surya3+fajita6/) | 1.24.2-2+surya3+fajita6 | Debian modemmanager 1.24.2-2 | OnePlus 6T device zip (kernel 7.4) | GPL-2.0-or-later |
+| [network-manager](network-manager/1.58.1-1+fajita1/) | 1.58.1-1+fajita1 | Debian network-manager 1.58.1-1 | OnePlus 6T device zip (kernel 7.4) | GPL-2.0-or-later |
 | [libcamera](libcamera/0.7.2-1+surya20/) | 0.7.2-1+surya20 | Debian libcamera 0.7.2-1 | system image | LGPL-2.1-or-later |
 | [libcamera](libcamera/0.7.2-1+surya21/) (gstreamer1.0-libcamera) | 0.7.2-1+surya21 | Debian libcamera 0.7.2-1 | system image | LGPL-2.1-or-later |
 | [libcamera](libcamera/0.7.2-1+surya17/) | 0.7.2-1+surya17 | Debian libcamera 0.7.2-1 | POCO X3 NFC image | LGPL-2.1-or-later |

@@ -61,9 +61,13 @@ Debian source package `modemmanager` 1.24.2-2 (`modemmanager_1.24.2-2.dsc`, sha2
 
 ## Shipped in
 
-Not in a VibeOS image yet. `modemmanager`, `libmm-glib0` and `gir1.2-modemmanager-1.0` 1.24.2-2+surya3+fajita6,
-built this way, run on the OnePlus 6T with its kernel pre-release
-[fajita-7.4.0-rc2-1](https://github.com/JumpLink/linux-fajita/releases/tag/fajita-7.4.0-rc2-1).
+- `modemmanager`, `libmm-glib0` and `gir1.2-modemmanager-1.0` 1.24.2-2+surya3+fajita6, in the OnePlus 6T's
+  device zip `vibeos-device-oneplus-6t-0.1.5-kernel7.4.zip` (package `vibeos-device-nura-oneplus-fajita`
+  0.1.5+nura20261114.0517-5). They replace the system image's [1.24.2-2+surya3](../1.24.2-2+surya3/) at the first
+  boot and stay held. Built from this folder as above: Debian's `.dsc` as in Base, the 14 patches applied at fuzz 0,
+  in an arm64 chroot with the build profiles `nocheck nodoc`. ModemManager's own tests then passed, 32 of 32.
+- The contributor's builds of the same set run on the OnePlus 6T with its kernel pre-release
+  [fajita-7.4.0-rc2-1](https://github.com/JumpLink/linux-fajita/releases/tag/fajita-7.4.0-rc2-1).
 
 ## Licence
 

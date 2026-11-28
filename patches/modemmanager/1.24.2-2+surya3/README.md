@@ -29,7 +29,8 @@ Debian source package `modemmanager` 1.24.2-2 (`modemmanager_1.24.2-2.dsc`, sha2
 
 - `modemmanager`, `libmm-glib0` and `gir1.2-modemmanager-1.0` 1.24.2-2+surya3, installed in the VibeOS system image
   (0.1.4.3 and later). Every device image built on that system image carries them; the POCO X3 NFC image
-  replaces them with [1.24.2-2+surya6](../1.24.2-2+surya6/).
+  replaces them with [1.24.2-2+surya6](../1.24.2-2+surya6/), the OnePlus 6T's device zip with
+  [1.24.2-2+surya3+fajita6](../1.24.2-2+surya3+fajita6/).
 
 ## Licence
 

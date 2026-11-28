@@ -37,9 +37,16 @@ Debian source package `network-manager` 1.58.1-1 (`network-manager_1.58.1-1.dsc`
 
 ## Shipped in
 
-Not in a VibeOS image yet. `network-manager`, `libnm0`, `gir1.2-nm-1.0`, `network-manager-l10n` and
-`network-manager-tui` 1.58.1-1+fajita1, built this way, are attached to the OnePlus 6T kernel pre-release
-[fajita-7.4.0-rc2-1](https://github.com/JumpLink/linux-fajita/releases/tag/fajita-7.4.0-rc2-1).
+- `network-manager`, `libnm0`, `gir1.2-nm-1.0`, `network-manager-l10n` and `network-manager-tui` 1.58.1-1+fajita1,
+  in the OnePlus 6T's device zip `vibeos-device-oneplus-6t-0.1.5-kernel7.4.zip` (package
+  `vibeos-device-nura-oneplus-fajita` 0.1.5+nura20261114.0517-5). They replace the system image's Debian 1.58.1-1
+  builds at the first boot and stay held. Built from this folder as above: Debian's `.dsc` as in Base, the patch
+  applied at fuzz 0 after Debian's own, in an arm64 chroot with the build profiles `nocheck nodoc`. Of
+  NetworkManager's own tests, 74 of 85 passed; the other 11 cannot run under qemu-user: 9 need a generic netlink
+  socket, which qemu-user does not offer, the nmcli tests' D-Bus stub service did not start in time, and the
+  translation file check ran past its 30 s.
+- The contributor's builds of the same set are attached to the OnePlus 6T kernel pre-release
+  [fajita-7.4.0-rc2-1](https://github.com/JumpLink/linux-fajita/releases/tag/fajita-7.4.0-rc2-1).
 
 ## Licence
 
