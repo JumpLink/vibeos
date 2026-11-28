@@ -113,6 +113,29 @@ checks the initramfs and the root search, not the phone's drivers.
 
 Phones with a header v3 or v4 boot image (a `vendor_boot` partition) are not supported yet.
 
+### OnePlus 6T: JumpLink's kernel 7.4
+
+For the 6T, the converter takes the kernel [JumpLink](https://github.com/JumpLink) builds for it instead of Nura's 7.1:
+release [fajita-7.4.0-rc2-1](https://github.com/JumpLink/linux-fajita/releases/tag/fajita-7.4.0-rc2-1) of
+[linux-fajita](https://github.com/JumpLink/linux-fajita) (sdm845-mainline with 17 commits for the 6T), its
+Image.gz-dtb and modules as released. A build of ours from the release's tag gave the same DTB byte for byte and the
+same 1180 modules at the same paths. The release is a pre-release: about 1 boot in 9 hangs, per the contributor.
+With it go JumpLink's ModemManager and NetworkManager changes for deep sleep with the modem on
+([patches/modemmanager/1.24.2-2+surya3+fajita6](../../patches/modemmanager/1.24.2-2+surya3+fajita6/) and
+[patches/network-manager/1.58.1-1+fajita1](../../patches/network-manager/1.58.1-1+fajita1/)); in the contributor's
+measurements on the 6T, 4 of 4 suspends of 120 s reached deep sleep with both. VoLTE stays off (`mask 81voltd.service`).
+
+```sh
+image/nura/nura-to-vibeos --kernel KDIR --device-debs DEBS --cmdline-add fw_devlink.sync_state=timeout \
+    …-oneplus-fajita-boot.img.xz …-oneplus-fajita.img.xz
+```
+
+KDIR is the release's `Image.gz-dtb-*`, `config-*` and `SHA256SUMS` with its modules tar unpacked; DEBS the
+ModemManager (`modemmanager`, `libmm-glib0`, `gir1.2-modemmanager-1.0`) and NetworkManager (`network-manager`,
+`libnm0`, `gir1.2-nm-1.0`, `network-manager-tui`, `network-manager-l10n`) built from those two folders.
+`fw_devlink.sync_state=timeout` is on the release's own command line: without it a provider (an interconnect, a power
+domain) with a consumer that never probes keeps the bootloader's settings, and its power on.
+
 ## Tests
 
 - `test/zip-test.sh DEVZIP LAYOUT KIND [SLOT] [RUNS]` runs a device zip with its own update-binary in a chroot of
