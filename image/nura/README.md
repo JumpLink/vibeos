@@ -43,6 +43,29 @@ It writes, in `--out` (default: the current directory):
   the first boot to install offline.
 - **Nothing in the images is run.** They are read as data (debugfs, mtools, Python), never mounted.
 
+### Another kernel: `--kernel DIR`
+
+`--kernel DIR` puts a kernel built outside Nura's image in the place of Nura's, as that kernel's release gives it. DIR
+holds its `Image.gz-dtb*` (the gzipped Image with the phone's DTB appended), its modules unpacked from the release's
+tar (`DIR/<kernel release>/modules.dep`...), and may hold `config-*`, a few lines of `SOURCE` (where it is from) and
+the release's `SHA256SUMS`, which every file of DIR it names must match. The boot image keeps Nura's header and
+command line and takes the Image.gz-dtb as its kernel section byte for byte; the payload carries DIR's modules instead
+of Nura's, and `SOURCE`, the sha256 of the files and the config in `/usr/share/vibeos-device/kernel/`.
+
+- Every module's vermagic must name the kernel's release, and every module must carry a signature that verifies
+  (`openssl cms`) against a certificate built into that kernel: the modules are the ones built with it, and a kernel
+  in lockdown loads them.
+- A module pmOS's initramfs loads early (`initramfs.load`) must be in the kernel, built in or as a module, or the
+  conversion stops. Where the kernel's tree renamed a driver, `MODULE_RENAMES` in the converter maps the old name to
+  the new one (sdm845 at Linux 7.4: `qcom_spmi_haptics` is `qcom_pmi8998_haptics`, `lc898217xc` is `lc89821x`).
+  Modules of pmOS's initramfs the kernel does not have are listed in the report.
+
+### Builds of system packages: `--device-debs DIR`
+
+`--device-debs DIR` adds builds of system-image packages made for this phone, such as its ModemManager and
+NetworkManager. Each must be a package of the system image (`data/system-packages.txt`) at a newer version, and with
+its dependencies in the system image or the zip. The first boot installs them with the Debian packages and holds them.
+
 Replaced: `q6voiced` (call audio on Qualcomm phones) by `vibeos-q6voiced`, which opens the voice PCM while a
 ModemManager call is live; without it a call connects and stays silent both ways. `msm-modem-uim-selection` (the
 SIM's provisioning session) by `qcom-uim-provision`, which opens that session when the modem left it closed, as
@@ -87,6 +110,7 @@ and profiles it picks were measured on the 6T's modem, so other phones do not ge
 
 None of these zips has been installed on a phone yet. QEMU boots the phone's own kernel in the "virt" machine, so it
 checks the initramfs and the root search, not the phone's drivers.
+
 Phones with a header v3 or v4 boot image (a `vendor_boot` partition) are not supported yet.
 
 ## Tests
@@ -113,5 +137,5 @@ Phones with a header v3 or v4 boot image (a `vendor_boot` partition) are not sup
 `sudo -n`; the other tests need only sh, awk or python3.
 
 Needs (Debian 12 or later): python3, xz-utils, zstd, e2fsprogs (debugfs), mtools, dpkg (dpkg-deb), zip, gpgv and
-debian-archive-keyring; about 12 GB free in `--out` while it runs. No root and no loop mounts, and it writes nothing
-to a phone.
+debian-archive-keyring, and openssl with `--kernel`; about 12 GB free in `--out` while it runs. No root and no loop
+mounts, and it writes nothing to a phone.

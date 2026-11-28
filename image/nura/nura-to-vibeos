@@ -19,6 +19,13 @@ image is then built from the image's vmlinuz and the phone's DTB, in the header 
 only that phone's firmware is carried. Where a phone came with different panels (POCO X3 NFC: Huaxing, Tianma),
 --panel picks the DTB, and the zip refuses a phone whose bootloader names another panel.
 
+--kernel DIR puts a kernel built outside Nura's image in its place, as its release gives it: the boot image keeps
+Nura's header and takes DIR's Image.gz-dtb as its kernel section, and the payload carries DIR's modules. Every module
+must carry a signature that verifies against a certificate built into that kernel (openssl), and a module pmOS's
+initramfs loads early must be in it, built in, as a module or under its new name (MODULE_RENAMES). --device-debs DIR
+adds builds of system-image packages made for this phone (ModemManager, NetworkManager...): each must be newer than
+the system image's, and the first boot installs and holds them with the Debian packages.
+
 In recovery the zip asks (volume keys, power) whether the boot image goes to this slot's boot (A/B phones; on
 others, recovery) or nowhere, for a first start with "fastboot boot"; --boot-target fixes the answer. The partition
 it overwrites is saved first, into the VibeOS root: /var/lib/vibeos/device/backup/.
@@ -30,8 +37,8 @@ Output, in --out (default: the current directory):
   nura-download/<device>-<flavour>-<build>/   a URL's downloads, kept (checked against the listing's sha256)
 
 Needs (Debian 12 or later): python3, xz-utils, zstd, e2fsprogs (debugfs), mtools, dpkg (dpkg-deb), zip, gpgv and
-debian-archive-keyring (the Debian packages are checked against the archive's signature); about 12 GB free in
---out while it runs. No root, no loop mounts, nothing written to a phone.
+debian-archive-keyring (the Debian packages are checked against the archive's signature), openssl with --kernel;
+about 12 GB free in --out while it runs. No root, no loop mounts, nothing written to a phone.
 """
 import argparse, fnmatch, gzip, hashlib, html, json, os, re, shutil, stat, struct, subprocess, sys, tarfile, time
 import urllib.request
@@ -40,10 +47,16 @@ HERE = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, os.path.join(HERE, 'lib'))
 import apkdb, bootimg, cpio, debfetch, debver, extract  # noqa: E402
 
-VERSION = '0.1.5-nura4'
+VERSION = '0.1.5-nura5'
 EPOCH = 1795262400  # 2026-11-21 12:00 UTC, as the 0.1.3 zips: every timestamp in the zip
 UA = {'User-Agent': 'nura-to-vibeos/0.1'}
 
+# module names pmOS's initramfs and configs use that a newer kernel's tree gave another name (sdm845, Linux 7.4): taken
+# only where the kernel has the new name and not the old one
+MODULE_RENAMES = {
+    'qcom_spmi_haptics': 'qcom_pmi8998_haptics',  # the PMI8998's haptics (vibrator)
+    'lc898217xc': 'lc89821x',  # the camera's focus motor driver
+}
 # pmOS package -> the Debian packages that do its job on VibeOS
 DEBIAN_FOR = {
     'rmtfs': ['rmtfs', 'libqrtr1'],
@@ -511,6 +524,111 @@ def check_modules(moddir, kver, sample=None):
     return n, bad
 
 
+def kernel_input(d):
+    """--kernel DIR: a kernel built outside Nura's image, as its release gives it. DIR holds one Image.gz-dtb* (the
+    gzipped Image with the phone's DTB appended: the boot image's kernel section, as it is), its modules unpacked from
+    the release's tar (DIR/<kernel release>/modules.dep...), and may hold config-* (the kernel's .config), SOURCE (where
+    it is from, a few lines: the report and the package carry them) and SHA256SUMS (every file of DIR it names must
+    match, the Image among them)"""
+    if not os.path.isdir(d):
+        die('--kernel %s: not a directory' % d)
+    names = sorted(os.listdir(d))
+    reg = lambda n: stat.S_ISREG(os.lstat(os.path.join(d, n)).st_mode)
+    imgs = [n for n in names if n.startswith('Image.gz') and reg(n)]
+    if len(imgs) != 1:
+        die('--kernel %s: needs one Image.gz-dtb file, it has %d' % (d, len(imgs)))
+    kernel = extract.read_nofollow(os.path.join(d, imgs[0]))
+    fmt, img, clen, dtbs = bootimg.split_kernel(kernel)
+    if fmt != 'Image.gz' or not dtbs:
+        die('--kernel %s: %s is not a gzipped Image with a DTB appended (%s, %d DTBs)' % (d, imgs[0], fmt, len(dtbs)))
+    kver = bootimg.linux_version(img)
+    moddir = os.path.join(d, kver or '-')
+    if not kver or not os.path.isfile(os.path.join(moddir, 'modules.dep')) or os.path.islink(moddir):
+        die('--kernel %s: the kernel is %s, and DIR has no %s/modules.dep (unpack its modules there)' % (d, kver, kver))
+    r = dict(kernel=kernel, image=img, dtbs=dtbs, kfmt=fmt, kver=kver, moddir=moddir, image_name=imgs[0], source='',
+             config=None, files=[(imgs[0], sha256f(os.path.join(d, imgs[0])))], summed=[])
+    cfgs = [n for n in names if n.startswith('config') and reg(n)]
+    if len(cfgs) > 1:
+        die('--kernel %s: more than one config file: %s' % (d, ' '.join(cfgs)))
+    if cfgs:
+        r['config'] = (cfgs[0], extract.read_nofollow(os.path.join(d, cfgs[0])))
+        r['files'].append((cfgs[0], sha256f(os.path.join(d, cfgs[0]))))
+    if 'SOURCE' in names and reg('SOURCE'):
+        r['source'] = extract.read_nofollow(os.path.join(d, 'SOURCE')).decode('utf-8', 'replace').strip()
+    if 'SHA256SUMS' in names and reg('SHA256SUMS'):
+        have = dict((n, s) for n, s in r['files'])
+        for line in extract.read_nofollow(os.path.join(d, 'SHA256SUMS')).decode('utf-8', 'replace').splitlines():
+            f = line.split()
+            if len(f) == 2 and f[1].lstrip('*') in have:
+                if f[0].lower() != have[f[1].lstrip('*')]:
+                    die('--kernel %s: %s does not match SHA256SUMS' % (d, f[1].lstrip('*')))
+                r['summed'].append(f[1].lstrip('*'))
+        if imgs[0] not in r['summed']:
+            die('--kernel %s: SHA256SUMS does not name %s' % (d, imgs[0]))
+    return r
+
+
+SIG_MAGIC = b'~Module signature appended~\n'
+
+
+def kernel_certs(image):
+    """the X.509 certificates built into a decompressed kernel Image (the system keyring the kernel checks module
+    signatures against), as DER, with their subjects"""
+    out, i = [], 0
+    while True:
+        i = image.find(b'\x30\x82', i)
+        if i < 0:
+            return out
+        n = int.from_bytes(image[i + 2:i + 4], 'big')
+        # a certificate: SEQUENCE { SEQUENCE (tbsCertificate) { [0] version 3 ...
+        if image[i + 4:i + 6] == b'\x30\x82' and image[i + 8:i + 13] == b'\xa0\x03\x02\x01\x02' and n < 8192:
+            der = image[i:i + 4 + n]
+            r = subprocess.run(['openssl', 'x509', '-inform', 'DER', '-noout', '-subject'], input=der, capture_output=True)
+            if r.returncode == 0:
+                out.append((der, r.stdout.decode(errors='replace').strip()))
+                i += 4 + n
+                continue
+        i += 2
+
+
+def check_signatures(moddir, image, work):
+    """every module's appended PKCS#7 signature checked (openssl cms) against the certificates built into the kernel:
+    the modules are the ones built with this kernel, and its module signature check accepts them. (count, the
+    certificates' subjects, [(module, why)] of those that fail)"""
+    certs = kernel_certs(image)
+    if not certs:
+        die('--kernel: no certificate built into the kernel to check the modules\' signatures against')
+    os.makedirs(work)
+    pem = os.path.join(work, 'certs.pem')
+    with open(pem, 'wb') as f:
+        for der, _ in certs:
+            f.write(run(['openssl', 'x509', '-inform', 'DER', '-outform', 'PEM'], input=der))
+    bad, n = [], 0
+    for r, _, fs in sorted(os.walk(moddir)):
+        for fn in sorted(fs):
+            if not re.search(r'\.ko(\.\w+)?$', fn):
+                continue
+            n += 1
+            rel = os.path.relpath(os.path.join(r, fn), moddir)
+            b = unzst(extract.read_nofollow(os.path.join(r, fn)))
+            if not b.endswith(SIG_MAGIC) or len(b) < len(SIG_MAGIC) + 12:
+                bad.append((rel, 'not signed')); continue
+            end = len(b) - len(SIG_MAGIC) - 12
+            id_type, sig_len = b[end + 2], struct.unpack('>I', b[end + 8:end + 12])[0]
+            if id_type != 2 or not 0 < sig_len < end:
+                bad.append((rel, 'not a PKCS#7 signature')); continue
+            for name, body in (('m.sig', b[end - sig_len:end]), ('m.ko', b[:end - sig_len])):
+                with open(os.path.join(work, name), 'wb') as f:
+                    f.write(body)
+            v = subprocess.run(['openssl', 'cms', '-verify', '-binary', '-inform', 'DER', '-in', os.path.join(work, 'm.sig'),
+                                '-content', os.path.join(work, 'm.ko'), '-certfile', pem, '-nointern', '-noverify',
+                                '-out', os.devnull], capture_output=True)
+            if v.returncode:
+                bad.append((rel, 'signature does not verify against the kernel\'s certificates'))
+    shutil.rmtree(work)
+    return n, [s for _, s in certs], bad
+
+
 # ---------------------------------------------------------------- the initramfs
 def initramfs(nura, kver, moddir, busybox, out_conf, comp, skip=frozenset()):
     """our initramfs: busybox, vibeos-loop, /init; the modules and firmware pmOS's initramfs had, plus the USB
@@ -549,6 +667,26 @@ def initramfs(nura, kver, moddir, busybox, out_conf, comp, skip=frozenset()):
         k, _, v = line.partition(':')
         dep[k.strip()] = v.split()
     byname = {mod_name(k): k for k in dep}
+    builtin = set()
+    p = os.path.join(moddir, 'modules.builtin')
+    if os.path.isfile(p):
+        builtin = {mod_name(l.strip()) for l in open(p, encoding='utf-8', errors='replace') if l.strip()}
+    # a driver the kernel's tree renamed: pmOS's list names the old module
+    renamed = []
+    def current(m):
+        old = mod_name(m)
+        new = MODULE_RENAMES.get(old)
+        if old not in byname and old not in builtin and new and (new in byname or new in builtin):
+            renamed.append((old, new))
+            return new
+        return m
+    early_load = [current(m) for m in early_load]
+    pm_mods = {mod_name(current(m)) for m in pm_mods}
+    gone = [m for m in early_load if mod_name(m) not in byname and mod_name(m) not in builtin]
+    if gone:
+        die('the kernel has no %s, which pmOS\'s initramfs loads early (initramfs.load): neither built in nor a module '
+            '(a renamed driver goes into MODULE_RENAMES)' % ', '.join(gone))
+    left = sorted(m for m in pm_mods if m not in byname and m not in builtin)
     want = set(pm_mods) | {mod_name(m) for m in early_load} | {
         'libcomposite', 'usb_f_ncm', 'usb_f_rndis', 'usb_f_acm', 'u_ether', 'u_serial', 'loop', 'dm_mod', 'ext4',
         'jbd2', 'mbcache', 'crc16', 'crc32c_generic', 'f2fs', 'nls_utf8'}
@@ -604,7 +742,8 @@ def initramfs(nura, kver, moddir, busybox, out_conf, comp, skip=frozenset()):
     else:
         data = gzip.compress(raw, 9, mtime=0)
     info = {'modules': sorted(plain(k) for k in take), 'early_load': early_load, 'firmware': sorted(pm_fw),
-            'raw_size': len(raw), 'size': len(data), 'compression': comp}
+            'raw_size': len(raw), 'size': len(data), 'compression': comp, 'renamed': sorted(set(renamed)),
+            'not_in_kernel': left}
     return data, info
 
 
@@ -923,6 +1062,23 @@ def debian_debs(nura, args, out_dir, system):
         for n in want:
             fn, s = arch.fetch(n, out_dir)
             got.append((n, fn))
+    # builds of the system image's own packages made for this phone: each replaces the system's, so it must be newer
+    own = []
+    for f in sorted(os.listdir(args.device_debs)) if args.device_debs else []:
+        if not f.endswith('.deb'):
+            continue
+        p = os.path.join(args.device_debs, f)
+        name, ver = run(['dpkg-deb', '-f', p, 'Package']).decode().strip(), run(['dpkg-deb', '-f', p, 'Version']).decode().strip()
+        if name in {g[0] for g in got}:
+            die('--device-debs: %s is already among the Debian packages' % name)
+        if name not in system.ver:
+            die('--device-debs: %s is not a package of the system image (only builds of its packages go here)' % name)
+        if debver.cmp(ver, system.ver[name]) <= 0:
+            die('--device-debs: %s %s is not newer than the system image\'s %s' % (name, ver, system.ver[name]))
+        shutil.copy(p, os.path.join(out_dir, f))
+        got.append((name, os.path.join(out_dir, f)))
+        why[name] = 'built for this phone (--device-debs), replaces the system\'s %s' % system.ver[name]
+        own.append(name)
     # every dependency must be in the system image or among these (the first boot has no network)
     ps = debver.PackageSet()
     for n, v in system.ver.items():
@@ -945,6 +1101,8 @@ def debian_debs(nura, args, out_dir, system):
                 miss.append('architecture %s' % d.get('Architecture'))
             if miss:
                 dropped.append((n, miss)); os.unlink(fn); del fields[n]; ps.ver.pop(n, None); changed = True
+    if any(n in own for n, _ in dropped):
+        die('--device-debs: dependencies not in the system image or the zip: %s' % [x for x in dropped if x[0] in own])
     for n, (fn, d) in sorted(fields.items()):
         ok.append((n, d.get('Version'), why.get(n, ''), os.path.basename(fn)))
     return ok, dropped, gaps, [w for w in want if w not in {g[0] for g in got}]
@@ -1096,6 +1254,10 @@ def main():
                          'and none (volume keys and power)')
     ap.add_argument('--android-device', help='LineageOS device names the zip accepts (comma-separated), or "any"')
     ap.add_argument('--debs', help='take the Debian packages from this directory instead of the archive')
+    ap.add_argument('--kernel', help='a kernel built outside Nura\'s image, in its place: a directory with its Image.gz-dtb '
+                                     'and its modules (DIR/<release>/), optionally config-*, SOURCE and SHA256SUMS')
+    ap.add_argument('--device-debs', help='builds of system-image packages made for this phone (each newer than the '
+                                          'system\'s), for the first boot to install and hold')
     ap.add_argument('--busybox', help='busybox-static arm64 .deb (default: from the Debian archive)')
     ap.add_argument('--suite', default='sid', help='Debian suite for the packages (default: sid, as the system)')
     ap.add_argument('--system-packages', default=os.path.join(HERE, 'data', 'system-packages.txt'))
@@ -1105,6 +1267,8 @@ def main():
     ap.add_argument('--keep', action='store_true', help='keep the work directory')
     args = ap.parse_args()
     need_tools()
+    if args.kernel and not shutil.which('openssl'):
+        die('--kernel needs openssl (apt install openssl): the modules\' signatures are checked with it')
     os.makedirs(args.out, exist_ok=True)
     out = os.path.abspath(args.out)
     t0 = time.time()
@@ -1155,12 +1319,24 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
         nura.notes.append('name: "%s" from the DTB (the image\'s deviceinfo says "%s")' % (plan['model'], nura.di.get('name')))
         nura.di['name'] = plan['model']
         nura.machine_info = 'PRETTY_HOSTNAME="%s"\nCHASSIS=handset\n' % plan['model']
+    kin = kernel_input(args.kernel) if args.kernel else None
+    if kin:
+        # Nura's header (addresses, page size, version) and command line; the kernel section the release's, as it is
+        if not nura.bootimg or plan.get('dtb_section'):
+            die('--kernel: only for a Nura build with a boot.img whose DTB is appended to the kernel')
+        inputs += [('--kernel ' + n, s) for n, s in kin['files']]
+        plan['header'] = dict(plan['header'], kernel=kin['kernel'])
+        plan.update(kernel=kin['kernel'], kfmt=kin['kfmt'], image=kin['image'], dtbs=kin['dtbs'],
+                    source='Nura boot.img\'s header, the kernel and DTB from --kernel (%s)' % kin['image_name'])
     kver = bootimg.linux_version(plan['image']) if plan['image'] else None
     if not kver:
         die('cannot read the kernel version from the kernel (%s)' % plan['kfmt'])
-    if kver not in nura.kvers:
+    if kin:
+        moddir = kin['moddir']
+    elif kver not in nura.kvers:
         die('the kernel is %s, the root has modules for %s' % (kver, ' '.join(nura.kvers)))
-    moddir = os.path.join(nura.trees['usr/lib/modules'], kver)
+    else:
+        moddir = os.path.join(nura.trees['usr/lib/modules'], kver)
     # what the initramfs needs from the kernel, built in or as a module
     have = set()
     for f in ('modules.builtin', 'modules.dep'):
@@ -1220,6 +1396,12 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
     if bad:
         die('%d of %d modules are not for %s: %s' % (len(bad), n, kver, bad[:5]))
     log('  modules: %d, vermagic %s for all' % (n, kver))
+    signers = None
+    if kin:
+        ns, signers, bad = check_signatures(moddir, kin['image'], os.path.join(tmpw, 'sigs'))
+        if bad or ns != n:
+            die('%d of %d modules fail the signature check: %s' % (len(bad), ns, bad[:5]))
+        log('  signatures: %d of %d verify against the kernel\'s %s' % (ns, n, '; '.join(signers)))
 
     # ---- the device layer
     log('the device layer')
@@ -1239,6 +1421,14 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
                         'others are\n# decoded in software\n[Video]\nhwdec-codecs=h264,hevc\n')):
         os.makedirs(os.path.dirname(os.path.join(P, path)), exist_ok=True)
         open(os.path.join(P, path), 'w').write(body)
+    if kin:
+        # where the kernel is from, and its .config, for the record
+        kd = os.path.join(P, 'usr/share/vibeos-device/kernel')
+        os.makedirs(kd, exist_ok=True)
+        open(os.path.join(kd, 'SOURCE'), 'w').write(
+            (kin['source'] + '\n' if kin['source'] else '') + ''.join('sha256 %s  %s\n' % (s, n_) for n_, s in kin['files']))
+        if kin['config']:
+            open(os.path.join(kd, 'config-%s' % kver), 'wb').write(kin['config'][1])
     debsdir = os.path.join(tmpw, 'debs')
     log('Debian packages for the first boot')
     ok, ddropped, gaps, missing = debian_debs(nura, args, debsdir, system)
@@ -1246,8 +1436,8 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
     # the release and the converter's revision too: a later release's or converter's package for the same Nura build
     # is a newer version
     pver = '%s+nura%s-%s' % (VERSION.rsplit('-nura', 1)[0], stamp.replace('-', '.'), VERSION.rsplit('nura', 1)[1])
-    desc = '%s (%s): Nura\'s kernel %s modules, %d firmware files, the device\'s settings' % (
-        nura.di.get('name', dev), dev, kver, nfw)
+    desc = '%s (%s): %s kernel %s modules, %d firmware files, the device\'s settings' % (
+        nura.di.get('name', dev), dev, 'the' if kin else 'Nura\'s', kver, nfw)
     deb = os.path.join(debsdir, '%s_%s_arm64.deb' % (pkgname, pver))
     log('  %s' % os.path.basename(deb))
     regdb = regdb_signers(moddir, plan.get('image'))
@@ -1329,12 +1519,23 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
              ('%d appended' % len(plan['dtbs'])) if plan['dtbs'] else ('the dtb section' if plan.get('dtb_section') else 'none')))
     for m, c in models:
         R.append('    DTB model "%s", compatible %s' % (m, ' '.join(c)))
-    R.append('  kernel and DTB byte for byte Nura\'s: %s' % ('yes (read back)' if nura.bootimg else 'kernel from vmlinuz, DTB from dtbs/'))
+    if kin:
+        R.append('  kernel and DTB byte for byte --kernel\'s %s: yes (read back)' % kin['image_name'])
+        for line in (kin['source'] or 'no SOURCE').splitlines():
+            R.append('    %s' % line)
+        if kin['summed']:
+            R.append('    checked against its SHA256SUMS: %s' % ', '.join(kin['summed']))
+    else:
+        R.append('  kernel and DTB byte for byte Nura\'s: %s' % ('yes (read back)' if nura.bootimg else 'kernel from vmlinuz, DTB from dtbs/'))
     R.append('  cmdline: %s' % cmd)
     R.append('  dropped (pmOS): %s' % (' '.join(dropped) or '-'))
     R.append('  initramfs: VibeOS\'s, %s, %d KiB (%d KiB unpacked): busybox-static %s, %d modules, %d firmware files; early: %s' % (
         rdinfo['compression'], rdinfo['size'] >> 10, rdinfo['raw_size'] >> 10, os.path.basename(bbdeb),
         len(rdinfo['modules']), len(rdinfo['firmware']), ' '.join(rdinfo['early_load']) or '-'))
+    if rdinfo['renamed']:
+        R.append('    renamed in this kernel: %s' % ', '.join('%s -> %s' % x for x in rdinfo['renamed']))
+    if rdinfo['not_in_kernel']:
+        R.append('    in pmOS\'s initramfs, not in this kernel: %s' % ' '.join(rdinfo['not_in_kernel']))
     R.append('  boot target in the zip: %s' % args.boot_target)
     if row and row['dtbo']:
         R.append('  dtbo: the boot slot\'s cleared after boot is written (its old content saved in the system)')
@@ -1342,6 +1543,8 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
         R.append('  panel: %s (the zip refuses a phone whose bootloader names another panel)' % plan['panel'])
     R.append('')
     R.append('kernel modules: %d (vermagic %s, all checked)' % (nmod, kver))
+    if signers:
+        R.append('  signatures: all verify against the certificate built into the kernel (%s)' % '; '.join(signers))
     R.append('firmware files: %d (postmarketos/ moved to the kernel\'s updates/)' % nfw)
     R.append('device package: %s %s' % (pkgname, pver))
     R.append('wireless-regdb: %s' % {
@@ -1351,6 +1554,9 @@ def convert(args, out, srcs, url, stamp, tmpw, t0):
         'none': 'the system\'s default; the kernel\'s cfg80211 names no signer',
         None: 'not the system\'s (no cfg80211, or no wireless-regdb in the system image)'}[regdb])
     R.append('Debian packages for the first boot: %s' % (', '.join('%s %s' % (n_, v_) for n_, v_, *_ in ok) or '-'))
+    for n_, v_, why_, _ in ok:
+        if why_.startswith('built for this phone'):
+            R.append('  %s %s: %s; held at the first boot' % (n_, v_, why_))
     for n_, miss in ddropped:
         R.append('  LEFT OUT %s: dependencies not in the system image: %s' % (n_, ', '.join(miss)))
     for n_ in missing:
