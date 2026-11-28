@@ -1,0 +1,135 @@
+#!/bin/sh
+# qcom-volte-provision: prepare the modem for VoLTE on the SIM's home network, before ModemManager starts.
+# The OnePlus 6T's modem selects "Oversea-Commercial_DS" by itself, which never registers with IMS for a 1&1 SIM
+# (262-23, on Vodafone Germany's network); "Netherlands-VoLTE-Vodafone" does, once its IMS profile asks for IPv6 (the network refuses IPv4 for
+# IMS) and its default profile, which the modem attaches to LTE with, carries the APN mobile data uses (the
+# config's own APN makes the data connection fail as a second PDN to the same APN). The modem forgets all of
+# this on every boot, so this runs each time.
+# /etc/qcom-volte-provision.conf may set MBN=<description>, IMS_PDP=, ATTACH_APN= and ATTACH_PDP= (IPV4, IPV6,
+# IPV4V6); without a setting the table below decides, and ATTACH_APN comes from the autoconnecting mobile
+# broadband connection of NetworkManager. For a network neither knows, nothing is changed.
+set -u
+DEV=${QMI_DEVICE:-qrtr://0}
+CONF=${VOLTE_CONF:-/etc/qcom-volte-provision.conf}
+NMDIR=${NM_CONNECTIONS:-/etc/NetworkManager/system-connections}
+q() { timeout "${QMI_TIMEOUT:-10}" qmicli -d "$DEV" "$@" 2>/dev/null; }
+conf() { [ -r "$CONF" ] && sed -n "s/^$1=//p" "$CONF" | tail -1; }
+now() { date +%s; }
+
+# VoLTE is 81voltd's: where the image masks it (the 6T's zip does) or lacks it, a new modem configuration would only
+# change how the modem registers, with nothing to place calls over IMS
+case $(systemctl is-enabled 81voltd.service 2>/dev/null) in
+masked | masked-runtime | not-found | "") echo "81voltd masked or not installed, nothing changed"; exit 0 ;;
+esac
+
+# the home network as MCC and MNC digits. Before ModemManager the modem is in low power and NAS does not know it
+# yet, but the SIM's session is open (qcom-uim-provision): the first six digits of EF_IMSI (MCC, MNC and, for a
+# two-digit MNC, one more), BCD with swapped nibbles after a length byte, the first byte's low nibble the parity.
+# Nothing else of the IMSI leaves the pipe.
+home_sim() {
+	q --uim-read-transparent=0x3F00,0x7FFF,0x6F07 | awk '
+		f { n = split($1, b, ":"); s = substr(b[2], 1, 1)
+		    for (i = 3; i <= n; i++) s = s substr(b[i], 2, 1) substr(b[i], 1, 1)
+		    s = substr(s, 1, 6); if (s ~ /^[0-9][0-9][0-9][0-9][0-9][0-9]$/) print s; exit }
+		/Read result:/ { f = 1 }'
+}
+home_nas() {
+	q --nas-get-home-network | awk -F"'" '/MCC:/ { c = $2 } /MNC:/ { n = $2 } END { if (c != "") print c n }'
+}
+
+mbn=$(conf MBN); ims_pdp=$(conf IMS_PDP); attach=$(conf ATTACH_APN); attach_pdp=$(conf ATTACH_PDP)
+home=
+end=$(($(now) + ${VOLTE_WAIT:-40}))
+while :; do
+	home=$(home_sim)
+	[ -n "$home" ] || home=$(home_nas)
+	[ -n "$home" ] || [ "$(now)" -ge "$end" ] && break
+	sleep "${VOLTE_SLEEP:-2}"
+done
+# only what calls have proven: the home network (MCC MNC) and the settings with which IMS registered on it
+case "$home" in
+26223*) : "${mbn:=Netherlands-VoLTE-Vodafone}" "${ims_pdp:=IPV6}" "${attach_pdp:=IPV4}" ;;
+esac
+[ -n "$home" ] && home=$(printf '%.5s' "$home")
+echo "home network ${home:-unknown}"
+[ -n "$mbn" ] || { echo "no settings for this network, nothing changed"; exit 0; }
+
+# configs as "status<TAB>id<TAB>description", one per line
+configs() {
+	# the ID holds colons itself, so the value is what follows the first ": "
+	q --pdc-list-configs=software | awk '
+		function val() { v = $0; sub(/^[^:]*: */, "", v); return v }
+		/^Configuration / { if (d != "") print s "\t" id "\t" d; d = s = id = "" }
+		/Description:/ { d = val() } /Status:/ { s = val() } /ID:/ { id = val() }
+		END { if (d != "") print s "\t" id "\t" d }'
+}
+status() { configs | awk -F'\t' -v w="$mbn" '$3 == w { print $1 }'; }
+line=$(configs | awk -F'\t' -v w="$mbn" '$3 == w')
+[ -n "$line" ] || { echo "MBN $mbn not on this modem, nothing changed"; exit 0; }
+if [ "${line%%	*}" = Active ]; then
+	echo "MBN $mbn already active"
+else
+	id=$(printf '%s\n' "$line" | cut -f2)
+	q "--pdc-activate-config=software,$id" >/dev/null || { echo "activating MBN $mbn failed"; exit 1; }
+	echo "MBN $mbn requested"
+	# the modem restarts its configuration and does not answer meanwhile; the profiles below are the new
+	# config's, so they wait for it
+	end=$(($(now) + ${VOLTE_WAIT:-40}))
+	until [ "$(status)" = Active ]; do
+		[ "$(now)" -ge "$end" ] && { echo "MBN $mbn not reported active, profiles left alone"; exit 1; }
+		sleep "${VOLTE_SLEEP:-2}"
+	done
+	echo "MBN $mbn activated"
+fi
+
+# the 3GPP profiles as "number<TAB>apn<TAB>pdp type", one per line
+profiles() {
+	q --wds-get-profile-list=3gpp | awk -v Q="'" '
+		/\[[0-9]+\] 3gpp/ { n = $1; gsub(/[^0-9]/, "", n); a = "" }
+		/^[ \t]*APN: / { split($0, x, Q); a = x[2] }
+		/^[ \t]*PDP type: / { split($0, x, Q); print n "\t" a "\t" x[2] }'
+}
+lc() { printf '%s' "$1" | tr 'A-Z' 'a-z'; }
+# modify NUMBER WHAT SETTINGS: one profile, saying what changed
+modify() {
+	if q "--wds-modify-profile=3gpp,$1,$3" >/dev/null; then echo "profile $1 ($2): $3"
+	else echo "profile $1 ($2): setting $3 failed"; fi
+}
+list=$(profiles)
+if [ -n "$ims_pdp" ]; then
+	p=$(printf '%s\n' "$list" | awk -F'\t' 'tolower($2) == "ims" { print; exit }')
+	if [ -z "$p" ]; then echo "no IMS profile"
+	elif [ "$(lc "$(printf '%s' "$p" | cut -f3)")" != "$(lc "$ims_pdp")" ]; then modify "${p%%	*}" IMS "pdp-type=$ims_pdp"
+	fi
+fi
+if [ -z "$attach" ]; then
+	for f in "$NMDIR"/*.nmconnection; do
+		[ -r "$f" ] || continue
+		grep -qx 'type=gsm' "$f" || continue
+		grep -qx 'autoconnect=false' "$f" && continue
+		attach=$(sed -n 's/^apn=//p' "$f" | head -1)
+		[ -n "$attach" ] && break
+	done
+fi
+if [ -n "$attach" ]; then
+	n=$(q --wds-get-default-profile-number=3gpp | sed -n "s/.*number: '\([0-9]*\)'.*/\1/p")
+	p=$(printf '%s\n' "$list" | awk -F'\t' -v n="${n:-1}" '$1 == n')
+	set -- "apn=$attach"
+	[ -n "$attach_pdp" ] && set -- "$1,pdp-type=$attach_pdp"
+	if [ "$(printf '%s' "$p" | cut -f2)" != "$attach" ] ||
+		{ [ -n "$attach_pdp" ] && [ "$(lc "$(printf '%s' "$p" | cut -f3)")" != "$(lc "$attach_pdp")" ]; }; then
+		modify "${n:-1}" attach "$1"
+	fi
+fi
+# a newly activated config takes its full effect when the modem first goes online, and that resets the data path
+# ModemManager has set up by then: the data connection comes up with an address that carries nothing. Going online
+# once here, before ModemManager, leaves the second time to it.
+if [ -n "${id:-}" ]; then
+	mode=$(q --dms-get-operating-mode | sed -n "s/.*Mode: '\([^']*\)'.*/\1/p")
+	q --dms-set-operating-mode=online >/dev/null || echo "going online failed"
+	sleep "${VOLTE_SETTLE:-8}"
+	q --dms-set-operating-mode=low-power >/dev/null || echo "going back to low power failed"
+	[ "$mode" = online ] && q --dms-set-operating-mode=online >/dev/null
+	echo "modem online once (was ${mode:-unknown})"
+fi
+echo "done"

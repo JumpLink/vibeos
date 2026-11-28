@@ -36,7 +36,10 @@ It writes, in `--out` (default: the current directory):
   settings in the form a Debian/systemd system reads: ALSA UCM, udev rules and hwdb, modprobe and modules-load files,
   UPower, WirePlumber, feedbackd themes, the sensors' mount matrix, hexagonrpcd's firmware directory, and the units
   postmarketOS enables or disables. With 81voltd (VoLTE) also a drop-in that has it wait for ModemManager's modem,
-  which it looks for only once. As a package, `vibeos-device-nura-<device>`.
+  which it looks for only once, and `qcom-volte-provision`: for a home network it knows (so far 1&1) it activates
+  the modem configuration (MBN) that registers with IMS and sets the profiles VoLTE and mobile data need, each boot,
+  as the modem forgets them; while 81voltd is masked or missing it changes nothing. As a package,
+  `vibeos-device-nura-<device>`.
 - **Debian's builds** of the Qualcomm services Nura runs (rmtfs, tqftpserv, qrtr, pd-mapper, hexagonrpcd, qbootctl,
   81voltd), downloaded from the Debian archive and checked against its signature (gpgv, debian-archive-keyring), for
   the first boot to install offline.
@@ -99,6 +102,10 @@ Phones with a header v3 or v4 boot image (a `vendor_boot` partition) are not sup
   stops at the modem's first answer when no slot has a card, and keeps asking while the modem gives none.
 - `test/voltd-wait-test.sh` runs the wait of `files/81voltd-wait-modem.conf` against a stand-in `mmcli`: it returns
   once the modem is listed and gives up after 90 s, letting 81voltd start anyway.
+- `test/volte-provision-test.sh` runs `files/qcom-volte-provision` against a stand-in `qmicli` with the 6T's
+  configurations and profiles: for a 1&1 SIM the configuration, IMS and attach profiles set and the modem online once,
+  nothing changed when all is so already, for another network, a modem without the configuration, or while 81voltd
+  is masked or missing.
 
 `zip-test.sh` and `qemu-boot.sh` need `NURA_WORK` (a work directory, about 20 GB), qemu-user-static with binfmt, and
 `sudo -n`; the other tests need only sh, awk or python3.
