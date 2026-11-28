@@ -36,9 +36,7 @@ It writes, in `--out` (default: the current directory):
   settings in the form a Debian/systemd system reads: ALSA UCM, udev rules and hwdb, modprobe and modules-load files,
   UPower, WirePlumber, feedbackd themes, the sensors' mount matrix, hexagonrpcd's firmware directory, and the units
   postmarketOS enables or disables. With 81voltd (VoLTE) also a drop-in that has it wait for ModemManager's modem,
-  which it looks for only once, and `qcom-volte-provision`: for a home network it knows (so far 1&1) it activates
-  the modem configuration (MBN) that registers with IMS and sets the profiles VoLTE and mobile data need, each boot,
-  as the modem forgets them; while 81voltd is masked or missing it changes nothing. As a package,
+  which it looks for only once, and on a `volte provision` row (see below) `qcom-volte-provision`. As a package,
   `vibeos-device-nura-<device>`.
 - **Debian's builds** of the Qualcomm services Nura runs (rmtfs, tqftpserv, qrtr, pd-mapper, hexagonrpcd, qbootctl,
   81voltd), downloaded from the Debian archive and checked against its signature (gpgv, debian-archive-keyring), for
@@ -74,6 +72,10 @@ A `watchdog reset` row (the OnePlus 6T) also gets two systemd drop-ins: the hard
 hangs in the modem shutdown path, and rmtfs gets 15 s to stop instead of systemd's default 90 s.
 A `modemwake settle` row (the OnePlus 6T) gets a systemd-sleep hook: the modem may wake the phone for an incoming
 call, and WLAN goes down before the suspend, because its QMI traffic runs through the modem and would abort it.
+A `volte provision` row (the OnePlus 6T) gets `qcom-volte-provision`: for a home network it knows (so far 1&1) it
+activates the modem configuration (MBN) that registers with IMS and sets the profiles VoLTE and mobile data need,
+each boot, as the modem forgets them; while 81voltd is masked or missing it changes nothing. The configurations
+and profiles it picks were measured on the 6T's modem, so other phones do not get it.
 
 | Nura device | Phone | Checked |
 |---|---|---|

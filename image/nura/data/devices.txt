@@ -18,8 +18,11 @@
 #             TimeoutStopSec=15s): a reboot that hangs in the modem shutdown path is reset by the hardware watchdog
 #   modemwake settle: the zip carries a systemd-sleep hook that lets the modem's IPCRTR channel wake the phone
 #             (incoming calls in suspend) and takes WLAN down first, whose QMI traffic would abort every suspend
-# nura               android                          dtb                                   layout                                       panels          dtbo    mask            watchdog  modemwake
-oneplus-fajita       fajita,OnePlus6T,OnePlus6TSingle -                                     -                                            -               clear   81voltd.service reset     settle
+#   volte     provision: the zip carries qcom-volte-provision, which sets the modem configuration (MBN) and the
+#             profiles VoLTE needs on a home network it knows (so far 1&1, measured on the OnePlus 6T); it changes
+#             nothing while 81voltd is masked or missing
+# nura               android                          dtb                                   layout                                       panels          dtbo    mask            watchdog  modemwake volte
+oneplus-fajita       fajita,OnePlus6T,OnePlus6TSingle -                                     -                                            -               clear   81voltd.service reset     settle    provision
 oneplus-enchilada    enchilada,OnePlus6               -                                     -                                            -
 google-sargo         sargo                            -                                     -                                            -
 google-bonito        bonito                           -                                     -                                            -
